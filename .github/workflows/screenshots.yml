@@ -24,6 +24,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -50,7 +52,18 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/images/neo2030-live.png docs/images/operations-light-live.png docs/images/pid-dark-live.png docs/images/symbol-library-live.png docs/images/designer-live.png README.md README.de.md
+          git add \
+            docs/images/neo2030-dark-live.png \
+            docs/images/neo2030-light-live.png \
+            docs/images/classic-scada-live.png \
+            docs/images/pid-dark-live.png \
+            docs/images/clean-live.png \
+            docs/images/symbol-library-live.png \
+            docs/images/designer-dark-live.png \
+            docs/images/designer-light-live.png \
+            README.md README.de.md
           git diff --cached --quiet && exit 0
-          git commit -m 'docs: refresh real UI screenshots and README [skip ci]'
-          git push
+          git commit -m 'docs: refresh dark, light and SCADA UI showcases'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
