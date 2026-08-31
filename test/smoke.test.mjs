@@ -21,3 +21,10 @@ test("drag and drop editor foundations", () => {
     assert.ok(source.includes(token), `missing editor token ${token}`);
   }
 });
+
+
+test("Neo 2030 designer, native entities and YAML export", () => {
+  for (const token of ["VERSION = \"0.3.0\"", "SYMBOL_LIBRARY", "ha-entity-picker", "configToYaml", "glt-style-neo2030", "classic_scada", "data-preview", "YAML kopieren"]) {
+    assert.ok(source.includes(token), `missing ${token}`);
+  }
+});

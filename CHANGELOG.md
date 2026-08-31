@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 - 2026-08-31
+
+- Added Neo 2030 visual system while keeping Clean and Classic SCADA modes.
+- Added runtime style switch and designer appearance selector.
+- Added 50+ component/symbol variants across heating, hydraulics, ventilation, cooling, energy and sensors.
+- Added Home Assistant native entity pickers with domain filtering throughout the drag-and-drop designer.
+- Added live card preview inside the designer.
+- Added Lovelace YAML generation and one-click copy.
+- Added symbol-aware rendering and a new Neo 2030 iDM example.
+
+
 ## 0.2.0 - 2026-08-31
 
 - Replaced the basic form editor with a full professional drag-and-drop GLT designer.

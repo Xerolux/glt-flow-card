@@ -52,6 +52,21 @@ The visual editor is now a complete plant designer instead of a form for global 
 
 The editor writes the same YAML configuration documented below, so visual editing and hand-written YAML can be mixed at any time.
 
+
+## Neo 2030, Clean and Classic SCADA
+
+The card now ships with three complete visual presets. **Neo 2030** is the new dark premium look with modern symbols, restrained glow and technical typography. **Clean** keeps the bright minimal look. **Classic SCADA** remains available for users who prefer a traditional BMS/SCADA presentation. The style can be selected in the designer and optionally switched directly on the card.
+
+## Native Home Assistant entity picker and YAML export
+
+The integrated designer no longer requires typing entity IDs by hand. Main entities, status entities, measurements, flow/activity signals and KPIs use Home Assistant's native entity picker with sensible domain filters, giving direct access to the current Home Assistant entity catalog.
+
+The designer also includes a **live preview** and a **Lovelace YAML drawer with copy action**, so a visually created plant can be pasted directly into a manual dashboard as `custom:glt-flow-card`.
+
+## Extended symbol library
+
+The palette contains more than 50 components and variants across heating, hydraulics, AHU/ventilation, cooling, energy, sensors and generic plant objects, while custom images/SVGs remain optional.
+
 ## Quick start
 
 ```yaml

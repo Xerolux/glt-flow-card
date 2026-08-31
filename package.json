@@ -1,7 +1,7 @@
 {
   "name": "glt-flow-card",
-  "version": "0.2.0",
-  "description": "Modern configurable GLT/BMS plant visualization for Home Assistant with pan/zoom, image views, replay, trends and KPIs.",
+  "version": "0.3.0",
+  "description": "Modern configurable GLT/BMS plant visualization for Home Assistant with Neo 2030/Clean/Classic SCADA styles, native entity picker, drag-and-drop designer, YAML export, replay, trends and KPIs.",
   "license": "MIT",
   "author": "Xerolux",
   "repository": {

@@ -52,6 +52,21 @@ Der visuelle Editor ist jetzt ein vollständiger Anlagen-Designer. Die GLT kann 
 
 Der Designer schreibt dieselbe YAML-Konfiguration wie die manuelle Konfiguration. Visueller Editor und YAML können deshalb jederzeit kombiniert werden.
 
+
+## Neo 2030, Clean und Classic SCADA
+
+Die Karte enthält jetzt drei vollständige Optik-Presets. **Neo 2030** ist die neue dunkle Premium-Ansicht mit moderner Symbolik, dezenten Glow-Effekten und klarer technischer Typografie. **Clean** erhält die helle, reduzierte Darstellung. **Classic SCADA** bleibt bewusst für Anwender erhalten, die eine traditionelle GLT-/SCADA-Optik bevorzugen. Der Stil kann im Designer gewählt und optional direkt in der Karte umgeschaltet werden.
+
+## Home-Assistant-Entity-Picker und YAML-Ausgabe
+
+Im integrierten Designer werden Entitäten nicht mehr von Hand eingetippt: Hauptentitäten, Status, Messwerte, Fluss-/Aktivsignale und KPIs verwenden den nativen Home-Assistant-Entity-Picker mit passenden Domain-Filtern. Friendly Name, Entity-ID und die vorhandene Home-Assistant-Entity-Liste stehen dadurch direkt im Designer zur Verfügung.
+
+Der Designer bietet außerdem **Live-Vorschau** sowie eine **Lovelace-YAML-Ansicht mit Kopierfunktion**. Das grafisch erstellte Schema kann sofort als `custom:glt-flow-card` in ein manuelles Lovelace-Dashboard übernommen werden.
+
+## Erweiterte Symbolbibliothek
+
+Die Palette enthält mehr als 50 auswählbare Bausteine und Varianten für Heizung, Hydraulik, RLT/Lüftung, Kälte, Energie, Sensorik und allgemeine Anlagen: Wärmepumpen, Speicher, Heizkreise, Pumpen, 2-/3-Wege-Ventile, Mischventile, Wärmetauscher, Verteiler, Ausdehnungsgefäße, RLT-Zentralen, Ventilatoren, Luftklappen, Filter, Heiz-/Kühlregister, Kältemaschinen, PV, Batterie, Netz, Zähler, Raum- und Prozesssensoren sowie eigene Bilder/SVGs.
+
 ## Schnellstart
 
 ```yaml

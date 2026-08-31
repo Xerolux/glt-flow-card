@@ -1,0 +1,93 @@
+# GLT Flow Card - Neo 2030 / iDM example
+type: custom:glt-flow-card
+title: iDM Heizzentrale
+subtitle: ALM 6-15 · Neo 2030
+appearance:
+  mode: neo2030
+  show_switch: true
+canvas:
+  width: 1600
+  height: 900
+  viewport_height: 660
+  grid: true
+views:
+  - id: schematic
+    name: Anlagenschema
+    kind: schematic
+replay:
+  enabled: true
+  hours: 168
+trend:
+  enabled: true
+  max_series: 8
+kpis:
+  - name: Vorlauf HK D
+    icon: mdi:thermometer-chevron-up
+    entity: sensor.alm6_15_vorlauftemperatur_hk_d
+  - name: Raum HK D
+    icon: mdi:home-thermometer-outline
+    entity: sensor.alm6_15_raumtemperatur_hk_d
+equipment:
+  - id: idm
+    type: heat_pump
+    symbol: heat_pump_neo
+    name: iDM ALM 6-15
+    x: 150
+    y: 330
+    width: 260
+    height: 170
+    fields:
+      - label: Vorlauf
+        entity: sensor.alm6_15_vorlauftemperatur_hk_d
+      - label: Soll-VL
+        entity: sensor.alm6_15_sollvorlauftemperatur_hk_d
+  - id: buffer
+    type: tank
+    symbol: buffer_layered
+    name: Hydraulik / Puffer
+    x: 660
+    y: 280
+    width: 240
+    height: 210
+  - id: hk_d
+    type: room
+    symbol: underfloor
+    name: Heizkreis D
+    x: 1180
+    y: 310
+    width: 250
+    height: 190
+    fields:
+      - label: Vorlauf
+        entity: sensor.alm6_15_vorlauftemperatur_hk_d
+      - label: Raum
+        entity: sensor.alm6_15_raumtemperatur_hk_d
+paths:
+  - id: supply
+    medium: heating_supply
+    temperature: sensor.alm6_15_vorlauftemperatur_hk_d
+    points:
+      - [410, 370]
+      - [660, 370]
+      - [900, 370]
+      - [1180, 370]
+  - id: return
+    medium: heating_return
+    points:
+      - [1180, 450]
+      - [900, 450]
+      - [660, 450]
+      - [410, 450]
+datapoints:
+  - id: hk_d_flow
+    label: VL HK D
+    kind: temperature
+    entity: sensor.alm6_15_vorlauftemperatur_hk_d
+    positions:
+      schematic: { x: 1030, y: 330 }
+  - id: hk_d_room
+    label: Raum HK D
+    kind: temperature
+    entity: sensor.alm6_15_raumtemperatur_hk_d
+    positions:
+      schematic: { x: 1310, y: 540 }
