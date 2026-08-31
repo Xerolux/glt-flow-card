@@ -35,7 +35,7 @@
 | `playwright.config.mjs`, `test/e2e/fixtures/fake-ha.mjs`, `project-safety.spec.mjs` | E2E test | request-response/event-driven | browser boot/theme mechanics in `tools/capture-screenshots.mjs:1-46`; narrow `hass` usage in `src/v100/index.js` | partial |
 | `package.json`, lockfile | config | batch | current scripts/dependencies at `package.json:13-22` | exact |
 | `.github/workflows/validate.yml`, `build-v1.yml`, `release.yml` | CI config | batch | existing Node/build/release jobs | exact modification seams |
-| HACS plugin/integration validation workflows and Companion distribution metadata | CI/config | batch | `hacs.json:1-6`, `manifest.json:1-9`, current release ZIP | partial; separate category endpoint required |
+| HACS plugin/integration-category validation and Companion staging metadata | CI/config | batch | `hacs.json:1-6`, `manifest.json:1-9`, current release ZIP | partial; local release-only integration staging required |
 
 ## Pattern Assignments
 
@@ -176,7 +176,7 @@ Replace scattered workflow shell build logic with `tools/build.mjs`: compile sta
 
 **CI analog:** keep Node 22, `npm ci --ignore-scripts`, read-only permissions by default, concurrency, and timeouts. Split jobs into contract/Node, Python minimum/current HA, exact build+manifest, Playwright, hassfest, HACS plugin, HACS integration, and narrow publish. Pin third-party actions to full SHAs. Upload one immutable staged artifact from build; downstream jobs download and verify its manifest. Publish alone receives `contents: write`; attestation permission is isolated.
 
-The plugin and Companion integration require two independently valid HACS category endpoints. One repository metadata file cannot represent both categories; keep one authored source/build and generate a release-only Companion distribution/mirror once its repository URL/ownership checkpoint is resolved.
+The plugin and Companion integration require independently valid category shapes. One repository metadata file cannot represent both, so keep one authored source/build and generate a local release-only Companion integration-category staging tree. Do not create or publish a public mirror in Phase 1; a future upload is conditional on separate explicit authorization.
 
 ## Shared Patterns
 
@@ -221,7 +221,7 @@ Authored: `src/v100/`, `schemas/`, Python modules, `tools/`, tests, workflows, m
 | HA diagnostics module | No current diagnostics endpoint; use standard HA diagnostics API plus explicit allowlist/redaction. |
 | Accessible project-safety dialog | Current modal helper is visual only; implement locked UI spec and Playwright behavior. |
 | Deterministic release verifier/attestation | Current workflows grep and zip; create independent verifier and immutable artifact flow. |
-| Dual HACS category distribution | Current `hacs.json` is plugin-oriented; Companion needs a distinct integration endpoint/mirror decision. |
+| Dual HACS category validation | Current `hacs.json` is plugin-oriented; Companion needs a distinct local integration-category staging tree and ZIP. |
 
 ## Integration Checklist for Planner
 

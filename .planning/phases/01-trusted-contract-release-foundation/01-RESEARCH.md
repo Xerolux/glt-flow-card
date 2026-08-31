@@ -66,7 +66,7 @@ Phase 1 should refactor three existing seams, not create a walking skeleton: `sr
 
 The implementation-ready shape is one authored Draft 2020-12 contract plus limits and golden fixtures, compiled for the browser and loaded through Python `jsonschema`; a pure sequential migration/diff engine; and a Companion transaction coordinator that archives, writes, re-reads, verifies, and can recover an interrupted apply. JSON Schema 2020-12 supplies `$defs`, dynamic references, and `unevaluatedProperties`; Ajv supports Draft 2020-12 and standalone generated validators; Python `jsonschema` exposes `Draft202012Validator`, schema checking, iterable errors, and registry-based reference resolution. [CITED: https://json-schema.org/draft/2020-12] [CITED: https://ajv.js.org/json-schema.html] [CITED: https://ajv.js.org/standalone.html] [CITED: https://python-jsonschema.readthedocs.io/en/stable/validate/] [CITED: https://python-jsonschema.readthedocs.io/en/stable/referencing/]
 
-Release integrity must become an executable product path: one local `npm run build` produces a canonical bundle once, byte-copies distribution targets, emits a non-circular manifest of versions/commit/toolchain/hashes, builds a deterministic Companion ZIP, and then tests the exact staged files. CI must regenerate in a clean checkout, compare two builds, fail on committed drift, exercise minimum/current Home Assistant lanes, run HACS validation separately for plugin and integration categories, and publish only the already-tested artifacts with checksums/attestation. HACS treats plugins and integrations as different repository categories and its action accepts a category input, so a second HACS distribution endpoint is required unless actual HACS validation proves a supported one-repository arrangement. [CITED: https://hacs.xyz/docs/publish/plugin/] [CITED: https://hacs.xyz/docs/publish/integration/] [CITED: https://hacs.xyz/docs/publish/action/]
+Release integrity must become an executable product path: one local `npm run build` produces a canonical bundle once, byte-copies distribution targets, emits a non-circular manifest of versions/commit/toolchain/hashes, builds a deterministic Companion ZIP and a local release-only Home Assistant integration-category staging tree, and then tests the exact staged files. CI must regenerate in a clean checkout, compare two builds, fail on committed drift, exercise verified immutable minimum/current Home Assistant lanes, and validate plugin and integration-category packages separately. Phase 1 does not create or publish a second public repository; any later mirror upload is conditional, disabled by default, and requires a separately authorized exact target and token. [CITED: https://hacs.xyz/docs/publish/plugin/] [CITED: https://hacs.xyz/docs/publish/integration/] [CITED: https://hacs.xyz/docs/publish/action/]
 
 **Primary recommendation:** implement contract, migration/diff, backend transaction, UI preview, and release verification as one vertical safety pipeline—`raw bytes → bounded parse/archive preflight → schema → sequential migration → semantic diff → expected-revision apply → verified snapshot → re-read verification → evidence receipt`—and do not allow any alternate save/import/rollback route to bypass it.
 
@@ -119,7 +119,7 @@ Release integrity must become an executable product path: one local `npm run bui
 | JSON Schema | Draft 2020-12 | Canonical serialized-data contract | Locked decision; official current meta-schema/vocabulary model. [CITED: https://json-schema.org/draft/2020-12] |
 | `ajv` | 8.20.0 | Build-time browser validator and standalone code generation | Official Ajv docs support Draft 2020-12 and standalone validation code, avoiding a runtime compiler/CSP dependency. [VERIFIED: npm registry] [CITED: https://ajv.js.org/standalone.html] |
 | Python `jsonschema` | 4.26.0 | Companion Draft 2020-12 validation | Official API provides `Draft202012Validator.check_schema`, `iter_errors`, and registry integration. [CITED: https://python-jsonschema.readthedocs.io/en/stable/validate/] |
-| `@zip.js/zip.js` | 2.8.30, exact pin pending human verification | Bounded browser ZIP read/write behind the existing project-bundle API | Mature maintained ZIP primitives and strict-mode hardening are safer than extending the handwritten local-header parser. [CITED: https://github.com/gildas-lormeau/zip.js] [WARNING: package-legitimacy seam flagged the latest package as suspicious because it was published the day of research; verify the exact pin before install.] |
+| `@zip.js/zip.js` | 2.8.30 exact pin, automated provenance required | Bounded browser ZIP read/write behind the existing project-bundle API | Mature maintained ZIP primitives and strict-mode hardening are safer than extending the handwritten local-header parser. The exact historical pin is admitted only by the committed read-only registry/source/integrity allowlist. [CITED: https://github.com/gildas-lormeau/zip.js] |
 | Existing `esbuild` | 0.25.12 lockfile pin | Single canonical ES2022 bundle | Already the repository bundler; keep one producer rather than add another bundler. [VERIFIED: `package-lock.json`] |
 | Node built-in test runner | Node 22 | Fast pure contract/migration/diff/build tests | Existing repo convention and CI runtime. [VERIFIED: `package.json`, `AGENTS.md`] |
 
@@ -128,7 +128,7 @@ Release integrity must become an executable product path: one local `npm run bui
 | Library/tool | Pinned version | Purpose | When to use |
 |--------------|----------------|---------|-------------|
 | `@playwright/test` | 1.62.1 | Real Chromium workflow/accessibility/interaction tests | Test the exact staged bundle, both locales, keyboard/focus, mobile reflow, and absence of HA service calls. [VERIFIED: npm registry] [CITED: https://playwright.dev/docs/intro] |
-| `pytest-homeassistant-custom-component` | 0.13.316, checkpoint required | Home Assistant custom-integration fixture harness | Only after compatibility/legitimacy review; otherwise use the matching Home Assistant core test harness in pinned containers. [WARNING: package-legitimacy seam flagged recency/unknown download signals.] |
+| `pytest-homeassistant-custom-component` | 0.13.316 exact pin, automated provenance required | Home Assistant custom-integration fixture harness | Admit only after read-only registry/source/integrity verification, then use the supported harness with verified HA lanes. |
 | SHA-256 from Web Crypto / Node `crypto` / Python `hashlib` | Host-provided | Content and evidence integrity | Hash canonical UTF-8 project bytes, staged artifacts, schema files, and ZIP entries; do not add a crypto package. [VERIFIED: host standard libraries] |
 | HACS action and hassfest | current action pinned to reviewed commit SHA | Category/package validation | Run plugin and integration validation independently against produced release artifacts. [CITED: https://hacs.xyz/docs/publish/action/] |
 
@@ -139,9 +139,9 @@ Release integrity must become an executable product path: one local `npm run bui
 | Standalone Ajv output | Bundle full Ajv compiler in the card | Larger/runtime dynamic-code surface and CSP concerns; compile at build time. [CITED: https://ajv.js.org/standalone.html] |
 | Python `jsonschema` | Duplicate contract with Voluptuous | Voluptuous remains appropriate for WebSocket envelopes, but it is not the locked Draft 2020-12 project contract. [VERIFIED: current backend usage; `01-CONTEXT.md`] |
 | Maintained ZIP library | Extend current ZIP parser | ZIP path/central-directory/CRC/duplicate/compression edge cases are security-sensitive; do not expand the handwritten parser. [VERIFIED: current parser inspection] |
-| Two HACS category endpoints | Claim one repository installs both | HACS documents plugin and integration repositories/categories separately; one-repo claim is blocked until real validation proves it. [CITED: https://hacs.xyz/docs/publish/plugin/] [CITED: https://hacs.xyz/docs/publish/integration/] |
+| Two HACS package categories | Claim one installed package covers both | Validate the dashboard plugin and a local release-only Companion integration staging tree independently; do not claim public integration-category availability without an explicitly authorized endpoint. [CITED: https://hacs.xyz/docs/publish/plugin/] [CITED: https://hacs.xyz/docs/publish/integration/] |
 
-**Planned installation after checkpoints:**
+**Planned installation after automated provenance verification:**
 
 ```powershell
 npm install --save-dev --save-exact ajv@8.20.0 @playwright/test@1.62.1
@@ -150,7 +150,7 @@ npm install --save-exact @zip.js/zip.js@2.8.30
 # jsonschema==4.26.0
 ```
 
-Use `npm ci --ignore-scripts` thereafter. The ZIP, Python validator, and Home Assistant test-harness installs require the package audit checkpoint described below. [VERIFIED: `AGENTS.md`; package-legitimacy seam results]
+Use `npm ci --ignore-scripts` thereafter. ZIP, Python validator, and Home Assistant test-harness installs require the committed automated provenance verifier described below. [VERIFIED: `AGENTS.md`; package-legitimacy seam results]
 
 ## Package Legitimacy Audit
 
@@ -158,12 +158,12 @@ Use `npm ci --ignore-scripts` thereafter. The ZIP, Python validator, and Home As
 |---------|----------|----------------------|-------------------|---------|-------------|
 | `ajv` 8.20.0 | npm | Current version published 2026-04-24; approximately 377M weekly downloads at check time. [VERIFIED: npm registry] | `ajv-validator/ajv` linked by official docs. [CITED: https://ajv.js.org/] | OK | Approved; no postinstall script returned. |
 | `@playwright/test` 1.62.1 | npm | Established official Microsoft package. [VERIFIED: npm registry] | `microsoft/playwright` from official docs. [CITED: https://playwright.dev/docs/intro] | OK | Approved; no postinstall script returned. |
-| `@zip.js/zip.js` latest 2.9.0 | npm | Approximately 5.5M weekly downloads, but latest was published on the research date. [VERIFIED: npm registry] | `gildas-lormeau/zip.js`. [CITED: https://github.com/gildas-lormeau/zip.js] | SUS | Pin reviewed 2.8.30 only after `checkpoint:human-verify`; inspect lockfile and package contents. |
-| `jsonschema` 4.26.0 | PyPI | Version exists; download signal unavailable to seam. [VERIFIED: PyPI registry] | `python-jsonschema/jsonschema` linked by official docs. [CITED: https://python-jsonschema.readthedocs.io/] | SUS | Keep only with `checkpoint:human-verify` and both HA lanes. |
-| `pytest-homeassistant-custom-component` 0.13.316 | PyPI | Very recent release and unknown download signal. [VERIFIED: PyPI registry] | Repository metadata must be checked against HA testing practice. | SUS | Optional; planner adds checkpoint or uses pinned HA core test harness. |
+| `@zip.js/zip.js` 2.8.30 | npm | Exact historical version is registry-addressable with integrity and source metadata. [VERIFIED: npm registry] | `gildas-lormeau/zip.js`. [CITED: https://github.com/gildas-lormeau/zip.js] | OK | Accept only through the automated read-only provenance allowlist/verifier; lock exact integrity and reject lifecycle-script/source drift. |
+| `jsonschema` 4.26.0 | PyPI | Exact version and file hashes are registry-addressable. [VERIFIED: PyPI registry] | `python-jsonschema/jsonschema` linked by official docs. [CITED: https://python-jsonschema.readthedocs.io/] | OK | Accept only through the committed read-only provenance allowlist/verifier and both verified HA lanes. |
+| `pytest-homeassistant-custom-component` 0.13.316 | PyPI | Exact version and file hashes are registry-addressable. [VERIFIED: PyPI registry] | Upstream source identity is checked automatically against the committed allowlist and supported HA testing practice. | OK | Accept only through automated provenance and canonical `tests/components/glt_flow_card/` harness use. |
 
 **Packages removed due to SLOP verdict:** none.  
-**Packages flagged as suspicious:** `@zip.js/zip.js`, `jsonschema`, `pytest-homeassistant-custom-component`; planner must insert a human-verification checkpoint before each install. [VERIFIED: `gsd-tools package-legitimacy` results]
+**Packages requiring automated provenance enforcement:** all five exact candidates; Plan 01-01 verifies official registry/source/integrity/lifecycle-script metadata read-only before installation. No human package checkpoint remains.
 
 ## Architecture Patterns
 
@@ -204,7 +204,7 @@ authored source + schemas + package version + lockfile
        canonical bundle + schemas + Companion ZIP + build manifest
           │ byte-copy/equality │ double-build │ versions/hashes
           ▼                    ▼              ▼
-       HACS plugin         HA min/current   HACS integration mirror
+       HACS plugin         HA min/current   local integration-category stage
 ```
 
 This keeps preview computations portable but makes every shared mutation server-authoritative. [VERIFIED: `AGENTS.md`, `01-CONTEXT.md`]
@@ -350,7 +350,7 @@ Use `package.json` as the release-version source and generate/verify the Compani
 
 Build twice in isolated directories with stable ordering, normalized ZIP permissions/timestamps, explicit source commit and tool versions, and no wall-clock/random data; compare bytes and manifests. Then compare committed generated files with staged output. CI should fail drift, not push bot commits. Package the Companion ZIP from the staged tree with sorted entries and no cache/source detritus, then inspect the ZIP layout and hashes. [VERIFIED: current workflow gap; deterministic-build inference]
 
-The main repository remains the HACS plugin distribution for `glt-flow-card.js`. Publish the Companion artifact from the same source build to a release-only integration distribution endpoint/mirror with its own integration-category `hacs.json`; never hand-edit that mirror. Run HACS action independently as `plugin` and `integration`, plus hassfest and exact-artifact clean-install/upgrade/reload/unload/re-setup tests. The mirror URL/ownership is an explicit planning checkpoint. [CITED: https://hacs.xyz/docs/publish/plugin/] [CITED: https://hacs.xyz/docs/publish/integration/] [CITED: https://hacs.xyz/docs/publish/action/]
+The main repository remains the HACS plugin distribution for `glt-flow-card.js`. From the same source build, stage the Companion as a local release-only integration-category tree with its own `hacs.json`, manifest, ZIP, and validation evidence; do not create or publish another repository in Phase 1. Run plugin and local integration-category validation independently, plus hassfest and exact-artifact clean-install/upgrade/reload/unload/re-setup tests. A future mirror upload may exist only as a disabled conditional requiring a separately authorized exact target and scoped token, and is excluded from Phase-1 success criteria. [CITED: https://hacs.xyz/docs/publish/plugin/] [CITED: https://hacs.xyz/docs/publish/integration/] [CITED: https://hacs.xyz/docs/publish/action/]
 
 Release consumes the artifacts and manifest produced by the already-green build job, verifies checksums, generates provenance/attestation, and publishes immutable release assets; it must not rebuild from a different dependency state. Pin third-party actions to reviewed full commit SHAs, keep default permissions read-only, grant `contents: write` only to publish, and separate any `id-token`/attestation permission. [CITED: https://docs.github.com/en/actions/reference/security/secure-use] [CITED: https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts] [CITED: https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations] [CITED: https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases]
 
@@ -493,19 +493,16 @@ Both runtimes must produce the same canonical candidate and receipt fixture; the
 |---|-------|---------|---------------|
 | A1 | Current schema should advance to v2, with absent legacy as v0 and existing v1 retained. | Architecture Pattern 2 | Migration files/fixtures and advertised schema version change; planner should confirm before implementation. |
 | A2 | Initial raw/archive limits (5 MiB JSON, 32 MiB compressed, 256 entries, etc.) fit real user projects. | Architecture Pattern 1 | Too low rejects valid legacy projects; too high weakens DoS protection. Confirm with representative largest projects and boundary benchmarks. |
-| A3 | A release-only Companion HACS mirror is operationally acceptable. | Architecture Pattern 8 | HACS-01 distribution design cannot complete until repository ownership/URL is chosen. |
+| A3 | A local release-only Companion integration-category staging artifact is sufficient for Phase-1 build/install/validation evidence. | Architecture Pattern 8 | Public HACS discoverability remains unclaimed until a future endpoint is explicitly authorized. |
 
-## Open Questions
+## Resolved Planning Decisions
 
-1. **What is the Companion HACS integration endpoint?**
-   - Known: current root `hacs.json` is a dashboard/plugin distribution and HACS validates category-specific repositories. [VERIFIED: `hacs.json`] [CITED: https://hacs.xyz/docs/publish/action/]
-   - Recommendation: approve a release-only mirror generated from this repository; planner places this as an early human decision/checkpoint and keeps one source/build.
-2. **Does Home Assistant 2024.8.3 pass the final public-API implementation?**
-   - Known: `hacs.json` advertises 2024.8.0; the last patch in that line is 2024.8.3, while current stable at research time is 2026.8.3. [VERIFIED: repository metadata] [CITED: https://github.com/home-assistant/home-assistant.io/blob/current/source/changelogs/core-2026.8.markdown]
-   - Recommendation: test 2024.8.3/Python 3.12 and 2026.8.3/Python 3.14; raise the declared minimum if supported public APIs cannot pass.
-3. **What are the largest real historical project/bundle sizes?**
-   - Known: no capacity corpus is committed. [VERIFIED: fixture/test inspection]
-   - Recommendation: derive bounds from anonymized representative fixtures before locking `limits.json`; retain hostile just-over-boundary fixtures.
+1. **Companion distribution is local staging in Phase 1 — RESOLVED.**
+   - The current root remains the dashboard/plugin distribution. The build creates a local release-only Home Assistant integration-category staging tree and deterministic Companion ZIP, and validates both category shapes independently. No public Companion repository is invented, created, or published. Any future mirror upload is disabled by default, requires a separately authorized exact target/token, and is not required for Phase-1 success.
+2. **Home Assistant compatibility lanes are verified and immutable — RESOLVED.**
+   - At execution, a read-only preflight queries official Home Assistant release/container metadata, proves tag existence, records immutable digest and available architecture, and rejects prerelease/mutable-only candidates. The minimum lane starts from the advertised floor and must pass the supported pytest Home Assistant harness or container bootstrap; if it cannot, execution raises `hacs.json`'s minimum to the first verified passing release and records the incompatibility. The current lane is discovered from official stable releases at execution and pinned by digest; no unverifiable future tag or external Config Entry endpoint is assumed.
+3. **Bounded fixtures derive from the contract limits — RESOLVED.**
+   - Commit deterministic boundary/malicious fixtures immediately below, at, and above byte/depth/node/string/collection/archive limits. Generate representative 100-, 500-, and 2,000-object contract/diff fixture classes to exercise correctness and bounded behavior, but label their results Phase-1 fixture evidence only. They do not establish or publish Phase-10 capacity/performance claims, which still require the later dedicated measurement protocol and representative real projects.
 
 ## Environment Availability
 
@@ -513,14 +510,14 @@ Both runtimes must produce the same canonical candidate and receipt fixture; the
 |------------|-------------|-----------|---------|----------|
 | Node.js | build/Node tests | Yes, but not CI lane | 25.9.0 locally | Use Node 22 toolchain/container/CI. [VERIFIED: local probe; `AGENTS.md`] |
 | npm | locked installs/build | Yes | 11.12.1 | Node 22 bundled npm in CI. [VERIFIED: local probe] |
-| Python | Companion tests | Yes, lanes incomplete | default 3.11.5; `py -3.13` 3.13.13 | Pinned HA containers for Python 3.12/3.14. [VERIFIED: local probe] |
-| Python 3.14.2+ | current HA lane | No local interpreter | — | Docker current HA/test image. Current core development requires Python 3.14.2. [CITED: https://github.com/home-assistant/core/blob/dev/pyproject.toml] |
+| Python | Companion tests | Yes, lanes incomplete | default 3.11.5; `py -3.13` 3.13.13 | Resolve official HA lanes first, then use each digest-pinned release's supported Python/runtime architecture. [VERIFIED: local probe] |
+| Current HA runtime | current HA lane | Not preselected locally | — | Discover official stable at execution, verify tag/digest/architecture, and use its supported container/test runtime; never infer a future version. [CITED: https://github.com/home-assistant/core/blob/dev/pyproject.toml] |
 | Docker | isolated HA lanes/install tests | Yes | 29.6.2 | GitHub Actions service/container jobs. [VERIFIED: local probe] |
 | Git / GitHub CLI | source/release checks | Yes | Git 2.52; gh 2.83 | GitHub-hosted runner. [VERIFIED: local probe] |
-| Playwright browser | E2E | Not yet project-installed | — | Install pinned browser in CI after package checkpoint. [VERIFIED: `package.json`] |
+| Playwright browser | E2E | Not yet project-installed | — | Install the pinned browser in CI after automated package provenance verification. [VERIFIED: `package.json`] |
 
-**Missing dependencies with no fallback:** Companion HACS mirror endpoint/ownership is a product decision, not a local tool.  
-**Missing dependencies with fallback:** local Node 22, Python 3.12/3.14, and Playwright browser are supplied by pinned containers/CI.
+**Missing dependencies with no fallback:** none for Phase 1; public Companion mirror ownership is deliberately outside the required path.  
+**Missing dependencies with fallback:** Node 22, the verified Home Assistant/Python lane runtimes, and Playwright browser are supplied by pinned containers/CI after read-only availability/digest/architecture preflight.
 
 ## Validation Architecture
 
@@ -555,7 +552,7 @@ Include: empty/minimal/full projects; every equipment/profile/extension union; a
 3. **Home Assistant integration:** `test_init.py`, `test_websocket.py`, `test_project_repository.py`, `test_project_transactions.py`, `test_options.py`, `test_diagnostics.py`; assert auth, expected revision, listener/task/command counts, effective options, legacy import, recovery, redaction, and receipts. Inject failure after snapshot, during project save, after save, during verify, and during restore. [VERIFIED: roadmap success criteria]
 4. **Real browser:** `test/e2e/project-safety.spec.mjs` loads the exact built bundle with a fake `hass` WebSocket adapter; covers DE/EN, dark/light, desktop/mobile/200% zoom, keyboard/focus/Escape, progress/error/conflict, selection dependencies, rollback confirmation, and asserts zero `callService`/plant calls. [VERIFIED: `01-UI-SPEC.md`]
 5. **Build/release:** build twice in clean temp dirs; compare canonical bundle/copies/schemas/manifest/ZIP; check tag/package/manifest/runtime/HACS versions; inspect archive layout/hashes; install produced ZIP/card into isolated HA fixtures; upgrade from historical storage. [VERIFIED: roadmap success criteria]
-6. **Distribution gates:** HACS action for plugin endpoint and integration endpoint, hassfest, checksum/attestation verification, release assets downloaded and rechecked. [CITED: https://hacs.xyz/docs/publish/action/]
+6. **Distribution gates:** HACS plugin validation plus local integration-category staging validation, hassfest, checksum/attestation verification, and exact staged assets rechecked; no public Companion endpoint is required. [CITED: https://hacs.xyz/docs/publish/action/]
 
 ### Sampling Rate and Commands
 
@@ -568,10 +565,10 @@ Include: empty/minimal/full projects; every equipment/profile/extension union; a
 
 - [ ] Canonical `schemas/`, `limits.json`, `diff-policy.json`, cross-runtime fixtures, and canonical JSON/hash helper.
 - [ ] Ajv standalone compiler in `tools/build.mjs` and deterministic generated-validator check.
-- [ ] Python pytest configuration and pinned HA harness/container matrix for 2024.8.3/Python 3.12 and 2026.8.3/Python 3.14.
+- [ ] Python pytest configuration and immutable HA harness/container matrix resolved from the advertised floor and official current stable with verified digests/architectures.
 - [ ] Playwright config, pinned package, browser install, fake-HA fixture, and exact-dist test server.
 - [ ] Deterministic build/release manifest verifier and adversarial ZIP fixture generator.
-- [ ] Companion HACS distribution endpoint plus independent plugin/integration action jobs.
+- [ ] Local release-only Companion integration-category staging plus independent plugin/staging validation jobs.
 - [ ] Replace `v100-backend.test.mjs` and smoke token assertions as requirement gates; they may remain non-authoritative hints only.
 
 ## Security Domain
@@ -605,7 +602,7 @@ Security enforcement is enabled at ASVS L1. [VERIFIED: `.planning/config.json`]
 
 Path handling must normalize to forward-slash logical names, NFC-normalize Unicode, reject empty/`.`/`..` segments, leading slash, drive/UNC syntax, NUL/control characters and backslashes, and detect duplicates after normalization. Backend extraction must resolve against a newly created controlled transaction directory and prove the final path remains inside it; never compose shell commands from entry names. [VERIFIED: threat-model derivation]
 
-Release workflow permissions default read-only. Build/test jobs have no release write token; the publish job verifies downloaded artifact hashes before narrow `contents: write`; attestation identity permission is isolated. Dependencies come only from the lockfile/official registries after package checkpoints, and third-party actions are full-SHA pinned. [CITED: https://docs.github.com/en/actions/reference/security/secure-use]
+Release workflow permissions default read-only. Build/test jobs have no release write token; the current-repository publish job verifies downloaded artifact hashes before narrow `contents: write`; attestation identity permission is isolated. Dependencies come only from the lockfile/official registries after automated provenance verification, and third-party actions are full-SHA pinned. [CITED: https://docs.github.com/en/actions/reference/security/secure-use]
 
 ## Sources
 
@@ -631,8 +628,8 @@ Release workflow permissions default read-only. Build/test jobs have no release 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack: MEDIUM-HIGH — official docs and registries checked; three packages deliberately checkpointed by legitimacy audit.
-- Architecture: HIGH for repository seams and locked behavior; MEDIUM for recommended schema-v2 numbering, exact limits, and mirror operations.
+- Standard stack: MEDIUM-HIGH — official docs and registries checked; all exact candidates are enforced by an automated read-only provenance audit.
+- Architecture: HIGH for repository seams and locked behavior; MEDIUM for recommended schema-v2 numbering, exact limits, and local integration-category staging.
 - Validation: HIGH for required layers/behaviors; MEDIUM for uninstalled HA/Playwright harness versions.
 - Security/pitfalls: MEDIUM-HIGH — directly tied to code paths, locked threat concerns, and official security guidance.
 

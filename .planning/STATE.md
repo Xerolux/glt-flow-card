@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: planning
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-08-31T19:28:58.416Z"
-last_activity: 2026-08-31 — Created the v1.1 roadmap with exact primary ownership for all 30 requirements.
+status: ready_to_execute
+stopped_at: Phase 1 planning complete
+last_updated: "2026-08-31T23:38:22.2656235+02:00"
+last_activity: 2026-08-31 — Phase 1 passed planning gates with 13 plans, 30 mapped tasks, and deterministic closure of the final parity-command finding.
 progress:
   total_phases: 10
   completed_phases: 0
-  total_plans: 0
+  total_plans: 13
   completed_plans: 0
   percent: 0
 ---
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 1 of 10 (Trusted Contract & Release Foundation)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-08-31 — Created the v1.1 roadmap with exact primary ownership for all 30 requirements.
+Plan: 0 of 13 in current phase
+Status: Ready to execute
+Last activity: 2026-08-31 — Phase 1 passed planning gates with 13 plans, 30 mapped tasks, and deterministic closure of the final parity-command finding.
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -71,7 +71,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 1]: Supported minimum/current Home Assistant lanes and exact HACS packaging model require phase research.
+- [Phase 1]: Resolved in planning — lanes are discovered and digest-pinned at execution, and Companion packaging is validated as a local integration-category artifact without unauthorized publication.
 - [Phase 5]: SDK trust, distribution, and compatibility policy must forbid project-bundled privileged execution.
 - [Phase 6]: Deployment alarm philosophy and supported schedule/calendar authoring APIs require decisions.
 - [Phase 7]: Recorder API lanes and energy/report calculation contracts must be pinned.

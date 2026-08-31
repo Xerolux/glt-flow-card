@@ -34,7 +34,18 @@ Milestone v1.1 hardens the existing Platform 1.0 surface as ten dependency-order
   5. Executable Python and browser checks prove schema parity, archive safety, migration rollback, extension registration order, install/upgrade/unload, and artifact equality; source-token assertions alone cannot pass the phase.
 **Known defects closed**: Generated source/runtime drift, disconnected Config Flow options, unsafe single-store migration, weak input bounds at project/bundle boundaries, and `async_unload_entry` reporting success while leaving runtime registrations active.
 **Research flag**: Confirm the supported minimum/current Home Assistant matrix and the exact HACS packaging model for the dashboard artifact plus Companion.
-**Plans**: TBD
+**Plans**: 13 plans across 11 dependency-ordered waves
+  - Wave 0: `01-01` — dependency provenance allowlist and verifier
+  - Wave 1: `01-02` — executable Node, Python/HA, and exact-dist browser harness
+  - Wave 2: `01-03` — canonical raw schemas, limits, policy, and shared fixtures
+  - Wave 3: `01-04` — JavaScript/Python raw-contract parity
+  - Wave 4: `01-05` — immutable migrations and semantic selective diff
+  - Wave 5: `01-06` safe bundles; `01-07` split stores and journaled transactions
+  - Wave 6: `01-08` — Config Entry lifecycle, options, localization, diagnostics
+  - Wave 7: `01-09` — deterministic single-source build and drift verification
+  - Wave 8: `01-10` local HACS category staging; `01-11` Project-safety UI
+  - Wave 9: `01-12` — immutable minimum/current HA lane and exact-artifact proof
+  - Wave 10: `01-13` — release acceptance, evidence, and bilingual guidance
 **UI hint**: yes
 
 ### Phase 2: Authoritative Policy, Controls & Collaboration
@@ -202,7 +213,7 @@ Every v1.1 requirement has exactly one primary owner. Cross-cutting gates in lat
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Trusted Contract & Release Foundation | 0/TBD | Not started | - |
+| 1. Trusted Contract & Release Foundation | 0/13 | Ready to execute | - |
 | 2. Authoritative Policy, Controls & Collaboration | 0/TBD | Not started | - |
 | 3. Semantic Equipment & Provenance | 0/TBD | Not started | - |
 | 4. Runtime Operations & Drill-Down | 0/TBD | Not started | - |

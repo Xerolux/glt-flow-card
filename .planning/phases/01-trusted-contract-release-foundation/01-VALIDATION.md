@@ -1,84 +1,119 @@
 ---
-phase: 1
+phase: 01
 slug: trusted-contract-release-foundation
-status: draft
+status: planned
 nyquist_compliant: false
 wave_0_complete: false
-created: 2026-08-31
+last_updated: 2026-08-31
+plan_count: 13
+task_count: 30
 ---
 
-# Phase 1 — Validation Strategy
+# Phase 01 Validation Strategy
 
-> Per-phase validation contract for trustworthy project contracts, migrations, rollback, lifecycle cleanup, and exact release artifacts.
+Prospective evidence only. Wave 0 and sign-off remain pending until execution produces the named results. Tests use isolated fixtures, supported fake Home Assistant harnesses or digest-pinned disposable official HA images; no live HA, remote site, bus or plant write is authorized.
 
----
+## Layers and Canonical Paths
 
-## Test Infrastructure
+| Layer | Canonical harness/evidence |
+|---|---|
+| Provenance | `tools/provenance-allowlist.json` plus read-only official registry/source/integrity verifier |
+| Contract | `schemas/project/{0,1,2}.schema.json`, `schemas/bundle-manifest.schema.json`, `schemas/limits.json`, `schemas/diff-policy.json` only |
+| Node/Python | Shared corpus; Python tests only under `tests/components/glt_flow_card/` |
+| Browser | Playwright loads exact generated `dist/glt-flow-card.js`; generated dist/www/editor are outputs only |
+| Packaging | Deterministic build then separate local plugin and integration-category staging validation |
+| Home Assistant | Official release/image preflight, immutable digest+architecture lock, supported pytest HA harness/container bootstrap |
+| Acceptance | `npm run test:phase1` emits requirement/ROADMAP/threat/hash evidence and fails on missing/skipped suites |
 
-| Property | Value |
-|----------|-------|
-| **Frameworks** | Node 22 `node:test`; `pytest` with Home Assistant fixtures; Playwright 1.62.x |
-| **Config files** | Existing `package.json`; Python and Playwright configuration installed in Wave 0 |
-| **Quick run command** | `npm run test:contract` |
-| **Full suite command** | `npm run test:phase1` |
-| **Estimated runtime** | Quick: <30 seconds; full local suite: <10 minutes excluding the compatibility matrix |
+## Exact Task Map (30 tasks)
 
-The Node and Python validators MUST consume the same raw fixture corpus and compare stable error codes, JSON-pointer paths, migration steps, canonical hashes, semantic operations, and archive outcomes. Browser tests MUST load the exact staged distribution bundle, not source modules.
+| Task | Evidence target | Automated command | Status |
+|---|---|---|---|
+| 01-01-T1 | Exact five-entry immutable provenance policy rejects ranges/drift/scripts | `node --test test/provenance.test.mjs --test-name-pattern="allowlist"` | pending |
+| 01-01-T2 | Official npm/PyPI/source metadata and archive integrity verify read-only | `node --test test/provenance.test.mjs && node tools/verify-provenance.mjs --online` | pending |
+| 01-02-T1 | Verified exact Node/Python/browser tools and canonical scripts install/dry-run | `node tools/verify-provenance.mjs --online && npm ci --ignore-scripts && py -3.13 -m pip install --dry-run -r requirements-test.txt` | pending |
+| 01-02-T2 | Exact-dist happy path records controlled RED and zero forbidden effects | `npm run test:e2e:red` | pending |
+| 01-02-T3 | Supported HA pytest lifecycle records controlled RED and resource ledger | `node tools/assert-red.mjs --expected=missing-lifecycle-cleanup -- py -3.13 -m pytest tests/components/glt_flow_card/test_init.py -q` | pending |
+| 01-03-T1 | Canonical raw schemas/limits/diff policy are complete and singular | `node --test test/contract-fixtures.test.mjs --test-name-pattern="schema|limits|policy|canonical paths"` | pending |
+| 01-03-T2 | Deterministic hostile/boundary and 100/500/2,000 correctness fixtures match | `npm run test:fixtures` | pending |
+| 01-04-T1 | JS enforces raw budgets/schema and canonical evidence before normalization | `npm run test:contract:js` | pending |
+| 01-04-T2 | Python results exactly equal JS across all corpus/limit cases | `npm run test:contract:parity && node --test --test-name-pattern="rejects raw oversized and deeply nested documents" test/v100-contract.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_project_contract.py -q -k "oversized or deep"` | pending |
+| 01-05-T1 | Pure sequential 0→1→2 migration parity, dry-run, receipt and idempotence | `npm run test:migrations && py -3.13 -m pytest tests/components/glt_flow_card/test_project_migrations.py -q` | pending |
+| 01-05-T2 | Five semantic categories, impact and dependency closure match | `npm run test:diff && py -3.13 -m pytest tests/components/glt_flow_card/test_project_diff.py -q` | pending |
+| 01-05-T3 | Existing core/examples preserve semantics through hardened path | `node --test test/v100-core.test.mjs test/v100-migrations.test.mjs test/v100-diff.test.mjs` | pending |
+| 01-06-T1 | Hostile/over-limit ZIPs reject before extraction in both runtimes | `npm run test:bundle && py -3.13 -m pytest tests/components/glt_flow_card/test_project_bundle.py -q -k "reject or limit or collision or traversal"` | pending |
+| 01-06-T2 | Deterministic valid bundles round-trip opaque assets without active effects | `npm run test:bundle && py -3.13 -m pytest tests/components/glt_flow_card/test_project_bundle.py -q -k "roundtrip or opaque or deterministic"` | pending |
+| 01-07-T1 | Split stores import legacy data once with retained verified backup | `py -3.13 -m pytest tests/components/glt_flow_card/test_project_repository.py -q` | pending |
+| 01-07-T2 | Preview/apply/rollback/recovery is authoritative, immutable and journaled | `py -3.13 -m pytest tests/components/glt_flow_card/test_project_transactions.py tests/components/glt_flow_card/test_websocket.py -q` | pending |
+| 01-08-T1 | Setup/reload/unload/re-setup has exact one/zero owned resources | `py -3.13 -m pytest tests/components/glt_flow_card/test_init.py -q` | pending |
+| 01-08-T2 | Single-instance options validate, affect runtime and rollback failed reload | `py -3.13 -m pytest tests/components/glt_flow_card/test_options.py -q` | pending |
+| 01-08-T3 | Localized allowlisted diagnostics exclude all sensitive canaries | `py -3.13 -m pytest tests/components/glt_flow_card/test_diagnostics.py -q -k "redact or canary or allowlist"` | pending |
+| 01-09-T1 | Sole staged build produces canonical schema/runtime outputs and exact dist/www | `npm run build && node --test test/release-build.test.mjs --test-name-pattern="single build|manifest|schema copies|dist www"` | pending |
+| 01-09-T2 | Independent double-build detects byte/hash/version/schema/generated drift | `npm run verify:release` | pending |
+| 01-10-T1 | Exact local plugin/integration stages and deterministic Companion ZIP exist | `npm run stage:hacs && node --test test/hacs-staging.test.mjs --test-name-pattern="stage|zip|no publication"` | pending |
+| 01-10-T2 | Both local category shapes validate independently without credentials | `npm run validate:hacs-staging` | pending |
+| 01-11-T1 | Approved shell/read-only tabs, locale, keyboard/focus and responsive behavior pass exact-dist | `npm run build && npm run test:e2e -- --grep="shell|validate|bundles|evidence|keyboard|locale"` | pending |
+| 01-11-T2 | Guided semantic selective apply/conflict/rollback has no fallback/service call | `npm run build && npm run test:e2e -- --grep="migrate|diff|selective apply|conflict|rollback|no fallback|no service"` | pending |
+| 01-11-T3 | Full exact-dist UI/accessibility matrix and opaque-asset effect tests pass | `npm run build && npm run test:e2e -- --grep="opaque asset|xss|network|no service" && npm run test:e2e` | pending |
+| 01-12-T1 | Bounded resolver pins official lanes and, when needed, atomically raises all minimum-version metadata to the first passing supported release before rebuild/restage/revalidation | `node --test test/ha-lanes.test.mjs && npm run resolve:ha-minimum -- --max-candidates=12` | pending |
+| 01-12-T2 | Exact artifacts install/upgrade/reload/unload/re-setup on both verified lanes | `npm run test:ha-artifacts` | pending |
+| 01-13-T1 | Full source→tested→staged→releasable evidence chain passes without a public Companion mirror | `npm run test:release-acceptance` | pending |
+| 01-13-T2 | Fail-closed gate maps every requirement/ROADMAP/threat to exact evidence | `node --test test/phase1-gate.test.mjs && npm run test:phase1` | pending |
 
----
+The table has exactly one row for each real task. No three consecutive implementation tasks lack automated verification.
 
-## Sampling Rate
+## Canonical Threat Ownership
 
-- **After every task commit:** Run `npm run test:contract` plus the directly affected targeted test file.
-- **After every plan wave:** Run `npm test`, targeted Python integration tests, `npm run build`, `npm run verify:generated`, and the Project-safety Playwright spec.
-- **Before `$gsd-verify-work`:** `npm run test:phase1`, the minimum/current Home Assistant matrix, both HACS category validations, and exact-artifact verification MUST be green.
-- **Max feedback latency:** 30 seconds for the task-level contract loop.
+Stable descriptions, assets/boundaries and mitigations are authoritative in `01-THREATS.md`.
 
----
+| ID | Owner | Exact owner command | Status |
+|---|---|---|---|
+| T-01 Client alters candidate/selection after preview | 01-07-T2 | `py -3.13 -m pytest tests/components/glt_flow_card/test_project_transactions.py tests/components/glt_flow_card/test_websocket.py -q -k "preview or selection or stale or closure"` | pending |
+| T-02 User invokes rollback with browser-forged receipt | 01-07-T2 | `py -3.13 -m pytest tests/components/glt_flow_card/test_project_transactions.py tests/components/glt_flow_card/test_websocket.py -q -k "rollback or receipt or identity"` | pending |
+| T-03 Oversized/deep/regex-hostile JSON | 01-04-T2 | `npm run test:contract:parity && node --test --test-name-pattern="rejects raw oversized and deeply nested documents" test/v100-contract.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_project_contract.py -q -k "oversized or deep"` | pending |
+| T-04 ZIP traversal, alias, collision, overlap, bomb | 01-06-T1 | `npm run test:bundle && py -3.13 -m pytest tests/components/glt_flow_card/test_project_bundle.py -q -k "reject or limit or collision or traversal"` | pending |
+| T-05 SVG/HTML/script asset executes during inspection | 01-11-T3 | `npm run build && npm run test:e2e -- --grep="opaque asset|xss|network|no service" && npm run test:e2e` | pending |
+| T-06 Interrupted apply corrupts head/history | 01-07-T2 | `py -3.13 -m pytest tests/components/glt_flow_card/test_project_transactions.py -q -k "interruption or recovery or journal or immutable"` | pending |
+| T-07 Diagnostics or bundle leaks remote tokens/state | 01-08-T3 | `py -3.13 -m pytest tests/components/glt_flow_card/test_diagnostics.py -q -k "redact or canary or allowlist"` | pending |
+| T-08 Generated/release artifact differs from reviewed source | 01-13-T1 | `npm run test:release-acceptance` | pending |
 
-## Per-Task Verification Map
+Any failed, skipped, missing or non-reproducible owner command leaves the HIGH threat open and blocks execution readiness/sign-off. Supporting controls in plan threat tables do not replace these owners.
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 1-W0-01 | TBD | 0 | SCHEMA-01 | T-03 | Raw bounded validation rejects malformed, oversized, deeply nested, future-version, and reference-invalid projects before defaults | parity/unit | `npm run test:contract` | ❌ W0 | ⬜ pending |
-| 1-W0-02 | TBD | 0 | SCHEMA-01 | T-04, T-05 | Archive preflight rejects traversal, ambiguous names, bombs, executable inspection, unsupported entries, and manifest mismatch before extraction | unit/property | `node --test test/v100-bundle.test.mjs` | ❌ W0 | ⬜ pending |
-| 1-W0-03 | TBD | 0 | SCHEMA-01, DIFF-01 | T-01, T-02, T-06 | Migration/apply is immutable, revision-checked, journaled, and restores a verified server-owned snapshot after injected failures | integration | `py -3.12 -m pytest tests/components/glt_flow_card/test_project_transactions.py -q` | ❌ W0 | ⬜ pending |
-| 1-W0-04 | TBD | 0 | DIFF-01 | T-01 | Semantic diff ignores reorder noise, closes dependencies for selective apply, and never bypasses the transaction path | unit/e2e | `node --test test/v100-diff.test.mjs && npm run test:e2e -- --grep "project safety"` | ❌ W0 | ⬜ pending |
-| 1-W0-05 | TBD | 0 | HACS-01 | T-07 | Setup/options/reload/unload are idempotent, diagnostics remain redacted, and teardown releases every task, listener, WebSocket registration, and manager resource | HA integration | `py -3.12 -m pytest tests/components/glt_flow_card/test_init.py tests/components/glt_flow_card/test_options.py -q` | ❌ W0 | ⬜ pending |
-| 1-W0-06 | TBD | 0 | HACS-01 | T-08 | One clean build produces byte-identical copies with matching versions, SHA-256 provenance, deterministic archives, and installable HACS artifacts | build/release | `npm run verify:release` | ❌ W0 | ⬜ pending |
+## Requirement and Source Audit
 
-Threat references are defined in `01-RESEARCH.md` and MUST be copied into the implementing plan's `<threat_model>` section.
+| Item | Plans | Status |
+|---|---|---|
+| SCHEMA-01 raw-before-normalization parity, stable errors and bounds | 01-03, 01-04 | COVERED |
+| SCHEMA-01 sequential migrations, dry-run, receipts, canonical digest, legacy backup/rollback | 01-05, 01-07, 01-11 | COVERED |
+| SCHEMA-01 bounded `.gltproject` and opaque assets | 01-06, 01-11 | COVERED |
+| DIFF-01 five categories, impact, ordering policy and dependency closure | 01-05 | COVERED |
+| DIFF-01 expected revision, server recomputation and same-path selective apply | 01-07, 01-11 | COVERED |
+| HACS-01 split stores, Config Entry lifecycle/options/diagnostics | 01-07, 01-08 | COVERED |
+| HACS-01 deterministic build/copy/manifest and two category shapes | 01-09, 01-10 | COVERED |
+| HACS-01 verified immutable HA install/upgrade/reload/unload/re-setup | 01-12 | COVERED |
+| UI-SPEC one action/five tabs/five steps/copy/states/accessibility | 01-11 | COVERED |
+| Exact-artifact release/requirement evidence | 01-09 through 01-13 | COVERED |
+| Research local Companion staging resolution | 01-10, 01-13 | COVERED |
+| Research immutable HA lane resolution | 01-12 | COVERED |
+| Research bounded 100/500/2,000 correctness fixtures without capacity claims | 01-03, 01-04, 01-05 | COVERED |
+| ROADMAP: runtime parity/actionable diagnostics | 01-04, 01-13 | COVERED |
+| ROADMAP: no-loss migration and verified rollback | 01-05, 01-07, 01-11, 01-12 | COVERED |
+| ROADMAP: safe selective apply without stale overwrite | 01-05, 01-07, 01-11 | COVERED |
+| ROADMAP: reproducible dashboard/Companion installation and upgrade | 01-09, 01-10, 01-12, 01-13 | COVERED |
+| ROADMAP: source/generated/release equality | 01-09, 01-11, 01-12, 01-13 | COVERED |
 
----
+Excluded as later scope: live plant/fieldbus controls, remote-site operations, Phase-10 capacity/performance certification, and public Companion repository creation/publication. An optional future upload must be disabled by default and separately authorized with an exact target/token; it is not Phase-1 evidence.
 
-## Wave 0 Requirements
+## Sampling and Sign-off
 
-- [ ] `schemas/`, `limits.json`, `diff-policy.json`, and `test/fixtures/contracts/` — canonical contract and shared valid/invalid/boundary/historical/adversarial corpus.
-- [ ] `tools/build.mjs` validator/build pipeline — Ajv Draft 2020-12 standalone generation and deterministic build manifest.
-- [ ] `tests/components/glt_flow_card/` plus pytest configuration — executable Python parity, Config Entry lifecycle, split-store migration, transaction, options, diagnostics, and WebSocket tests.
-- [ ] `playwright.config.mjs` and `test/e2e/` — exact-dist fake-HA browser harness with German/English, responsive, keyboard, failure, rollback, and zero-plant-call assertions.
-- [ ] `tools/verify-release.mjs` — double-build drift, copy equality, version/hash/archive layout, release ZIP, and historical-upgrade checks.
-- [ ] Independent HACS plugin and integration validation jobs plus hassfest and exact-artifact install matrix.
-- [ ] Replace token-only `test/v100-backend.test.mjs` and smoke assertions as authoritative requirement gates.
+- Quick loops target under 30 seconds where practical: contract JS/parity, migration, diff, focused pytest and filtered Playwright.
+- Exact build, full UI and HA lanes run at owning plan/CI gates.
+- Token greps, syntax-only checks, screenshots alone and workflow presence do not satisfy requirements or threats.
+- [ ] Provenance verifier passed before install.
+- [ ] Wave-0 controlled RED evidence exists and later paths are GREEN.
+- [ ] All 30 task commands passed without required skips.
+- [ ] All eight canonical HIGH owner commands passed.
+- [ ] `npm run test:phase1` emitted complete requirement/ROADMAP/hash evidence.
+- [ ] No live HA, remote, bus, plant write or unauthorized public Companion publication occurred.
 
----
-
-## Manual-Only Verifications
-
-No Phase-1 behavior is allowed to depend solely on manual verification. Visual review may supplement automated screenshots, focus, reflow, and theme assertions, but it cannot replace them.
-
----
-
-## Validation Sign-Off
-
-- [ ] All planned tasks have an `<automated>` verification or an explicit Wave 0 dependency.
-- [ ] Sampling continuity: no three consecutive tasks without automated verification.
-- [ ] Wave 0 creates every missing fixture, harness, and release verifier listed above.
-- [ ] No watch-mode flags are used in gates.
-- [ ] Task-level contract feedback latency is below 30 seconds.
-- [ ] JavaScript/Python fixture parity is exact.
-- [ ] Browser and install checks exercise the exact packaged artifacts.
-- [ ] Minimum/current Home Assistant lanes and both HACS categories are green.
-- [ ] `nyquist_compliant: true` and `wave_0_complete: true` are set only after the evidence exists.
-
-**Approval:** pending execution evidence
+Keep `wave_0_complete: false` and `nyquist_compliant: false` until execution evidence satisfies every checkbox.
