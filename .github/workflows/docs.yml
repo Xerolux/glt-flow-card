@@ -9,6 +9,8 @@ on:
       - 'tools/build-site.mjs'
       - 'package.json'
       - 'package-lock.json'
+      - 'README.md'
+      - 'README.de.md'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -36,7 +38,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --ignore-scripts
+      - run: npm ci --ignore-scripts
       - uses: actions/configure-pages@v5
         with:
           enablement: true
