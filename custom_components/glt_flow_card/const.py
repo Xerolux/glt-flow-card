@@ -1,6 +1,6 @@
 DOMAIN = "glt_flow_card"
-STORE_VERSION = 2
-STORE_KEY = "glt_flow_card.platform"
+STORE_VERSION = 1
+STORE_KEY = "glt_flow_card.projects"
 MAX_AUDIT = 5000
 MAX_VERSIONS = 60
 DEFAULT_LOCK_TTL = 300
