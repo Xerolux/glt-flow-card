@@ -19,8 +19,12 @@ jobs:
       - run: npm install --ignore-scripts
       - run: npm run check
       - run: npm test
+      - name: Package optional companion backend
+        run: zip -r glt-flow-card-companion.zip custom_components/glt_flow_card
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/glt-flow-card.js
+          files: |
+            dist/glt-flow-card.js
+            glt-flow-card-companion.zip
           generate_release_notes: true
