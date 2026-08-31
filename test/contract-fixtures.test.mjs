@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -165,4 +167,135 @@ test("canonical paths are singular and no second authored schema tree exists", a
     .filter((path) => !path.startsWith("dist/") && !path.includes("/www/") && !path.startsWith("test/fixtures/"))
     .sort();
   assert.deepEqual(authoredSchemas, [...SCHEMA_PATHS].sort());
+});
+
+async function directorySnapshot(directory) {
+  const files = await walk(directory);
+  const entries = await Promise.all(files.map(async (path) => {
+    const bytes = await readFile(path);
+    return [
+      relative(directory, path).replaceAll("\\", "/"),
+      { bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") },
+    ];
+  }));
+  return Object.fromEntries(entries.sort(([left], [right]) => left.localeCompare(right)));
+}
+
+async function withFixtureTemp(run) {
+  const root = await mkdtemp(join(tmpdir(), "glt-contract-fixtures-"));
+  try {
+    return await run(root);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+}
+
+function flattenLimits(limits) {
+  return Object.fromEntries(Object.entries(limits)
+    .filter(([key]) => key !== "policy_version")
+    .flatMap(([section, values]) => Object.entries(values).map(([name, value]) => [`${section}.${name}`, value])));
+}
+
+test("fixture generator is deterministic across independent temporary runs", async () => {
+  const { generateContractFixtures } = await import("../tools/generate-contract-fixtures.mjs");
+  await withFixtureTemp(async (root) => {
+    const first = join(root, "first");
+    const second = join(root, "second");
+    await generateContractFixtures({ outputDir: first });
+    await generateContractFixtures({ outputDir: second });
+    assert.deepEqual(await directorySnapshot(first), await directorySnapshot(second));
+  });
+});
+
+test("fixture manifest covers stable outcomes, raw traps, hostile input, and every limit boundary", async () => {
+  const { generateContractFixtures } = await import("../tools/generate-contract-fixtures.mjs");
+  await withFixtureTemp(async (outputDir) => {
+    await generateContractFixtures({ outputDir });
+    const generated = JSON.parse(await readFile(join(outputDir, "manifest.json"), "utf8"));
+    const committed = await readJson("test/fixtures/contracts/manifest.json");
+    assert.deepEqual(generated, committed, "committed manifest must be an exact generator snapshot");
+
+    assert.deepEqual(Object.keys(generated).sort(), [
+      "evidence",
+      "fixtures",
+      "format_version",
+      "policies",
+      "provenance",
+      "seeds",
+      "stable_error_codes",
+    ]);
+    assert.equal(generated.evidence.phase, "01");
+    assert.equal(generated.evidence.classification, "bounded_contract_correctness");
+    assert.equal(generated.evidence.capacity_certification, false);
+    assert.equal(generated.evidence.performance_certification, false);
+    assert.doesNotMatch(JSON.stringify(generated), /validated capacity|capacity of|supports (?:at least )?\d+ objects|performance certified|benchmark result/i);
+
+    const classes = new Set(generated.fixtures.map((fixture) => fixture.class));
+    for (const fixtureClass of [
+      "golden",
+      "malformed",
+      "raw_normalization_trap",
+      "reference_integrity",
+      "malicious_string",
+      "malicious_path",
+      "json_limit_boundary",
+      "archive_limit_metadata",
+      "scale_correctness",
+    ]) assert.ok(classes.has(fixtureClass), `missing ${fixtureClass} fixture class`);
+
+    const coveredCodes = new Set(generated.fixtures.map((fixture) => fixture.expected.code).filter(Boolean));
+    assert.deepEqual([...coveredCodes].sort(), [...generated.stable_error_codes].sort());
+    for (const fixture of generated.fixtures) {
+      assert.match(fixture.sha256, /^[a-f0-9]{64}$/);
+      assert.ok(Number.isSafeInteger(fixture.bytes) && fixture.bytes > 0);
+      assert.equal(fixture.evidence_scope, "correctness_only");
+      assert.match(fixture.expected.path, /^\/(?:[^~]|~[01])*$/);
+    }
+
+    const limits = flattenLimits(await readJson("schemas/limits.json"));
+    for (const [policyPath, value] of Object.entries(limits)) {
+      const fixtures = generated.fixtures.filter((fixture) => fixture.boundary?.policy_path === policyPath);
+      assert.deepEqual(fixtures.map((fixture) => fixture.boundary.relation).sort(), ["above", "at", "below"], `${policyPath} boundary classes`);
+      const byRelation = Object.fromEntries(fixtures.map((fixture) => [fixture.boundary.relation, fixture.boundary.value]));
+      assert.equal(byRelation.at, value);
+      assert.ok(byRelation.below < value);
+      assert.ok(byRelation.above > value);
+    }
+  });
+});
+
+test("scale fixtures are fixed-seed correctness classes with expected digests, not capacity claims", async () => {
+  const { generateContractFixtures } = await import("../tools/generate-contract-fixtures.mjs");
+  await withFixtureTemp(async (outputDir) => {
+    await generateContractFixtures({ outputDir });
+    const manifest = JSON.parse(await readFile(join(outputDir, "manifest.json"), "utf8"));
+    const scales = manifest.fixtures.filter((fixture) => fixture.class === "scale_correctness");
+    assert.deepEqual(scales.map((fixture) => fixture.object_count), [100, 500, 2000]);
+    assert.ok(scales.every((fixture) => fixture.seed === generatedScaleSeed(manifest, fixture.object_count)));
+    assert.ok(scales.every((fixture) => fixture.expected.outcome === "accept"));
+    assert.ok(scales.every((fixture) => fixture.expected.canonical_sha256 === fixture.sha256));
+    assert.ok(scales.every((fixture) => !Object.hasOwn(fixture, "duration_ms") && !Object.hasOwn(fixture, "throughput")));
+  });
+});
+
+function generatedScaleSeed(manifest, objectCount) {
+  return `${manifest.seeds.scale_prefix}-${objectCount}`;
+}
+
+test("fixture bodies match manifest digests and bulky generated evidence is not committed", async () => {
+  const { generateContractFixtures } = await import("../tools/generate-contract-fixtures.mjs");
+  await withFixtureTemp(async (outputDir) => {
+    await generateContractFixtures({ outputDir });
+    const manifest = JSON.parse(await readFile(join(outputDir, "manifest.json"), "utf8"));
+    for (const fixture of manifest.fixtures) {
+      const bytes = await readFile(join(outputDir, fixture.file));
+      assert.equal(bytes.length, fixture.bytes, fixture.id);
+      assert.equal(createHash("sha256").update(bytes).digest("hex"), fixture.sha256, fixture.id);
+    }
+    const exampleBytes = await readFile(new URL("examples/idm-neo2030.yaml", ROOT));
+    assert.equal(manifest.provenance[0].sha256, createHash("sha256").update(exampleBytes).digest("hex"));
+  });
+
+  const committedEntries = await readdir(new URL("fixtures/contracts/", import.meta.url));
+  assert.deepEqual(committedEntries.sort(), ["manifest.json"]);
 });
