@@ -93,42 +93,43 @@ Filled during roadmap creation. Every requirement must map to exactly one primar
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OPS-01 | TBD | Pending |
-| OPS-02 | TBD | Pending |
-| SEC-01 | TBD | Pending |
-| ALM-01 | TBD | Pending |
-| ALM-02 | TBD | Pending |
-| SCH-01 | TBD | Pending |
-| SEM-01 | TBD | Pending |
-| MAP-01 | TBD | Pending |
-| PROF-01 | TBD | Pending |
-| CAT-01 | TBD | Pending |
-| ENG-01 | TBD | Pending |
-| ENG-02 | TBD | Pending |
-| CAD-01 | TBD | Pending |
-| NAV-01 | TBD | Pending |
-| HIST-01 | TBD | Pending |
-| SIM-01 | TBD | Pending |
-| DIAG-01 | TBD | Pending |
-| ENER-01 | TBD | Pending |
-| ASSET-01 | TBD | Pending |
-| REPORT-01 | TBD | Pending |
-| SITE-01 | TBD | Pending |
-| SDK-01 | TBD | Pending |
-| PROTO-01 | TBD | Pending |
-| SCHEMA-01 | TBD | Pending |
-| DIFF-01 | TBD | Pending |
-| COLLAB-01 | TBD | Pending |
-| HACS-01 | TBD | Pending |
-| I18N-01 | TBD | Pending |
-| A11Y-01 | TBD | Pending |
-| TEST-01 | TBD | Pending |
+| OPS-01 | Phase 3 | Pending |
+| OPS-02 | Phase 4 | Pending |
+| SEC-01 | Phase 2 | Pending |
+| ALM-01 | Phase 6 | Pending |
+| ALM-02 | Phase 6 | Pending |
+| SCH-01 | Phase 6 | Pending |
+| SEM-01 | Phase 3 | Pending |
+| MAP-01 | Phase 3 | Pending |
+| PROF-01 | Phase 3 | Pending |
+| CAT-01 | Phase 5 | Pending |
+| ENG-01 | Phase 5 | Pending |
+| ENG-02 | Phase 5 | Pending |
+| CAD-01 | Phase 5 | Pending |
+| NAV-01 | Phase 4 | Pending |
+| HIST-01 | Phase 7 | Pending |
+| SIM-01 | Phase 8 | Pending |
+| DIAG-01 | Phase 8 | Pending |
+| ENER-01 | Phase 7 | Pending |
+| ASSET-01 | Phase 8 | Pending |
+| REPORT-01 | Phase 7 | Pending |
+| SITE-01 | Phase 9 | Pending |
+| SDK-01 | Phase 5 | Pending |
+| PROTO-01 | Phase 3 | Pending |
+| SCHEMA-01 | Phase 1 | Pending |
+| DIFF-01 | Phase 1 | Pending |
+| COLLAB-01 | Phase 2 | Pending |
+| HACS-01 | Phase 1 | Pending |
+| I18N-01 | Phase 10 | Pending |
+| A11Y-01 | Phase 10 | Pending |
+| TEST-01 | Phase 10 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 30 total
-- Mapped to phases: 0
-- Unmapped: 30
+- Mapped to phases: 30
+- Unmapped: 0
+- Duplicated primary mappings: 0
 
 ---
 *Requirements defined: 2026-08-31*  
-*Last updated: 2026-08-31 after research synthesis for user roadmap items 1–30*
+*Last updated: 2026-08-31 after roadmap creation and exact phase traceability for user roadmap items 1–30*
