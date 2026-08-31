@@ -1,0 +1,100 @@
+    constructor(hass) {
+      this.hass = hass;
+      this.backend = null;
+    }
+    async _ws(type, payload = {}) {
+      if (!this.hass?.callWS) throw new Error("No Home Assistant WebSocket API");
+      try {
+        const result = await this.hass.callWS({ type: `glt_flow_card/${type}`, ...payload });
+        this.backend = true;
+        return result;
+      } catch (err) {
+        this.backend = false;
+        throw err;
+      }
+    }
+    async listProjects() {
+      try { return await this._ws("projects/list"); }
+      catch (_err) { return localRead("glt-flow-card.projects", []); }
+    }
+    async getProject(id) {
+      try { return await this._ws("projects/get", { project_id: id }); }
+      catch (_err) { return (localRead("glt-flow-card.projects", []).find((p) => p.id === id) || null); }
+    }
+    async saveProject(project, options = {}) {
+      try { return await this._ws("projects/save", { project, autosave: !!options.autosave }); }
+      catch (_err) {
+        const list = localRead("glt-flow-card.projects", []);
+        const current = list.find((p) => p.id === project.id);
+        const stamp = nowIso();
+        const entry = { ...current, ...clone(project), updated: stamp };
+        entry.versions = Array.isArray(current?.versions) ? current.versions : [];
+        if (!options.autosave && current?.config) {
+          entry.versions.unshift({ id: `${Date.now()}`, created: stamp, config: current.config });
+          entry.versions = entry.versions.slice(0, 30);
+        }
+        const next = list.filter((p) => p.id !== entry.id);
+        next.unshift(entry);
+        localWrite("glt-flow-card.projects", next);
+        return entry;
+      }
+    }
+    async deleteProject(id) {
+      try { return await this._ws("projects/delete", { project_id: id }); }
+      catch (_err) {
+        localWrite("glt-flow-card.projects", localRead("glt-flow-card.projects", []).filter((p) => p.id !== id));
+        return true;
+      }
+    }
+    async listTemplates() {
+      try { return await this._ws("templates/list"); }
+      catch (_err) { return localRead("glt-flow-card.templates", []); }
+    }
+    async saveTemplate(template) {
+      try { return await this._ws("templates/save", { template }); }
+      catch (_err) {
+        const list = localRead("glt-flow-card.templates", []).filter((t) => t.id !== template.id);
+        list.unshift({ ...template, updated: nowIso() });
+        localWrite("glt-flow-card.templates", list);
+        return template;
+      }
+    }
+    async deleteTemplate(id) {
+      try { return await this._ws("templates/delete", { template_id: id }); }
+      catch (_err) {
+        localWrite("glt-flow-card.templates", localRead("glt-flow-card.templates", []).filter((t) => t.id !== id));
+        return true;
+      }
+    }
+    async audit(action, detail = {}) {
+      const event = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, at: nowIso(), action, detail };
+      try { return await this._ws("audit/add", { event }); }
+      catch (_err) {
+        const list = localRead("glt-flow-card.audit", []);
+        list.unshift(event);
+        localWrite("glt-flow-card.audit", list.slice(0, 500));
+        return event;
+      }
+    }
+    async listAudit(limit = 200) {
+      try { return await this._ws("audit/list", { limit }); }
+      catch (_err) { return localRead("glt-flow-card.audit", []).slice(0, limit); }
+    }
+  }
+
+  function ensureV4Config(config) {
+    config.project = config.project || {};
+    config.groups = Array.isArray(config.groups) ? config.groups : [];
+    config.sites = Array.isArray(config.sites) ? config.sites : [];
+    config.alarms = Array.isArray(config.alarms) ? config.alarms : [];
+    config.assets = Array.isArray(config.assets) ? config.assets : [];
+    config.permissions = {
+      designers: [], operators: [], viewers: [], confirm_controls: true, ...(config.permissions || {})
+    };
+    config.reports = { enabled: true, ...(config.reports || {}) };
+    config.trend = { multi_axis: true, statistics: true, compare_24h: true, export_csv: true, ...(config.trend || {}) };
+    config.routing = { automatic: true, orthogonal: true, padding: 36, ...(config.routing || {}) };
+    return config;
+  }
+
+  function roleFor(config, hass) {
