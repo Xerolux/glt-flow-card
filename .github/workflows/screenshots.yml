@@ -7,6 +7,7 @@ on:
       - 'docs/site/**'
       - 'docs/editor/**'
       - 'tools/capture-screenshots.mjs'
+      - 'tools/update-readme-showcase.mjs'
       - '.github/workflows/screenshots.yml'
   workflow_dispatch:
 
@@ -43,11 +44,13 @@ jobs:
           exit 1
       - name: Capture current UI
         run: node tools/capture-screenshots.mjs
-      - name: Commit current screenshots
+      - name: Update README showcase
+        run: node tools/update-readme-showcase.mjs
+      - name: Commit current screenshots and README
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/images/neo2030-live.png docs/images/operations-light-live.png docs/images/pid-dark-live.png docs/images/symbol-library-live.png docs/images/designer-live.png
+          git add docs/images/neo2030-live.png docs/images/operations-light-live.png docs/images/pid-dark-live.png docs/images/symbol-library-live.png docs/images/designer-live.png README.md README.de.md
           git diff --cached --quiet && exit 0
-          git commit -m 'docs: refresh real UI screenshots [skip ci]'
+          git commit -m 'docs: refresh real UI screenshots and README [skip ci]'
           git push
