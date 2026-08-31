@@ -1,0 +1,37 @@
+name: Bug report
+description: Report a problem with GLT Flow Card
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve GLT Flow Card.
+  - type: input
+    id: version
+    attributes:
+      label: GLT Flow Card version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: ha
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant card configuration
+      render: yaml
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console output
+      render: text
