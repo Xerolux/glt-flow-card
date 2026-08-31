@@ -43,6 +43,8 @@ jobs:
         with:
           enablement: true
       - run: node tools/build-site.mjs
+      - name: Overlay professional GLT landing page
+        run: cp -R docs/site/. _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
