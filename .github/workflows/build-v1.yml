@@ -2,12 +2,11 @@ name: Build Engineering Platform v1
 
 on:
   push:
-    branches: [main]
+    branches: [main, v1-engineering-platform]
     paths:
       - 'src/v100/**'
       - 'custom_components/glt_flow_card/**'
       - 'tools/apply-v100.mjs'
-      - 'tools/unpack-v100.mjs'
       - 'tools/update-readme-v1.mjs'
       - 'test/v100-*.test.mjs'
       - '.github/workflows/build-v1.yml'
@@ -17,7 +16,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: glt-v1-build
+  group: glt-v1-build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -33,8 +32,6 @@ jobs:
         with:
           python-version: '3.13'
       - run: npm ci --ignore-scripts
-      - name: Unpack v1 platform source
-        run: node tools/unpack-v100.mjs
       - name: Bundle v1 engineering extension
         run: npx esbuild src/v100/index.js --bundle --format=iife --target=es2022 --outfile=/tmp/glt-v100.js
       - name: Generate runtime, online editor and README
@@ -48,16 +45,15 @@ jobs:
       - name: Verify generated artifacts
         run: |
           grep -q 'VERSION = "1.0.0"' dist/glt-flow-card.js
-          grep -q 'GLT Online Designer v1 Engineering extensions' docs/editor/app.js
           grep -q 'GLT Engineering Platform 1.0' README.de.md
+          grep -q 'config_flow' custom_components/glt_flow_card/manifest.json
           test -f custom_components/glt_flow_card/www/glt-flow-card.js
           test -f custom_components/glt_flow_card/config_flow.py
-      - name: Commit generated artifacts and readable source
+      - name: Commit generated artifacts
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/v100/core.mjs src/v100/catalog.mjs src/v100/index.js src/v100/online-extension.js \
-            custom_components/glt_flow_card test/v100-*.test.mjs dist/glt-flow-card.js docs/editor/app.js \
+          git add src/v100 custom_components/glt_flow_card test/v100-*.test.mjs dist/glt-flow-card.js \
             package.json package-lock.json test/smoke.test.mjs README.md README.de.md CHANGELOG.md
           git diff --cached --quiet && exit 0
           git commit -m 'build: generate GLT Engineering Platform 1.0 [skip ci]'
