@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GLT Flow Card · Online Editor</title><link rel="stylesheet" href="style.css"></head>
-<body>
+<body data-theme="neo2030">
 <header><a href="../" class="brand">◈ <b>GLT Flow Card</b></a><nav><a href="../">Home</a><a href="../wiki/Home.html">Wiki</a><a href="https://github.com/Xerolux/glt-flow-card">GitHub</a></nav></header>
 <div class="app">
-  <aside class="palette"><h2>Online Designer</h2><p>Plant eine GLT ohne Home Assistant. Entities können als IDs vorbereitet und später im HA-Designer komfortabel ausgewählt werden.</p><input id="search" placeholder="Bauteil suchen…"><div id="palette"></div></aside>
-  <main><div class="toolbar"><button id="new">Neu</button><button id="open">Projektbibliothek</button><button id="save">Speichern</button><button id="import">YAML Import</button><button id="export">YAML</button><button id="fit">Einpassen</button><span id="status"></span></div><div id="stage"><div id="canvas"></div></div></main>
+  <aside class="palette"><h2>GLT Symbolbibliothek</h2><p>Detailbauteile für Heizung, Hydraulik, RLT, Kälte, Energie und Sensorik. Ziehen, verbinden, Entity vorbereiten und als Lovelace-YAML exportieren.</p><input id="search" placeholder="Pumpe, Ventil, Weiche, Heizstab …"><div id="palette"></div></aside>
+  <main><div class="toolbar"><button id="new">Neu</button><button id="open">Projekte</button><button id="save">Speichern</button><button id="import">YAML Import</button><button id="export">YAML</button><button id="preview">▶ Bedienvorschau</button><select id="appearance" title="Design"><option value="neo2030">Neo 2030</option><option value="clean">Clean</option><option value="classic_scada">Classic SCADA</option><option value="standard_2d">Standard 2D</option><option value="operations_light">Operations Light</option><option value="pid_dark">P&amp;ID Dark</option></select><button id="fit">Einpassen</button><span id="status"></span></div><div id="stage"><div id="canvas"></div></div></main>
   <aside class="inspector"><h3>Eigenschaften</h3><div id="inspector">Bauteil auswählen.</div></aside>
 </div>
 <dialog id="dialog"><div class="dialog-head"><b id="dialog-title"></b><button id="dialog-close">✕</button></div><div id="dialog-body"></div></dialog>
