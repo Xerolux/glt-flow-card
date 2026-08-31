@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0 - 2026-08-31
+
+- YAML round-trip import/export with js-yaml and unknown-key preservation in the project object.
+- Project library, autosave, version history and reusable component/sub-plant templates.
+- Optional Home Assistant companion backend for cross-device project/template storage and server-side audit metadata.
+- Multi-selection groups and group movement.
+- Orthogonal automatic routing linked to equipment endpoints.
+- Alarm/message panel with optional acknowledgement service.
+- Viewer/operator/designer access roles and control confirmation.
+- Audit log for project, YAML, control, alarm and report actions.
+- Maintenance asset view with operating hours, service interval, due date, documents and parts metadata.
+- Multi-site overview and site filtering.
+- Trend+ multi-axis analytics, min/max/average, power-to-energy integration, previous-24h comparison and CSV export.
+- CSV and printable/PDF reports.
+- GitHub Pages site, hosted online editor, Wiki source pages and sponsorship metadata.
+- New README screenshots for Neo 2030, HA Designer and Clean.
+
+
 ## 0.3.0 - 2026-08-31
 
 - Added Neo 2030 visual system while keeping Clean and Classic SCADA modes.

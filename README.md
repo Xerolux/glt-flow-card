@@ -67,6 +67,38 @@ The designer also includes a **live preview** and a **Lovelace YAML drawer with 
 
 The palette contains more than 50 components and variants across heating, hydraulics, AHU/ventilation, cooling, energy, sensors and generic plant objects, while custom images/SVGs remain optional.
 
+
+## Engineering Workspace 0.4
+
+![GLT Flow Card feature overview](docs/images/feature-overview.svg)
+
+Version 0.4 turns the card into a broader **Home Assistant GLT/BMS engineering workspace**. Existing Lovelace YAML can be imported, visually edited and exported again; unknown configuration keys are kept in the project object instead of intentionally being removed.
+
+- YAML round-trip with file import, clipboard copy and download.
+- Project library, autosave and version history; browser-local by default, Home Assistant storage with the optional companion backend.
+- User component templates, grouped sub-plants and orthogonal auto-routing tied to equipment.
+- Alarm/message panel with optional acknowledgement service.
+- Viewer / operator / designer roles and audit log.
+- Maintenance assets with operating hours, intervals, due dates, documents and parts metadata.
+- Multi-site overview and filtering.
+- Trend+ with multiple Y axes by unit, min/max/average, power-to-energy integration, 24 h comparison and CSV export.
+- CSV and print/PDF reports.
+- Built-in GitHub Pages documentation, hosted online editor and Wiki source sync.
+
+**[Live documentation & online editor](https://xerolux.github.io/glt-flow-card/)** · **[Wiki](https://github.com/Xerolux/glt-flow-card/wiki)**
+
+### Neo 2030 runtime
+
+![Neo 2030 runtime](docs/images/neo2030-dashboard.svg)
+
+### Home Assistant drag-and-drop designer
+
+![Home Assistant designer](docs/images/ha-designer.svg)
+
+### Clean designer option
+
+![Clean designer](docs/images/clean-designer.svg)
+
 ## Quick start
 
 ```yaml

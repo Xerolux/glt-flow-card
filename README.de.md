@@ -67,6 +67,38 @@ Der Designer bietet außerdem **Live-Vorschau** sowie eine **Lovelace-YAML-Ansic
 
 Die Palette enthält mehr als 50 auswählbare Bausteine und Varianten für Heizung, Hydraulik, RLT/Lüftung, Kälte, Energie, Sensorik und allgemeine Anlagen: Wärmepumpen, Speicher, Heizkreise, Pumpen, 2-/3-Wege-Ventile, Mischventile, Wärmetauscher, Verteiler, Ausdehnungsgefäße, RLT-Zentralen, Ventilatoren, Luftklappen, Filter, Heiz-/Kühlregister, Kältemaschinen, PV, Batterie, Netz, Zähler, Raum- und Prozesssensoren sowie eigene Bilder/SVGs.
 
+
+## Engineering Workspace 0.4
+
+![GLT Flow Card Funktionsübersicht](docs/images/feature-overview.svg)
+
+Mit Version 0.4 wird aus der Karte ein umfangreicherer **GLT/BMS-Engineering-Workspace für Home Assistant**. Bestehende Lovelace-YAML kann importiert, grafisch weiterbearbeitet und wieder exportiert werden; unbekannte Konfigurationsschlüssel bleiben im Projektobjekt erhalten, statt absichtlich entfernt zu werden.
+
+- YAML Round-Trip mit Datei-Import, Zwischenablage und Download.
+- Projektbibliothek, Autosave und Versionshistorie; standardmäßig lokal im Browser, mit optionalem Companion-Backend direkt in Home Assistant.
+- Eigene Bauteilvorlagen, gruppierte Unteranlagen und orthogonales Auto-Routing an Anlagenobjekten.
+- Alarm-/Meldungsansicht mit optionalem Quittier-Service.
+- Rollen Viewer / Operator / Designer und Audit-Log.
+- Wartungsassets mit Betriebsstunden, Intervallen, Fälligkeit, Dokumenten und Ersatzteil-Metadaten.
+- Multi-Site-Übersicht und Standortfilter.
+- Trend+ mit mehreren Y-Achsen je Einheit, Min/Max/Mittelwert, Leistung-zu-Energie-Integration, 24-h-Vergleich und CSV-Export.
+- CSV- sowie Druck/PDF-Berichte.
+- GitHub Pages Dokumentation, gehosteter Online-Editor und Wiki-Synchronisierung.
+
+**[Live-Dokumentation & Online-Editor](https://xerolux.github.io/glt-flow-card/)** · **[Wiki](https://github.com/Xerolux/glt-flow-card/wiki)**
+
+### Neo 2030 Runtime
+
+![Neo 2030 Runtime](docs/images/neo2030-dashboard.svg)
+
+### Drag-&-Drop-Designer in Home Assistant
+
+![Home Assistant Designer](docs/images/ha-designer.svg)
+
+### Clean-Designer als Alternative
+
+![Clean Designer](docs/images/clean-designer.svg)
+
 ## Schnellstart
 
 ```yaml
