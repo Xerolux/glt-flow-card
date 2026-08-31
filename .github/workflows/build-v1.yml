@@ -1,0 +1,58 @@
+name: Build Engineering Platform v1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/v100/**'
+      - 'custom_components/glt_flow_card/**'
+      - 'tools/apply-v100.mjs'
+      - 'tools/update-readme-v1.mjs'
+      - 'test/v100-*.test.mjs'
+      - '.github/workflows/build-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: glt-v1-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: npm ci --ignore-scripts
+      - name: Bundle v1 engineering extension
+        run: npx esbuild src/v100/index.js --bundle --format=iife --target=es2022 --outfile=/tmp/glt-v100.js
+      - name: Generate runtime, online editor and README
+        run: |
+          node tools/apply-v100.mjs /tmp/glt-v100.js
+          node tools/update-readme-v1.mjs
+      - name: JavaScript tests
+        run: npm test
+      - name: Python syntax validation
+        run: python -m py_compile custom_components/glt_flow_card/*.py
+      - name: Verify generated artifacts
+        run: |
+          grep -q 'VERSION = "1.0.0"' dist/glt-flow-card.js
+          grep -q 'GLT Online Designer v1 Engineering extensions' docs/editor/app.js
+          grep -q 'GLT Engineering Platform 1.0' README.de.md
+          test -f custom_components/glt_flow_card/www/glt-flow-card.js
+      - name: Commit generated artifacts
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add dist/glt-flow-card.js custom_components/glt_flow_card/www/glt-flow-card.js docs/editor/app.js package.json package-lock.json test/smoke.test.mjs README.md README.de.md CHANGELOG.md
+          git diff --cached --quiet && exit 0
+          git commit -m 'build: generate GLT Engineering Platform 1.0 [skip ci]'
+          git push
