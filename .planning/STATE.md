@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-08-31T22:44:11.488Z"
-last_activity: 2026-09-01 -- Plan 01-02 Wave-0 executable harness completed
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-08-31T22:59:46.625Z"
+last_activity: 2026-09-01 -- Plan 01-03 canonical contract and fixture corpus completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 13
-  completed_plans: 2
-  percent: 15
+  completed_plans: 3
+  percent: 23
 ---
 
 # Project State
@@ -26,33 +26,34 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (trusted-contract-release-foundation) — EXECUTING
-Plan: 3 of 13
+Plan: 4 of 13
 Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-02 Wave-0 executable harness completed
+Last activity: 2026-09-01 -- Plan 01-03 canonical contract and fixture corpus completed
 
-Progress: [██░░░░░░░░] 15%
+Progress: [██░░░░░░░░] 23%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 1
-- Average duration: 15 min
-- Total execution time: 0.3 hours
+- Total plans completed: 3
+- Average duration: 21 min
+- Total execution time: 1.0 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| Phase 1 | 1 | 15 min | 15 min |
+| Phase 1 | 3 | 62 min | 21 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 15 min
-- Trend: Baseline established
+- Last 3 plans: 15 min, 37 min, 10 min
+- Trend: Contract plan completed below the current rolling average
 
 *Updated after each plan completion*
 | Phase 01 P02 | 37min | 3 tasks | 13 files |
+| Phase 01 P03 | 10min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01-01]: Write canonical online evidence to .planning/tmp/phase01-provenance.json by default for the next plan.
 - [Phase 01]: Controlled RED requires both an approved marker and the matching exact-dist or lifecycle effect ledger.
 - [Phase 01]: Clean Home Assistant dependency resolution uses the Linux/container lane because HA 2026.2.3 pins lru-dict 1.3.0 without a Windows Python 3.13 wheel.
+- [Phase 01]: Use reserved .invalid schema IDs with repository-local ref closure and no remote schema fetching.
+- [Phase 01]: Treat 100/500/2,000 object fixtures as correctness-only inputs; Phase 10 owns measured capacity evidence.
+- [Phase 01]: Commit only the compact corpus manifest and regenerate fixture bodies in disposable temporary directories.
 
 ### Pending Todos
 
@@ -90,6 +94,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-08-31T22:44:11.467Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-08-31T22:59:46.321Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None
