@@ -64,6 +64,14 @@ jobs:
             README.md README.de.md
           git diff --cached --quiet && exit 0
           git commit -m 'docs: refresh dark, light and SCADA UI showcases'
-          git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+          for attempt in 1 2 3 4 5; do
+            echo "Publish attempt ${attempt}/5"
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          echo "Could not publish screenshots after 5 attempts"
+          exit 1
