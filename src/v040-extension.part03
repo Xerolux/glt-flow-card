@@ -1,0 +1,100 @@
+      editor._glt4ProjectId = id;
+      await store.saveProject({ id, name, config: clone(editor._config) });
+      await store.audit("project.save", { id, name });
+      m.remove(); editor._render();
+    };
+    m.querySelector("[data-copy]").onclick = async () => {
+      const name = prompt("Name für das neue Projekt", `${editor._config.title || "GLT"} Kopie`);
+      if (!name) return;
+      const id = slug(name) + "-" + Date.now().toString(36);
+      editor._config.project = { id, name };
+      editor._glt4ProjectId = id;
+      await store.saveProject({ id, name, config: clone(editor._config) });
+      await store.audit("project.save_as", { id, name });
+      m.remove(); editor._render();
+    };
+    m.querySelectorAll("[data-load]").forEach((b) => b.onclick = async () => {
+      const p = await store.getProject(b.dataset.load);
+      if (!p?.config) return;
+      editor._glt4ProjectId = p.id;
+      editor.setConfig(ensureV4Config(clone(p.config)));
+      editor._emit();
+      await store.audit("project.load", { id: p.id, name: p.name });
+      m.remove();
+    });
+    m.querySelectorAll("[data-delete]").forEach((b) => b.onclick = async () => {
+      if (!confirm("Projekt wirklich löschen?")) return;
+      await store.deleteProject(b.dataset.delete);
+      await store.audit("project.delete", { id: b.dataset.delete });
+      m.remove(); showProjects(editor);
+    });
+    m.querySelectorAll("[data-versions]").forEach((b) => b.onclick = async () => {
+      const p = await store.getProject(b.dataset.versions);
+      const versions = (p?.versions || []).map((v) => `<tr><td>${esc(v.created || v.at || v.id)}</td><td><button class="glt4-btn" data-restore="${esc(v.id)}">Wiederherstellen</button></td></tr>`).join("");
+      const vm = modal(editor, `Versionen · ${p?.name || p?.id}`, `<table class="glt4-table"><thead><tr><th>Zeitpunkt</th><th></th></tr></thead><tbody>${versions || '<tr><td colspan="2">Keine älteren Versionen.</td></tr>'}</tbody></table>`);
+      vm.querySelectorAll("[data-restore]").forEach((rb) => rb.onclick = async () => {
+        const version = (p.versions || []).find((v) => v.id === rb.dataset.restore);
+        if (!version?.config) return;
+        editor.setConfig(ensureV4Config(clone(version.config))); editor._emit();
+        await store.audit("project.restore_version", { project_id: p.id, version_id: version.id }); vm.remove();
+      });
+    });
+  }
+
+  function showYaml(editor, importMode = false) {
+    const text = importMode ? "" : yamlConfig(editor._config);
+    const m = modal(editor, importMode ? "YAML importieren" : "Lovelace YAML", `<textarea class="glt4-textarea" data-yaml placeholder="type: custom:glt-flow-card\n...">${esc(text)}</textarea><div class="glt4-actions"><input type="file" accept=".yaml,.yml,text/yaml" data-file style="display:none"><button class="glt4-btn" data-filebtn>Datei öffnen</button><button class="glt4-btn" data-import>Importieren & weiterbearbeiten</button><button class="glt4-btn" data-copy>YAML kopieren</button><button class="glt4-btn" data-download>YAML herunterladen</button></div><div data-error style="margin-top:9px;color:#dc2626;font-size:9px"></div>`);
+    const area = m.querySelector("[data-yaml]");
+    m.querySelector("[data-filebtn]").onclick = () => m.querySelector("[data-file]").click();
+    m.querySelector("[data-file]").onchange = async (e) => { const f = e.target.files?.[0]; if (f) area.value = await f.text(); };
+    m.querySelector("[data-copy]").onclick = async () => { await copyText(area.value || yamlConfig(editor._config)); await editorStore(editor).audit("yaml.copy", {}); };
+    m.querySelector("[data-download]").onclick = () => download(`${slug(editor._config.project?.name || editor._config.title)}.yaml`, area.value || yamlConfig(editor._config), "application/yaml;charset=utf-8");
+    m.querySelector("[data-import]").onclick = async () => {
+      try {
+        const imported = ensureV4Config(parseYaml(area.value));
+        editor._remember?.();
+        editor.setConfig(imported);
+        editor._emit();
+        await editorStore(editor).audit("yaml.import", { title: imported.title });
+        m.remove();
+      } catch (err) { m.querySelector("[data-error]").textContent = err.message || String(err); }
+    };
+  }
+
+  async function showTemplates(editor) {
+    const store = editorStore(editor);
+    const list = await store.listTemplates();
+    const builtins = [
+      { id:"builtin-hp-buffer", name:"Wärmepumpe + Puffer", kind:"equipment", object:{type:"heat_pump",symbol:"heat_pump_neo",name:"Wärmepumpe",width:240,height:150,fields:[]} },
+      { id:"builtin-ahu", name:"RLT-Zentrale", kind:"equipment", object:{type:"ahu",symbol:"ahu",name:"RLT-Zentrale",width:300,height:170,fields:[]} },
+      { id:"builtin-pump", name:"Umwälzpumpe", kind:"equipment", object:{type:"pump",symbol:"pump_circulation",name:"Pumpe",width:140,height:95,fields:[]} },
+      { id:"builtin-dp", name:"Temperatur-Datenpunkt", kind:"datapoint", object:{kind:"temperature",label:"Temperatur",entity:""} }
+    ];
+    const all = [...builtins, ...list];
+    const m = modal(editor, "Vorlagen & Bauteil-Templates", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Auswahl als Vorlage speichern</button></div><div class="glt4-grid">${all.map((t) => `<div class="glt4-card"><b>${esc(t.name)}</b><small>${esc(t.kind || "equipment")}${t.updated ? ` · ${esc(t.updated)}` : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-apply="${esc(t.id)}">Einfügen</button>${t.id.startsWith("builtin-") ? "" : `<button class="glt4-btn glt4-danger" data-del="${esc(t.id)}">Löschen</button>`}</div></div>`).join("")}</div>`);
+    m.querySelector("[data-save]").onclick = async () => {
+      const obj = editor._obj?.(); if (!obj) return alert("Zuerst ein Bauteil, Datenpunkt, Pfad oder KPI auswählen.");
+      const name = prompt("Vorlagenname", obj.name || obj.label || obj.id); if (!name) return;
+      const t = { id: slug(name) + "-" + Date.now().toString(36), name, kind: editor._sel.k, object: clone(obj) };
+      await store.saveTemplate(t); await store.audit("template.save", { id:t.id, name }); m.remove(); showTemplates(editor);
+    };
+    m.querySelectorAll("[data-apply]").forEach((b) => b.onclick = () => {
+      const t = all.find((x) => x.id === b.dataset.apply); if (!t) return;
+      editor._remember?.(); const o = clone(t.object); o.id = editor._id?.(t.kind === "datapoint" ? "dp" : t.kind || "tpl") || `${Date.now()}`;
+      if (t.kind === "datapoint") { o.positions = { [editor._viewId]: { x: 400, y: 300 } }; editor._config.datapoints.push(o); editor._sel={k:"datapoint",id:o.id}; }
+      else if (t.kind === "path") { o.points=(o.points||[[300,300],[600,300]]).map((p)=>[p[0]+40,p[1]+40]); editor._config.paths.push(o); editor._sel={k:"path",id:o.id}; }
+      else if (t.kind === "kpi") { editor._config.kpis.push(o); editor._sel={k:"kpi",id:o.id}; }
+      else { o.x=(o.x||300)+40;o.y=(o.y||260)+40;editor._config.equipment.push(o);editor._sel={k:"equipment",id:o.id}; }
+      editor._emit(); editor._render(); m.remove();
+    });
+    m.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => { await store.deleteTemplate(b.dataset.del); m.remove(); showTemplates(editor); });
+  }
+
+  function showGroups(editor) {
+    const groups = editor._config.groups || [];
+    const m = modal(editor, "Gruppen & Unteranlagen", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-create>Aus Mehrfachauswahl gruppieren</button></div><div class="glt4-grid">${groups.map((g)=>`<div class="glt4-card"><b>${esc(g.name)}</b><small>${(g.members||[]).length} Elemente</small><div class="glt4-actions"><button class="glt4-btn" data-select="${g.id}">Markieren</button><button class="glt4-btn" data-template="${g.id}">Als Anlagenvorlage</button><button class="glt4-btn glt4-danger" data-delete="${g.id}">Auflösen</button></div></div>`).join("") || '<div class="glt4-card">Noch keine Gruppen. Mehrere Elemente mit Strg/Shift auswählen.</div>'}</div>`);
+    m.querySelector("[data-create]").onclick = () => {
+      const members = Array.from(editor._glt4Multi || []).map((key) => { const [kind,id]=key.split(":"); return {kind,id}; });
+      if (members.length < 2) return alert("Mindestens zwei Elemente per Strg/Shift auswählen.");
+      const name = prompt("Gruppenname", "Unteranlage"); if (!name) return;
+      editor._remember?.(); editor._config.groups.push({ id: slug(name)+"-"+Date.now().toString(36), name, members }); editor._emit(); editor._render(); m.remove();

@@ -1,0 +1,100 @@
+    const user = hass?.user;
+    if (user?.is_admin) return "designer";
+    const id = user?.id;
+    const p = config?.permissions || {};
+    if (id && p.designers?.includes(id)) return "designer";
+    if (id && p.operators?.includes(id)) return "operator";
+    return "viewer";
+  }
+
+  function canOperate(config, hass) { return ["operator", "designer"].includes(roleFor(config, hass)); }
+  function canDesign(config, hass) { return roleFor(config, hass) === "designer"; }
+
+  function activeAlarm(card, alarm) {
+    const st = card._stateAt?.(field(alarm.entity)?.entity);
+    if (!st) return false;
+    const raw = String(st.state ?? "").toLowerCase();
+    const inactive = alarm.inactive_states || ["off", "0", "ok", "normal", "none", "idle", "clear", "unavailable", "unknown"];
+    if (Array.isArray(alarm.active_states) && alarm.active_states.length) return alarm.active_states.map(String).map((x) => x.toLowerCase()).includes(raw);
+    return !inactive.map(String).map((x) => x.toLowerCase()).includes(raw);
+  }
+
+  function equipmentPos(config, id, viewId) {
+    const item = config.equipment.find((x) => x.id === id);
+    if (!item) return null;
+    const p = item.positions?.[viewId] || item;
+    return { x: +p.x || 0, y: +p.y || 0, width: +(p.width || item.width || 220), height: +(p.height || item.height || 130) };
+  }
+
+  function autoRoute(config, path, viewId) {
+    if (!path?.from_equipment || !path?.to_equipment || path.auto_route === false) return path?.points;
+    const a = equipmentPos(config, path.from_equipment, viewId);
+    const b = equipmentPos(config, path.to_equipment, viewId);
+    if (!a || !b) return path.points;
+    const leftToRight = a.x + a.width / 2 <= b.x + b.width / 2;
+    const sx = leftToRight ? a.x + a.width : a.x;
+    const ex = leftToRight ? b.x : b.x + b.width;
+    const sy = a.y + a.height / 2;
+    const ey = b.y + b.height / 2;
+    const mx = Math.round((sx + ex) / 2);
+    return [[Math.round(sx), Math.round(sy)], [mx, Math.round(sy)], [mx, Math.round(ey)], [Math.round(ex), Math.round(ey)]];
+  }
+
+  function reroute(config, viewId) {
+    if (config.routing?.automatic === false) return;
+    for (const path of config.paths || []) {
+      if (!path.from_equipment || !path.to_equipment || path.auto_route === false) continue;
+      const points = autoRoute(config, path, viewId);
+      if (points) path.points = points;
+    }
+  }
+
+  function editorStore(editor) {
+    editor._glt4Store = editor._glt4Store || new ProjectStore(editor._hass || editor._glt4Hass);
+    editor._glt4Store.hass = editor._hass || editor._glt4Hass;
+    return editor._glt4Store;
+  }
+
+  const EDITOR_EXTRA_STYLES = `
+    .glt4-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:6px 10px;border-bottom:1px solid var(--b);background:color-mix(in srgb,var(--bg) 97%,var(--e) 3%)}
+    .glt4-btn{height:31px;border:1px solid var(--b);background:var(--bg);border-radius:8px;padding:0 9px;color:var(--mut);font-size:9px;font-weight:750;cursor:pointer}
+    .glt4-btn:hover,.glt4-btn.on{color:var(--e);border-color:color-mix(in srgb,var(--e) 55%,var(--b));background:var(--eb)}
+    .glt4-spacer{flex:1}.glt4-readonly{padding:7px 10px;background:#f59e0b18;color:#b45309;font-size:9px;font-weight:700;border-bottom:1px solid #f59e0b44}
+    .glt4-modal{position:fixed;inset:0;z-index:10000;background:#020617b8;display:grid;place-items:center;padding:22px}.glt4-dialog{width:min(920px,96vw);max-height:90vh;overflow:auto;border:1px solid var(--b);border-radius:16px;background:var(--bg);color:var(--tx);box-shadow:0 24px 70px #02061788}
+    .glt4-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--b);background:var(--bg)}.glt4-head b{font-size:13px}.glt4-body{padding:14px}.glt4-close{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--mut);cursor:pointer}
+    .glt4-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}.glt4-card{padding:11px;border:1px solid var(--b);border-radius:12px;background:color-mix(in srgb,var(--bg) 97%,#64748b 3%)}.glt4-card b{display:block;font-size:11px}.glt4-card small{display:block;margin-top:3px;color:var(--mut);font-size:8px}.glt4-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+    .glt4-input,.glt4-select,.glt4-textarea{width:100%;border:1px solid var(--b);border-radius:9px;background:var(--bg);color:var(--tx);padding:8px;font-size:10px}.glt4-textarea{min-height:360px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;line-height:1.45;resize:vertical}
+    .glt4-table{width:100%;border-collapse:collapse;font-size:9px}.glt4-table th,.glt4-table td{text-align:left;padding:7px;border-bottom:1px solid var(--b);vertical-align:middle}.glt4-table th{color:var(--mut);font-size:8px;text-transform:uppercase}
+    .glt4-badge{display:inline-flex;padding:3px 6px;border-radius:999px;background:var(--eb);color:var(--e);font-size:8px;font-weight:750}.glt4-danger{color:#dc2626}.glt4-ok{color:#16a34a}
+    .glt4-site-select{height:29px;border:1px solid var(--b);border-radius:8px;background:var(--bg);font-size:9px;padding:0 6px;color:var(--mut)}
+    .glt4-multi{outline:2px dashed #8b5cf6!important;outline-offset:3px}.glt4-group{outline:2px solid #f59e0b!important;outline-offset:3px}
+    .glt4-entity-row{display:grid;grid-template-columns:1fr 130px 90px 32px;gap:6px;align-items:center;margin-bottom:7px}.glt4-entity-row ha-entity-picker{min-width:0}
+    @media(max-width:800px){.glt4-entity-row{grid-template-columns:1fr}.glt4-dialog{width:98vw}}
+  `;
+
+  function modal(editor, title, html) {
+    editor.shadowRoot.querySelector(".glt4-modal")?.remove();
+    const shell = document.createElement("div");
+    shell.className = "glt4-modal";
+    shell.innerHTML = `<div class="glt4-dialog"><div class="glt4-head"><b>${esc(title)}</b><button class="glt4-close">✕</button></div><div class="glt4-body">${html}</div></div>`;
+    shell.querySelector(".glt4-close").onclick = () => shell.remove();
+    shell.addEventListener("click", (e) => { if (e.target === shell) shell.remove(); });
+    editor.shadowRoot.appendChild(shell);
+    return shell;
+  }
+
+  function selectedRef(editor) {
+    if (!editor._sel) return null;
+    return { kind: editor._sel.k, id: editor._sel.id };
+  }
+
+  async function showProjects(editor) {
+    const store = editorStore(editor);
+    const list = await store.listProjects();
+    const currentId = editor._glt4ProjectId || editor._config.project?.id;
+    const cards = list.map((p) => `<div class="glt4-card"><b>${esc(p.name || p.id)}</b><small>${esc(p.updated || "")} · ${(p.versions || []).length} Versionen ${p.id === currentId ? "· AKTIV" : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-load="${esc(p.id)}">Laden</button><button class="glt4-btn" data-versions="${esc(p.id)}">Versionen</button><button class="glt4-btn glt4-danger" data-delete="${esc(p.id)}">Löschen</button></div></div>`).join("");
+    const m = modal(editor, "Projektbibliothek", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Aktuelles Projekt speichern</button><button class="glt4-btn" data-copy>Als neues Projekt speichern</button></div><div class="glt4-grid">${cards || '<div class="glt4-card">Noch keine gespeicherten Projekte.</div>'}</div><p style="font-size:9px;color:var(--mut);margin-top:12px">Mit installierter Companion-Integration werden Projekte geräteübergreifend in Home Assistant gespeichert; sonst lokal im Browser.</p>`);
+    m.querySelector("[data-save]").onclick = async () => {
+      const name = editor._config.project?.name || prompt("Projektname", editor._config.title || "GLT Projekt") || "GLT Projekt";
+      const id = currentId || slug(name) + "-" + Date.now().toString(36);
+      editor._config.project = { ...(editor._config.project || {}), id, name };

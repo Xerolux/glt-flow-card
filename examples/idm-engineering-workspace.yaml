@@ -1,0 +1,160 @@
+# GLT Flow Card · Engineering Workspace v0.4 · iDM example
+# Replace optional entity IDs with entities available in your Home Assistant.
+type: custom:glt-flow-card
+title: iDM Heizzentrale
+subtitle: ALM 6-15 · Engineering Workspace
+appearance:
+  mode: neo2030
+  show_switch: true
+project:
+  id: idm-heizzentrale
+  name: iDM Heizzentrale
+canvas:
+  width: 1600
+  height: 900
+  viewport_height: 660
+  grid: true
+  grid_size: 40
+views:
+  - id: schematic
+    name: Anlagenschema
+    kind: schematic
+sites:
+  - id: heating_centre
+    name: Heizzentrale
+routing:
+  automatic: true
+  orthogonal: true
+  padding: 36
+replay:
+  enabled: true
+  hours: 168
+  step_minutes: 15
+trend:
+  enabled: true
+  hours: 168
+  max_series: 8
+  multi_axis: true
+  statistics: true
+  compare_24h: true
+  export_csv: true
+reports:
+  enabled: true
+permissions:
+  designers: []
+  operators: []
+  viewers: []
+  confirm_controls: true
+kpis:
+  - id: kpi_vl_d
+    name: VL Heizkreis D
+    icon: mdi:thermometer-chevron-up
+    entity: sensor.alm6_15_vorlauftemperatur_hk_d
+  - id: kpi_room_d
+    name: Raum HK D
+    icon: mdi:home-thermometer-outline
+    entity: sensor.alm6_15_raumtemperatur_hk_d
+  - id: kpi_target_d
+    name: Soll-VL HK D
+    icon: mdi:target
+    entity: sensor.alm6_15_sollvorlauftemperatur_hk_d
+
+equipment:
+  - id: idm
+    site: heating_centre
+    type: heat_pump
+    symbol: heat_pump_neo
+    name: iDM ALM 6-15
+    x: 140
+    y: 320
+    width: 270
+    height: 180
+    fields:
+      - label: Vorlauf HK D
+        entity: sensor.alm6_15_vorlauftemperatur_hk_d
+      - label: Soll-VL HK D
+        entity: sensor.alm6_15_sollvorlauftemperatur_hk_d
+  - id: buffer
+    site: heating_centre
+    type: tank
+    symbol: buffer_layered
+    name: Hydraulik / Puffer
+    x: 650
+    y: 275
+    width: 250
+    height: 220
+  - id: hk_d
+    site: heating_centre
+    type: room
+    symbol: underfloor
+    name: Heizkreis D
+    x: 1160
+    y: 305
+    width: 285
+    height: 205
+    fields:
+      - label: Vorlauf
+        entity: sensor.alm6_15_vorlauftemperatur_hk_d
+      - label: Raum
+        entity: sensor.alm6_15_raumtemperatur_hk_d
+      - label: Soll-Vorlauf
+        entity: sensor.alm6_15_sollvorlauftemperatur_hk_d
+      - label: Externe Raumtemp.
+        entity: number.alm6_15_externe_raumtemperatur_hk_d
+
+paths:
+  - id: supply_d
+    site: heating_centre
+    medium: heating_supply
+    from_equipment: idm
+    to_equipment: hk_d
+    auto_route: true
+    temperature: sensor.alm6_15_vorlauftemperatur_hk_d
+    width: 8
+  - id: return_d
+    site: heating_centre
+    medium: heating_return
+    from_equipment: hk_d
+    to_equipment: idm
+    auto_route: true
+    width: 8
+
+datapoints:
+  - id: hk_d_flow
+    site: heating_centre
+    label: VL HK D
+    kind: temperature
+    entity: sensor.alm6_15_vorlauftemperatur_hk_d
+    positions:
+      schematic: { x: 1030, y: 285 }
+  - id: hk_d_room
+    site: heating_centre
+    label: Raum HK D
+    kind: temperature
+    entity: sensor.alm6_15_raumtemperatur_hk_d
+    positions:
+      schematic: { x: 1320, y: 555 }
+
+groups:
+  - id: heating_d
+    name: Heizkreis D Unteranlage
+    members:
+      - { kind: equipment, id: hk_d }
+      - { kind: datapoint, id: hk_d_flow }
+      - { kind: datapoint, id: hk_d_room }
+
+# Optional examples once the corresponding entities exist:
+alarms:
+  # - id: idm_alarm
+  #   name: iDM Störung
+  #   entity: binary_sensor.idm_alarm
+  #   severity: critical
+  #   site: heating_centre
+  []
+assets:
+  # - id: compressor
+  #   name: Verdichter
+  #   entity_hours: sensor.idm_compressor_hours
+  #   service_interval_hours: 10000
+  #   due_date: 2027-04-01
+  []

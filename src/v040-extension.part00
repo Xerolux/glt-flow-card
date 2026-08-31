@@ -1,0 +1,100 @@
+import YAML from "js-yaml";
+
+/*!
+ * GLT Flow Card v0.4 extensions
+ * Engineering workspace: YAML round-trip, project/version library, templates,
+ * groups, auto routing, alarms, assets, access control, audit, reports,
+ * multi-site navigation and advanced trend analytics.
+ */
+(() => {
+  "use strict";
+
+  const EXT_VERSION = "0.4.0";
+  const Card = customElements.get("glt-flow-card");
+  const Editor = customElements.get("glt-flow-card-editor");
+  if (!Card || !Editor) {
+    console.warn("GLT Flow Card v0.4 extensions: base card/editor not registered.");
+    return;
+  }
+
+  const clone = (value) => JSON.parse(JSON.stringify(value ?? null));
+  const esc = (value) => String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+  const slug = (value) => String(value || "project")
+    .normalize("NFKD").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "project";
+  const nowIso = () => new Date().toISOString();
+  const POWER = new Set(["W", "kW", "MW"]);
+  const TREND_COLORS = ["#14b8a6", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#22c55e", "#ec4899", "#06b6d4"];
+
+  function field(value) {
+    if (!value) return null;
+    if (typeof value === "string") return { entity: value };
+    if (typeof value === "object" && value.entity) return value;
+    return null;
+  }
+
+  function yamlConfig(config) {
+    return YAML.dump(config, {
+      noRefs: true,
+      lineWidth: 120,
+      sortKeys: false,
+      quotingType: '"',
+      forceQuotes: false,
+    });
+  }
+
+  function parseYaml(text) {
+    const parsed = YAML.load(String(text || ""));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Die YAML-Konfiguration muss ein Objekt enthalten.");
+    }
+    if (parsed.type && parsed.type !== "custom:glt-flow-card") {
+      throw new Error(`Unerwarteter Kartentyp: ${parsed.type}`);
+    }
+    return parsed;
+  }
+
+  function download(name, content, type = "text/plain;charset=utf-8") {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  }
+
+  async function copyText(text) {
+    if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+    const area = document.createElement("textarea");
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+
+  function csvCell(value) {
+    const s = String(value ?? "");
+    return /[;\n"]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
+  }
+
+  function localRead(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (_err) {
+      return fallback;
+    }
+  }
+  function localWrite(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (_err) { /* ignore quota/privacy */ }
+  }
+
+  class ProjectStore {

@@ -1,0 +1,100 @@
+    };
+    m.querySelectorAll("[data-select]").forEach((b)=>b.onclick=()=>{ const g=groups.find(x=>x.id===b.dataset.select); editor._glt4Multi=new Set((g?.members||[]).map(x=>`${x.kind}:${x.id}`)); editor._glt4ActiveGroup=g?.id; editor._render(); m.remove(); });
+    m.querySelectorAll("[data-delete]").forEach((b)=>b.onclick=()=>{ editor._remember?.(); editor._config.groups=groups.filter(x=>x.id!==b.dataset.delete); editor._emit(); editor._render(); m.remove(); });
+    m.querySelectorAll("[data-template]").forEach((b)=>b.onclick=async()=>{ const g=groups.find(x=>x.id===b.dataset.template); if(!g)return; const objects=(g.members||[]).map((r)=>{const arr=r.kind==="equipment"?editor._config.equipment:r.kind==="datapoint"?editor._config.datapoints:r.kind==="path"?editor._config.paths:editor._config.kpis;return {kind:r.kind,object:clone(arr.find(x=>x.id===r.id))};}).filter(x=>x.object); await editorStore(editor).saveTemplate({id:`group-${g.id}-${Date.now().toString(36)}`,name:g.name,kind:"group",objects}); alert("Unteranlage als Vorlage gespeichert."); });
+  }
+
+  function showAutoRoute(editor) {
+    const eq = editor._config.equipment || [];
+    const multi = Array.from(editor._glt4Multi || []).map((x)=>x.split(":"));
+    const selectedEq = multi.filter((x)=>x[0]==="equipment").map((x)=>x[1]);
+    const a0 = selectedEq[0] || eq[0]?.id || "", b0 = selectedEq[1] || eq[1]?.id || "";
+    const options = eq.map((e)=>`<option value="${esc(e.id)}">${esc(e.name||e.id)}</option>`).join("");
+    const mediumOpts = [["heating_supply","Vorlauf"],["heating_return","Rücklauf"],["cooling_supply","Kälte VL"],["cooling_return","Kälte RL"],["air_supply","Zuluft"],["air_extract","Abluft"],["electrical","Elektrisch"],["neutral","Neutral"]].map(([v,l])=>`<option value="${v}">${l}</option>`).join("");
+    const m = modal(editor,"Automatisch verbinden",`<div class="glt4-grid"><label>Von<select class="glt4-select" data-from>${options}</select></label><label>Nach<select class="glt4-select" data-to>${options}</select></label><label>Medium<select class="glt4-select" data-medium>${mediumOpts}</select></label></div><div class="glt4-actions"><button class="glt4-btn" data-create>Orthogonale Verbindung erstellen</button></div><p style="font-size:9px;color:var(--mut)">Auto-Routen bleiben an den Bauteilen verankert und werden beim Verschieben neu berechnet.</p>`);
+    m.querySelector("[data-from]").value=a0; m.querySelector("[data-to]").value=b0;
+    m.querySelector("[data-create]").onclick=()=>{ const from=m.querySelector("[data-from]").value,to=m.querySelector("[data-to]").value;if(!from||!to||from===to)return; editor._remember?.(); const p={id:editor._id?.("path")||`path_${Date.now()}`,medium:m.querySelector("[data-medium]").value,width:8,from_equipment:from,to_equipment:to,auto_route:true,points:[]}; p.points=autoRoute(editor._config,p,editor._viewId)||[]; editor._config.paths.push(p);editor._sel={k:"path",id:p.id};editor._emit();editor._render();m.remove(); };
+  }
+
+  function bindPicker(picker, hass, value, domains, onChange) {
+    picker.hass = hass;
+    picker.value = value || "";
+    if (domains?.length) picker.includeDomains = domains;
+    picker.addEventListener("value-changed", (e) => onChange(e.detail?.value || ""));
+  }
+
+  function showAlarmsEditor(editor) {
+    const rows = (editor._config.alarms || []).map((a,i)=>`<div class="glt4-entity-row" data-row="${i}"><ha-entity-picker data-ent></ha-entity-picker><input class="glt4-input" data-name value="${esc(a.name||"")}" placeholder="Name"><select class="glt4-select" data-sev><option value="critical">Störung</option><option value="warning">Warnung</option><option value="info">Hinweis</option></select><button class="glt4-btn glt4-danger" data-rm>✕</button></div>`).join("");
+    const m=modal(editor,"Alarme & Meldungen",`<div data-rows>${rows}</div><div class="glt4-actions"><button class="glt4-btn" data-add>Alarm hinzufügen</button><button class="glt4-btn" data-save>Übernehmen</button></div><p style="font-size:9px;color:var(--mut)">Optional können pro Alarm in YAML zusätzlich <code>ack.service</code>, <code>active_states</code> und <code>inactive_states</code> gesetzt werden.</p>`);
+    const setup=()=>m.querySelectorAll("[data-row]").forEach((row,i)=>{const a=editor._config.alarms[i]||{};const p=row.querySelector("ha-entity-picker");bindPicker(p,editor._hass,field(a.entity)?.entity||a.entity,["binary_sensor","sensor","alarm_control_panel"],(v)=>row.dataset.entity=v);row.dataset.entity=field(a.entity)?.entity||a.entity||"";row.querySelector("[data-sev]").value=a.severity||"warning";row.querySelector("[data-rm]").onclick=()=>row.remove();});setup();
+    m.querySelector("[data-add]").onclick=()=>{const i=m.querySelectorAll("[data-row]").length;const div=document.createElement("div");div.className="glt4-entity-row";div.dataset.row=i;div.innerHTML='<ha-entity-picker data-ent></ha-entity-picker><input class="glt4-input" data-name placeholder="Name"><select class="glt4-select" data-sev><option value="critical">Störung</option><option value="warning">Warnung</option><option value="info">Hinweis</option></select><button class="glt4-btn glt4-danger" data-rm>✕</button>';m.querySelector("[data-rows]").appendChild(div);bindPicker(div.querySelector("ha-entity-picker"),editor._hass,"",["binary_sensor","sensor","alarm_control_panel"],v=>div.dataset.entity=v);div.querySelector("[data-rm]").onclick=()=>div.remove();};
+    m.querySelector("[data-save]").onclick=()=>{editor._remember?.();editor._config.alarms=Array.from(m.querySelectorAll("[data-row]")).map((r,i)=>({id:editor._config.alarms[i]?.id||`alarm_${Date.now()}_${i}`,entity:r.dataset.entity||"",name:r.querySelector("[data-name]").value||r.dataset.entity,severity:r.querySelector("[data-sev]").value})).filter(x=>x.entity);editor._emit();editor._render();m.remove();};
+  }
+
+  function showAssetsEditor(editor) {
+    const assets=editor._config.assets||[];
+    const html=assets.map((a,i)=>`<tr data-asset="${i}"><td><input class="glt4-input" data-name value="${esc(a.name||a.id||"")}"></td><td><ha-entity-picker data-hours></ha-entity-picker></td><td><input class="glt4-input" type="number" data-interval value="${esc(a.service_interval_hours||"")}"></td><td><input class="glt4-input" type="date" data-date value="${esc(a.due_date||"")}"></td><td><button class="glt4-btn glt4-danger" data-rm>✕</button></td></tr>`).join("");
+    const m=modal(editor,"Wartung & Assets",`<table class="glt4-table"><thead><tr><th>Asset</th><th>Betriebsstunden</th><th>Intervall h</th><th>Fällig</th><th></th></tr></thead><tbody data-body>${html}</tbody></table><div class="glt4-actions"><button class="glt4-btn" data-add>Asset hinzufügen</button><button class="glt4-btn" data-save>Übernehmen</button></div><p style="font-size:9px;color:var(--mut)">Dokumente, Ersatzteil-Links und Notizen können zusätzlich per YAML unter <code>documents</code>, <code>parts</code> und <code>notes</code> hinterlegt werden.</p>`);
+    const setupRow=(r,a={})=>{bindPicker(r.querySelector("ha-entity-picker"),editor._hass,field(a.entity_hours)?.entity||a.entity_hours,["sensor"],v=>r.dataset.hours=v);r.dataset.hours=field(a.entity_hours)?.entity||a.entity_hours||"";r.querySelector("[data-rm]").onclick=()=>r.remove();};m.querySelectorAll("[data-asset]").forEach((r,i)=>setupRow(r,assets[i]));
+    m.querySelector("[data-add]").onclick=()=>{const r=document.createElement("tr");r.dataset.asset="new";r.innerHTML='<td><input class="glt4-input" data-name placeholder="Asset"></td><td><ha-entity-picker data-hours></ha-entity-picker></td><td><input class="glt4-input" type="number" data-interval></td><td><input class="glt4-input" type="date" data-date></td><td><button class="glt4-btn glt4-danger" data-rm>✕</button></td>';m.querySelector("[data-body]").appendChild(r);setupRow(r,{});};
+    m.querySelector("[data-save]").onclick=()=>{editor._remember?.();editor._config.assets=Array.from(m.querySelectorAll("[data-asset]")).map((r,i)=>({id:assets[i]?.id||`asset_${Date.now()}_${i}`,name:r.querySelector("[data-name]").value||`Asset ${i+1}`,entity_hours:r.dataset.hours||"",service_interval_hours:+r.querySelector("[data-interval]").value||undefined,due_date:r.querySelector("[data-date]").value||undefined,documents:assets[i]?.documents||[],parts:assets[i]?.parts||[],notes:assets[i]?.notes||""}));editor._emit();editor._render();m.remove();};
+  }
+
+  function showSites(editor) {
+    const sites=editor._config.sites||[];
+    const m=modal(editor,"Multi-Anlagen / Standorte",`<table class="glt4-table"><thead><tr><th>ID</th><th>Name</th><th></th></tr></thead><tbody data-body>${sites.map((s,i)=>`<tr data-site="${i}"><td><input class="glt4-input" data-id value="${esc(s.id)}"></td><td><input class="glt4-input" data-name value="${esc(s.name||s.id)}"></td><td><button class="glt4-btn glt4-danger" data-rm>✕</button></td></tr>`).join("")}</tbody></table><div class="glt4-actions"><button class="glt4-btn" data-add>Standort hinzufügen</button><button class="glt4-btn" data-save>Übernehmen</button></div><p style="font-size:9px;color:var(--mut)">Bauteilen, Pfaden und Datenpunkten kann im Eigenschaftenbereich ein Standort zugeordnet werden.</p>`);
+    const bind=()=>m.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>b.closest("tr").remove());bind();m.querySelector("[data-add]").onclick=()=>{const r=document.createElement("tr");r.dataset.site="new";r.innerHTML='<td><input class="glt4-input" data-id placeholder="site_a"></td><td><input class="glt4-input" data-name placeholder="Heizzentrale"></td><td><button class="glt4-btn glt4-danger" data-rm>✕</button></td>';m.querySelector("[data-body]").appendChild(r);bind();};m.querySelector("[data-save]").onclick=()=>{editor._remember?.();editor._config.sites=Array.from(m.querySelectorAll("[data-site]")).map(r=>({id:slug(r.querySelector("[data-id]").value),name:r.querySelector("[data-name]").value||r.querySelector("[data-id]").value})).filter(s=>s.id);editor._emit();editor._render();m.remove();};
+  }
+
+  function showPermissions(editor) {
+    const p=editor._config.permissions||{};
+    const m=modal(editor,"Benutzer & Rechte",`<p style="font-size:9px;color:var(--mut)">Home-Assistant-Administratoren sind immer Designer. Weitere Benutzer werden über ihre HA-User-ID zugeordnet.</p><div class="glt4-grid"><label>Designer<textarea class="glt4-textarea" style="min-height:90px" data-designers>${esc((p.designers||[]).join("\n"))}</textarea></label><label>Operatoren<textarea class="glt4-textarea" style="min-height:90px" data-operators>${esc((p.operators||[]).join("\n"))}</textarea></label><label>Viewer<textarea class="glt4-textarea" style="min-height:90px" data-viewers>${esc((p.viewers||[]).join("\n"))}</textarea></label></div><label style="display:flex;gap:7px;align-items:center;margin-top:10px;font-size:10px"><input type="checkbox" data-confirm ${p.confirm_controls!==false?"checked":""}> Bedienaktionen bestätigen</label><div class="glt4-actions"><button class="glt4-btn" data-save>Übernehmen</button></div>`);m.querySelector("[data-save]").onclick=()=>{const lines=(s)=>s.split(/\r?\n|,/).map(x=>x.trim()).filter(Boolean);editor._remember?.();editor._config.permissions={...p,designers:lines(m.querySelector("[data-designers]").value),operators:lines(m.querySelector("[data-operators]").value),viewers:lines(m.querySelector("[data-viewers]").value),confirm_controls:m.querySelector("[data-confirm]").checked};editor._emit();editor._render();m.remove();};
+  }
+
+  async function showAudit(editor) {
+    const events=await editorStore(editor).listAudit(250);
+    modal(editor,"Audit-Log",`<table class="glt4-table"><thead><tr><th>Zeit</th><th>Benutzer</th><th>Aktion</th><th>Details</th></tr></thead><tbody>${events.map(e=>`<tr><td>${esc(e.at||"")}</td><td>${esc(e.user_name||e.user_id||"lokal")}</td><td>${esc(e.action)}</td><td><code>${esc(JSON.stringify(e.detail||{}))}</code></td></tr>`).join("")||'<tr><td colspan="4">Noch keine Audit-Einträge.</td></tr>'}</tbody></table>`);
+  }
+
+  function enhanceInspector(editor) {
+    const insp=editor.shadowRoot.querySelector(".insp"); if(!insp||!editor._sel)return;
+    const obj=editor._obj?.(); if(!obj)return;
+    if(editor._config.sites?.length){const sec=document.createElement("div");sec.className="sec glt4-site-inspector";sec.innerHTML=`<div class="st">Standort <span class="chip">Multi-Site</span></div><select class="glt4-select" data-glt4-site><option value="">Alle / global</option>${editor._config.sites.map(s=>`<option value="${esc(s.id)}" ${obj.site===s.id?"selected":""}>${esc(s.name||s.id)}</option>`).join("")}</select>`;sec.querySelector("select").onchange=(e)=>{editor._remember?.();obj.site=e.target.value||undefined;editor._emit();editor._render();};insp.prepend(sec);}
+  }
+
+  function enhanceMultiSelect(editor) {
+    const root=editor.shadowRoot; editor._glt4Multi=editor._glt4Multi||new Set();
+    root.querySelectorAll('[data-k="equipment"],[data-k="datapoint"],[data-k="path"]').forEach((n)=>{
+      const key=`${n.dataset.k}:${n.dataset.id}`;
+      if(editor._glt4Multi.has(key))n.classList.add("glt4-multi");
+      if((editor._config.groups||[]).some(g=>g.id===editor._glt4ActiveGroup&&(g.members||[]).some(m=>`${m.kind}:${m.id}`===key)))n.classList.add("glt4-group");
+      n.addEventListener("click",(e)=>{if(!(e.ctrlKey||e.metaKey||e.shiftKey))return;e.preventDefault();e.stopImmediatePropagation();if(editor._glt4Multi.has(key))editor._glt4Multi.delete(key);else editor._glt4Multi.add(key);editor._render();},true);
+    });
+  }
+
+  function editorToolbar(editor) {
+    const de=editor.shadowRoot.querySelector(".de"); if(!de||de.querySelector(".glt4-bar"))return;
+    const bar=document.createElement("div");bar.className="glt4-bar";bar.innerHTML=`<button class="glt4-btn" data-g4="projects">Projekte</button><button class="glt4-btn" data-g4="yaml-import">YAML Import</button><button class="glt4-btn" data-g4="yaml">YAML Export</button><button class="glt4-btn" data-g4="templates">Vorlagen</button><button class="glt4-btn" data-g4="groups">Gruppen</button><button class="glt4-btn" data-g4="route">Auto-Verbinden</button><button class="glt4-btn" data-g4="sites">Standorte</button><button class="glt4-btn" data-g4="alarms">Alarme</button><button class="glt4-btn" data-g4="assets">Wartung</button><span class="glt4-spacer"></span><button class="glt4-btn" data-g4="permissions">Rechte</button><button class="glt4-btn" data-g4="audit">Audit</button>`;
+    de.querySelector(".dt")?.after(bar);
+    const actions={projects:()=>showProjects(editor),"yaml-import":()=>showYaml(editor,true),yaml:()=>showYaml(editor,false),templates:()=>showTemplates(editor),groups:()=>showGroups(editor),route:()=>showAutoRoute(editor),sites:()=>showSites(editor),alarms:()=>showAlarmsEditor(editor),assets:()=>showAssetsEditor(editor),permissions:()=>showPermissions(editor),audit:()=>showAudit(editor)};
+    bar.querySelectorAll("[data-g4]").forEach(b=>b.onclick=()=>actions[b.dataset.g4]?.());
+  }
+
+  // Editor prototype patches -------------------------------------------------
+  const editorHass = Object.getOwnPropertyDescriptor(Editor.prototype, "hass");
+  if (editorHass?.set) Object.defineProperty(Editor.prototype,"hass",{configurable:true,get:editorHass.get,set(h){this._glt4Hass=h;editorHass.set.call(this,h);if(this._glt4Store)this._glt4Store.hass=h;}});
+
+  const originalSetConfig=Editor.prototype.setConfig;
+  Editor.prototype.setConfig=function(config){config=ensureV4Config(clone(config||{}));this._glt4ProjectId=config.project?.id||this._glt4ProjectId;return originalSetConfig.call(this,config);};
+
+  const originalEmit=Editor.prototype._emit;
+  Editor.prototype._emit=function(){ensureV4Config(this._config);reroute(this._config,this._viewId);const result=originalEmit.call(this);clearTimeout(this._glt4AutosaveTimer);this._glt4AutosaveTimer=setTimeout(async()=>{const id=this._glt4ProjectId||this._config.project?.id;if(id){const name=this._config.project?.name||this._config.title||id;await editorStore(this).saveProject({id,name,config:clone(this._config)},{autosave:true});}else{localWrite("glt-flow-card.autosave",{at:nowIso(),config:this._config});}},900);return result;};
+
+  const originalRender=Editor.prototype._render;
+  Editor.prototype._render=function(){const result=originalRender.call(this);const style=document.createElement("style");style.textContent=EDITOR_EXTRA_STYLES;this.shadowRoot.appendChild(style);editorToolbar(this);enhanceInspector(this);enhanceMultiSelect(this);const role=roleFor(this._config,this._hass||this._glt4Hass);if(role!=="designer"){const de=this.shadowRoot.querySelector(".de");if(de&&!de.querySelector(".glt4-readonly")){const b=document.createElement("div");b.className="glt4-readonly";b.textContent=`Nur-Lesen: Rolle ${role}. Änderungen sind nur für Designer erlaubt.`;de.querySelector(".dt")?.after(b);}this.shadowRoot.querySelectorAll("input,select,textarea,.pi,[draggable=true],[data-act],[data-g4]").forEach(el=>{if(el.dataset.g4==="yaml"||el.dataset.g4==="projects")return;el.disabled=true;el.draggable=false;});}return result;};
+
+  const originalStart=Editor.prototype._start;
+  Editor.prototype._start=function(e,k,id,m,hi=null){let members=[];if(m==="move"){const group=(this._config.groups||[]).find(g=>(g.members||[]).some(x=>x.kind===k&&x.id===id));if(group)members=clone(group.members||[]);else if(this._glt4Multi?.size>1&&this._glt4Multi.has(`${k}:${id}`))members=Array.from(this._glt4Multi).map(x=>{const [kind,mid]=x.split(":");return{kind,id:mid};});}const snap=members.map(r=>{const arr=r.kind==="equipment"?this._config.equipment:r.kind==="datapoint"?this._config.datapoints:r.kind==="path"?this._config.paths:this._config.kpis;const o=arr.find(x=>x.id===r.id);if(!o)return null;if(r.kind==="datapoint")return{...r,pos:clone(o.positions?.[this._viewId]||o)};if(r.kind==="path")return{...r,points:clone(o.points||[])};return{...r,pos:{x:+o.x||0,y:+o.y||0}};}).filter(Boolean);const result=originalStart.call(this,e,k,id,m,hi);if(snap.length)this._glt4GroupSnapshot={members:snap,anchor:`${k}:${id}`};return result;};
+
+  const originalMove=Editor.prototype._move;
+  Editor.prototype._move=function(e){const gs=this._glt4GroupSnapshot,d=this._drag;if(gs&&d?.m==="move"){const dx=(e.clientX-d.sx)/this._zoom,dy=(e.clientY-d.sy)/this._zoom;for(const s of gs.members){if(`${s.kind}:${s.id}`===gs.anchor)continue;const arr=s.kind==="equipment"?this._config.equipment:s.kind==="datapoint"?this._config.datapoints:s.kind==="path"?this._config.paths:this._config.kpis;const o=arr.find(x=>x.id===s.id);if(!o)continue;if(s.kind==="equipment"){o.x=this._sv(s.pos.x+dx);o.y=this._sv(s.pos.y+dy);}else if(s.kind==="datapoint"){o.positions=o.positions||{};o.positions[this._viewId]={x:this._sv((s.pos.x||0)+dx),y:this._sv((s.pos.y||0)+dy)};}else if(s.kind==="path"){o.points=s.points.map(p=>[this._sv(p[0]+dx),this._sv(p[1]+dy)]);}}}return originalMove.call(this,e);};

@@ -1,0 +1,52 @@
+name: Apply Engineering Workspace v0.4.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/v040-extension.part*'
+      - 'tools/apply-v040.mjs'
+      - '.github/workflows/apply-v040.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: glt-v040-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install build dependencies
+        run: npm install --save-dev js-yaml@^4.1.0 esbuild@^0.25.0 marked@^15.0.0
+      - name: Bundle workspace extension
+        run: |
+          cat src/v040-extension.part* > /tmp/v040-source.js
+          npx esbuild /tmp/v040-source.js --bundle --format=iife --target=es2022 --banner:js='/*! GLT Flow Card v0.4 extensions */' --outfile=/tmp/glt-v040.js
+      - name: Apply v0.4 to production bundle and docs
+        run: node tools/apply-v040.mjs /tmp/glt-v040.js
+      - name: Install/check generated package lock
+        run: npm install --ignore-scripts
+      - run: npm run check
+      - run: npm test
+      - run: node --test test/v040.test.mjs
+      - name: Build documentation site
+        run: node tools/build-site.mjs
+      - name: Commit generated production files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/glt-flow-card.js package.json package-lock.json README.md README.de.md CHANGELOG.md test/smoke.test.mjs
+          git diff --cached --quiet && exit 0
+          git commit -m "Add GLT engineering workspace v0.4.0"
+          git push
