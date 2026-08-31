@@ -23,7 +23,7 @@
 - **Eigene Bilder** als komplette Anlagenansicht oder als einzelnes Anlagenobjekt.
 - **Live- und Replay-Werte direkt an der richtigen Stelle**.
 - **Hell-/Dunkelmodus**, responsive Darstellung und reduzierte Animationen bei entsprechender Systemeinstellung.
-- **Basis-Editor** für globale Optionen; die komplette Anlagengeometrie ist über YAML konfigurierbar.
+- **Vollständiger Drag-&-Drop-Anlageneditor** für Bauteile, Medienleitungen, Datenpunkte, KPIs und Bildansichten; YAML bleibt für Spezialfälle verfügbar.
 
 ## Installation
 
@@ -37,6 +37,20 @@
 
 1. `dist/glt-flow-card.js` nach `config/www/glt-flow-card.js` kopieren.
 2. `/local/glt-flow-card.js` als **JavaScript-Modul** bei den Dashboard-Ressourcen eintragen.
+
+## Drag-&-Drop-Designer
+
+Der visuelle Editor ist jetzt ein vollständiger Anlagen-Designer. Die GLT kann direkt im Home-Assistant-Karteneditor aufgebaut werden:
+
+- Anlagenbauteile, Medienleitungen, Datenpunkte und KPIs aus der Palette auf die Zeichenfläche ziehen;
+- Bauteile direkt verschieben und in der Größe ändern;
+- Leitungswege über verschiebbare Stützpunkte aufbauen;
+- Home-Assistant-Entitäten rechts im Eigenschaften-Inspector zuordnen;
+- Anlagenbild-Ansichten hinzufügen und denselben Datenpunkt im Schema und Foto getrennt positionieren;
+- Rasterfang, Zoom, Duplizieren, Löschen, Tastatur-Nudging sowie Undo/Redo;
+- eigene Bilder/SVGs sowohl für komplette Ansichten als auch für einzelne Anlagenobjekte.
+
+Der Designer schreibt dieselbe YAML-Konfiguration wie die manuelle Konfiguration. Visueller Editor und YAML können deshalb jederzeit kombiniert werden.
 
 ## Schnellstart
 

@@ -23,7 +23,7 @@
 - **Custom images** for complete views or individual equipment objects.
 - **Live / replay values at the exact plant position**.
 - **Light/dark theme aware** and responsive.
-- **Basic visual editor** for global options; complete geometry remains available in YAML for maximum flexibility.
+- **Full drag & drop plant designer** for equipment, media paths, data points, KPIs and image views — YAML remains available for advanced setups.
 
 ## Installation
 
@@ -37,6 +37,20 @@
 
 1. Copy `dist/glt-flow-card.js` to `config/www/glt-flow-card.js`.
 2. Add `/local/glt-flow-card.js` as a **JavaScript module** under Dashboard resources.
+
+## Drag & Drop Designer
+
+The visual editor is now a complete plant designer instead of a form for global options only. Open the card editor in Home Assistant and build the plant directly on the canvas:
+
+- drag equipment, media paths, data points and KPIs from the component palette;
+- move and resize equipment directly on the plant canvas;
+- edit pipe routing with draggable control points;
+- assign Home Assistant entities in the property inspector;
+- add image views and place the same data point independently on schematic and plant photo;
+- use grid snapping, zoom, duplicate, delete, keyboard nudging, undo and redo;
+- use custom image/SVG URLs for complete views or individual equipment.
+
+The editor writes the same YAML configuration documented below, so visual editing and hand-written YAML can be mixed at any time.
 
 ## Quick start
 

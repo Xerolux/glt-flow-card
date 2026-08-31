@@ -14,3 +14,10 @@ test("contains requested GLT feature foundations", () => {
     assert.ok(source.includes(token), `missing ${token}`);
   }
 });
+
+
+test("drag and drop editor foundations", () => {
+  for (const token of ["class GltFlowCardEditor", "data-pk", "_drop(e,c)", "_undo()", "_redo()", "data-hi", "Eigenes Bild / SVG"]) {
+    assert.ok(source.includes(token), `missing editor token ${token}`);
+  }
+});
