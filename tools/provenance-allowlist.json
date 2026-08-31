@@ -1,0 +1,124 @@
+{
+  "packages": [
+    {
+      "artifacts": [
+        {
+          "algorithm": "sha512",
+          "digest": "DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ==",
+          "filename": "test-1.62.1.tgz",
+          "url": "https://registry.npmjs.org/@playwright/test/-/test-1.62.1.tgz"
+        }
+      ],
+      "ecosystem": "npm",
+      "hash_policy": "exact-set",
+      "lifecycle_scripts": {},
+      "name": "@playwright/test",
+      "registry_url": "https://registry.npmjs.org/%40playwright%2Ftest/1.62.1",
+      "source": {
+        "api_url": "https://api.github.com/repos/microsoft/playwright",
+        "owner": "microsoft",
+        "repository": "playwright"
+      },
+      "version": "1.62.1"
+    },
+    {
+      "artifacts": [
+        {
+          "algorithm": "sha512",
+          "digest": "ig0aIElRmwDhe+tCyd/aAN9dluG0owGYjafCn7w4k/e+DHsit93yXLB+hBVgc8g/5jYp54L09LSECqEMNXNqgA==",
+          "filename": "zip.js-2.8.30.tgz",
+          "url": "https://registry.npmjs.org/@zip.js/zip.js/-/zip.js-2.8.30.tgz"
+        }
+      ],
+      "ecosystem": "npm",
+      "hash_policy": "exact-set",
+      "lifecycle_scripts": {},
+      "name": "@zip.js/zip.js",
+      "registry_url": "https://registry.npmjs.org/%40zip.js%2Fzip.js/2.8.30",
+      "source": {
+        "api_url": "https://api.github.com/repos/gildas-lormeau/zip.js",
+        "owner": "gildas-lormeau",
+        "repository": "zip.js"
+      },
+      "version": "2.8.30"
+    },
+    {
+      "artifacts": [
+        {
+          "algorithm": "sha512",
+          "digest": "Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==",
+          "filename": "ajv-8.20.0.tgz",
+          "url": "https://registry.npmjs.org/ajv/-/ajv-8.20.0.tgz"
+        }
+      ],
+      "ecosystem": "npm",
+      "hash_policy": "exact-set",
+      "lifecycle_scripts": {
+        "prepublish": "npm run build"
+      },
+      "name": "ajv",
+      "registry_url": "https://registry.npmjs.org/ajv/8.20.0",
+      "source": {
+        "api_url": "https://api.github.com/repos/ajv-validator/ajv",
+        "owner": "ajv-validator",
+        "repository": "ajv"
+      },
+      "version": "8.20.0"
+    },
+    {
+      "artifacts": [
+        {
+          "algorithm": "sha256",
+          "digest": "d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce",
+          "filename": "jsonschema-4.26.0-py3-none-any.whl",
+          "url": "https://files.pythonhosted.org/packages/69/90/f63fb5873511e014207a475e2bb4e8b2e570d655b00ac19a9a0ca0a385ee/jsonschema-4.26.0-py3-none-any.whl"
+        },
+        {
+          "algorithm": "sha256",
+          "digest": "0c26707e2efad8aa1bfc5b7ce170f3fccc2e4918ff85989ba9ffa9facb2be326",
+          "filename": "jsonschema-4.26.0.tar.gz",
+          "url": "https://files.pythonhosted.org/packages/b3/fc/e067678238fa451312d4c62bf6e6cf5ec56375422aee02f9cb5f909b3047/jsonschema-4.26.0.tar.gz"
+        }
+      ],
+      "ecosystem": "pypi",
+      "hash_policy": "exact-set",
+      "lifecycle_scripts": {},
+      "name": "jsonschema",
+      "registry_url": "https://pypi.org/pypi/jsonschema/4.26.0/json",
+      "source": {
+        "api_url": "https://api.github.com/repos/python-jsonschema/jsonschema",
+        "owner": "python-jsonschema",
+        "repository": "jsonschema"
+      },
+      "version": "4.26.0"
+    },
+    {
+      "artifacts": [
+        {
+          "algorithm": "sha256",
+          "digest": "022092149290327b3769ca6008784e7d9be75af10b1f7fef2653e7516cc99619",
+          "filename": "pytest_homeassistant_custom_component-0.13.316-py3-none-any.whl",
+          "url": "https://files.pythonhosted.org/packages/14/26/da81cf205e14add9cf1e1bbec3a0da142867f3e71a738eb2de05f38a672c/pytest_homeassistant_custom_component-0.13.316-py3-none-any.whl"
+        },
+        {
+          "algorithm": "sha256",
+          "digest": "4457dc5ecb6bfdf39241e008307f2cea34a0036178cbee2e52de3e4290448a16",
+          "filename": "pytest_homeassistant_custom_component-0.13.316.tar.gz",
+          "url": "https://files.pythonhosted.org/packages/59/cc/294b96ae5b90b276a9e0f4cfa02045d1d72fb484fe331ef33c0e4fc3b51a/pytest_homeassistant_custom_component-0.13.316.tar.gz"
+        }
+      ],
+      "ecosystem": "pypi",
+      "hash_policy": "exact-set",
+      "lifecycle_scripts": {},
+      "name": "pytest-homeassistant-custom-component",
+      "registry_url": "https://pypi.org/pypi/pytest-homeassistant-custom-component/0.13.316/json",
+      "source": {
+        "api_url": "https://api.github.com/repos/MatthewFlamm/pytest-homeassistant-custom-component",
+        "owner": "MatthewFlamm",
+        "repository": "pytest-homeassistant-custom-component"
+      },
+      "version": "0.13.316"
+    }
+  ],
+  "policy_version": 1
+}
