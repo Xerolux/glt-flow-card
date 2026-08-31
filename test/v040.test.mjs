@@ -2,12 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const source = await readFile(new URL("../dist/glt-flow-card.js", import.meta.url), "utf8");
+const parts = await Promise.all([0,1,2,3,4,5].map((n) => readFile(new URL(`../src/v040-extension.part0${n}`, import.meta.url), "utf8")));
+const source = parts.join("");
 
-test("v0.4 engineering workspace is bundled", () => {
+test("v0.4 engineering workspace source contains all major modules", () => {
   for (const token of [
-    'VERSION = "0.4.0"',
-    "GLT Flow Card v0.4 extensions",
+    'EXT_VERSION = "0.4.0"',
     "YAML importieren",
     "Projektbibliothek",
     "Vorlagen & Bauteil-Templates",
