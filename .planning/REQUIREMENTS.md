@@ -116,15 +116,16 @@ Filled during roadmap creation. Every requirement must map to exactly one primar
 | SITE-01 | Phase 9 | Pending |
 | SDK-01 | Phase 5 | Pending |
 | PROTO-01 | Phase 3 | Pending |
-| SCHEMA-01 | Phase 1 | Pending |
+| SCHEMA-01 | Phase 1 | Complete |
 | DIFF-01 | Phase 1 | Pending |
 | COLLAB-01 | Phase 2 | Pending |
-| HACS-01 | Phase 1 | Pending |
+| HACS-01 | Phase 1 | Complete |
 | I18N-01 | Phase 10 | Pending |
 | A11Y-01 | Phase 10 | Pending |
 | TEST-01 | Phase 10 | Pending |
 
 **Coverage:**
+
 - v1.1 requirements: 30 total
 - Mapped to phases: 30
 - Unmapped: 0
