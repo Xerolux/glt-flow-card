@@ -86,7 +86,7 @@
         ],
         "unevaluatedProperties": false
       },
-      "maxItems": 255
+      "maxItems": 254
     }
   },
   "required": [

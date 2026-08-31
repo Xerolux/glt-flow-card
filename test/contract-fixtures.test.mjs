@@ -138,6 +138,8 @@ test("limits encode the complete JSON and archive resource budgets", async () =>
       max_compression_ratio: 100,
     },
   });
+  const bundleSchema = await readJson("schemas/bundle-manifest.schema.json");
+  assert.equal(bundleSchema.properties.assets.maxItems, limits.archive.max_entries - 2, "manifest and project consume two archive entries");
 });
 
 test("diff policy declares identities, five categories, order, dependencies, and impact", async () => {
@@ -287,10 +289,16 @@ test("fixture bodies match manifest digests and bulky generated evidence is not 
   await withFixtureTemp(async (outputDir) => {
     await generateContractFixtures({ outputDir });
     const manifest = JSON.parse(await readFile(join(outputDir, "manifest.json"), "utf8"));
+    const validators = await compiledProjectValidators();
     for (const fixture of manifest.fixtures) {
       const bytes = await readFile(join(outputDir, fixture.file));
       assert.equal(bytes.length, fixture.bytes, fixture.id);
       assert.equal(createHash("sha256").update(bytes).digest("hex"), fixture.sha256, fixture.id);
+      if (["golden", "scale_correctness"].includes(fixture.class)) {
+        const document = JSON.parse(bytes);
+        const version = document.schema_version ?? 0;
+        assert.equal(validators[version](document), true, `${fixture.id}: ${JSON.stringify(validators[version].errors)}`);
+      }
     }
     const exampleBytes = await readFile(new URL("examples/idm-neo2030.yaml", ROOT));
     assert.equal(manifest.provenance[0].sha256, createHash("sha256").update(exampleBytes).digest("hex"));
