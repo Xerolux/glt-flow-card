@@ -1,6 +1,7 @@
 ## GLT Flow Card
 
 - [Home](Home)
+- [Platform 1.0](Platform-v1)
 - [Installation](Installation)
 - [Drag-&-Drop Designer](Designer)
 - [YAML, Projekte & Versionen](YAML-Projects)
@@ -15,4 +16,4 @@
 - [Beispiele](Examples)
 - [FAQ](FAQ)
 
-[Online Editor](https://xerolux.github.io/glt-flow-card/editor/) · [Repository](https://github.com/Xerolux/glt-flow-card)
+[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html) · [Online Editor](https://xerolux.github.io/glt-flow-card/editor/) · [Repository](https://github.com/Xerolux/glt-flow-card)

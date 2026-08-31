@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.0 - 2026-08-31
+
+- Professional operational-state engine for Auto/Manual/Local/Remote/Fault/Warning/Lock/Interlock/Maintenance/communication/quality/command states.
+- Rich equipment control panels with Companion-enforced roles and audited service execution.
+- Alarm lifecycle 2.0 with conditions, hysteresis, delay, acknowledgement/comment, shelving, history and notifications.
+- Server-side weekly schedules and report snapshots.
+- Semantic site/building/floor/system model, automatic HA entity mapping and parametric component profiles.
+- 250+ professional symbol variants, intelligent ports and obstacle-aware orthogonal routing.
+- CAD layer tools, lasso, align/distribute, Z-order, Copy/Paste and minimap.
+- Drill-down, historian aggregation/deadband, simulation and commissioning diagnostics.
+- Energy, work orders, reports, remote Home Assistant sites and plugin SDK.
+- Schema v1 migrations, .gltproject bundles, project diff, optimistic revisions and project locks.
+- Companion Config Flow, i18n foundation, accessibility/kiosk/widescreen support and 2,000-object engineering tests.
+
+
 ## 0.4.0 - 2026-08-31
 
 - YAML round-trip import/export with js-yaml and unknown-key preservation in the project object.

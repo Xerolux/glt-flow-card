@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "GLT Flow Card Companion",
+        "description": "Aktiviert persistente Projekte, sichere Bedienung, Alarm-Lifecycle, Zeitprogramme, Audit, Reports und Multi-Site-Dienste."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Es wird nur eine GLT Flow Card Companion Instanz benötigt."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "GLT Flow Card Companion Optionen",
+        "data": {
+          "server_enforced": "Bedienungen serverseitig erzwingen",
+          "default_lock_ttl": "Standard Projekt-Lock TTL (Sekunden)",
+          "max_versions": "Maximale Projektversionen",
+          "max_audit": "Maximale Audit-Einträge"
+        }
+      }
+    }
+  }
+}

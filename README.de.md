@@ -41,6 +41,31 @@ Die folgenden Bilder werden automatisch aus der **aktuellen GitHub-Pages-Oberfl�
 
 <!-- GLT-SHOWCASE:END -->
 
+<!-- GLT-V1:START -->
+
+## GLT Engineering Platform 1.0
+
+**Version 1.0** erweitert die GLT Flow Card von einer Visualisierung zu einer Home-Assistant-basierten GLT-/SCADA-Engineering-Plattform. Die bestehenden sechs Designs und der Drag-&-Drop-Designer bleiben erhalten; hinzu kommen professionelle Betriebs-, Engineering- und Inbetriebnahmefunktionen.
+
+- vollständiges **Betriebszustandsmodell**: Auto, Hand, Lokal, Fern, Störung, Warnung, Sperre, Interlock, Wartung, Kommunikationsfehler, veraltete/ungültige Werte und Befehlsstatus;
+- **Objektbedienung** für Pumpen, Ventile, Mischer, Antriebe und Sollwerte mit serverseitiger Rechteprüfung im Companion;
+- **Alarm Lifecycle 2.0** mit Priorität, Alarmklasse, Hysterese, Verzögerung, Quittierung, Kommentar, Shelving, Historie, Benachrichtigung und Eskalation;
+- **Wochenprogramme, Kalender und Zeitpläne**;
+- semantische Struktur **Standort → Gebäude → Etage → Anlage → Teilanlage → Aggregat → Datenpunkt**;
+- **Auto-Mapping** vorhandener Home-Assistant-Entities auf parametrische GLT-Komponenten;
+- mehr als **250 Symbolvarianten** plus parametrisierte Maschinenprofile, intelligente Ports und hindernisbewusstes Routing;
+- CAD-Werkzeuge: Layer, Sperren, Z-Reihenfolge, Ausrichten, Verteilen, Lasso, Copy/Paste und Minimap;
+- Drill-down/Breadcrumbs, Historian-Aggregationen, Simulation, Inbetriebnahme und Entity-Diagnose;
+- Energie, Wartung/Arbeitsaufträge, Reports, Multi-Site/Remote-HA, Plugin-SDK, Projekt-Diff und `.gltproject`-Bundles;
+- Config Flow, serverseitiges Audit, Projekt-Locking sowie Deutsch/Englisch-Grundlage.
+
+> Für sichere Bedienungen, geräteübergreifende Projekte, Alarme, Zeitprogramme, Audit, Locks und Remote-Home-Assistant wird der **GLT Flow Card Companion** empfohlen. Die reine Dashboard-Card bleibt weiterhin ohne Backend nutzbar.
+
+**[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**
+
+<!-- GLT-V1:END -->
+
+
 ## Funktionen
 
 - **Professionelles GLT-Schema** mit frei platzierbaren Anlagen, Datenpunkten und Leitungen.

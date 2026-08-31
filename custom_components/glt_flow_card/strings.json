@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "GLT Flow Card Companion",
+        "description": "Enable persistent projects, secure controls, alarm lifecycle, schedules, audit, reports and multi-site services."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only one GLT Flow Card Companion instance is required."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "GLT Flow Card Companion options",
+        "data": {
+          "server_enforced": "Enforce controls on the server",
+          "default_lock_ttl": "Default project lock TTL (seconds)",
+          "max_versions": "Maximum project versions",
+          "max_audit": "Maximum audit entries"
+        }
+      }
+    }
+  }
+}
