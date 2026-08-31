@@ -31,8 +31,9 @@ jobs:
         run: npm install --save-dev js-yaml@^4.1.0 esbuild@^0.25.0 marked@^15.0.0
       - name: Bundle workspace extension
         run: |
-          cat src/v040-extension.part* > /tmp/v040-source.js
-          npx esbuild /tmp/v040-source.js --bundle --format=iife --target=es2022 --banner:js='/*! GLT Flow Card v0.4 extensions */' --outfile=/tmp/glt-v040.js
+          cat src/v040-extension.part* > src/v040-extension.tmp.js
+          npx esbuild src/v040-extension.tmp.js --bundle --format=iife --target=es2022 --banner:js='/*! GLT Flow Card v0.4 extensions */' --outfile=/tmp/glt-v040.js
+          rm src/v040-extension.tmp.js
       - name: Apply v0.4 to production bundle and docs
         run: node tools/apply-v040.mjs /tmp/glt-v040.js
       - name: Install/check generated package lock
@@ -45,7 +46,7 @@ jobs:
       - name: Commit generated production files
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+Xerolux@users.noreply.github.com"
           git add dist/glt-flow-card.js package.json package-lock.json README.md README.de.md CHANGELOG.md test/smoke.test.mjs
           git diff --cached --quiet && exit 0
           git commit -m "Add GLT engineering workspace v0.4.0"
