@@ -41,6 +41,28 @@ The following images are generated automatically from the **current GitHub Pages
 
 <!-- GLT-SHOWCASE:END -->
 
+<!-- GLT-V1:START -->
+
+## GLT Engineering Platform 1.0
+
+**Version 1.0** evolves GLT Flow Card from a visualization into a Home Assistant based GLT/BMS/SCADA engineering platform while keeping the six visual presets and the drag-and-drop workflow.
+
+- complete operational-state model: Auto, Manual, Local, Remote, Fault, Warning, Locked, Interlock, Maintenance, communication/stale/invalid and command states;
+- rich equipment controls with server-side authorization through the Companion;
+- alarm lifecycle 2.0 with priority/class, hysteresis, delay, acknowledgement/comment, shelving, history, notifications and escalation;
+- weekly schedules and calendars; semantic site/building/floor/system/equipment hierarchy;
+- automatic Home Assistant entity mapping and parametric equipment profiles;
+- 250+ symbol variants, smart ports, obstacle-aware routing and CAD engineering tools;
+- drill-down, Historian aggregation, simulation, commissioning diagnostics, energy, maintenance/work orders and reports;
+- remote Home Assistant sites, plugin SDK, project diff, `.gltproject` bundles, server audit/locking and i18n foundation.
+
+> The **GLT Flow Card Companion** is recommended for secure controls, cross-device projects, alarms, schedules, audit, locks and remote Home Assistant sites. The dashboard card still works standalone.
+
+**[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**
+
+<!-- GLT-V1:END -->
+
+
 ## Highlights
 
 - **Professional GLT canvas** with freely positioned equipment, data points and media paths.

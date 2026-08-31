@@ -1,7 +1,7 @@
 {
   "name": "glt-flow-card",
-  "version": "0.4.0",
-  "description": "Modern GLT/BMS engineering workspace for Home Assistant: Neo 2030/Clean/Classic SCADA, drag-and-drop, YAML round-trip, project/version library, native entity picker, alarms, assets, audit, reports, multi-site, replay and multi-axis trends.",
+  "version": "1.0.0",
+  "description": "Professional GLT/BMS/SCADA engineering platform for Home Assistant: operational states, secure controls, alarm lifecycle, schedules, semantic model, auto mapping, CAD designer, simulation, diagnostics, energy, assets, reports, multi-site and project bundles.",
   "license": "MIT",
   "author": "Xerolux",
   "repository": {
@@ -12,7 +12,8 @@
   "private": true,
   "scripts": {
     "check": "node --check dist/glt-flow-card.js",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "test:v1": "node --test test/v100-*.test.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.25.12",
