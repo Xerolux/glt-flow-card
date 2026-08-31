@@ -86,18 +86,21 @@ test("semantic diff emits deterministic five-category operations and impact", ()
 
 test("identity collection order and object key order are ignored only by policy", () => {
   const before = project({
+    paths: [],
     equipment: [
       { id: "a", type: "pump", tags: ["one", "two"] },
       { id: "b", type: "pump" },
     ],
   });
   const reordered = project({
+    paths: [],
     equipment: [
       { type: "pump", id: "b" },
       { tags: ["one", "two"], type: "pump", id: "a" },
     ],
   });
   const semanticOrderChanged = project({
+    paths: [],
     equipment: [
       { id: "a", type: "pump", tags: ["two", "one"] },
       { id: "b", type: "pump" },
