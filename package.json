@@ -16,6 +16,8 @@
     "test:v1": "node --test test/v100-*.test.mjs",
     "verify:provenance": "node tools/verify-provenance.mjs --online",
     "test:fixtures": "node --test test/contract-fixtures.test.mjs",
+    "generate:contract:validators": "node tools/generate-project-validators.mjs",
+    "verify:contract:validators": "node tools/generate-project-validators.mjs --check",
     "test:contract:js": "node --test test/v100-contract.test.mjs",
     "test:contract:parity": "node tools/compare-contract-runtimes.mjs",
     "test:migrations": "node --test test/v100-migrations.test.mjs",
