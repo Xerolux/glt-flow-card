@@ -33,7 +33,7 @@ jobs:
           python-version: '3.13'
       - run: npm ci --ignore-scripts
       - name: Bundle v1 engineering extension
-        run: npx esbuild src/v100/index.js --bundle --format=iife --target=es2022 --outfile=/tmp/glt-v100.js
+        run: npx esbuild src/v100/entry.js --bundle --format=iife --target=es2022 --outfile=/tmp/glt-v100.js
       - name: Generate runtime, online editor and README
         run: |
           node tools/apply-v100.mjs /tmp/glt-v100.js
@@ -45,6 +45,7 @@ jobs:
       - name: Verify generated artifacts
         run: |
           grep -q 'VERSION = "1.0.0"' dist/glt-flow-card.js
+          grep -q 'GLT Platform 1.0 completion layer' dist/glt-flow-card.js
           grep -q 'GLT Engineering Platform 1.0' README.de.md
           grep -q 'config_flow' custom_components/glt_flow_card/manifest.json
           test -f custom_components/glt_flow_card/www/glt-flow-card.js
