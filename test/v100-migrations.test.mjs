@@ -1,0 +1,97 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import test from "node:test";
+
+import {
+  CURRENT_PROJECT_SCHEMA_VERSION,
+  migrateProjectDocument,
+} from "../src/v100/project-migrations.mjs";
+
+const legacyProject = () => ({
+  type: "custom:glt-flow-card",
+  title: "Werk Süd",
+  equipment: [{ id: "pump-1", type: "pump", vendor_data: { channel: 7 } }],
+  extensions: { vendor_alpha: { retained: true } },
+  unknown_top_level: { retained: "yes" },
+});
+
+const versionOneProject = () => ({
+  ...legacyProject(),
+  schema_version: 1,
+});
+
+const currentProject = () => ({
+  ...versionOneProject(),
+  schema_version: 2,
+  project: { id: "werk-sud", name: "Werk Süd", revision: 0 },
+});
+
+test("migration executes exact 0→1→2 copy-on-write steps with receipted evidence", () => {
+  const source = legacyProject();
+  const before = JSON.stringify(source);
+  const result = migrateProjectDocument(source, { dryRun: true });
+
+  assert.equal(CURRENT_PROJECT_SCHEMA_VERSION, 2);
+  assert.equal(JSON.stringify(source), before);
+  assert.notStrictEqual(result.candidate, source);
+  assert.deepEqual(result.receipt.steps.map(({ from, to }) => [from, to]), [[0, 1], [1, 2]]);
+  assert.equal(result.receipt.source_schema_version, 0);
+  assert.equal(result.receipt.candidate_schema_version, 2);
+  assert.match(result.receipt.source_digest, /^[a-f0-9]{64}$/);
+  assert.match(result.receipt.candidate_digest, /^[a-f0-9]{64}$/);
+  assert.deepEqual(result.receipt.warnings, []);
+  assert.deepEqual(result.receipt.loss, { dropped: [], preserved: [] });
+  assert.equal(result.candidate.project.name, "Werk Süd");
+  assert.equal(result.candidate.project.id, "werk-sud");
+  assert.deepEqual(result.candidate.extensions.vendor_alpha, { retained: true });
+  assert.deepEqual(result.candidate.unknown_top_level, { retained: "yes" });
+  assert.deepEqual(result.candidate.equipment[0].vendor_data, { channel: 7 });
+});
+
+test("dry-run and apply modes are pure and return identical candidate and receipt", () => {
+  const source = versionOneProject();
+  const dryRun = migrateProjectDocument(source, { dryRun: true });
+  const apply = migrateProjectDocument(source, { dryRun: false });
+
+  assert.deepEqual(apply, dryRun);
+  assert.deepEqual(dryRun.receipt.steps.map(({ from, to }) => [from, to]), [[1, 2]]);
+  assert.equal(source.schema_version, 1);
+  assert.equal("project" in source, false);
+});
+
+test("current projects are idempotent and future or invalid inputs fail closed", () => {
+  const current = currentProject();
+  const result = migrateProjectDocument(current);
+
+  assert.deepEqual(result.candidate, current);
+  assert.deepEqual(result.receipt.steps, []);
+  assert.equal(result.receipt.source_digest, result.receipt.candidate_digest);
+  assert.throws(
+    () => migrateProjectDocument({ ...current, schema_version: 3 }),
+    /unsupported project schema version 3/i,
+  );
+  assert.throws(
+    () => migrateProjectDocument({ schema_version: 1, title: "missing card type" }),
+    /source project contract is invalid/i,
+  );
+});
+
+test("Python migration result is byte-equivalent to JavaScript", () => {
+  const requests = [legacyProject(), versionOneProject(), currentProject()].map((document, index) => ({
+    id: `migration-${index}`,
+    document,
+    options: { dry_run: index % 2 === 0 },
+  }));
+  const expected = requests.map((request) => JSON.stringify({
+    id: request.id,
+    result: migrateProjectDocument(request.document, { dryRun: request.options.dry_run }),
+  })).join("\n") + "\n";
+  const python = spawnSync(
+    "py",
+    ["-3.13", "-m", "custom_components.glt_flow_card.project_migrations", "--json-lines"],
+    { input: requests.map((request) => JSON.stringify(request)).join("\n") + "\n", encoding: "utf8" },
+  );
+
+  assert.equal(python.status, 0, python.stderr);
+  assert.equal(python.stdout, expected);
+});
