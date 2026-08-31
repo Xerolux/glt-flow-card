@@ -5,7 +5,8 @@ on:
     branches: [main]
     paths:
       - tools/apply-neo2030-v030.mjs
-      - tools/v030-designer.b64
+      - tools/fix-v030-payload.mjs
+      - tools/v030-designer-*.b64
       - tools/v030-symbols.b64
       - .github/workflows/apply-neo2030-v030.yml
 
@@ -20,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node tools/apply-neo2030-v030.mjs
+      - run: node tools/fix-v030-payload.mjs
       - run: npm install --ignore-scripts
       - run: npm run check
       - run: npm test
