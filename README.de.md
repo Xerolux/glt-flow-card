@@ -10,6 +10,37 @@
 
 > Unabhängiges Open-Source-Projekt, nicht mit iDM Energiesysteme verbunden. Die Idee orientiert sich allgemein an professionellen GLT/BMS-Oberflächen und den öffentlich beschriebenen [iVIS](https://www.idm-energie.at/ivis/)-Funktionen; Oberfläche, Code und Konfigurationsmodell sind eigenständig.
 
+<!-- GLT-SHOWCASE:START -->
+
+## GLT / SCADA Showcase
+
+Die folgenden Bilder werden automatisch aus der **aktuellen GitHub-Pages-Oberfläche und dem aktuellen Online-Designer** erzeugt. Sie zeigen dieselbe detaillierte Anlage in unterschiedlichen Darstellungen — ohne eigene Anlagenbilder: Pumpen, 2-/3-Wege-Ventile, Mischer, hydraulische Weiche, Heizstab, Speicher, Wärmetauscher, Sensorik, Medienleitungen, Alarme, Replay und Trends.
+
+<table>
+<tr><th width="50%">Neo 2030 · Dark</th><th width="50%">Neo / Operations · Light</th></tr>
+<tr><td><img src="docs/images/neo2030-dark-live.png" alt="Neo 2030 Dark GLT"></td><td><img src="docs/images/neo2030-light-live.png" alt="Neo 2030 Light GLT"></td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Classic SCADA</th><th width="50%">P&amp;ID Dark</th></tr>
+<tr><td><img src="docs/images/classic-scada-live.png" alt="Classic SCADA GLT"></td><td><img src="docs/images/pid-dark-live.png" alt="P&ID Dark GLT"></td></tr>
+</table>
+
+### Designer · Dark und Light
+
+<table>
+<tr><th width="50%">Designer Dark</th><th width="50%">Designer Light</th></tr>
+<tr><td><img src="docs/images/designer-dark-live.png" alt="GLT Flow Card Designer Dark"></td><td><img src="docs/images/designer-light-live.png" alt="GLT Flow Card Designer Light"></td></tr>
+</table>
+
+### Detail-Symbolbibliothek
+
+![GLT Flow Card Symbolbibliothek](docs/images/symbol-library-live.png)
+
+> Bedienbare Anlagenobjekte können in Home Assistant eine Objektbedienung öffnen oder konfigurierte HA-Services ausführen. Die GitHub-Pages-Demo simuliert diese Bedienebene ohne eine echte Anlage zu schalten.
+
+<!-- GLT-SHOWCASE:END -->
+
 ## Funktionen
 
 - **Professionelles GLT-Schema** mit frei platzierbaren Anlagen, Datenpunkten und Leitungen.
@@ -70,7 +101,7 @@ Die Palette enthält mehr als 50 auswählbare Bausteine und Varianten für Heizu
 
 ## Engineering Workspace 0.4
 
-![GLT Flow Card Funktionsübersicht](docs/images/feature-overview.svg)
+![GLT Flow Card Funktionsübersicht](docs/images/symbol-library-live.png)
 
 Mit Version 0.4 wird aus der Karte ein umfangreicherer **GLT/BMS-Engineering-Workspace für Home Assistant**. Bestehende Lovelace-YAML kann importiert, grafisch weiterbearbeitet und wieder exportiert werden; unbekannte Konfigurationsschlüssel bleiben im Projektobjekt erhalten, statt absichtlich entfernt zu werden.
 
@@ -89,15 +120,15 @@ Mit Version 0.4 wird aus der Karte ein umfangreicherer **GLT/BMS-Engineering-Wor
 
 ### Neo 2030 Runtime
 
-![Neo 2030 Runtime](docs/images/neo2030-dashboard.svg)
+![Neo 2030 Runtime](docs/images/neo2030-dark-live.png)
 
 ### Drag-&-Drop-Designer in Home Assistant
 
-![Home Assistant Designer](docs/images/ha-designer.svg)
+![Home Assistant Designer](docs/images/designer-dark-live.png)
 
 ### Clean-Designer als Alternative
 
-![Clean Designer](docs/images/clean-designer.svg)
+![Clean Designer](docs/images/designer-light-live.png)
 
 ## Schnellstart
 
