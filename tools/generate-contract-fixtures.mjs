@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { load as loadYaml } from "js-yaml";
+import { canonicalizeJson } from "../src/v100/project-contract.mjs";
 
 const ROOT = new URL("../", import.meta.url);
 const LIMITS_URL = new URL("schemas/limits.json", ROOT);
@@ -146,6 +147,9 @@ export async function generateContractFixtures({ outputDir }) {
 
   async function addFixture(metadata, bytes, { canonicalDigest = false } = {}) {
     const digest = sha256(bytes);
+    const canonicalDigestValue = canonicalDigest
+      ? sha256(Buffer.from(canonicalizeJson(JSON.parse(bytes)), "utf8"))
+      : undefined;
     const fixture = {
       id: metadata.id,
       class: metadata.class,
@@ -156,7 +160,7 @@ export async function generateContractFixtures({ outputDir }) {
       ...metadata.details,
       expected: {
         ...metadata.expected,
-        ...(canonicalDigest ? { canonical_sha256: digest } : {}),
+        ...(canonicalDigest ? { canonical_sha256: canonicalDigestValue } : {}),
       },
     };
     await writeFile(resolve(absoluteOutput, fixture.file), bytes);

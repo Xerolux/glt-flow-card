@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
+import { canonicalizeJson } from "../src/v100/project-contract.mjs";
 
 const ROOT = new URL("../", import.meta.url);
 const ROOT_PATH = fileURLToPath(ROOT);
@@ -275,7 +276,11 @@ test("scale fixtures are fixed-seed correctness classes with expected digests, n
     assert.deepEqual(scales.map((fixture) => fixture.object_count), [100, 500, 2000]);
     assert.ok(scales.every((fixture) => fixture.seed === generatedScaleSeed(manifest, fixture.object_count)));
     assert.ok(scales.every((fixture) => fixture.expected.outcome === "accept"));
-    assert.ok(scales.every((fixture) => fixture.expected.canonical_sha256 === fixture.sha256));
+    for (const fixture of scales) {
+      const document = JSON.parse(await readFile(join(outputDir, fixture.file), "utf8"));
+      const canonicalDigest = createHash("sha256").update(canonicalizeJson(document), "utf8").digest("hex");
+      assert.equal(fixture.expected.canonical_sha256, canonicalDigest);
+    }
     assert.ok(scales.every((fixture) => !Object.hasOwn(fixture, "duration_ms") && !Object.hasOwn(fixture, "throughput")));
   });
 });
