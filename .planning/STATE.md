@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-08-31T23:24:05.188Z"
-last_activity: 2026-09-01 -- Plan 01-04 raw-first JavaScript/Python contract parity completed
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-08-31T23:45:39.142Z"
+last_activity: 2026-09-01 -- Plan 01-05 deterministic migration and semantic diff parity completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 13
-  completed_plans: 4
-  percent: 31
+  completed_plans: 5
+  percent: 38
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (trusted-contract-release-foundation) — EXECUTING
-Plan: 5 of 13
+Plan: 6 of 13
 Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-04 raw-first JavaScript/Python contract parity completed
+Last activity: 2026-09-01 -- Plan 01-05 deterministic migration and semantic diff parity completed
 
-Progress: [███░░░░░░░] 31%
+Progress: [████░░░░░░] 38%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [███░░░░░░░] 31%
 | Phase 01 P02 | 37min | 3 tasks | 13 files |
 | Phase 01 P03 | 10min | 2 tasks | 9 files |
 | Phase 01 P04 | 19min | 2 tasks | 11 files |
+| Phase 01 P05 | 15min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01]: Generate standalone Ajv validators with canonical fingerprints. — Build-time generation avoids browser runtime compilation and makes schema drift fail closed.
 - [Phase 01]: Use sorted-key UTF-8 canonical JSON with preserved array order. — Shared canonical bytes make JavaScript and Python SHA-256 evidence stable across runtimes.
 - [Phase 01]: Resolve Python schema references from an in-memory repository-only registry. — Unknown refs fail with NoSuchResource and cannot trigger network resolution.
+- [Phase 01]: Preserve the legacy schema-v1 core config shape while adding validated schema-v2 migration candidates and receipts. — Compatible additive evidence avoids breaking existing browser and bundle consumers.
+- [Phase 01]: Treat only policy-declared identity collection order as irrelevant and keep semantic diff output non-executable. — This removes reorder noise without creating an unsafe patch path or hiding undeclared array semantics.
+- [Phase 01]: Expand diff selection only through changed add/remove dependencies and fail closed on missing or cyclic metadata. — Unchanged targets need no selected operation while ambiguous dependency evidence must block.
 
 ### Pending Todos
 
@@ -99,6 +103,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-08-31T23:24:05.171Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-08-31T23:45:24.860Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
