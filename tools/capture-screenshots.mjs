@@ -10,18 +10,37 @@ async function open(path) {
   await page.waitForTimeout(500);
 }
 
+async function theme(name) {
+  await page.evaluate((value) => {
+    document.body.dataset.theme = value;
+    const select = document.querySelector('#appearance');
+    if (select) {
+      select.value = value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }, name);
+  await page.waitForTimeout(300);
+}
+
 await open('/');
-await page.locator('.glt-screen').screenshot({ path: 'docs/images/neo2030-live.png' });
-await page.evaluate(() => document.body.dataset.theme = 'operations_light');
-await page.waitForTimeout(200);
-await page.locator('.glt-screen').screenshot({ path: 'docs/images/operations-light-live.png' });
-await page.evaluate(() => document.body.dataset.theme = 'pid_dark');
-await page.waitForTimeout(200);
-await page.locator('.glt-screen').screenshot({ path: 'docs/images/pid-dark-live.png' });
-await page.evaluate(() => document.body.dataset.theme = 'neo2030');
+for (const [name, file] of [
+  ['neo2030', 'neo2030-dark-live.png'],
+  ['operations_light', 'neo2030-light-live.png'],
+  ['classic_scada', 'classic-scada-live.png'],
+  ['pid_dark', 'pid-dark-live.png'],
+  ['clean', 'clean-live.png'],
+]) {
+  await theme(name);
+  await page.locator('.glt-screen').screenshot({ path: `docs/images/${file}` });
+}
+
+await theme('neo2030');
 await page.locator('#symbols').screenshot({ path: 'docs/images/symbol-library-live.png' });
 
 await open('/editor/');
-await page.locator('.app').screenshot({ path: 'docs/images/designer-live.png' });
+await theme('neo2030');
+await page.locator('.app').screenshot({ path: 'docs/images/designer-dark-live.png' });
+await theme('operations_light');
+await page.locator('.app').screenshot({ path: 'docs/images/designer-light-live.png' });
 
 await browser.close();
