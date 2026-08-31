@@ -213,7 +213,7 @@ Every v1.1 requirement has exactly one primary owner. Cross-cutting gates in lat
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Trusted Contract & Release Foundation | 1/13 | In Progress | - |
+| 1. Trusted Contract & Release Foundation | 2/13 | In Progress | - |
 | 2. Authoritative Policy, Controls & Collaboration | 0/TBD | Not started | - |
 | 3. Semantic Equipment & Provenance | 0/TBD | Not started | - |
 | 4. Runtime Operations & Drill-Down | 0/TBD | Not started | - |

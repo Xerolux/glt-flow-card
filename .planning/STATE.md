@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-08-31T22:00:44.093Z"
-last_activity: 2026-09-01 -- Plan 01-01 dependency provenance gate completed
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-08-31T22:44:11.488Z"
+last_activity: 2026-09-01 -- Plan 01-02 Wave-0 executable harness completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 13
-  completed_plans: 1
-  percent: 8
+  completed_plans: 2
+  percent: 15
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (trusted-contract-release-foundation) — EXECUTING
-Plan: 2 of 13
+Plan: 3 of 13
 Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-01 dependency provenance gate completed
+Last activity: 2026-09-01 -- Plan 01-02 Wave-0 executable harness completed
 
-Progress: [█░░░░░░░░░] 8%
+Progress: [██░░░░░░░░] 15%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [█░░░░░░░░░] 8%
 - Trend: Baseline established
 
 *Updated after each plan completion*
+| Phase 01 P02 | 37min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01-01]: Pin every registry artifact in the exact-set policy, including both PyPI wheel and source distributions.
 - [Phase 01-01]: Treat automatic npm lifecycle hooks as fail-closed policy; only Ajv's reviewed prepublish hook is allowed.
 - [Phase 01-01]: Write canonical online evidence to .planning/tmp/phase01-provenance.json by default for the next plan.
+- [Phase 01]: Controlled RED requires both an approved marker and the matching exact-dist or lifecycle effect ledger.
+- [Phase 01]: Clean Home Assistant dependency resolution uses the Linux/container lane because HA 2026.2.3 pins lru-dict 1.3.0 without a Windows Python 3.13 wheel.
 
 ### Pending Todos
 
@@ -87,6 +90,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-08-31T22:00:43.770Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-08-31T22:44:11.467Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
