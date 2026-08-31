@@ -1,0 +1,200 @@
+# GLT Flow Card - iDM ALM 6-15 example
+#
+# Adapt the entity IDs to your Home Assistant installation. The heating-circuit D
+# entity names below match the naming pattern used by Xerolux/idm-heatpump-hass.
+# Add your own plant-room photo as /config/www/glt/idm-heizzentrale.jpg.
+
+type: custom:glt-flow-card
+title: iDM Heizzentrale
+subtitle: ALM 6-15 · Hydraulik · Heizkreis D
+
+canvas:
+  width: 1600
+  height: 900
+  viewport_height: 660
+  grid: true
+  grid_size: 40
+
+zoom:
+  enabled: true
+  min: 0.25
+  max: 4
+  wheel: true
+  controls: true
+
+views:
+  - id: schematic
+    name: Anlagenschema
+    kind: schematic
+    icon: mdi:sitemap-outline
+  - id: plant
+    name: Anlagenbild
+    kind: image
+    icon: mdi:image-outline
+    background: /local/glt/idm-heizzentrale.jpg
+    background_fit: cover
+
+default_view: schematic
+
+replay:
+  enabled: true
+  hours: 168
+  step_minutes: 15
+  autoplay_ms: 850
+
+trend:
+  enabled: true
+  hours: 168
+  max_series: 8
+  height: 270
+
+kpis:
+  - name: VL Heizkreis D
+    icon: mdi:thermometer-chevron-up
+    entity:
+      entity: sensor.alm6_15_vorlauftemperatur_hk_d
+      decimals: 1
+  - name: Raum HK D
+    icon: mdi:home-thermometer-outline
+    entity:
+      entity: sensor.alm6_15_raumtemperatur_hk_d
+      decimals: 1
+  - name: Soll-VL HK D
+    icon: mdi:target
+    entity:
+      entity: sensor.alm6_15_sollvorlauftemperatur_hk_d
+      decimals: 1
+  # Custom template-sensor example:
+  # - name: COP
+  #   icon: mdi:gauge
+  #   entity: sensor.idm_cop
+  #   good_above: 4
+  #   warn_below: 3
+  #   critical_below: 2
+
+status:
+  # Optional; replace with existing binary sensors.
+  # online: binary_sensor.idm_online
+  # alarm: binary_sensor.idm_stoerung
+
+equipment:
+  - id: idm
+    type: heat_pump
+    name: iDM ALM 6-15
+    subtitle: Wärmepumpe
+    x: 130
+    y: 305
+    width: 285
+    height: 185
+    fields:
+      - label: HK D Vorlauf
+        entity:
+          entity: sensor.alm6_15_vorlauftemperatur_hk_d
+          decimals: 1
+      - label: HK D Soll
+        entity:
+          entity: sensor.alm6_15_sollvorlauftemperatur_hk_d
+          decimals: 1
+
+  - id: hydraulik
+    type: tank
+    name: Hydraulik / Puffer
+    subtitle: Anlagenhydraulik
+    x: 640
+    y: 255
+    width: 260
+    height: 230
+    fields:
+      - label: HK D Vorlauf
+        entity: sensor.alm6_15_vorlauftemperatur_hk_d
+
+  - id: hk_d
+    type: room
+    name: Heizkreis D
+    subtitle: Fußbodenheizung
+    x: 1160
+    y: 265
+    width: 285
+    height: 225
+    fields:
+      - label: Vorlauf
+        entity:
+          entity: sensor.alm6_15_vorlauftemperatur_hk_d
+          decimals: 1
+      - label: Soll-Vorlauf
+        entity:
+          entity: sensor.alm6_15_sollvorlauftemperatur_hk_d
+          decimals: 1
+      - label: Raum
+        entity:
+          entity: sensor.alm6_15_raumtemperatur_hk_d
+          decimals: 1
+      - label: Externe Raumtemp.
+        entity:
+          entity: number.alm6_15_externe_raumtemperatur_hk_d
+          decimals: 1
+
+paths:
+  - id: hp_to_hydraulik
+    medium: heating_supply
+    temperature:
+      entity: sensor.alm6_15_vorlauftemperatur_hk_d
+      decimals: 1
+    points:
+      - [415, 355]
+      - [535, 355]
+      - [535, 315]
+      - [640, 315]
+
+  - id: hydraulik_to_hkd
+    medium: heating_supply
+    temperature:
+      entity: sensor.alm6_15_vorlauftemperatur_hk_d
+      decimals: 1
+    points:
+      - [900, 315]
+      - [1040, 315]
+      - [1040, 330]
+      - [1160, 330]
+
+  - id: hkd_return
+    medium: heating_return
+    points:
+      - [1160, 430]
+      - [1010, 430]
+      - [1010, 450]
+      - [900, 450]
+      - [900, 520]
+      - [415, 520]
+      - [415, 435]
+
+datapoints:
+  - id: hk_d_flow
+    label: VL HK D
+    kind: temperature
+    entity:
+      entity: sensor.alm6_15_vorlauftemperatur_hk_d
+      decimals: 1
+    positions:
+      schematic: { x: 1050, y: 275 }
+      plant: { x: 1035, y: 350 }
+
+  - id: hk_d_room
+    label: Raum HK D
+    kind: temperature
+    entity:
+      entity: sensor.alm6_15_raumtemperatur_hk_d
+      decimals: 1
+    positions:
+      schematic: { x: 1330, y: 540 }
+      plant: { x: 1320, y: 210 }
+
+  - id: hk_d_target
+    label: Soll-VL HK D
+    kind: temperature
+    entity:
+      entity: sensor.alm6_15_sollvorlauftemperatur_hk_d
+      decimals: 1
+    positions:
+      schematic: { x: 1190, y: 550 }
+      plant: { x: 1120, y: 460 }
