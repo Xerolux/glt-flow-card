@@ -17,6 +17,6 @@ test("v0.4 engineering workspace source contains all major modules", () => {
     "Benutzer & Rechte",
     "Audit-Log",
     "Trend+",
-    "glt_flow_card/projects/list"
+    "glt_flow_card/${type}"
   ]) assert.ok(source.includes(token), `missing ${token}`);
 });
