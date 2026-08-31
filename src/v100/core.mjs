@@ -1,5 +1,7 @@
 /* GLT Flow Card Platform 1.0 pure engineering core */
 import { COMPONENT_PROFILES, SYMBOL_VARIANTS, profileForEquipment, portsForEquipment } from "./catalog.mjs";
+import { computeProjectDiff } from "./project-diff.mjs";
+import { migrateProjectDocument } from "./project-migrations.mjs";
 
 export const SCHEMA_VERSION = 1;
 export const OPERATIONAL_STATES = {
@@ -63,8 +65,16 @@ export function ensureV1(raw = {}) {
 
 export function migrateProject(config) {
   const from = Number(config?.schema_version || 0);
-  const out = ensureV1(config);
-  return { config: out, from, to: SCHEMA_VERSION, changed: from !== SCHEMA_VERSION };
+  const hardened = migrateProjectDocument(config);
+  const out = ensureV1(hardened.candidate);
+  return {
+    config: out,
+    from,
+    to: SCHEMA_VERSION,
+    changed: from !== SCHEMA_VERSION,
+    candidate: hardened.candidate,
+    receipt: hardened.receipt,
+  };
 }
 
 function stateObj(states, id) {
@@ -328,7 +338,7 @@ export function energySummary(config, hassStates = {}) {
   return result;
 }
 
-export function projectDiff(a, b, path = "") {
+function legacyProjectDiff(a, b, path = "") {
   const out = [];
   if (Object.is(a,b)) return out;
   const ta = Array.isArray(a) ? "array" : typeof a, tb = Array.isArray(b) ? "array" : typeof b;
@@ -339,12 +349,31 @@ export function projectDiff(a, b, path = "") {
     const keyable = [...a,...b].every((x) => x && typeof x === "object" && "id" in x);
     if (keyable) {
       const am = new Map(a.map((x)=>[x.id,x])), bm = new Map(b.map((x)=>[x.id,x]));
-      for (const id of new Set([...am.keys(),...bm.keys()])) out.push(...projectDiff(am.get(id), bm.get(id), `${path}[${id}]`));
+      for (const id of new Set([...am.keys(),...bm.keys()])) out.push(...legacyProjectDiff(am.get(id), bm.get(id), `${path}[${id}]`));
       return out;
     }
   }
-  for (const k of new Set([...Object.keys(a||{}),...Object.keys(b||{})])) out.push(...projectDiff(a?.[k], b?.[k], path ? `${path}.${k}` : k));
+  for (const k of new Set([...Object.keys(a||{}),...Object.keys(b||{})])) out.push(...legacyProjectDiff(a?.[k], b?.[k], path ? `${path}.${k}` : k));
   return out;
+}
+
+export function projectDiff(a, b, path = "") {
+  const fullProjects = path === ""
+    && a?.type === "custom:glt-flow-card"
+    && b?.type === "custom:glt-flow-card";
+  if (!fullProjects) return legacyProjectDiff(a, b, path);
+  return computeProjectDiff(a, b).operations.map((operation) => ({
+    type: operation.category === "add" ? "added" : operation.category === "remove" ? "removed" : "changed",
+    path: operation.path,
+    before: operation.before,
+    after: operation.after,
+    semantic_category: operation.category,
+    operation_id: operation.id,
+    impact: operation.impact,
+    before_hash: operation.before_hash,
+    after_hash: operation.after_hash,
+    requires: operation.requires,
+  }));
 }
 
 // Minimal ZIP store implementation for .gltproject (manifest.json + project.json). No compression.
