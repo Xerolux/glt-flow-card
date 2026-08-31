@@ -1,0 +1,86 @@
+import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import { resolve } from "node:path";
+
+const projectRoot = resolve(import.meta.dirname, "..");
+const distPath = resolve(projectRoot, "dist/glt-flow-card.js");
+const cliPath = resolve(projectRoot, "node_modules/@playwright/test/cli.js");
+
+function parseArgs(argv) {
+  const result = { grep: null };
+  for (const arg of argv) {
+    if (arg.startsWith("--grep=")) {
+      result.grep = arg.slice("--grep=".length);
+      continue;
+    }
+    throw new Error(`Unknown exact-dist argument: ${arg}`);
+  }
+  return result;
+}
+
+function run(command, args, options) {
+  return new Promise((resolveRun, reject) => {
+    const child = spawn(command, args, { ...options, stdio: "inherit" });
+    child.once("error", reject);
+    child.once("exit", (code, signal) => resolveRun(signal ? 1 : (code ?? 1)));
+  });
+}
+
+const options = parseArgs(process.argv.slice(2));
+const dist = await readFile(distPath);
+const requests = [];
+const html = Buffer.from(`<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><title>GLT exact-dist harness</title></head>
+  <body><main aria-label="GLT exact-dist test surface"></main>
+  <script src="/dist/glt-flow-card.js"></script>
+  <script>window.__exactDistReady = true;</script></body>
+</html>`);
+
+const server = createServer((request, response) => {
+  const url = new URL(request.url ?? "/", "http://127.0.0.1");
+  requests.push({ method: request.method, path: url.pathname });
+  response.setHeader("Cache-Control", "no-store");
+  response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    response.writeHead(405).end();
+    return;
+  }
+  if (url.pathname === "/") {
+    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    response.end(request.method === "HEAD" ? undefined : html);
+    return;
+  }
+  if (url.pathname === "/dist/glt-flow-card.js") {
+    response.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
+    response.end(request.method === "HEAD" ? undefined : dist);
+    return;
+  }
+  if (url.pathname === "/favicon.ico") {
+    response.writeHead(204).end();
+    return;
+  }
+  response.writeHead(404).end();
+});
+
+await new Promise((resolveListen, reject) => {
+  server.once("error", reject);
+  server.listen(0, "127.0.0.1", resolveListen);
+});
+
+try {
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Exact-dist server did not bind a TCP port");
+  const baseUrl = `http://127.0.0.1:${address.port}/`;
+  const args = [cliPath, "test", "test/e2e/project-safety.spec.mjs", "--config=playwright.config.mjs"];
+  if (options.grep) args.push(`--grep=${options.grep}`);
+  const exitCode = await run(process.execPath, args, {
+    cwd: projectRoot,
+    env: { ...process.env, EXACT_DIST_BASE_URL: baseUrl },
+  });
+  process.stderr.write(`EXACT_DIST_EFFECTS ${JSON.stringify({ filesystem: requests })}\n`);
+  process.exitCode = exitCode;
+} finally {
+  await new Promise((resolveClose, reject) => server.close((error) => error ? reject(error) : resolveClose()));
+}
