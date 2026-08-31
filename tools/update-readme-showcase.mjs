@@ -6,68 +6,79 @@ function patch(path, german) {
   const end = '<!-- GLT-SHOWCASE:END -->';
   const block = german ? `${start}
 
-## So sieht die GLT wirklich aus
+## GLT / SCADA Showcase
 
-Die Screenshots werden automatisch aus der **aktuellen GitHub-Pages-Oberfläche und dem aktuellen Online-Designer** erzeugt. Damit zeigt die README nicht mehr nur Konzeptgrafiken, sondern den tatsächlich gebauten Stand.
-
-### Neo 2030 · detailliertes Anlagenbild
-
-![GLT Flow Card Neo 2030 Live](docs/images/neo2030-live.png)
-
-Das Schema geht bewusst bis auf Komponentenebene: Pumpen, Mischer, Ventile, hydraulische Weiche, Heizstab, Speicher, Wärmetauscher, Sensorik und weitere Betriebsmittel können als eigene GLT-Objekte dargestellt werden. Bedienbare Objekte öffnen in Home Assistant eine Objektbedienung bzw. können definierte HA-Services ausführen.
+Die folgenden Bilder werden automatisch aus der **aktuellen GitHub-Pages-Oberfläche und dem aktuellen Online-Designer** erzeugt. Sie zeigen dieselbe detaillierte Anlage in unterschiedlichen Darstellungen — ohne eigene Anlagenbilder: Pumpen, 2-/3-Wege-Ventile, Mischer, hydraulische Weiche, Heizstab, Speicher, Wärmetauscher, Sensorik, Medienleitungen, Alarme, Replay und Trends.
 
 <table>
-<tr><th width="50%">Operations Light</th><th width="50%">P&amp;ID Dark</th></tr>
-<tr><td><img src="docs/images/operations-light-live.png" alt="Operations Light"></td><td><img src="docs/images/pid-dark-live.png" alt="P&ID Dark"></td></tr>
+<tr><th width="50%">Neo 2030 · Dark</th><th width="50%">Neo / Operations · Light</th></tr>
+<tr><td><img src="docs/images/neo2030-dark-live.png" alt="Neo 2030 Dark GLT"></td><td><img src="docs/images/neo2030-light-live.png" alt="Neo 2030 Light GLT"></td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Classic SCADA</th><th width="50%">P&amp;ID Dark</th></tr>
+<tr><td><img src="docs/images/classic-scada-live.png" alt="Classic SCADA GLT"></td><td><img src="docs/images/pid-dark-live.png" alt="P&ID Dark GLT"></td></tr>
+</table>
+
+### Designer · Dark und Light
+
+<table>
+<tr><th width="50%">Designer Dark</th><th width="50%">Designer Light</th></tr>
+<tr><td><img src="docs/images/designer-dark-live.png" alt="GLT Flow Card Designer Dark"></td><td><img src="docs/images/designer-light-live.png" alt="GLT Flow Card Designer Light"></td></tr>
 </table>
 
 ### Detail-Symbolbibliothek
 
 ![GLT Flow Card Symbolbibliothek](docs/images/symbol-library-live.png)
 
-### Drag-&-Drop-Designer
-
-![GLT Flow Card Designer](docs/images/designer-live.png)
+> Bedienbare Anlagenobjekte können in Home Assistant eine Objektbedienung öffnen oder konfigurierte HA-Services ausführen. Die GitHub-Pages-Demo simuliert diese Bedienebene ohne eine echte Anlage zu schalten.
 
 ${end}
 ` : `${start}
 
-## What the GLT actually looks like
+## GLT / SCADA showcase
 
-These screenshots are generated automatically from the **current GitHub Pages UI and current online designer**. The README therefore shows the implemented state rather than conceptual promo graphics.
-
-### Neo 2030 · detailed plant view
-
-![GLT Flow Card Neo 2030 Live](docs/images/neo2030-live.png)
-
-The plant view is intentionally detailed down to equipment level: pumps, mixing valves, valves, hydraulic separators, immersion heaters, tanks, heat exchangers, sensors and further plant components can be individual GLT objects. Controllable objects can open an equipment control panel in Home Assistant or execute configured HA services.
+The following images are generated automatically from the **current GitHub Pages UI and current online designer**. They show the same detailed plant in different visual systems — without custom plant images: pumps, 2/3-way valves, mixers, hydraulic separators, immersion heaters, tanks, heat exchangers, sensors, media paths, alarms, replay and trends.
 
 <table>
-<tr><th width="50%">Operations Light</th><th width="50%">P&amp;ID Dark</th></tr>
-<tr><td><img src="docs/images/operations-light-live.png" alt="Operations Light"></td><td><img src="docs/images/pid-dark-live.png" alt="P&ID Dark"></td></tr>
+<tr><th width="50%">Neo 2030 · Dark</th><th width="50%">Neo / Operations · Light</th></tr>
+<tr><td><img src="docs/images/neo2030-dark-live.png" alt="Neo 2030 Dark GLT"></td><td><img src="docs/images/neo2030-light-live.png" alt="Neo 2030 Light GLT"></td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Classic SCADA</th><th width="50%">P&amp;ID Dark</th></tr>
+<tr><td><img src="docs/images/classic-scada-live.png" alt="Classic SCADA GLT"></td><td><img src="docs/images/pid-dark-live.png" alt="P&ID Dark GLT"></td></tr>
+</table>
+
+### Designer · dark and light
+
+<table>
+<tr><th width="50%">Designer Dark</th><th width="50%">Designer Light</th></tr>
+<tr><td><img src="docs/images/designer-dark-live.png" alt="GLT Flow Card Designer Dark"></td><td><img src="docs/images/designer-light-live.png" alt="GLT Flow Card Designer Light"></td></tr>
 </table>
 
 ### Detailed symbol library
 
 ![GLT Flow Card symbol library](docs/images/symbol-library-live.png)
 
-### Drag-and-drop designer
-
-![GLT Flow Card Designer](docs/images/designer-live.png)
+> Controllable plant objects can open an equipment control panel in Home Assistant or execute configured HA services. The GitHub Pages demo simulates this control layer without switching a real plant.
 
 ${end}
 `;
   const re = new RegExp(`${start}[\\s\\S]*?${end}\\n?`, 'm');
   if (re.test(text)) text = text.replace(re, block);
   else {
-    const anchor = german ? '## Funktionen' : '## Features';
+    const anchor = german ? '## Funktionen' : '## Highlights';
     text = text.replace(anchor, `${block}\n${anchor}`);
   }
   text = text
     .replaceAll('docs/images/feature-overview.svg', 'docs/images/symbol-library-live.png')
-    .replaceAll('docs/images/neo2030-dashboard.svg', 'docs/images/neo2030-live.png')
-    .replaceAll('docs/images/ha-designer.svg', 'docs/images/designer-live.png')
-    .replaceAll('docs/images/clean-designer.svg', 'docs/images/operations-light-live.png');
+    .replaceAll('docs/images/neo2030-dashboard.svg', 'docs/images/neo2030-dark-live.png')
+    .replaceAll('docs/images/neo2030-live.png', 'docs/images/neo2030-dark-live.png')
+    .replaceAll('docs/images/operations-light-live.png', 'docs/images/neo2030-light-live.png')
+    .replaceAll('docs/images/ha-designer.svg', 'docs/images/designer-dark-live.png')
+    .replaceAll('docs/images/designer-live.png', 'docs/images/designer-dark-live.png')
+    .replaceAll('docs/images/clean-designer.svg', 'docs/images/designer-light-live.png');
   writeFileSync(path, text);
 }
 
