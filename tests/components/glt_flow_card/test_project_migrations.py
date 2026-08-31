@@ -11,6 +11,11 @@ from custom_components.glt_flow_card.project_migrations import (
     migrate_project_document,
 )
 
+pytestmark = [
+    pytest.mark.enable_socket,
+    pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
+]
+
 
 def _legacy_project() -> dict:
     return {
