@@ -1,0 +1,1 @@
+Actual runtime screenshots are stored here for the GitHub Pages landing page. `neo2030-runtime.webp` shows the Neo 2030 dark runtime, `clean-runtime.webp` shows the Clean light runtime.
