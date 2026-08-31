@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-08-31T22:59:46.625Z"
-last_activity: 2026-09-01 -- Plan 01-03 canonical contract and fixture corpus completed
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-08-31T23:24:05.188Z"
+last_activity: 2026-09-01 -- Plan 01-04 raw-first JavaScript/Python contract parity completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 13
-  completed_plans: 3
-  percent: 23
+  completed_plans: 4
+  percent: 31
 ---
 
 # Project State
@@ -26,34 +26,35 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (trusted-contract-release-foundation) — EXECUTING
-Plan: 4 of 13
+Plan: 5 of 13
 Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-03 canonical contract and fixture corpus completed
+Last activity: 2026-09-01 -- Plan 01-04 raw-first JavaScript/Python contract parity completed
 
-Progress: [██░░░░░░░░] 23%
+Progress: [███░░░░░░░] 31%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 3
-- Average duration: 21 min
-- Total execution time: 1.0 hours
+- Total plans completed: 4
+- Average duration: 20 min
+- Total execution time: 1.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| Phase 1 | 3 | 62 min | 21 min |
+| Phase 1 | 4 | 81 min | 20 min |
 
 **Recent Trend:**
 
-- Last 3 plans: 15 min, 37 min, 10 min
-- Trend: Contract plan completed below the current rolling average
+- Last 3 plans: 37 min, 10 min, 19 min
+- Trend: Raw-contract parity completed near the rolling average
 
 *Updated after each plan completion*
 | Phase 01 P02 | 37min | 3 tasks | 13 files |
 | Phase 01 P03 | 10min | 2 tasks | 9 files |
+| Phase 01 P04 | 19min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01]: Use reserved .invalid schema IDs with repository-local ref closure and no remote schema fetching.
 - [Phase 01]: Treat 100/500/2,000 object fixtures as correctness-only inputs; Phase 10 owns measured capacity evidence.
 - [Phase 01]: Commit only the compact corpus manifest and regenerate fixture bodies in disposable temporary directories.
+- [Phase 01]: Enforce raw bytes and tree budgets before schema validation in both runtimes. — Pre-validator limits prevent oversized and deeply nested inputs from reaching Draft 2020-12 evaluation or normalization.
+- [Phase 01]: Generate standalone Ajv validators with canonical fingerprints. — Build-time generation avoids browser runtime compilation and makes schema drift fail closed.
+- [Phase 01]: Use sorted-key UTF-8 canonical JSON with preserved array order. — Shared canonical bytes make JavaScript and Python SHA-256 evidence stable across runtimes.
+- [Phase 01]: Resolve Python schema references from an in-memory repository-only registry. — Unknown refs fail with NoSuchResource and cannot trigger network resolution.
 
 ### Pending Todos
 
@@ -94,6 +99,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-08-31T22:59:46.321Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-08-31T23:24:05.171Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None
