@@ -1,8 +1,14 @@
 import { spawn } from "node:child_process";
 
 const EXPECTED_RED = Object.freeze({
-  "missing-project-safety-ui": "EXPECTED_RED[missing-project-safety-ui]: Project safety workflow is unavailable",
-  "missing-lifecycle-cleanup": "EXPECTED_RED[missing-lifecycle-cleanup]: exact lifecycle resources remain after unload",
+  "missing-project-safety-ui": Object.freeze({
+    marker: "EXPECTED_RED[missing-project-safety-ui]: Project safety workflow is unavailable",
+    evidence: "EXACT_DIST_EFFECTS ",
+  }),
+  "missing-lifecycle-cleanup": Object.freeze({
+    marker: "EXPECTED_RED[missing-lifecycle-cleanup]: exact lifecycle resources remain after unload",
+    evidence: "LIFECYCLE_EFFECTS ",
+  }),
 });
 
 const HARNESS_FAILURES = [
@@ -70,10 +76,11 @@ function classify(expected, result) {
   const harnessFailure = HARNESS_FAILURES.find((pattern) => pattern.test(result.output));
   if (harnessFailure) return `rejected harness failure matching ${harnessFailure}`;
 
-  const marker = EXPECTED_RED[expected];
+  const { marker, evidence } = EXPECTED_RED[expected];
   if (!result.output.includes(marker)) return `missing named RED marker: ${marker}`;
-  for (const [name, otherMarker] of Object.entries(EXPECTED_RED)) {
-    if (name !== expected && result.output.includes(otherMarker)) {
+  if (!result.output.includes(evidence)) return `missing required RED evidence: ${evidence.trim()}`;
+  for (const [name, other] of Object.entries(EXPECTED_RED)) {
+    if (name !== expected && result.output.includes(other.marker)) {
       return `output contained a different RED marker: ${name}`;
     }
   }
