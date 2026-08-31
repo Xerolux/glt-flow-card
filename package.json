@@ -1,0 +1,17 @@
+{
+  "name": "glt-flow-card",
+  "version": "0.1.0",
+  "description": "Modern configurable GLT/BMS plant visualization for Home Assistant with pan/zoom, image views, replay, trends and KPIs.",
+  "license": "MIT",
+  "author": "Xerolux",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Xerolux/glt-flow-card.git"
+  },
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "check": "node --check dist/glt-flow-card.js",
+    "test": "node --test test/*.test.mjs"
+  }
+}
