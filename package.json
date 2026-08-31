@@ -13,9 +13,26 @@
   "scripts": {
     "check": "node --check dist/glt-flow-card.js",
     "test": "node --test test/*.test.mjs",
-    "test:v1": "node --test test/v100-*.test.mjs"
+    "test:v1": "node --test test/v100-*.test.mjs",
+    "verify:provenance": "node tools/verify-provenance.mjs --online",
+    "test:fixtures": "node --test test/contract-fixtures.test.mjs",
+    "test:contract:js": "node --test test/v100-contract.test.mjs",
+    "test:contract:parity": "node tools/compare-contract-runtimes.mjs",
+    "test:migrations": "node --test test/v100-migrations.test.mjs",
+    "test:diff": "node --test test/v100-diff.test.mjs",
+    "test:bundle": "node --test test/v100-bundle.test.mjs",
+    "test:python": "py -3.13 -m pytest tests/components/glt_flow_card -q",
+    "test:e2e": "node tools/run-exact-dist-playwright.mjs",
+    "test:e2e:red": "node tools/assert-red.mjs --expected=missing-project-safety-ui -- node tools/run-exact-dist-playwright.mjs --grep=project-safety",
+    "verify:release": "node tools/verify-release.mjs",
+    "test:release-acceptance": "node tools/verify-release-acceptance.mjs",
+    "test:ha-artifacts": "node tools/test-ha-artifacts.mjs",
+    "test:phase1": "node tools/verify-phase1.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@zip.js/zip.js": "2.8.30",
+    "ajv": "8.20.0",
     "esbuild": "^0.25.12",
     "js-yaml": "^4.3.2",
     "marked": "^15.0.12"
