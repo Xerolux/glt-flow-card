@@ -1,0 +1,84 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'examples/**'
+      - 'tools/build-site.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pages:
+    name: Deploy Pages + online editor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - run: node tools/build-site.mjs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  wiki:
+    name: Sync GitHub Wiki
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Clone or initialise wiki
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.wiki.git"
+          if ! git clone "$url" /tmp/wiki 2>/dev/null; then
+            mkdir -p /tmp/wiki
+            git -C /tmp/wiki init -q -b master
+            git -C /tmp/wiki remote add origin "$url"
+          fi
+      - name: Copy wiki sources
+        run: |
+          find /tmp/wiki -maxdepth 1 -type f -name '*.md' -delete
+          cp docs/wiki/*.md /tmp/wiki/
+      - name: Commit and push wiki
+        working-directory: /tmp/wiki
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'docs: sync wiki from docs/wiki [skip ci]'
+          if ! git push origin HEAD; then
+            echo "::warning title=Wiki not initialised::Open the Wiki tab once, create any page, save it, then re-run this workflow. GitHub creates the wiki repository only after the first manual page."
+          fi
