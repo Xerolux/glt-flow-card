@@ -1,0 +1,81 @@
+# Example for a professional air-handling / RLT view.
+type: custom:glt-flow-card
+title: RLT-Zentrale
+default_view: schematic
+canvas:
+  width: 1600
+  height: 780
+  viewport_height: 600
+
+views:
+  - id: schematic
+    name: RLT Schema
+    kind: schematic
+  - id: photo
+    name: Anlagenbild
+    kind: image
+    background: /local/glt/rlt-zentrale.jpg
+    background_fit: cover
+
+kpis:
+  - name: Zuluft
+    icon: mdi:thermometer
+    entity: sensor.rlt_zuluft_temperatur
+  - name: Zuluftdruck
+    icon: mdi:gauge
+    entity: sensor.rlt_zuluft_druck
+  - name: Ventilator
+    icon: mdi:fan
+    entity: sensor.rlt_ventilator_prozent
+
+equipment:
+  - id: filter
+    type: ahu
+    name: Filter / WRG
+    x: 420
+    y: 250
+    width: 280
+    fields:
+      - label: Außenluft
+        entity: sensor.rlt_aussenluft_temperatur
+      - label: Fortluft
+        entity: sensor.rlt_fortluft_temperatur
+  - id: fan
+    type: fan
+    name: Zuluftventilator
+    x: 860
+    y: 250
+    width: 260
+    entity: fan.rlt_zuluft
+    fields:
+      - label: Drehzahl
+        entity: sensor.rlt_ventilator_prozent
+      - label: Druck
+        entity: sensor.rlt_zuluft_druck
+
+paths:
+  - id: outdoor
+    medium: air_outdoor
+    points: [[100, 340], [420, 340]]
+    temperature: sensor.rlt_aussenluft_temperatur
+  - id: supply
+    medium: air_supply
+    flow: fan.rlt_zuluft
+    points: [[700, 340], [860, 340], [1120, 340], [1480, 340]]
+    temperature: sensor.rlt_zuluft_temperatur
+
+datapoints:
+  - id: supply_temp
+    label: Zuluft
+    kind: temperature
+    entity: sensor.rlt_zuluft_temperatur
+    positions:
+      schematic: { x: 1260, y: 300 }
+      photo: { x: 1040, y: 260 }
+  - id: pressure
+    label: Druck
+    kind: pressure
+    entity: sensor.rlt_zuluft_druck
+    positions:
+      schematic: { x: 1380, y: 390 }
+      photo: { x: 1180, y: 390 }
