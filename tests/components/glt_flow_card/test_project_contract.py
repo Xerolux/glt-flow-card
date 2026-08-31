@@ -7,11 +7,18 @@ import hashlib
 import json
 
 import pytest
+from referencing.exceptions import NoSuchResource
 
+from custom_components.glt_flow_card import project_contract
 from custom_components.glt_flow_card.project_contract import (
     canonicalize_json,
     evaluate_project_contract,
 )
+
+pytestmark = [
+    pytest.mark.enable_socket,
+    pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
+]
 
 
 def _nested_array(depth: int) -> object:
@@ -56,10 +63,15 @@ def test_valid_input_is_not_mutated_and_emits_serializable_evidence() -> None:
     json.dumps(result, ensure_ascii=False)
 
 
+def test_schema_registry_fails_closed_without_remote_retrieval() -> None:
+    with pytest.raises(NoSuchResource):
+        project_contract._REGISTRY.get_or_retrieve("https://schemas.example.invalid/remote.json")
+
+
 @pytest.mark.parametrize(
     ("raw", "code", "actual"),
     [
-        (b'"' + (b"x" * 5_242_879) + b'"', "contract.json_bytes", 5_242_881),
+        (lambda: b'"' + (b"x" * 5_242_879) + b'"', "contract.json_bytes", 5_242_881),
         (lambda: json.dumps(_nested_array(65)).encode(), "contract.depth", 65),
     ],
 )

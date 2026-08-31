@@ -37,6 +37,7 @@ function parseJsonLines(output, runtime) {
 function run(command, args, input, runtime) {
   const completed = spawnSync(command, args, {
     cwd: ROOT_PATH,
+    env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" },
     input,
     encoding: "utf8",
     maxBuffer: MAX_BUFFER,
@@ -45,7 +46,7 @@ function run(command, args, input, runtime) {
   if (completed.status !== 0) {
     throw new Error(`${runtime} contract process failed (${completed.status}): ${completed.stderr || completed.stdout}`);
   }
-  return parseJsonLines(completed.stdout, runtime);
+  return { output: completed.stdout, records: parseJsonLines(completed.stdout, runtime) };
 }
 
 export function compareRuntimeEvidence(javascript, python) {
@@ -74,8 +75,9 @@ function verifyManifestExpectations(manifest, results) {
     if (fixture.expected.canonical_sha256) assert.equal(evidence.digest, fixture.expected.canonical_sha256, fixture.id);
     if (fixture.expected.outcome === "reject") {
       assert.equal(evidence.valid, false, fixture.id);
-      assert.equal(evidence.errors[0]?.code, fixture.expected.code, fixture.id);
-      assert.equal(evidence.errors[0]?.path, fixture.expected.path, fixture.id);
+      assert.ok(evidence.errors.some((error) => (
+        error.code === fixture.expected.code && error.path === fixture.expected.path
+      )), `${fixture.id}: missing expected ${fixture.expected.code} at ${fixture.expected.path}`);
     }
   }
 }
@@ -91,9 +93,10 @@ async function main() {
     const input = `${requests.map((request) => JSON.stringify(request)).join("\n")}\n`;
     const javascript = run(process.execPath, ["--input-type=module", "--eval", JS_RUNNER], input, "JavaScript");
     const python = run("py", ["-3.13", PYTHON_ADAPTER, "--json-lines"], input, "Python");
-    compareRuntimeEvidence(javascript, python);
-    verifyManifestExpectations(manifest, javascript);
-    console.log(`contract runtime parity passed for ${javascript.length} fixtures`);
+    assert.equal(python.output, javascript.output, "runtime JSON-lines bytes differ");
+    compareRuntimeEvidence(javascript.records, python.records);
+    verifyManifestExpectations(manifest, javascript.records);
+    console.log(`contract runtime parity passed for ${javascript.records.length} fixtures`);
   } finally {
     await rm(corpus, { recursive: true, force: true });
   }

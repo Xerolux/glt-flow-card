@@ -11,6 +11,7 @@ import {
 } from "../src/v100/project-contract.mjs";
 import { schemaFingerprints } from "../src/v100/generated/project-validators.mjs";
 import { generateContractFixtures } from "../tools/generate-contract-fixtures.mjs";
+import { compareRuntimeEvidence } from "../tools/compare-contract-runtimes.mjs";
 
 const ROOT = new URL("../", import.meta.url);
 const MANIFEST = JSON.parse(await readFile(new URL("fixtures/contracts/manifest.json", import.meta.url), "utf8"));
@@ -169,4 +170,27 @@ test("generated validators expose canonical schema fingerprints and pass drift c
     encoding: "utf8",
   });
   assert.equal(checked.status, 0, `${checked.stdout}${checked.stderr}`);
+});
+
+test("runtime comparator fails on seeded canonical, code, and path drift", () => {
+  const baseline = [{
+    id: "seed",
+    evidence: {
+      valid: false,
+      errors: [{ code: "contract.required", path: "/type", params: { property: "type" } }],
+      schema_version: 0,
+      canonical: "{}",
+      digest: "a".repeat(64),
+      limits: { bytes: 2, depth: 1, nodes: 1, max_collection_size: 0, max_string_bytes: 0 },
+    },
+  }];
+  for (const mutate of [
+    (value) => { value[0].evidence.digest = `b${"a".repeat(63)}`; },
+    (value) => { value[0].evidence.errors[0].code = "contract.type"; },
+    (value) => { value[0].evidence.errors[0].path = "/schema_version"; },
+  ]) {
+    const drifted = structuredClone(baseline);
+    mutate(drifted);
+    assert.throws(() => compareRuntimeEvidence(baseline, drifted), /runtime evidence drift/);
+  }
 });
