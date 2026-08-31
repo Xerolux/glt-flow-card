@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest a GLT/BMS visualization feature
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Use case
+      description: Which plant, data point, replay, trend or editor workflow should be improved?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example configuration or screenshot
