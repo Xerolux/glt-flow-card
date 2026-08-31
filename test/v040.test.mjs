@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const parts = await Promise.all([0,1,2,3,4,5].map((n) => readFile(new URL(`../src/v040-extension.part0${n}`, import.meta.url), "utf8")));
+const parts = await Promise.all([0,1,2,3,4,5,6].map((n) => readFile(new URL(`../src/v040-extension.part0${n}`, import.meta.url), "utf8")));
 const source = parts.join("");
 
 test("v0.4 engineering workspace source contains all major modules", () => {
@@ -17,6 +17,10 @@ test("v0.4 engineering workspace source contains all major modules", () => {
     "Benutzer & Rechte",
     "Audit-Log",
     "Trend+",
-    "glt_flow_card/${type}"
+    "glt_flow_card/${type}",
+    "Objektbedienung öffnen",
+    "standard_2d",
+    "pid_dark",
+    "deep GLT symbols"
   ]) assert.ok(source.includes(token), `missing ${token}`);
 });
