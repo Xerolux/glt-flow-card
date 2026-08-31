@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+import { load as loadYaml } from "js-yaml";
 
 import {
   CURRENT_PROJECT_SCHEMA_VERSION,
   migrateProjectDocument,
 } from "../src/v100/project-migrations.mjs";
+import { ensureV1, migrateProject } from "../src/v100/core.mjs";
 
 const legacyProject = () => ({
   type: "custom:glt-flow-card",
@@ -94,4 +97,37 @@ test("Python migration result is byte-equivalent to JavaScript", () => {
 
   assert.equal(python.status, 0, python.stderr);
   assert.equal(python.stdout, expected);
+});
+
+test("public migration shape stays compatible while exposing hardened evidence", () => {
+  const source = legacyProject();
+  const result = migrateProject(source);
+
+  assert.equal(result.from, 0);
+  assert.equal(result.to, 1);
+  assert.equal(result.changed, true);
+  assert.equal(result.config.schema_version, 1);
+  assert.equal(result.candidate.schema_version, 2);
+  assert.equal(result.receipt.source_digest, migrateProjectDocument(source).receipt.source_digest);
+  assert.throws(
+    () => migrateProject({ schema_version: 1, title: "silently repairable before hardening" }),
+    /source project contract is invalid/i,
+  );
+});
+
+test("existing YAML examples retain identities and references through ensureV1", () => {
+  const names = [
+    "idm-alm6-15.yaml",
+    "idm-engineering-workspace.yaml",
+    "idm-neo2030.yaml",
+    "ventilation-glt.yaml",
+  ];
+  for (const name of names) {
+    const raw = loadYaml(readFileSync(new URL(`../examples/${name}`, import.meta.url), "utf8"));
+    const before = JSON.stringify(raw);
+    const normalized = ensureV1(raw);
+    assert.equal(JSON.stringify(raw), before, `${name} source mutated`);
+    assert.deepEqual(normalized.equipment.map(({ id }) => id), (raw.equipment || []).map(({ id }) => id), name);
+    assert.deepEqual(normalized.paths.map(({ id }) => id), (raw.paths || []).map(({ id }) => id), name);
+  }
 });

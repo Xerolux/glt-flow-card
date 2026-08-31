@@ -6,6 +6,7 @@ import {
   computeProjectDiff,
   expandDiffSelection,
 } from "../src/v100/project-diff.mjs";
+import { projectDiff } from "../src/v100/core.mjs";
 
 const project = (overrides = {}) => ({
   type: "custom:glt-flow-card",
@@ -174,4 +175,23 @@ test("security changes receive critical policy impact and Python bytes match", (
 
   assert.equal(python.status, 0, python.stderr);
   assert.equal(python.stdout, expected);
+});
+
+test("public projectDiff keeps its array contract while delegating valid projects", () => {
+  const before = project();
+  const after = candidateProject();
+  const compatible = projectDiff(before, after);
+  const hardened = computeProjectDiff(before, after);
+
+  assert.ok(Array.isArray(compatible));
+  assert.deepEqual(compatible.map(({ path }) => path), hardened.operations.map(({ path }) => path));
+  assert.ok(compatible.every(({ type }) => ["added", "removed", "changed"].includes(type)));
+  assert.equal(compatible.find(({ path }) => path === "/equipment/pump-1/x").semantic_category, "move");
+
+  const legacy = projectDiff(
+    { equipment: [{ id: "a", x: 1 }] },
+    { equipment: [{ id: "a", x: 2 }, { id: "b", x: 3 }] },
+  );
+  assert.ok(legacy.some(({ path, type }) => path.includes("equipment[a].x") && type === "changed"));
+  assert.ok(legacy.some(({ path, type }) => path.includes("equipment[b]") && type === "added"));
 });
