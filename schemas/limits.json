@@ -1,0 +1,19 @@
+{
+  "policy_version": 1,
+  "json": {
+    "max_bytes": 5242880,
+    "max_depth": 64,
+    "max_nodes": 100000,
+    "max_string_bytes": 262144,
+    "max_id_chars": 128,
+    "max_path_chars": 512,
+    "max_errors": 100
+  },
+  "archive": {
+    "max_compressed_bytes": 33554432,
+    "max_entries": 256,
+    "max_asset_bytes": 16777216,
+    "max_expanded_bytes": 134217728,
+    "max_compression_ratio": 100
+  }
+}

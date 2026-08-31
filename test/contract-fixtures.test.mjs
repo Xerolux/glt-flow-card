@@ -2,9 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 
 const ROOT = new URL("../", import.meta.url);
+const ROOT_PATH = fileURLToPath(ROOT);
 const PROJECT_SCHEMA_PATHS = [
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
@@ -156,9 +158,9 @@ test("diff policy declares identities, five categories, order, dependencies, and
 
 test("canonical paths are singular and no second authored schema tree exists", async () => {
   for (const path of CONTRACT_PATHS) assert.ok(await readJson(path), `${path} must exist and parse`);
-  const files = await walk(new URL("../", ROOT));
+  const files = await walk(ROOT_PATH);
   const authoredSchemas = files
-    .map((path) => relative(new URL("../", ROOT).pathname, path).replaceAll("\\", "/"))
+    .map((path) => relative(ROOT_PATH, path).replaceAll("\\", "/"))
     .filter((path) => path.endsWith(".schema.json"))
     .filter((path) => !path.startsWith("dist/") && !path.includes("/www/") && !path.startsWith("test/fixtures/"))
     .sort();

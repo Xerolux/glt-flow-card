@@ -1,0 +1,139 @@
+{
+  "policy_version": 1,
+  "categories": [
+    "add",
+    "remove",
+    "move",
+    "binding",
+    "config"
+  ],
+  "category_labels": {
+    "add": "Added",
+    "remove": "Removed",
+    "move": "Moved",
+    "binding": "Binding",
+    "config": "Configuration"
+  },
+  "identity_fields": {
+    "alarms": "id",
+    "assets": "id",
+    "datapoints": "id",
+    "equipment": "id",
+    "groups": "id",
+    "layers": "id",
+    "paths": "id",
+    "plugins": "id",
+    "profiles": "id",
+    "remote_sites": "id",
+    "schedules": "id",
+    "sites": "id",
+    "views": "id",
+    "work_orders": "id"
+  },
+  "category_rules": {
+    "move_fields": [
+      "x",
+      "y",
+      "width",
+      "height",
+      "layer",
+      "view_id",
+      "container_id",
+      "positions"
+    ],
+    "binding_fields": [
+      "entity",
+      "entity_id",
+      "state_entity",
+      "bindings",
+      "fields.*.entity",
+      "slots.*.entity_id"
+    ],
+    "fallback_category": "config"
+  },
+  "order": {
+    "identity_keyed_collections": [
+      "alarms",
+      "assets",
+      "datapoints",
+      "equipment",
+      "groups",
+      "layers",
+      "paths",
+      "profiles",
+      "remote_sites",
+      "schedules",
+      "sites",
+      "views",
+      "work_orders"
+    ],
+    "semantic_arrays": [
+      "paths.*.points",
+      "profiles.*.slots",
+      "reports.definitions.*.columns",
+      "schedules.*.actions"
+    ],
+    "relevant_fields": [
+      "order",
+      "z_index"
+    ],
+    "ignored_result": "ordering_noise"
+  },
+  "dependencies": {
+    "references": [
+      {
+        "from": "paths",
+        "fields": [
+          "from_equipment",
+          "to_equipment"
+        ],
+        "to": "equipment"
+      },
+      {
+        "from": "equipment",
+        "fields": [
+          "profile"
+        ],
+        "to": "profiles"
+      },
+      {
+        "from": "equipment",
+        "fields": [
+          "asset_id"
+        ],
+        "to": "assets"
+      },
+      {
+        "from": "datapoints",
+        "fields": [
+          "layer"
+        ],
+        "to": "layers"
+      }
+    ],
+    "selection_rule": "transitive_closure",
+    "missing_reference": "block"
+  },
+  "impact": {
+    "severities": [
+      "info",
+      "warning",
+      "critical"
+    ],
+    "vocabulary": [
+      "none",
+      "visual",
+      "binding",
+      "operational",
+      "referential",
+      "security"
+    ],
+    "default_by_category": {
+      "add": "info",
+      "remove": "warning",
+      "move": "info",
+      "binding": "warning",
+      "config": "warning"
+    }
+  }
+}
