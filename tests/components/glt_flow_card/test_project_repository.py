@@ -56,7 +56,15 @@ def legacy_project(project_id: str = "legacy-plant") -> dict[str, Any]:
         "revision": 4,
         "updated": "2026-08-31T12:00:00+00:00",
         "updated_by": "legacy-user",
-        "versions": [{"id": "legacy-inline-version", "config": {"untouched": True}}],
+        "versions": [{
+            "id": "legacy-inline-version",
+            "revision": 3,
+            "config": {
+                "type": "custom:glt-flow-card",
+                "title": "Legacy Plant Before",
+                "equipment": [],
+            },
+        }],
         "config": {
             "type": "custom:glt-flow-card",
             "title": "Legacy Plant",
@@ -196,4 +204,3 @@ async def test_snapshots_are_immutable_and_metadata_stores_are_bounded_copies() 
     journal["state"] = "tampered"
     assert repository.get_journal("tx-1")["state"] == "PREPARED"
     assert repository.list_audit() == [{"id": "audit-1", "result": "prepared"}]
-
