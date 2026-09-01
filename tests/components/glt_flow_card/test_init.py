@@ -55,9 +55,9 @@ async def test_config_entry_lifecycle_is_resource_exact(
     from custom_components import glt_flow_card as integration
 
     manager = integration._manager(hass)
+    after_setup = lifecycle_effects.snapshot()
     pending_alarm = asyncio.create_task(asyncio.sleep(3600))
     manager._alarm_tasks["test:pending"] = pending_alarm
-    after_setup = lifecycle_effects.snapshot()
 
     assert await hass.config_entries.async_reload(config_entry.entry_id)
     await hass.async_block_till_done()

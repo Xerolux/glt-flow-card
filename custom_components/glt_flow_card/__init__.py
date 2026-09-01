@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import asyncio
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 from typing import Any
 
 import voluptuous as vol
@@ -146,6 +148,22 @@ class GltStore:
         legacy_payload = deepcopy(self.data)
         legacy_payload["projects"] = deepcopy(self._legacy_projects)
         await self.store.async_save(legacy_payload)
+
+    async def async_close(self) -> None:
+        """Release every runtime resource owned by this manager."""
+        unsubs, self._unsubs = self._unsubs, []
+        for unsubscribe in reversed(unsubs):
+            unsubscribe()
+
+        tasks, self._alarm_tasks = list(self._alarm_tasks.values()), {}
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        self.remote_sites.clear()
+        self.project_transactions._previews.clear()
 
     async def add_audit(self, event: dict[str, Any], user_id: str | None, user_name: str | None) -> dict[str, Any]:
         entry = deepcopy(event)
@@ -393,8 +411,49 @@ class GltStore:
             await self.async_save()
 
 
+@dataclass(slots=True)
+class CompanionRuntime:
+    """Entry-scoped runtime compatible with HA versions without runtime_data."""
+
+    entry_id: str
+    manager: GltStore
+
+    async def async_close(self) -> None:
+        """Close the complete entry-owned runtime."""
+        await self.manager.async_close()
+
+
+def _component_data(hass: HomeAssistant) -> dict[str, Any]:
+    """Return component data without relying on ConfigEntry.runtime_data."""
+    data = hass.data.setdefault(DOMAIN, {})
+    data.setdefault("runtimes", {})
+    data.setdefault("commands_registered", False)
+    data.setdefault("yaml_config", {})
+    return data
+
+
+def _runtime_for(
+    hass: HomeAssistant, entry_id: str | None = None
+) -> CompanionRuntime | None:
+    """Resolve an exact loaded runtime from the minimum supported HA lane."""
+    data = hass.data.get(DOMAIN)
+    if not isinstance(data, dict):
+        return None
+    runtimes = data.get("runtimes")
+    if not isinstance(runtimes, dict):
+        return None
+    if entry_id is not None:
+        runtime = runtimes.get(entry_id)
+        return runtime if isinstance(runtime, CompanionRuntime) else None
+    loaded = [runtime for runtime in runtimes.values() if isinstance(runtime, CompanionRuntime)]
+    return loaded[0] if len(loaded) == 1 else None
+
+
 def _manager(hass: HomeAssistant) -> GltStore:
-    return hass.data[DOMAIN]["manager"]
+    runtime = _runtime_for(hass)
+    if runtime is None:
+        raise RuntimeError("GLT Flow Card Companion is not loaded")
+    return runtime.manager
 
 
 def _project_for(hass: HomeAssistant, project_id: str) -> dict[str, Any] | None:
@@ -730,7 +789,7 @@ async def ws_audit_list(hass, connection, msg):
     connection.send_result(msg["id"], deepcopy(_manager(hass).data["audit"][:msg["limit"]]))
 
 
-COMMANDS = (
+_COMMAND_HANDLERS = (
     ws_projects_list, ws_projects_get, ws_projects_save, ws_projects_preview,
     ws_projects_apply, ws_projects_rollback, ws_projects_delete,
     ws_projects_lock, ws_projects_unlock, ws_templates_list, ws_templates_save,
@@ -741,37 +800,83 @@ COMMANDS = (
 )
 
 
-async def _ensure_manager(hass: HomeAssistant, yaml_config: dict[str, Any] | None = None) -> GltStore:
-    if DOMAIN in hass.data and hass.data[DOMAIN].get("manager"):
-        manager = hass.data[DOMAIN]["manager"]
-    else:
-        manager = GltStore(hass)
-        await manager.async_load()
-        hass.data.setdefault(DOMAIN, {})["manager"] = manager
-        for command in COMMANDS:
-            websocket_api.async_register_command(hass, command)
-        async def state_listener(event):
-            await manager.process_state_change(event)
-        unsub_bus = hass.bus.async_listen("state_changed", state_listener)
-        unsub_time = async_track_time_change(hass, manager.run_schedules, second=0)
-        manager._unsubs.extend([unsub_bus, unsub_time])
-    remote = (yaml_config or {}).get("remote_sites", []) if isinstance(yaml_config, dict) else []
-    if remote:
-        manager.configure_remote_sites(remote)
-    return manager
+def _guard_command(command):
+    """Make component-scope commands resolve only the current loaded entry."""
+
+    @wraps(command)
+    def guarded(hass, connection, msg):
+        if _runtime_for(hass) is None:
+            connection.send_error(
+                msg["id"],
+                "not_loaded",
+                "GLT Flow Card Companion is not loaded",
+            )
+            return None
+        return command(hass, connection, msg)
+
+    return guarded
+
+
+COMMANDS = tuple(_guard_command(command) for command in _COMMAND_HANDLERS)
+
+
+def _register_commands_once(hass: HomeAssistant) -> None:
+    """Register the immutable command surface once per component lifetime."""
+    data = _component_data(hass)
+    if data["commands_registered"]:
+        return
+    for command in COMMANDS:
+        websocket_api.async_register_command(hass, command)
+    data["commands_registered"] = True
 
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     yaml_config = config.get(DOMAIN, {}) if isinstance(config.get(DOMAIN, {}), dict) else {}
-    await _ensure_manager(hass, yaml_config)
+    data = _component_data(hass)
+    data["yaml_config"] = deepcopy(yaml_config)
+    _register_commands_once(hass)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    await _ensure_manager(hass)
+    data = _component_data(hass)
+    _register_commands_once(hass)
+    if _runtime_for(hass, entry.entry_id) is not None:
+        return True
+
+    manager = GltStore(hass)
+    try:
+        await manager.async_load()
+        remote = data["yaml_config"].get("remote_sites", [])
+        if isinstance(remote, list) and remote:
+            manager.configure_remote_sites(remote)
+
+        async def state_listener(event):
+            await manager.process_state_change(event)
+
+        manager._unsubs.extend(
+            [
+                hass.bus.async_listen("state_changed", state_listener),
+                async_track_time_change(hass, manager.run_schedules, second=0),
+            ]
+        )
+    except Exception:
+        await manager.async_close()
+        raise
+
+    runtime = CompanionRuntime(entry_id=entry.entry_id, manager=manager)
+    data["runtimes"][entry.entry_id] = runtime
+    data["manager"] = manager
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    # Single shared manager remains active while Home Assistant is running.
+    data = hass.data.get(DOMAIN)
+    if not isinstance(data, dict):
+        return True
+    runtimes = data.get("runtimes")
+    runtime = runtimes.pop(entry.entry_id, None) if isinstance(runtimes, dict) else None
+    data.pop("manager", None)
+    if isinstance(runtime, CompanionRuntime):
+        await runtime.async_close()
     return True
