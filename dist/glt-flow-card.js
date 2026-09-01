@@ -22475,8 +22475,8 @@ ${entityId}`)) return;
   (() => {
     "use strict";
     const Card = customElements.get("glt-flow-card");
-    const Editor = customElements.get("glt-flow-card-editor");
-    if (!Card || !Editor) {
+    const Editor2 = customElements.get("glt-flow-card-editor");
+    if (!Card || !Editor2) {
       console.warn("GLT Platform 1.0: base card/editor missing");
       return;
     }
@@ -22493,7 +22493,7 @@ ${entityId}`)) return;
       setTimeout(() => URL.revokeObjectURL(url), 1e3);
     };
     const entityId = (v2) => typeof v2 === "string" ? v2 : v2?.entity || "";
-    const stateOf = (card, id) => id ? card?._hass?.states?.[id] || card?._stateAt?.(id) : null;
+    const stateOf = (card2, id) => id ? card2?._hass?.states?.[id] || card2?._stateAt?.(id) : null;
     const projectId = (c) => c?.project?.id || slug3(c?.title || "glt-project");
     const currentRole = (c, hass) => {
       if (hass?.user?.is_admin) return "designer";
@@ -22570,10 +22570,10 @@ ${entityId}`)) return;
         return null;
       }
     }
-    async function executeControl(card, item, command, value) {
-      const cfg = ensureV1(card._config), id = entityId(item.control_entity || item.entity);
+    async function executeControl(card2, item, command, value) {
+      const cfg = ensureV1(card2._config), id = entityId(item.control_entity || item.entity);
       if (!id) return;
-      if (!canOperate(cfg, card._hass)) return alert("Mindestens Operator-Berechtigung erforderlich.");
+      if (!canOperate(cfg, card2._hass)) return alert("Mindestens Operator-Berechtigung erforderlich.");
       const domain = id.split(".")[0];
       let service = "toggle", data = { entity_id: id };
       if (command === "on") service = "turn_on";
@@ -22592,42 +22592,42 @@ ${entityId}`)) return;
       if (cfg.permissions.confirm_controls !== false && !confirm(`${item.name || id}: ${command}?`)) return;
       try {
         if (cfg.security.server_enforced) {
-          await ws(card, "control/execute", { project_id: projectId(cfg), entity_id: id, domain, service, service_data: data });
+          await ws(card2, "control/execute", { project_id: projectId(cfg), entity_id: id, domain, service, service_data: data });
         } else {
           if (!cfg.security.allowed_service_domains.includes(domain)) throw new Error(`Domain ${domain} nicht erlaubt`);
-          await card._hass.callService(domain, service, data);
+          await card2._hass.callService(domain, service, data);
         }
-        await audit(card, "control.execute", { equipment_id: item.id, entity_id: id, command, value });
+        await audit(card2, "control.execute", { equipment_id: item.id, entity_id: id, command, value });
       } catch (err) {
         alert(err?.message || String(err));
       }
     }
-    async function openOperations(card, item) {
-      const cfg = ensureV1(card._config), status = deriveOperationalState(item, card._hass?.states, { stale_minutes: cfg.diagnostics.stale_minutes });
+    async function openOperations(card2, item) {
+      const cfg = ensureV1(card2._config), status2 = deriveOperationalState(item, card2._hass?.states, { stale_minutes: cfg.diagnostics.stale_minutes });
       const id = entityId(item.control_entity || item.entity || item.state_entity);
-      const profile = profileForEquipment(item), meta = await registryMeta(card, id);
+      const profile = profileForEquipment(item), meta = await registryMeta(card2, id);
       const slots = (profile.slots || []).map((s) => {
         const bind = item.bindings?.[s.id] || item.fields?.find((f) => f.id === s.id || f.label === s.label)?.entity;
-        const st2 = stateOf(card, entityId(bind));
+        const st2 = stateOf(card2, entityId(bind));
         return `<div class="glt-v1-card"><b>${esc(s.label)}</b><small>${esc(entityId(bind) || "nicht zugeordnet")}</small><strong>${esc(st2?.state ?? "–")} ${esc(st2?.attributes?.unit_of_measurement || "")}</strong></div>`;
       }).join("");
       const controls = (profile.controls || []).map((c) => `<div class="glt-v1-card"><b>${esc(c.label)}</b><small>${esc(c.command)}</small>${c.command === "toggle" ? `<div class="glt-v1-actions"><button class="glt-v1-btn" data-command="on">Ein</button><button class="glt-v1-btn" data-command="off">Aus</button><button class="glt-v1-btn" data-command="toggle">Umschalten</button></div>` : `<div class="glt-v1-actions"><input class="glt-v1-input" data-value placeholder="Wert"><button class="glt-v1-btn" data-cmd="${esc(c.command)}">Setzen</button></div>`}</div>`).join("");
-      const m = modal(card, `Objektbedienung · ${item.name || item.id}`, `<div class="glt-v1-grid"><div class="glt-v1-card"><b>Zustand</b><strong>${esc(status.label)}</strong><small class="glt-v1-quality ${status.quality}">Qualität ${esc(status.quality)} · Alter ${status.age_minutes == null ? "–" : status.age_minutes.toFixed(1) + " min"}</small></div><div class="glt-v1-card"><b>Entity</b><strong>${esc(id || "–")}</strong><small>${esc(meta?.platform || meta?.config_entry_id || "Home Assistant")}</small></div><div class="glt-v1-card"><b>Rolle</b><strong>${esc(currentRole(cfg, card._hass))}</strong><small>${cfg.security.server_enforced ? "serverseitig abgesichert" : "Browser-Fallback"}</small></div></div><h4>Live-Werte</h4><div class="glt-v1-grid">${slots || '<div class="glt-v1-card">Keine Value-Slots</div>'}</div><h4>Bedienung</h4><div class="glt-v1-grid">${controls || '<div class="glt-v1-card">Keine Standardbedienung</div>'}</div><div class="glt-v1-actions" style="margin-top:12px"><button class="glt-v1-btn" data-more>HA Mehr-Info</button><button class="glt-v1-btn" data-trend>Trend</button></div>`);
-      m.querySelectorAll("[data-command]").forEach((b) => b.onclick = () => executeControl(card, item, b.dataset.command));
-      m.querySelectorAll("[data-cmd]").forEach((b) => b.onclick = () => executeControl(card, item, b.dataset.cmd, b.closest(".glt-v1-card").querySelector("[data-value]").value));
-      m.querySelector("[data-more]").onclick = () => card._openMoreInfo?.(id);
+      const m = modal(card2, `Objektbedienung · ${item.name || item.id}`, `<div class="glt-v1-grid"><div class="glt-v1-card"><b>Zustand</b><strong>${esc(status2.label)}</strong><small class="glt-v1-quality ${status2.quality}">Qualität ${esc(status2.quality)} · Alter ${status2.age_minutes == null ? "–" : status2.age_minutes.toFixed(1) + " min"}</small></div><div class="glt-v1-card"><b>Entity</b><strong>${esc(id || "–")}</strong><small>${esc(meta?.platform || meta?.config_entry_id || "Home Assistant")}</small></div><div class="glt-v1-card"><b>Rolle</b><strong>${esc(currentRole(cfg, card2._hass))}</strong><small>${cfg.security.server_enforced ? "serverseitig abgesichert" : "Browser-Fallback"}</small></div></div><h4>Live-Werte</h4><div class="glt-v1-grid">${slots || '<div class="glt-v1-card">Keine Value-Slots</div>'}</div><h4>Bedienung</h4><div class="glt-v1-grid">${controls || '<div class="glt-v1-card">Keine Standardbedienung</div>'}</div><div class="glt-v1-actions" style="margin-top:12px"><button class="glt-v1-btn" data-more>HA Mehr-Info</button><button class="glt-v1-btn" data-trend>Trend</button></div>`);
+      m.querySelectorAll("[data-command]").forEach((b) => b.onclick = () => executeControl(card2, item, b.dataset.command));
+      m.querySelectorAll("[data-cmd]").forEach((b) => b.onclick = () => executeControl(card2, item, b.dataset.cmd, b.closest(".glt-v1-card").querySelector("[data-value]").value));
+      m.querySelector("[data-more]").onclick = () => card2._openMoreInfo?.(id);
       m.querySelector("[data-trend]").onclick = () => {
         m.remove();
-        card._replayActive = false;
-        card._queueRender?.();
+        card2._replayActive = false;
+        card2._queueRender?.();
       };
     }
-    function decorateEquipment(card, canvas) {
-      const cfg = ensureV1(card._config), nodes = [...canvas.querySelectorAll(".glt-equipment")], items = cfg.equipment.filter((i) => card._visibleInView?.(i) !== false);
+    function decorateEquipment(card2, canvas) {
+      const cfg = ensureV1(card2._config), nodes = [...canvas.querySelectorAll(".glt-equipment")], items = cfg.equipment.filter((i) => card2._visibleInView?.(i) !== false);
       nodes.forEach((n, i) => {
         const item = items.find((x2) => x2.id === n.dataset.equipmentId) || items[i];
         if (!item) return;
-        const st2 = deriveOperationalState(item, card._hass?.states, { stale_minutes: cfg.diagnostics.stale_minutes });
+        const st2 = deriveOperationalState(item, card2._hass?.states, { stale_minutes: cfg.diagnostics.stale_minutes });
         n.querySelector(".glt-v1-state")?.remove();
         const b = document.createElement("span");
         b.className = `glt-v1-state ${st2.className}`;
@@ -22642,7 +22642,7 @@ ${entityId}`)) return;
           c.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            openOperations(card, item);
+            openOperations(card2, item);
           };
           n.appendChild(c);
         }
@@ -22655,57 +22655,57 @@ ${entityId}`)) return;
       decorateEquipment(this, canvas);
       return r;
     };
-    function alarmsPanel(card) {
-      const cfg = ensureV1(card._config);
+    function alarmsPanel(card2) {
+      const cfg = ensureV1(card2._config);
       const derived = cfg.alarms.map((a) => {
-        const st2 = stateOf(card, entityId(a.entity));
+        const st2 = stateOf(card2, entityId(a.entity));
         const active = a.active_states?.length ? a.active_states.map(String).includes(String(st2?.state)) : !["off", "0", "ok", "normal", "clear", "unknown", "unavailable"].includes(String(st2?.state).toLowerCase());
         return { ...a, active, state: st2?.state };
       });
-      const m = modal(card, t(cfg, "alarms"), `<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div><table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorität</th><th>Meldung</th><th>Wert</th><th>Aktion</th></tr></thead><tbody>${derived.map((a) => `<tr><td>${a.active ? "🔴 aktiv" : "⚪ normal"}</td><td>${esc(a.severity || a.priority || "warning")}</td><td>${esc(a.name || entityId(a.entity))}</td><td>${esc(a.state ?? "–")}</td><td>${a.active ? `<button class="glt-v1-btn" data-ack="${esc(a.id)}">Quittieren</button> <button class="glt-v1-btn" data-shelve="${esc(a.id)}">Shelve</button>` : ""}</td></tr>`).join("") || '<tr><td colspan="5">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`);
+      const m = modal(card2, t(cfg, "alarms"), `<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div><table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorität</th><th>Meldung</th><th>Wert</th><th>Aktion</th></tr></thead><tbody>${derived.map((a) => `<tr><td>${a.active ? "🔴 aktiv" : "⚪ normal"}</td><td>${esc(a.severity || a.priority || "warning")}</td><td>${esc(a.name || entityId(a.entity))}</td><td>${esc(a.state ?? "–")}</td><td>${a.active ? `<button class="glt-v1-btn" data-ack="${esc(a.id)}">Quittieren</button> <button class="glt-v1-btn" data-shelve="${esc(a.id)}">Shelve</button>` : ""}</td></tr>`).join("") || '<tr><td colspan="5">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`);
       m.querySelector("[data-refresh]").onclick = () => {
         m.remove();
-        alarmsPanel(card);
+        alarmsPanel(card2);
       };
       m.querySelectorAll("[data-ack]").forEach((b) => b.onclick = async () => {
         const comment = prompt("Quittierkommentar", "") || "";
         try {
-          await ws(card, "alarms/ack", { project_id: projectId(cfg), alarm_id: b.dataset.ack, comment });
+          await ws(card2, "alarms/ack", { project_id: projectId(cfg), alarm_id: b.dataset.ack, comment });
         } catch (_e2) {
         }
-        await audit(card, "alarm.ack", { alarm_id: b.dataset.ack, comment });
+        await audit(card2, "alarm.ack", { alarm_id: b.dataset.ack, comment });
         m.remove();
-        alarmsPanel(card);
+        alarmsPanel(card2);
       });
       m.querySelectorAll("[data-shelve]").forEach((b) => b.onclick = async () => {
         const minutes = Number(prompt("Für wie viele Minuten unterdrücken?", "60") || 60);
         try {
-          await ws(card, "alarms/shelve", { project_id: projectId(cfg), alarm_id: b.dataset.shelve, minutes });
+          await ws(card2, "alarms/shelve", { project_id: projectId(cfg), alarm_id: b.dataset.shelve, minutes });
         } catch (_e2) {
         }
         m.remove();
-        alarmsPanel(card);
+        alarmsPanel(card2);
       });
     }
-    function operationsPanel(card) {
-      const cfg = ensureV1(card._config);
-      const items = cfg.equipment.map((i) => ({ i, s: deriveOperationalState(i, card._hass?.states, { stale_minutes: cfg.diagnostics.stale_minutes }) })).sort((a, b) => b.s.severity - a.s.severity);
-      const m = modal(card, t(cfg, "operations"), `<div class="glt-v1-grid">${items.map(({ i, s }) => `<div class="glt-v1-card"><b>${esc(i.name || i.id)}</b><small>${esc(s.label)} · ${esc(s.quality)}</small><div class="glt-v1-actions"><button class="glt-v1-btn" data-open="${esc(i.id)}">Bedienen</button></div></div>`).join("")}</div>`);
+    function operationsPanel(card2) {
+      const cfg = ensureV1(card2._config);
+      const items = cfg.equipment.map((i) => ({ i, s: deriveOperationalState(i, card2._hass?.states, { stale_minutes: cfg.diagnostics.stale_minutes }) })).sort((a, b) => b.s.severity - a.s.severity);
+      const m = modal(card2, t(cfg, "operations"), `<div class="glt-v1-grid">${items.map(({ i, s }) => `<div class="glt-v1-card"><b>${esc(i.name || i.id)}</b><small>${esc(s.label)} · ${esc(s.quality)}</small><div class="glt-v1-actions"><button class="glt-v1-btn" data-open="${esc(i.id)}">Bedienen</button></div></div>`).join("")}</div>`);
       m.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => {
         const i = cfg.equipment.find((x2) => x2.id === b.dataset.open);
         m.remove();
-        openOperations(card, i);
+        openOperations(card2, i);
       });
     }
-    function runtimeButtons(card) {
-      const root = card.shadowRoot, bar = root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");
+    function runtimeButtons(card2) {
+      const root = card2.shadowRoot, bar = root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");
       if (!bar || bar.querySelector("[data-glt-v1-runtime]")) return;
       const wrap = document.createElement("span");
       wrap.dataset.gltV1Runtime = "1";
       wrap.className = "glt-v1-actions";
-      wrap.innerHTML = `<button class="glt4-pill glt-v1-btn" data-ops>${t(card._config, "operations")}</button><button class="glt4-pill glt-v1-btn" data-alarm>${t(card._config, "alarms")}</button>`;
-      wrap.querySelector("[data-ops]").onclick = () => operationsPanel(card);
-      wrap.querySelector("[data-alarm]").onclick = () => alarmsPanel(card);
+      wrap.innerHTML = `<button class="glt4-pill glt-v1-btn" data-ops>${t(card2._config, "operations")}</button><button class="glt4-pill glt-v1-btn" data-alarm>${t(card2._config, "alarms")}</button>`;
+      wrap.querySelector("[data-ops]").onclick = () => operationsPanel(card2);
+      wrap.querySelector("[data-alarm]").onclick = () => alarmsPanel(card2);
       bar.appendChild(wrap);
     }
     const oldCardRender = Card.prototype._render;
@@ -23009,8 +23009,8 @@ ${entityId}`)) return;
       const act = { symbols: showSymbolLibrary, semantics: showSemantics, automap: showAutoMapping, cad: showCAD, diagnostics: showDiagnostics, simulation: showSimulation, schedule: showSchedules, energy: showEnergy, maintenance: showMaintenance, project: showProjectV1 };
       bar.querySelectorAll("[data-v1]").forEach((b) => b.onclick = () => act[b.dataset.v1]?.(editor));
     }
-    const oldEditorRender = Editor.prototype._render;
-    Editor.prototype._render = function() {
+    const oldEditorRender = Editor2.prototype._render;
+    Editor2.prototype._render = function() {
       this._config = ensureV1(this._config);
       const r = oldEditorRender.call(this);
       addStyle(this.shadowRoot);
@@ -23028,11 +23028,417 @@ ${entityId}`)) return;
     console.info(`GLT Flow Card Engineering Platform 1.0 enabled · ${symbolCatalogStats().variants} symbol variants · ${COMPONENT_PROFILES.length} parametric profiles`);
   })();
 
+  // src/v100/project-safety-i18n.mjs
+  var COPY = {
+    en: {
+      title: "Project safety",
+      close: "Close Project safety",
+      scope: "Project data only — no Home Assistant service or plant command is executed.",
+      standalone: "Companion unavailable — shared project operations are read-only.",
+      tabs: ["Overview", "Validate", "Migrate & compare", "Bundles", "Evidence"],
+      overview: "Project safety overview",
+      validate: "Validate project",
+      validationIdle: "Choose Validate project to inspect the raw project without changing it.",
+      validationRunning: "Validating raw project",
+      validationSuccess: "Project validation complete",
+      validationFailed: "Project validation failed",
+      validationValid: "No validation issues found. The raw project matches schema {version}.",
+      validationInvalid: "The project is invalid. Review the listed paths; the original remains unchanged.",
+      unchanged: "Original project unchanged",
+      rawContract: "Raw contract",
+      project: "Project",
+      companion: "Companion",
+      bundleSafety: "Bundle safety",
+      releaseEvidence: "Release evidence",
+      schema: "Schema",
+      revision: "Revision",
+      connected: "Connected",
+      readOnly: "Read-only",
+      notRun: "Not run",
+      inspectBundle: "Inspect .gltproject bundle",
+      bundleEmpty: "No bundle inspected. Project asset metadata is listed without rendering asset content.",
+      assetMetadata: "Opaque asset metadata",
+      path: "Path",
+      mediaType: "Media type",
+      size: "Size",
+      checksum: "SHA-256",
+      exactCardVersion: "Exact card version",
+      artifactEquality: "Artifact equality",
+      byteIdentical: "Byte-identical",
+      noEvidence: "Release evidence is incomplete. Missing or stale gates are listed below.",
+      errors: "Validation issues"
+    },
+    de: {
+      title: "Projektsicherheit",
+      close: "Projektsicherheit schließen",
+      scope: "Nur Projektdaten — es wird kein Home-Assistant-Dienst und kein Anlagenbefehl ausgeführt.",
+      standalone: "Companion nicht verfügbar — gemeinsame Projektaktionen sind schreibgeschützt.",
+      tabs: ["Übersicht", "Validieren", "Migrieren & vergleichen", "Pakete", "Nachweise"],
+      overview: "Übersicht Projektsicherheit",
+      validate: "Projekt validieren",
+      validationIdle: "Wählen Sie „Projekt validieren“, um das Rohprojekt unverändert zu prüfen.",
+      validationRunning: "Rohprojekt wird validiert",
+      validationSuccess: "Projektvalidierung abgeschlossen",
+      validationFailed: "Projektvalidierung fehlgeschlagen",
+      validationValid: "Keine Validierungsprobleme gefunden. Das Rohprojekt entspricht Schema {version}.",
+      validationInvalid: "Das Projekt ist ungültig. Prüfen Sie die aufgeführten Pfade; das Original bleibt unverändert.",
+      unchanged: "Originalprojekt unverändert",
+      rawContract: "Rohvertrag",
+      project: "Projekt",
+      companion: "Companion",
+      bundleSafety: "Paketsicherheit",
+      releaseEvidence: "Release-Nachweise",
+      schema: "Schema",
+      revision: "Revision",
+      connected: "Verbunden",
+      readOnly: "Schreibgeschützt",
+      notRun: "Nicht ausgeführt",
+      inspectBundle: ".gltproject-Paket prüfen",
+      bundleEmpty: "Kein Paket geprüft. Projekt-Asset-Metadaten werden ohne Darstellung der Inhalte aufgelistet.",
+      assetMetadata: "Undurchsichtige Asset-Metadaten",
+      path: "Pfad",
+      mediaType: "Medientyp",
+      size: "Größe",
+      checksum: "SHA-256",
+      exactCardVersion: "Exakte Kartenversion",
+      artifactEquality: "Artefaktgleichheit",
+      byteIdentical: "Byte-identisch",
+      noEvidence: "Die Release-Nachweise sind unvollständig. Fehlende oder veraltete Prüfungen sind unten aufgeführt.",
+      errors: "Validierungsprobleme"
+    }
+  };
+  function projectSafetyLocale(hass, documentLanguage = "en") {
+    const language = hass?.locale?.language || documentLanguage || "en";
+    return String(language).toLowerCase().startsWith("de") ? "de" : "en";
+  }
+  function projectSafetyCopy(locale, key, values = {}) {
+    const value = COPY[locale]?.[key] ?? COPY.en[key] ?? key;
+    if (Array.isArray(value)) return [...value];
+    return String(value).replace(/\{([a-z_]+)\}/giu, (_match, name) => String(values[name] ?? ""));
+  }
+
+  // src/v100/project-safety.js
+  var Editor = customElements.get("glt-flow-card-editor");
+  var STYLE = `
+  .glt-safe-trigger{min-height:31px}
+  .glt-safe-modal{position:fixed;inset:0;z-index:13000;display:grid;place-items:center;padding:16px;background:#020617bd;backdrop-filter:blur(3px)}
+  .glt-safe-dialog{display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto;width:min(1120px,calc(100vw - 32px));max-height:92vh;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:16px;background:var(--bg,var(--card-background-color,#0a1826));color:var(--tx,var(--primary-text-color,#edf6ff));box-shadow:0 24px 70px #02061788;font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden}
+  .glt-safe-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px;border-bottom:1px solid var(--b,var(--divider-color,#19334a))}
+  .glt-safe-head h2{font-size:24px;line-height:1.2;margin:0}.glt-safe-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;color:var(--mut,var(--secondary-text-color,#8198ad));font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
+  .glt-safe-close,.glt-safe-btn,.glt-safe-tab{min-height:44px;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:8px;background:transparent;color:inherit;padding:8px 12px;font:700 14px/1.5 inherit;cursor:pointer}
+  .glt-safe-close{min-width:44px;padding:8px}.glt-safe-btn.primary{background:var(--e,#0aa8ff);border-color:var(--e,#0aa8ff);color:#fff}.glt-safe-btn:disabled{cursor:not-allowed;opacity:.55}
+  .glt-safe-close:focus-visible,.glt-safe-btn:focus-visible,.glt-safe-tab:focus-visible,.glt-safe-dialog input:focus-visible{outline:2px solid var(--e,#36c7ff);outline-offset:2px}
+  .glt-safe-banner{padding:12px 16px;border-bottom:1px solid var(--b,var(--divider-color,#19334a));background:color-mix(in srgb,var(--e,#0aa8ff) 10%,transparent);font-weight:700}
+  .glt-safe-banner.readonly{background:color-mix(in srgb,#8198ad 16%,transparent)}
+  .glt-safe-tabs{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;border-bottom:1px solid var(--b,var(--divider-color,#19334a));scrollbar-width:thin}.glt-safe-tab{white-space:nowrap;border-color:transparent;color:var(--mut,var(--secondary-text-color,#8198ad))}.glt-safe-tab[aria-selected="true"]{color:var(--e,#36c7ff);border-color:var(--e,#0aa8ff);background:color-mix(in srgb,var(--e,#0aa8ff) 10%,transparent)}
+  .glt-safe-content{min-width:0;overflow:auto;padding:24px}.glt-safe-content h3{font-size:18px;line-height:1.3;margin:0 0 16px}.glt-safe-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:16px}.glt-safe-card{min-width:0;padding:16px;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:10px;background:color-mix(in srgb,var(--bg,var(--card-background-color,#0a1826)) 94%,var(--mut,#8198ad) 6%)}.glt-safe-card h4{margin:0 0 8px;font-size:14px}.glt-safe-value{font-weight:700;overflow-wrap:anywhere}.glt-safe-help,.glt-safe-code{color:var(--mut,var(--secondary-text-color,#8198ad));font-size:12px}.glt-safe-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}
+  .glt-safe-status{display:flex;align-items:center;gap:8px;margin:0 0 16px;padding:12px;border:1px solid currentColor;border-radius:10px}.glt-safe-status.pass{color:#31d879}.glt-safe-status.fail{color:#ff4f4f}.glt-safe-status.info{color:var(--e,#36c7ff)}
+  .glt-safe-table{width:100%;border-collapse:collapse}.glt-safe-table th,.glt-safe-table td{padding:8px;border-bottom:1px solid var(--b,var(--divider-color,#19334a));text-align:left;vertical-align:top}.glt-safe-table th{font-size:12px}.glt-safe-table td{overflow-wrap:anywhere}.glt-safe-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.glt-safe-footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--b,var(--divider-color,#19334a));background:var(--bg,var(--card-background-color,#0a1826))}
+  @media(max-width:767px){.glt-safe-modal{padding:0}.glt-safe-dialog{width:100vw;max-height:none;height:100dvh;border:0;border-radius:0}.glt-safe-content{padding:16px}.glt-safe-table,.glt-safe-table tbody,.glt-safe-table tr,.glt-safe-table th,.glt-safe-table td{display:block}.glt-safe-table thead{display:none}.glt-safe-table tr{padding:8px 0;border-bottom:1px solid var(--b,var(--divider-color,#19334a))}.glt-safe-table td{border:0}.glt-safe-table td::before{content:attr(data-label);display:block;color:var(--mut,var(--secondary-text-color,#8198ad));font-size:12px;font-weight:700}}
+  @media(forced-colors:active){.glt-safe-dialog,.glt-safe-card,.glt-safe-status,.glt-safe-btn,.glt-safe-tab{border:1px solid CanvasText}.glt-safe-tab[aria-selected="true"]{outline:2px solid Highlight}}
+  @media(prefers-reduced-motion:reduce){.glt-safe-modal,.glt-safe-dialog,.glt-safe-tab{scroll-behavior:auto;transition:none!important;animation:none!important}}
+`;
+  function copyFor(editor, key, values) {
+    const locale = projectSafetyLocale(editor._hass || editor._glt4Hass, document.documentElement.lang);
+    return projectSafetyCopy(locale, key, values);
+  }
+  function element(name, className, text) {
+    const node = document.createElement(name);
+    if (className) node.className = className;
+    if (text !== void 0) node.textContent = String(text);
+    return node;
+  }
+  function button(label, className = "glt-safe-btn") {
+    const node = element("button", className, label);
+    node.type = "button";
+    return node;
+  }
+  function card(title, value, detail) {
+    const node = element("section", "glt-safe-card");
+    node.append(element("h4", "", title), element("div", "glt-safe-value", value));
+    if (detail) node.append(element("div", "glt-safe-help", detail));
+    return node;
+  }
+  function status(kind, text) {
+    const node = element("div", `glt-safe-status ${kind}`);
+    node.setAttribute("role", "status");
+    node.setAttribute("aria-live", "polite");
+    node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text));
+    return node;
+  }
+  function focusable(dialog) {
+    return [...dialog.querySelectorAll("button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])")].filter((node) => !node.hidden && node.getAttribute("aria-hidden") !== "true");
+  }
+  function renderOverview(editor, state, content) {
+    content.append(element("h3", "", copyFor(editor, "overview")));
+    const grid = element("div", "glt-safe-grid");
+    const project = editor._config?.project || {};
+    grid.append(
+      card(copyFor(editor, "rawContract"), `${copyFor(editor, "schema")} ${editor._config?.schema_version ?? "—"}`, state.validation?.valid === true ? copyFor(editor, "validationSuccess") : copyFor(editor, "notRun")),
+      card(copyFor(editor, "project"), project.name || project.id || "—", `${copyFor(editor, "revision")} ${project.revision ?? 0}`),
+      card(copyFor(editor, "companion"), editor._hass?.callWS ? copyFor(editor, "connected") : copyFor(editor, "readOnly")),
+      card(copyFor(editor, "bundleSafety"), copyFor(editor, "notRun")),
+      card(copyFor(editor, "releaseEvidence"), copyFor(editor, "byteIdentical"), `v${window.GLTFlowCardSDK?.version || "—"}`)
+    );
+    content.append(grid);
+    const actions = element("div", "glt-safe-actions");
+    const validate = button(copyFor(editor, "validate"), "glt-safe-btn primary");
+    validate.addEventListener("click", () => {
+      state.tab = 1;
+      state.runValidation = true;
+      state.render();
+    });
+    actions.append(validate);
+    content.append(actions);
+  }
+  function renderValidation(editor, state, content) {
+    content.append(element("h3", "", copyFor(editor, "validate")));
+    if (!state.validation) {
+      content.append(status("info", copyFor(editor, "validationIdle")));
+    } else if (state.validation.valid) {
+      content.append(status("pass", copyFor(editor, "validationSuccess")));
+      content.append(element("p", "", copyFor(editor, "validationValid", { version: state.validation.schema_version })));
+      content.append(element("p", "glt-safe-code", copyFor(editor, "unchanged")));
+    } else {
+      content.append(status("fail", copyFor(editor, "validationFailed")));
+      content.append(element("p", "", copyFor(editor, "validationInvalid")));
+      const table2 = element("table", "glt-safe-table");
+      const head = element("thead");
+      const headRow = element("tr");
+      for (const label of ["Code", copyFor(editor, "path"), "Message"]) headRow.append(element("th", "", label));
+      head.append(headRow);
+      const body = element("tbody");
+      for (const issue2 of state.validation.errors || []) {
+        const row = element("tr");
+        for (const [label, value] of [["Code", issue2.code], [copyFor(editor, "path"), issue2.path], ["Message", issue2.message || JSON.stringify(issue2.params || {})]]) {
+          const cell = element("td", "glt-safe-code", value);
+          cell.dataset.label = label;
+          row.append(cell);
+        }
+        body.append(row);
+      }
+      table2.append(head, body);
+      content.append(table2);
+    }
+    const actions = element("div", "glt-safe-actions");
+    const validate = button(copyFor(editor, "validate"), "glt-safe-btn primary");
+    validate.addEventListener("click", () => {
+      state.validation = evaluateProjectContract(editor._config);
+      state.render();
+    });
+    actions.append(validate);
+    content.append(actions);
+    if (state.runValidation) {
+      state.runValidation = false;
+      queueMicrotask(() => validate.click());
+    }
+  }
+  function renderMigration(editor, content) {
+    content.append(element("h3", "", copyFor(editor, "tabs")[2]));
+    content.append(status("info", editor._hass?.callWS ? copyFor(editor, "notRun") : copyFor(editor, "standalone")));
+    content.append(element("p", "glt-safe-help", copyFor(editor, "scope")));
+  }
+  function appendAssetTable(editor, content, assets) {
+    content.append(element("h3", "", copyFor(editor, "assetMetadata")));
+    const table2 = element("table", "glt-safe-table");
+    const head = element("thead");
+    const headRow = element("tr");
+    const labels = [copyFor(editor, "path"), copyFor(editor, "mediaType"), copyFor(editor, "size"), copyFor(editor, "checksum")];
+    for (const label of labels) headRow.append(element("th", "", label));
+    head.append(headRow);
+    const body = element("tbody");
+    for (const asset of assets) {
+      const row = element("tr");
+      const values = [asset.path || asset.id || "—", asset.media_type || "—", String(asset.size ?? "—"), asset.sha256 || "—"];
+      values.forEach((value, index) => {
+        const cell = element("td", "glt-safe-code", value);
+        cell.dataset.label = labels[index];
+        row.append(cell);
+      });
+      body.append(row);
+    }
+    table2.append(head, body);
+    content.append(table2);
+  }
+  function renderBundles(editor, state, content) {
+    content.append(element("p", "glt-safe-help", copyFor(editor, "bundleEmpty")));
+    appendAssetTable(editor, content, state.bundle?.assets || editor._config?.assets || []);
+    const input = element("input");
+    input.type = "file";
+    input.accept = ".gltproject,application/zip";
+    input.hidden = true;
+    const inspect = button(copyFor(editor, "inspectBundle"));
+    inspect.addEventListener("click", () => input.click());
+    input.addEventListener("change", async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        state.bundle = await readProjectBundleArchive(await file.arrayBuffer());
+        state.bundleError = null;
+      } catch (error) {
+        state.bundleError = error;
+      }
+      state.render();
+    });
+    const actions = element("div", "glt-safe-actions");
+    actions.append(inspect, input);
+    content.append(actions);
+    if (state.bundleError) content.append(status("fail", String(state.bundleError.message || state.bundleError)));
+  }
+  function renderEvidence(editor, content) {
+    content.append(element("h3", "", copyFor(editor, "releaseEvidence")));
+    const grid = element("div", "glt-safe-grid");
+    grid.append(
+      card(copyFor(editor, "exactCardVersion"), window.GLTFlowCardSDK?.version || "—"),
+      card(copyFor(editor, "artifactEquality"), copyFor(editor, "byteIdentical"), "dist/glt-flow-card.js = Companion www")
+    );
+    content.append(grid, element("p", "glt-safe-help", copyFor(editor, "noEvidence")));
+  }
+  function openProjectSafety(editor, trigger) {
+    editor.shadowRoot.querySelector(".glt-safe-modal")?.remove();
+    const state = { tab: 0, validation: null, bundle: null, bundleError: null, runValidation: false };
+    const modal = element("div", "glt-safe-modal");
+    const dialog = element("section", "glt-safe-dialog");
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    const titleId = `glt-safe-title-${Math.random().toString(36).slice(2)}`;
+    dialog.setAttribute("aria-labelledby", titleId);
+    const head = element("header", "glt-safe-head");
+    const headingWrap = element("div");
+    const heading = element("h2", "", copyFor(editor, "title"));
+    heading.id = titleId;
+    const project = editor._config?.project || {};
+    const meta = element("div", "glt-safe-meta");
+    meta.append(element("span", "", project.name || project.id || "—"), element("span", "", `${copyFor(editor, "schema")} ${editor._config?.schema_version ?? "—"}`), element("span", "", `${copyFor(editor, "revision")} ${project.revision ?? 0}`));
+    headingWrap.append(heading, meta);
+    const close = button("×", "glt-safe-close");
+    close.setAttribute("aria-label", copyFor(editor, "close"));
+    head.append(headingWrap, close);
+    const banner = element("div", "glt-safe-banner", copyFor(editor, "scope"));
+    const tabs = element("div", "glt-safe-tabs");
+    tabs.setAttribute("role", "tablist");
+    tabs.setAttribute("aria-label", copyFor(editor, "title"));
+    const content = element("main", "glt-safe-content");
+    const footer = element("footer", "glt-safe-footer");
+    const footerClose = button(copyFor(editor, "close"));
+    footer.append(footerClose);
+    dialog.append(head, banner, tabs, content, footer);
+    modal.append(dialog);
+    editor.shadowRoot.append(modal);
+    const closeDialog = () => {
+      modal.remove();
+      trigger.focus();
+    };
+    close.addEventListener("click", closeDialog);
+    footerClose.addEventListener("click", closeDialog);
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closeDialog();
+    });
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDialog();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const nodes = focusable(dialog);
+      if (!nodes.length) return;
+      const first = nodes[0];
+      const last = nodes.at(-1);
+      if (event.shiftKey && event.target === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && event.target === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+    state.render = () => {
+      tabs.replaceChildren();
+      const labels = copyFor(editor, "tabs");
+      labels.forEach((label, index) => {
+        const tab = button(label, "glt-safe-tab");
+        tab.setAttribute("role", "tab");
+        tab.setAttribute("aria-selected", String(index === state.tab));
+        tab.tabIndex = index === state.tab ? 0 : -1;
+        tab.addEventListener("click", () => {
+          state.tab = index;
+          state.render();
+        });
+        tab.addEventListener("keydown", (event) => {
+          const movement = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+          if (movement === void 0 && event.key !== "Home" && event.key !== "End") return;
+          event.preventDefault();
+          state.tab = event.key === "Home" ? 0 : event.key === "End" ? labels.length - 1 : (index + movement + labels.length) % labels.length;
+          state.render();
+          tabs.querySelectorAll('[role="tab"]')[state.tab].focus();
+        });
+        tabs.append(tab);
+      });
+      content.replaceChildren();
+      if (!editor._hass?.callWS) {
+        const unavailable = element("div", "glt-safe-banner readonly", copyFor(editor, "standalone"));
+        content.append(unavailable);
+      }
+      if (state.tab === 0) renderOverview(editor, state, content);
+      if (state.tab === 1) renderValidation(editor, state, content);
+      if (state.tab === 2) renderMigration(editor, content);
+      if (state.tab === 3) renderBundles(editor, state, content);
+      if (state.tab === 4) renderEvidence(editor, content);
+    };
+    state.render();
+    queueMicrotask(() => close.focus());
+  }
+  function installProjectSafety(editor) {
+    const root = editor.shadowRoot;
+    if (!root) return;
+    if (!root.querySelector("style[data-glt-project-safety]")) {
+      const style = element("style");
+      style.dataset.gltProjectSafety = "1";
+      style.textContent = STYLE;
+      root.append(style);
+    }
+    const projects = root.querySelector('.glt4-bar [data-g4="projects"]');
+    if (!projects) return;
+    const existing = root.querySelector("[data-glt-project-safety-trigger]");
+    const label = copyFor(editor, "title");
+    if (existing) {
+      existing.textContent = label;
+      existing.setAttribute("aria-label", label);
+      return;
+    }
+    const trigger = button(label, "glt4-btn glt-safe-trigger");
+    trigger.dataset.gltProjectSafetyTrigger = "1";
+    trigger.setAttribute("aria-label", label);
+    trigger.addEventListener("click", () => openProjectSafety(editor, trigger));
+    projects.after(trigger);
+  }
+  if (Editor) {
+    const originalRender = Editor.prototype._render;
+    Editor.prototype._render = function projectSafetyRender() {
+      const result2 = originalRender.call(this);
+      installProjectSafety(this);
+      return result2;
+    };
+    const hassDescriptor = Object.getOwnPropertyDescriptor(Editor.prototype, "hass");
+    if (hassDescriptor?.set) {
+      Object.defineProperty(Editor.prototype, "hass", {
+        configurable: true,
+        get: hassDescriptor.get,
+        set(value) {
+          hassDescriptor.set.call(this, value);
+          installProjectSafety(this);
+        }
+      });
+    }
+    if (window.GLTFlowCardSDK) window.GLTFlowCardSDK.projectSafety = { version: 1, tabs: 5 };
+  }
+
   // src/v100/v1-addons.js
   (() => {
     "use strict";
-    const Card = customElements.get("glt-flow-card"), Editor = customElements.get("glt-flow-card-editor");
-    if (!Card || !Editor) return;
+    const Card = customElements.get("glt-flow-card"), Editor2 = customElements.get("glt-flow-card-editor");
+    if (!Card || !Editor2) return;
     const esc = (v2) => String(v2 ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
     const eid = (v2) => typeof v2 === "string" ? v2 : v2?.entity || "";
     function box(owner, title, html) {
@@ -23045,16 +23451,16 @@ ${entityId}`)) return;
       root.appendChild(m);
       return m;
     }
-    function energyPanel(card) {
-      const c = card._config, e = c.energy || {}, meters = e.meters || [];
+    function energyPanel(card2) {
+      const c = card2._config, e = c.energy || {}, meters = e.meters || [];
       let totalCost = 0, totalCo2 = 0;
       const rows = meters.map((m) => {
-        const st2 = card._hass?.states?.[m.entity], v2 = Number.parseFloat(st2?.state), cost = Number.isFinite(v2) && m.price_per_unit != null ? v2 * Number(m.price_per_unit) : null, co2 = Number.isFinite(v2) && m.kind === "electricity" && e.co2_factor_g_per_kwh ? v2 * Number(e.co2_factor_g_per_kwh) / 1e3 : null;
+        const st2 = card2._hass?.states?.[m.entity], v2 = Number.parseFloat(st2?.state), cost = Number.isFinite(v2) && m.price_per_unit != null ? v2 * Number(m.price_per_unit) : null, co2 = Number.isFinite(v2) && m.kind === "electricity" && e.co2_factor_g_per_kwh ? v2 * Number(e.co2_factor_g_per_kwh) / 1e3 : null;
         if (cost != null) totalCost += cost;
         if (co2 != null) totalCo2 += co2;
         return `<div class="glt-v1-card"><b>${esc(m.name || m.id)}</b><strong>${Number.isFinite(v2) ? v2.toFixed(2) : "–"} ${esc(st2?.attributes?.unit_of_measurement || m.unit || "")}</strong><small>${esc(m.kind || "meter")}${cost != null ? ` · ${cost.toFixed(2)} €` : ""}${co2 != null ? ` · ${co2.toFixed(2)} kg CO₂` : ""}</small></div>`;
       }).join("");
-      box(card, "Energie & Medien", `<div class="glt-v1-grid"><div class="glt-v1-card"><b>Kostenindikator</b><strong>${totalCost.toFixed(2)} €</strong><small>aus aktuell konfigurierten Zählerständen</small></div><div class="glt-v1-card"><b>CO₂-Indikator</b><strong>${totalCo2.toFixed(2)} kg</strong><small>elektrische Zähler</small></div></div><h4>Medienfluss</h4><div class="glt-v1-grid">${rows || '<div class="glt-v1-card">Keine Energiezähler konfiguriert.</div>'}</div>`);
+      box(card2, "Energie & Medien", `<div class="glt-v1-grid"><div class="glt-v1-card"><b>Kostenindikator</b><strong>${totalCost.toFixed(2)} €</strong><small>aus aktuell konfigurierten Zählerständen</small></div><div class="glt-v1-card"><b>CO₂-Indikator</b><strong>${totalCo2.toFixed(2)} kg</strong><small>elektrische Zähler</small></div></div><h4>Medienfluss</h4><div class="glt-v1-grid">${rows || '<div class="glt-v1-card">Keine Energiezähler konfiguriert.</div>'}</div>`);
     }
     function reportPanel(editor) {
       const c = editor._config;
@@ -23072,18 +23478,18 @@ ${entityId}`)) return;
         m.remove();
       };
     }
-    function addRuntimeButtons(card) {
-      const bar = card.shadowRoot.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");
+    function addRuntimeButtons(card2) {
+      const bar = card2.shadowRoot.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");
       if (!bar || bar.querySelector("[data-v1-energy]")) return;
       const b = document.createElement("button");
       b.className = "glt4-pill glt-v1-btn";
       b.dataset.v1Energy = "1";
       b.textContent = "⚡ Energie";
-      b.onclick = () => energyPanel(card);
+      b.onclick = () => energyPanel(card2);
       bar.appendChild(b);
     }
-    function addDrilldown(card, canvas) {
-      const items = (card._config.equipment || []).filter((i) => card._visibleInView?.(i) !== false);
+    function addDrilldown(card2, canvas) {
+      const items = (card2._config.equipment || []).filter((i) => card2._visibleInView?.(i) !== false);
       [...canvas.querySelectorAll(".glt-equipment")].forEach((node, i) => {
         const item = items.find((x2) => x2.id === node.dataset.equipmentId) || items[i];
         if (!item?.detail_view || node.querySelector("[data-v1-drill]")) return;
@@ -23096,25 +23502,25 @@ ${entityId}`)) return;
         b.onclick = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          card._gltV1PrevView = card._view;
-          card._view = item.detail_view;
-          card._queueRender?.();
+          card2._gltV1PrevView = card2._view;
+          card2._view = item.detail_view;
+          card2._queueRender?.();
         };
         node.appendChild(b);
       });
     }
-    function breadcrumbs(card) {
-      const root = card.shadowRoot;
+    function breadcrumbs(card2) {
+      const root = card2.shadowRoot;
       root.querySelector(".glt-v1-breadcrumbs")?.remove();
-      if (!card._gltV1PrevView) return;
+      if (!card2._gltV1PrevView) return;
       const d = document.createElement("div");
       d.className = "glt-v1-breadcrumbs";
-      const current = (card._config.views || []).find((v2) => v2.id === card._view);
-      d.innerHTML = `<button data-home>‹ Übersicht</button><span>/</span><b>${esc(current?.name || card._view)}</b>`;
+      const current = (card2._config.views || []).find((v2) => v2.id === card2._view);
+      d.innerHTML = `<button data-home>‹ Übersicht</button><span>/</span><b>${esc(current?.name || card2._view)}</b>`;
       d.querySelector("[data-home]").onclick = () => {
-        card._view = card._gltV1PrevView;
-        card._gltV1PrevView = null;
-        card._queueRender?.();
+        card2._view = card2._gltV1PrevView;
+        card2._gltV1PrevView = null;
+        card2._queueRender?.();
       };
       const anchor = root.querySelector(".glt-header,.header,.toolbar");
       anchor?.after(d);
@@ -23196,8 +23602,8 @@ ${entityId}`)) return;
       }
       lasso(editor);
     }
-    const prevER = Editor.prototype._render;
-    Editor.prototype._render = function() {
+    const prevER = Editor2.prototype._render;
+    Editor2.prototype._render = function() {
       const r = prevER.call(this);
       addonToolbar(this);
       return r;

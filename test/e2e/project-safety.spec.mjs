@@ -47,7 +47,7 @@ async function mountEditor(page, options = {}) {
 }
 
 async function openProjectSafety(page, label = "Project safety") {
-  const projectAction = page.getByRole("button", { name: "Projects", exact: true });
+  const projectAction = page.locator('[data-g4="projects"]');
   const projectSafety = page.getByRole("button", { name: label, exact: true });
   if (await projectSafety.count() === 0) {
     await expectNoProhibitedEffects(page);
@@ -114,7 +114,7 @@ test("project-safety keyboard traps focus, changes tabs, closes, and restores fo
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog", { name: "Project safety" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Close Project safety" })).toBeFocused();
+  await expect(dialog.locator(".glt-safe-close")).toBeFocused();
   await dialog.getByRole("tab", { name: "Overview" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(dialog.getByRole("tab", { name: "Validate" })).toBeFocused();

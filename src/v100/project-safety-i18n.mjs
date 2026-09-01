@@ -1,0 +1,91 @@
+const COPY = {
+  en: {
+    title: "Project safety",
+    close: "Close Project safety",
+    scope: "Project data only — no Home Assistant service or plant command is executed.",
+    standalone: "Companion unavailable — shared project operations are read-only.",
+    tabs: ["Overview", "Validate", "Migrate & compare", "Bundles", "Evidence"],
+    overview: "Project safety overview",
+    validate: "Validate project",
+    validationIdle: "Choose Validate project to inspect the raw project without changing it.",
+    validationRunning: "Validating raw project",
+    validationSuccess: "Project validation complete",
+    validationFailed: "Project validation failed",
+    validationValid: "No validation issues found. The raw project matches schema {version}.",
+    validationInvalid: "The project is invalid. Review the listed paths; the original remains unchanged.",
+    unchanged: "Original project unchanged",
+    rawContract: "Raw contract",
+    project: "Project",
+    companion: "Companion",
+    bundleSafety: "Bundle safety",
+    releaseEvidence: "Release evidence",
+    schema: "Schema",
+    revision: "Revision",
+    connected: "Connected",
+    readOnly: "Read-only",
+    notRun: "Not run",
+    inspectBundle: "Inspect .gltproject bundle",
+    bundleEmpty: "No bundle inspected. Project asset metadata is listed without rendering asset content.",
+    assetMetadata: "Opaque asset metadata",
+    path: "Path",
+    mediaType: "Media type",
+    size: "Size",
+    checksum: "SHA-256",
+    exactCardVersion: "Exact card version",
+    artifactEquality: "Artifact equality",
+    byteIdentical: "Byte-identical",
+    noEvidence: "Release evidence is incomplete. Missing or stale gates are listed below.",
+    errors: "Validation issues",
+  },
+  de: {
+    title: "Projektsicherheit",
+    close: "Projektsicherheit schließen",
+    scope: "Nur Projektdaten — es wird kein Home-Assistant-Dienst und kein Anlagenbefehl ausgeführt.",
+    standalone: "Companion nicht verfügbar — gemeinsame Projektaktionen sind schreibgeschützt.",
+    tabs: ["Übersicht", "Validieren", "Migrieren & vergleichen", "Pakete", "Nachweise"],
+    overview: "Übersicht Projektsicherheit",
+    validate: "Projekt validieren",
+    validationIdle: "Wählen Sie „Projekt validieren“, um das Rohprojekt unverändert zu prüfen.",
+    validationRunning: "Rohprojekt wird validiert",
+    validationSuccess: "Projektvalidierung abgeschlossen",
+    validationFailed: "Projektvalidierung fehlgeschlagen",
+    validationValid: "Keine Validierungsprobleme gefunden. Das Rohprojekt entspricht Schema {version}.",
+    validationInvalid: "Das Projekt ist ungültig. Prüfen Sie die aufgeführten Pfade; das Original bleibt unverändert.",
+    unchanged: "Originalprojekt unverändert",
+    rawContract: "Rohvertrag",
+    project: "Projekt",
+    companion: "Companion",
+    bundleSafety: "Paketsicherheit",
+    releaseEvidence: "Release-Nachweise",
+    schema: "Schema",
+    revision: "Revision",
+    connected: "Verbunden",
+    readOnly: "Schreibgeschützt",
+    notRun: "Nicht ausgeführt",
+    inspectBundle: ".gltproject-Paket prüfen",
+    bundleEmpty: "Kein Paket geprüft. Projekt-Asset-Metadaten werden ohne Darstellung der Inhalte aufgelistet.",
+    assetMetadata: "Undurchsichtige Asset-Metadaten",
+    path: "Pfad",
+    mediaType: "Medientyp",
+    size: "Größe",
+    checksum: "SHA-256",
+    exactCardVersion: "Exakte Kartenversion",
+    artifactEquality: "Artefaktgleichheit",
+    byteIdentical: "Byte-identisch",
+    noEvidence: "Die Release-Nachweise sind unvollständig. Fehlende oder veraltete Prüfungen sind unten aufgeführt.",
+    errors: "Validierungsprobleme",
+  },
+};
+
+export function projectSafetyLocale(hass, documentLanguage = "en") {
+  const language = hass?.locale?.language || documentLanguage || "en";
+  return String(language).toLowerCase().startsWith("de") ? "de" : "en";
+}
+
+export function projectSafetyCopy(locale, key, values = {}) {
+  const value = COPY[locale]?.[key] ?? COPY.en[key] ?? key;
+  if (Array.isArray(value)) return [...value];
+  return String(value).replace(/\{([a-z_]+)\}/giu, (_match, name) => String(values[name] ?? ""));
+}
+
+export const PROJECT_SAFETY_COPY = COPY;
