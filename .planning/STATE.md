@@ -125,7 +125,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-None yet.
+**Count:** 1
+
+- [Maintain cross-AI execution handoff](todos/pending/2026-09-01-maintain-cross-ai-execution-handoff.md) — Keep the canonical cross-AI checklist current as roadmap work and verification progress.
 
 ### Blockers/Concerns
 
