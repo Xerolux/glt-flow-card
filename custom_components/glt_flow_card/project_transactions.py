@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from copy import deepcopy
 from datetime import datetime, timezone
 import secrets
+import time
 from typing import Any
 
 from .project_contract import digest_canonical_json, evaluate_project_contract
@@ -39,10 +40,20 @@ class ProjectTransactionCoordinator:
         *,
         failure_hook: Callable[[str], None] | None = None,
         id_factory: Callable[[], str] | None = None,
+        time_factory: Callable[[], float] | None = None,
+        preview_ttl_seconds: float = 300.0,
+        preview_max_entries: int = 32,
+        preview_max_retained_bytes: int = 20 * 1024 * 1024,
     ) -> None:
         self.repository = repository
         self._failure_hook = failure_hook
         self._id_factory = id_factory or (lambda: secrets.token_urlsafe(24))
+        self._time_factory = time_factory or time.monotonic
+        self._preview_ttl_seconds = max(1.0, float(preview_ttl_seconds))
+        self._preview_max_entries = max(1, int(preview_max_entries))
+        self._preview_max_retained_bytes = max(
+            1, int(preview_max_retained_bytes)
+        )
         self._previews: dict[str, dict[str, Any]] = {}
         self._lock = asyncio.Lock()
 
@@ -73,6 +84,43 @@ class ProjectTransactionCoordinator:
         name = str(candidate.get("project", {}).get("name") or project_id)
         empty = self._empty_project(project_id, name)
         return empty, 0, digest_canonical_json(empty)["digest"]
+
+    def _purge_previews(self) -> None:
+        now = self._time_factory()
+        expired = [
+            preview_id
+            for preview_id, preview in self._previews.items()
+            if now - float(preview["created_at"]) >= self._preview_ttl_seconds
+        ]
+        for preview_id in expired:
+            self._previews.pop(preview_id, None)
+
+    def _retain_preview(self, preview_id: str, preview: dict[str, Any]) -> None:
+        self._purge_previews()
+        for existing_id, existing in list(self._previews.items()):
+            if (
+                existing["user_id"] == preview["user_id"]
+                and existing["project_id"] == preview["project_id"]
+            ):
+                self._previews.pop(existing_id, None)
+        if preview["retained_bytes"] > self._preview_max_retained_bytes:
+            raise ValueError("preview candidate exceeds retained byte limit")
+        self._previews[preview_id] = preview
+        while (
+            len(self._previews) > self._preview_max_entries
+            or sum(
+                int(entry["retained_bytes"])
+                for entry in self._previews.values()
+            ) > self._preview_max_retained_bytes
+        ):
+            oldest_id = min(
+                self._previews,
+                key=lambda key: (
+                    float(self._previews[key]["created_at"]),
+                    key,
+                ),
+            )
+            self._previews.pop(oldest_id, None)
 
     @staticmethod
     def _prepare_candidate(
@@ -110,6 +158,13 @@ class ProjectTransactionCoordinator:
         diff = compute_project_diff(base, prepared_candidate)
         if diff["source_digest"] != base_digest:
             raise RuntimeError("base digest recomputation mismatch")
+        self._purge_previews()
+        for existing_id, existing in list(self._previews.items()):
+            if (
+                existing["user_id"] == bound_user
+                and existing["project_id"] == project_id
+            ):
+                self._previews.pop(existing_id, None)
         preview_id = self._id_factory()
         attempts = 0
         while preview_id in self._previews and attempts < 8:
@@ -121,14 +176,20 @@ class ProjectTransactionCoordinator:
             operation["id"]: expand_diff_selection(diff, [operation["id"]])
             for operation in diff["operations"]
         }
-        self._previews[preview_id] = {
+        retained_candidate = _clone(prepared_candidate)
+        retained_bytes = len(
+            digest_canonical_json(retained_candidate)["canonical"].encode("utf-8")
+        )
+        self._retain_preview(preview_id, {
             "user_id": bound_user,
             "project_id": project_id,
             "expected_revision": base_revision,
             "base_digest": base_digest,
             "candidate_digest": diff["candidate_digest"],
-            "candidate_source": _clone(candidate),
-        }
+            "candidate_source": retained_candidate,
+            "created_at": self._time_factory(),
+            "retained_bytes": retained_bytes,
+        })
         return {
             "preview_id": preview_id,
             "project_id": project_id,
@@ -154,49 +215,55 @@ class ProjectTransactionCoordinator:
         """Recompute a preview and commit only selected server operations."""
 
         bound_user = self._require_user(user_id)
+        self._purge_previews()
         preview = self._previews.get(preview_id)
         if preview is None:
             raise ValueError("unknown preview id")
         if preview["user_id"] != bound_user or preview["project_id"] != project_id:
             raise PermissionError("preview identity mismatch")
         if int(expected_revision) != int(preview["expected_revision"]):
+            self._previews.pop(preview_id, None)
             raise TransactionConflict(
                 f"revision_conflict:{preview['expected_revision']}"
             )
 
-        async with self._lock:
-            current = await self.repository.read_head(project_id)
-            current_revision = int(current["revision"]) if current is not None else 0
-            if current_revision != int(expected_revision):
-                raise TransactionConflict(f"revision_conflict:{current_revision}")
-            migrated = self._prepare_candidate(
-                project_id, expected_revision, preview["candidate_source"]
-            )
-            candidate = migrated["candidate"]
-            base, base_revision, base_digest = self._active_or_empty(project_id, candidate)
-            if base_revision != int(expected_revision) or base_digest != preview["base_digest"]:
-                raise TransactionConflict(f"revision_conflict:{base_revision}")
-            diff = compute_project_diff(base, candidate)
-            if (
-                diff["source_digest"] != preview["base_digest"]
-                or diff["candidate_digest"] != preview["candidate_digest"]
-            ):
-                raise TransactionConflict("preview digest mismatch")
-            closure = expand_diff_selection(diff, selected_ids)
-            selected_candidate = self._materialize_selection(
-                base, candidate, diff, closure["selected"]
-            )
-            result = await self._commit(
-                user_id=bound_user,
-                project_id=project_id,
-                expected_revision=base_revision,
-                old_digest=base_digest,
-                candidate=selected_candidate,
-                selected_ids=closure["selected"],
-                action="apply",
-            )
+        try:
+            async with self._lock:
+                current = await self.repository.read_head(project_id)
+                current_revision = int(current["revision"]) if current is not None else 0
+                if current_revision != int(expected_revision):
+                    raise TransactionConflict(f"revision_conflict:{current_revision}")
+                migrated = self._prepare_candidate(
+                    project_id, expected_revision, preview["candidate_source"]
+                )
+                candidate = migrated["candidate"]
+                base, base_revision, base_digest = self._active_or_empty(project_id, candidate)
+                if base_revision != int(expected_revision) or base_digest != preview["base_digest"]:
+                    raise TransactionConflict(f"revision_conflict:{base_revision}")
+                diff = compute_project_diff(base, candidate)
+                if (
+                    diff["source_digest"] != preview["base_digest"]
+                    or diff["candidate_digest"] != preview["candidate_digest"]
+                ):
+                    raise TransactionConflict("preview digest mismatch")
+                closure = expand_diff_selection(diff, selected_ids)
+                selected_candidate = self._materialize_selection(
+                    base, candidate, diff, closure["selected"]
+                )
+                result = await self._commit(
+                    user_id=bound_user,
+                    project_id=project_id,
+                    expected_revision=base_revision,
+                    old_digest=base_digest,
+                    candidate=selected_candidate,
+                    selected_ids=closure["selected"],
+                    action="apply",
+                )
+        except Exception:
             self._previews.pop(preview_id, None)
-            return result
+            raise
+        self._previews.pop(preview_id, None)
+        return result
 
     @staticmethod
     def _materialize_selection(
