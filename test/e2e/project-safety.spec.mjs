@@ -219,6 +219,9 @@ test("project-safety rollback requires typed name and server snapshot confirmati
   await expect(restore).toBeEnabled();
   await restore.click();
   await expect(dialog.getByRole("status")).toContainText("Verified backup restored");
+  await expect.poll(() => page.locator('[data-testid="exact-dist-editor"]').evaluate(
+    (editor) => editor._config.title,
+  )).toBe("Exact-dist Project safety seed");
   const effects = await readEffectLedger(page);
   const rollback = effects.websocket.find((entry) => entry.type === "glt_flow_card/projects/rollback");
   expect(rollback).toEqual({

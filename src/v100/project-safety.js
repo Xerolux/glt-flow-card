@@ -282,7 +282,7 @@ function renderMigration(editor, state, content) {
     const confirm = element("section", "glt-safe-card glt-safe-confirm");
     confirm.append(element("h3", "", copyFor(editor, "restore")));
     const name = editor._config?.project?.name || editor._config?.project?.id || "";
-    confirm.append(element("p", "", copyFor(editor, "restoreBody", { backup_id: state.applied.snapshot_id, project: name, revision: state.applied.revision })));
+    confirm.append(element("p", "", copyFor(editor, "restoreBody", { backup_id: state.applied.rollback_snapshot_id, project: name, revision: state.applied.revision })));
     const label = element("label", "", copyFor(editor, "restoreLabel"));
     const input = element("input", "glt-safe-input");
     input.id = `glt-safe-restore-${Math.random().toString(36).slice(2)}`;
@@ -305,7 +305,7 @@ function renderMigration(editor, state, content) {
       try {
         const result = await projectAuthority(editor, "rollback", {
           project_id: editor._config.project.id,
-          snapshot_id: state.applied.snapshot_id,
+          snapshot_id: state.applied.rollback_snapshot_id,
           expected_revision: state.applied.revision,
           confirmation: `ROLLBACK ${editor._config.project.id}`,
         });
@@ -352,7 +352,7 @@ function renderMigration(editor, state, content) {
     apply.addEventListener("click", () => { state.confirmApply = true; state.render(); });
     actions.append(apply);
   }
-  if (state.phase === "applied" && !state.confirmRollback) {
+  if (state.phase === "applied" && state.applied?.rollback_snapshot_id && !state.confirmRollback) {
     const restore = button(copyFor(editor, "restore"));
     restore.addEventListener("click", () => { state.confirmRollback = true; state.render(); });
     actions.append(restore);

@@ -421,6 +421,52 @@ class ProjectTransactionCoordinator:
         snapshot_id = self.repository.snapshot_id(project_id, new_digest)
         transaction_id = f"tx:{self._id_factory()}"
         now = _utc()
+        current_head = await self.repository.read_head(project_id)
+        if current_head is not None:
+            if (
+                int(current_head["revision"]) != int(expected_revision)
+                or current_head["digest"] != old_digest
+            ):
+                raise TransactionConflict(
+                    f"revision_conflict:{current_head['revision']}"
+                )
+            rollback_snapshot = await self.repository.read_snapshot(
+                current_head["snapshot_id"]
+            )
+            if rollback_snapshot is None:
+                raise RuntimeError("active project backup snapshot is missing")
+            self._verify_snapshot(rollback_snapshot)
+        else:
+            if int(expected_revision) != 0:
+                raise TransactionConflict("revision_conflict:0")
+            base_name = str(candidate.get("project", {}).get("name") or project_id)
+            base_config = self._empty_project(project_id, base_name)
+            base_evidence = digest_canonical_json(base_config)
+            if base_evidence["digest"] != old_digest:
+                raise RuntimeError("empty project backup digest mismatch")
+            rollback_snapshot_id = self.repository.snapshot_id(project_id, old_digest)
+            rollback_snapshot = await self.repository.read_snapshot(
+                rollback_snapshot_id
+            )
+            if rollback_snapshot is None:
+                rollback_snapshot = {
+                    "id": rollback_snapshot_id,
+                    "project_id": project_id,
+                    "revision": 0,
+                    "digest": old_digest,
+                    "config": base_config,
+                    "created": now,
+                    "created_by": user_id,
+                    "transaction_id": f"backup:{transaction_id}",
+                }
+                await self.repository.put_snapshot(rollback_snapshot)
+                rollback_snapshot = await self.repository.read_snapshot(
+                    rollback_snapshot_id
+                )
+            if rollback_snapshot is None:
+                raise RuntimeError("empty project backup snapshot is missing")
+            self._verify_snapshot(rollback_snapshot)
+        rollback_snapshot_id = str(rollback_snapshot["id"])
         journal = {
             "id": transaction_id,
             "state": "PREPARED",
@@ -432,6 +478,7 @@ class ProjectTransactionCoordinator:
             "old_digest": old_digest,
             "new_digest": new_digest,
             "snapshot_id": snapshot_id,
+            "rollback_snapshot_id": rollback_snapshot_id,
             "source_snapshot_id": source_snapshot_id,
             "selected_ids": sorted(selected_ids),
             "prepared_at": now,
@@ -450,6 +497,7 @@ class ProjectTransactionCoordinator:
             "created": now,
             "created_by": user_id,
             "transaction_id": transaction_id,
+            "rollback_snapshot_id": rollback_snapshot_id,
         }
         await self.repository.put_snapshot(snapshot)
         self._fail("after_snapshot_write")
@@ -473,11 +521,11 @@ class ProjectTransactionCoordinator:
         if await self.repository.read_journal(transaction_id) != journal:
             raise RuntimeError("COMMITTED journal read-back mismatch")
         await self._audit(journal, "committed")
-        return head
+        return {**head, "rollback_snapshot_id": rollback_snapshot_id}
 
     @staticmethod
     def _head_from_snapshot(snapshot: Mapping[str, Any]) -> dict[str, Any]:
-        return {
+        head = {
             "id": snapshot["project_id"],
             "revision": snapshot["revision"],
             "digest": snapshot["digest"],
@@ -487,6 +535,9 @@ class ProjectTransactionCoordinator:
             "snapshot_id": snapshot["id"],
             "transaction_id": snapshot["transaction_id"],
         }
+        if snapshot.get("rollback_snapshot_id"):
+            head["rollback_snapshot_id"] = snapshot["rollback_snapshot_id"]
+        return head
 
     def _verify_snapshot(self, snapshot: Mapping[str, Any]) -> None:
         evidence = evaluate_project_contract(snapshot.get("config"))

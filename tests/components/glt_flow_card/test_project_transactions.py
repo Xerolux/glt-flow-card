@@ -278,6 +278,9 @@ async def test_rollback_requires_server_snapshot_and_creates_forward_revision() 
         expected_revision=1,
         autosave=False,
     )
+    assert revision_two["rollback_snapshot_id"] == revision_one_snapshot
+    backup = repository.get_snapshot(revision_two["rollback_snapshot_id"])
+    assert backup["config"]["equipment"][0]["x"] == 1
 
     with pytest.raises(ValueError, match="rollback confirmation mismatch"):
         await coordinator.rollback(
@@ -299,7 +302,7 @@ async def test_rollback_requires_server_snapshot_and_creates_forward_revision() 
     rolled_back = await coordinator.rollback(
         user_id="designer-a",
         project_id="plant-a",
-        snapshot_id=revision_one_snapshot,
+        snapshot_id=revision_two["rollback_snapshot_id"],
         expected_revision=2,
         confirmation="ROLLBACK plant-a",
     )
@@ -308,6 +311,33 @@ async def test_rollback_requires_server_snapshot_and_creates_forward_revision() 
     assert rolled_back["config"]["project"]["revision"] == 3
     assert repository.get_snapshot(revision_one_snapshot)["revision"] == 1
     assert repository.get_snapshot(revision_two["snapshot_id"])["revision"] == 2
+
+
+async def test_first_apply_synthesizes_verified_empty_rollback_snapshot() -> None:
+    coordinator, repository, _backend = await coordinator_for()
+
+    applied = await save_initial(coordinator)
+    rollback_snapshot = repository.get_snapshot(applied["rollback_snapshot_id"])
+
+    assert rollback_snapshot is not None
+    assert rollback_snapshot["revision"] == 0
+    assert rollback_snapshot["config"] == {
+        "type": "custom:glt-flow-card",
+        "schema_version": 2,
+        "project": {"id": "plant-a", "name": "Plant A", "revision": 0},
+    }
+    rolled_back = await coordinator.rollback(
+        user_id="designer-a",
+        project_id="plant-a",
+        snapshot_id=applied["rollback_snapshot_id"],
+        expected_revision=1,
+        confirmation="ROLLBACK plant-a",
+    )
+    assert rolled_back["config"] == {
+        "type": "custom:glt-flow-card",
+        "schema_version": 2,
+        "project": {"id": "plant-a", "name": "Plant A", "revision": 2},
+    }
 
 
 @pytest.mark.parametrize(
