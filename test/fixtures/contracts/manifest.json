@@ -14,11 +14,11 @@
   "policies": {
     "limits_sha256": "7583acedae79bf28a2e21195c955ef9bd85d165ff34ab875b2ca00cb46ba0d2d",
     "diff_policy_sha256": "65077abfb58ba69fa87106c69e58aae1169a7f0a778f8186c02b09eea6d62931",
-    "bundle_schema_sha256": "1df756577dc81430cfb3ba8c1a4bfe652046eeed2bd774693e50234591a4798e",
+    "bundle_schema_sha256": "5fffd0f5a8932dd27af3c1a3dd2123436842faae62439335d5701c11f6780611",
     "project_schema_sha256": {
-      "0": "cbb01d00ad0891c737a9d85af6858976f7c0fc747c0c6274ff9f16f756c02805",
-      "1": "8c8b9fa1789ff1679175c304f02e2092cb52dbeeedc964043df0a28f91dac374",
-      "2": "d6d7b2e664d472771324a80f96c6d1a6d967b0f276a4b4e65aee5d7afe44ec72"
+      "0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
+      "1": "0e3e3ba8b547331ce254d00c2cbf91efa85e97dd2a10b313fb47ac4eb95eed37",
+      "2": "ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7"
     }
   },
   "provenance": [
@@ -197,6 +197,48 @@
         "stage": "contract",
         "path": "/",
         "canonical_sha256": "e8607ba461cc68884bffc8e437f8b026967abb9c6d1f1b1e7017915dc3e9775f"
+      }
+    },
+    {
+      "id": "unicode-lone-high-surrogate",
+      "class": "unicode_parity",
+      "file": "bodies/unicode-lone-high-surrogate.json",
+      "bytes": 166,
+      "sha256": "213157acb3ff0a931b143113c813ba5d08874ca34a46250c56dd374ad1e79b52",
+      "evidence_scope": "correctness_only",
+      "expected": {
+        "outcome": "reject",
+        "stage": "json_preflight",
+        "code": "contract.type",
+        "path": "/extensions/text"
+      }
+    },
+    {
+      "id": "unicode-lone-low-surrogate",
+      "class": "unicode_parity",
+      "file": "bodies/unicode-lone-low-surrogate.json",
+      "bytes": 165,
+      "sha256": "8ca070c7fb318196b6305731727fa13e8c9a2c40fbed8438501ee04458fb2c70",
+      "evidence_scope": "correctness_only",
+      "expected": {
+        "outcome": "reject",
+        "stage": "json_preflight",
+        "code": "contract.type",
+        "path": "/extensions/text"
+      }
+    },
+    {
+      "id": "unicode-valid-surrogate-pair",
+      "class": "unicode_parity",
+      "file": "bodies/unicode-valid-surrogate-pair.json",
+      "bytes": 173,
+      "sha256": "6304d7780dfd388b9d48862eb3bbab8d33eb453406b0b22190e1c07a6f531708",
+      "evidence_scope": "correctness_only",
+      "expected": {
+        "outcome": "accept",
+        "stage": "json_preflight",
+        "path": "/",
+        "canonical_sha256": "b2b80600b5ff1afcedc932daebc8bfa8b7aa9af80c181b4cc128d07cce8d9080"
       }
     },
     {

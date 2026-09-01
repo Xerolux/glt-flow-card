@@ -137,6 +137,18 @@ function nonJsonError(params = { expected: "json" }) {
   return issue("contract.type", "/", params);
 }
 
+function hasLoneSurrogate(value) {
+  for (let index = 0; index < value.length; index += 1) {
+    const unit = value.charCodeAt(index);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+      index += 1;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) return true;
+  }
+  return false;
+}
+
 function canonicalNumber(value) {
   if (!Number.isFinite(value)) throw new TypeError("non-finite numbers are not JSON values");
   return Object.is(value, -0) ? "0" : JSON.stringify(value);
@@ -233,6 +245,9 @@ function preflightDocument(document, rawBytes) {
       return { error: issue("contract.depth", "/", { actual: depth, limit: maximum.max_depth }), metrics };
     }
     if (typeof value === "string") {
+      if (hasLoneSurrogate(value)) {
+        return { error: issue("contract.type", path || "/", { expected: "unicode_scalar_sequence" }), metrics };
+      }
       const stringBytes = textEncoder.encode(value).byteLength;
       metrics.max_string_bytes = Math.max(metrics.max_string_bytes, stringBytes);
       if (stringBytes > maximum.max_string_bytes) {
@@ -257,6 +272,9 @@ function preflightDocument(document, rawBytes) {
       const prototype = Object.getPrototypeOf(value);
       if (prototype !== Object.prototype && prototype !== null) return { error: nonJsonError(), metrics };
       if (Reflect.ownKeys(value).some((key) => typeof key !== "string")) return { error: nonJsonError(), metrics };
+      if (Object.keys(value).some(hasLoneSurrogate)) {
+        return { error: nonJsonError({ expected: "unicode_scalar_sequence" }), metrics };
+      }
     }
     if (active.has(value)) return { error: nonJsonError({ expected: "acyclic_json" }), metrics };
     active.add(value);

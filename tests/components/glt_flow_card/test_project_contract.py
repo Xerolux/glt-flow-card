@@ -154,3 +154,36 @@ def test_non_json_values_fail_closed(value: object) -> None:
     result = evaluate_project_contract(value)
     assert result["valid"] is False
     assert result["errors"][0]["code"] == "contract.type"
+
+
+@pytest.mark.parametrize("escaped", [r"\ud800", r"\udc00"])
+def test_raw_lone_surrogates_fail_closed_with_stable_unicode_evidence(
+    escaped: str,
+) -> None:
+    raw = (
+        '{"type":"custom:glt-flow-card","schema_version":2,'
+        '"project":{"id":"unicode","name":"Unicode","revision":0},'
+        f'"extensions":{{"text":"{escaped}"}}}}'
+    ).encode()
+
+    result = evaluate_project_contract(raw)
+
+    assert result["valid"] is False
+    assert result["errors"] == [{
+        "code": "contract.type",
+        "path": "/extensions/text",
+        "params": {"expected": "unicode_scalar_sequence"},
+    }]
+
+
+def test_raw_valid_surrogate_pair_is_accepted() -> None:
+    raw = (
+        '{"type":"custom:glt-flow-card","schema_version":2,'
+        '"project":{"id":"unicode","name":"Unicode","revision":0},'
+        '"extensions":{"text":"\\ud83d\\ude00"}}'
+    ).encode()
+
+    result = evaluate_project_contract(raw)
+
+    assert result["valid"] is True
+    assert "😀" in result["canonical"]

@@ -295,7 +295,17 @@ def _preflight_document(document: Any, raw_bytes: int | None) -> dict[str, Any]:
                 "metrics": metrics,
             }
         if isinstance(value, str):
-            string_bytes = len(value.encode("utf-8"))
+            try:
+                string_bytes = len(value.encode("utf-8"))
+            except UnicodeEncodeError:
+                return {
+                    "error": _issue(
+                        "contract.type",
+                        path or "/",
+                        {"expected": "unicode_scalar_sequence"},
+                    ),
+                    "metrics": metrics,
+                }
             metrics["max_string_bytes"] = max(metrics["max_string_bytes"], string_bytes)
             if string_bytes > maximum["max_string_bytes"]:
                 return {
@@ -336,6 +346,17 @@ def _preflight_document(document: Any, raw_bytes: int | None) -> dict[str, Any]:
             return {"error": _non_json_error(), "metrics": metrics}
         if isinstance(value, dict) and any(not isinstance(key, str) for key in value):
             return {"error": _non_json_error(), "metrics": metrics}
+        if isinstance(value, dict):
+            try:
+                for key in value:
+                    key.encode("utf-8")
+            except UnicodeEncodeError:
+                return {
+                    "error": _non_json_error(
+                        {"expected": "unicode_scalar_sequence"}
+                    ),
+                    "metrics": metrics,
+                }
         identity = id(value)
         if identity in active:
             return {"error": _non_json_error({"expected": "acyclic_json"}), "metrics": metrics}

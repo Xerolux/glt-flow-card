@@ -59,6 +59,23 @@ test("canonical JSON sorts object keys, preserves array order, and leaves input 
   );
 });
 
+test("raw JSON rejects lone surrogates and accepts a valid surrogate pair", () => {
+  const projectWith = (escaped) => Buffer.from(
+    `{"type":"custom:glt-flow-card","schema_version":2,"project":{"id":"unicode","name":"Unicode","revision":0},"extensions":{"text":"${escaped}"}}`,
+    "utf8",
+  );
+  for (const escaped of ["\\ud800", "\\udc00"]) {
+    const result = evaluateProjectContract(projectWith(escaped));
+    assert.equal(result.valid, false);
+    assert.deepEqual(result.errors[0], {
+      code: "contract.type",
+      path: "/extensions/text",
+      params: { expected: "unicode_scalar_sequence" },
+    });
+  }
+  assert.equal(evaluateProjectContract(projectWith("\\ud83d\\ude00")).valid, true);
+});
+
 test("shared golden and scale documents emit their specified canonical evidence", async () => {
   const accepted = MANIFEST.fixtures.filter((entry) => ["golden", "scale_correctness"].includes(entry.class));
   for (const entry of accepted) {

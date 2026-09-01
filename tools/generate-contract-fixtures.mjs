@@ -214,6 +214,26 @@ export async function generateContractFixtures({ outputDir }) {
     ), { canonicalDigest: true });
   }
 
+  for (const [id, escapedValue, accepted] of [
+    ["unicode-lone-high-surrogate", "\\ud800", false],
+    ["unicode-lone-low-surrogate", "\\udc00", false],
+    ["unicode-valid-surrogate-pair", "\\ud83d\\ude00", true],
+  ]) {
+    await addFixture({
+      id,
+      class: "unicode_parity",
+      expected: expected(
+        accepted ? "accept" : "reject",
+        "json_preflight",
+        accepted ? "/" : "/extensions/text",
+        accepted ? undefined : "contract.type",
+      ),
+    }, Buffer.from(
+      `{"type":"custom:glt-flow-card","schema_version":2,"project":{"id":"${id}","name":"Unicode parity","revision":0},"extensions":{"text":"${escapedValue}"}}\n`,
+      "utf8",
+    ), { canonicalDigest: accepted });
+  }
+
   await addJson({
     id: "malformed-root-type",
     class: "malformed",
