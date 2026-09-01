@@ -30,6 +30,7 @@ const SCHEMA_OUTPUTS = [
 
 let tempRoot;
 let outputRoot;
+let verifierResult;
 
 function runBuild(root, extraArgs = []) {
   return spawnSync(
@@ -37,6 +38,14 @@ function runBuild(root, extraArgs = []) {
     ["tools/build.mjs", "--output-root", root, ...extraArgs],
     { cwd: ROOT, encoding: "utf8" },
   );
+}
+
+function runReleaseVerifier() {
+  verifierResult ??= spawnSync(process.execPath, ["tools/verify-release.mjs"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  return verifierResult;
 }
 
 function sorted(value) {
@@ -112,4 +121,24 @@ test("dist www bytes come from one assembled card image", async () => {
   ));
   assert.deepEqual(companion, dist);
   assert.match(dist.toString("utf8"), /const VERSION = "1\.0\.0";/);
+});
+
+test("double build produces identical path sets, bytes and manifests", () => {
+  const result = runReleaseVerifier();
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stdout, /PASS double-build byte equality/);
+  assert.match(result.stdout, /PASS checked-in generated outputs/);
+});
+
+test("drift mutations fail with artifact-specific evidence", () => {
+  const result = runReleaseVerifier();
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  for (const evidence of [
+    "one-byte: artifact hash mismatch: dist/glt-flow-card.js",
+    "version: card/package version disagreement",
+    "generated-source: canonical schema drift: dist/schemas/project/2.schema.json",
+    "missing-output: missing generated output: docs/editor/app.js",
+  ]) {
+    assert.match(result.stdout, new RegExp(`PASS ${evidence.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}`));
+  }
 });
