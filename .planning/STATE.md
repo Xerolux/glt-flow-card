@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-06-PLAN.md
-last_updated: "2026-09-01T00:21:46.171Z"
-last_activity: 2026-09-01 -- Plan 01-06 safe cross-runtime project bundles completed
+stopped_at: Completed 01-07-PLAN.md
+last_updated: "2026-09-01T00:49:24.097Z"
+last_activity: 2026-09-01 -- Plan 01-07 authoritative project persistence completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 13
-  completed_plans: 6
-  percent: 46
+  completed_plans: 7
+  percent: 54
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (trusted-contract-release-foundation) — EXECUTING
-Plan: 7 of 13
+Plan: 8 of 13
 Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-06 safe cross-runtime project bundles completed
+Last activity: 2026-09-01 -- Plan 01-07 authoritative project persistence completed
 
-Progress: [█████░░░░░] 46%
+Progress: [█████░░░░░] 54%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [█████░░░░░] 46%
 | Phase 01 P04 | 19min | 2 tasks | 11 files |
 | Phase 01 P05 | 15min | 3 tasks | 9 files |
 | Phase 01 P06 | 30min | 2 tasks | 7 files |
+| Phase 01 P07 | 26min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,11 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01]: Preflight the complete ZIP32 central/local directory and archive limits before exposing bytes or creating extraction paths. — Reject traversal, aliases, collisions, overlap, encryption, unsupported methods, CRC/hash mismatches, and resource bombs at the trust boundary.
 - [Phase 01]: Treat bundle assets as opaque bytes authenticated by SHA-256, with active-content canaries proving zero execution. — Asset names, MIME types, and contents remain data throughout read, write, parity, and extraction tests.
 - [Phase 01]: Use canonical JSON, fixed ZIP metadata, lexical paths, and store-or-deflate parity for deterministic JavaScript/Python bundles. — Identical logical input must produce byte-stable archives and identical acceptance evidence in both runtimes.
+- [Phase 01]: Keep active heads, immutable snapshots, journals, audit metadata, and the retained legacy backup under independent Home Assistant Store keys and versions.
+- [Phase 01]: Write and verify the untouched legacy backup before staging migrated heads, expose no staged head, and promote only after digest read-back succeeds.
+- [Phase 01]: Accept only expected revision, opaque user-bound preview identity, project identity, and stable selected operation IDs; recompute migration, diff, closure, and candidate server-side.
+- [Phase 01]: Represent rollback as a new forward transaction from a verified server-owned content-addressed snapshot, never as history mutation or a client receipt.
+- [Phase 01]: Resolve PREPARED journals deterministically to a verified old head when no snapshot exists or a verified new head when the immutable snapshot exists.
 
 ### Pending Todos
 
@@ -107,6 +113,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-09-01T00:21:15.058Z
-Stopped at: Completed 01-06-PLAN.md
+Last session: 2026-09-01T00:49:24.044Z
+Stopped at: Completed 01-07-PLAN.md
 Resume file: None
