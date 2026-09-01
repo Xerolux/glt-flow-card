@@ -124,21 +124,32 @@ def _non_json_error(params: Mapping[str, Any] | None = None) -> dict[str, Any]:
 
 def _canonical_number(value: int | float) -> str:
     if isinstance(value, int):
-        return str(value)
+        if abs(value) <= 9_007_199_254_740_991:
+            return str(value)
+        try:
+            value = float(value)
+        except OverflowError as error:
+            raise TypeError("non-finite numbers are not JSON values") from error
     if not math.isfinite(value):
         raise TypeError("non-finite numbers are not JSON values")
     if value == 0:
         return "0"
-    if value.is_integer() and abs(value) < 1e21:
-        return str(int(value))
     rendered = repr(value).lower()
     if "e" not in rendered:
-        return rendered
+        return rendered[:-2] if rendered.endswith(".0") else rendered
     mantissa, exponent = rendered.split("e", 1)
     exponent_value = int(exponent)
     if 1e-6 <= abs(value) < 1e21:
-        places = max(0, exponent_value + len(mantissa.replace(".", "").lstrip("-")) - 1)
-        return format(value, f".{places}f").rstrip("0").rstrip(".")
+        negative = mantissa.startswith("-")
+        digits = mantissa.lstrip("-").replace(".", "")
+        decimal_index = (mantissa.lstrip("-").find(".") if "." in mantissa else len(digits)) + exponent_value
+        if decimal_index <= 0:
+            expanded = f"0.{('0' * -decimal_index)}{digits}"
+        elif decimal_index >= len(digits):
+            expanded = f"{digits}{'0' * (decimal_index - len(digits))}"
+        else:
+            expanded = f"{digits[:decimal_index]}.{digits[decimal_index:]}"
+        return f"-{expanded}" if negative else expanded
     sign = "+" if exponent_value >= 0 else "-"
     return f"{mantissa}e{sign}{abs(exponent_value)}"
 
@@ -284,7 +295,17 @@ def _preflight_document(document: Any, raw_bytes: int | None) -> dict[str, Any]:
                 "metrics": metrics,
             }
         if isinstance(value, str):
-            string_bytes = len(value.encode("utf-8"))
+            try:
+                string_bytes = len(value.encode("utf-8"))
+            except UnicodeEncodeError:
+                return {
+                    "error": _issue(
+                        "contract.type",
+                        path or "/",
+                        {"expected": "unicode_scalar_sequence"},
+                    ),
+                    "metrics": metrics,
+                }
             metrics["max_string_bytes"] = max(metrics["max_string_bytes"], string_bytes)
             if string_bytes > maximum["max_string_bytes"]:
                 return {
@@ -325,6 +346,17 @@ def _preflight_document(document: Any, raw_bytes: int | None) -> dict[str, Any]:
             return {"error": _non_json_error(), "metrics": metrics}
         if isinstance(value, dict) and any(not isinstance(key, str) for key in value):
             return {"error": _non_json_error(), "metrics": metrics}
+        if isinstance(value, dict):
+            try:
+                for key in value:
+                    key.encode("utf-8")
+            except UnicodeEncodeError:
+                return {
+                    "error": _non_json_error(
+                        {"expected": "unicode_scalar_sequence"}
+                    ),
+                    "metrics": metrics,
+                }
         identity = id(value)
         if identity in active:
             return {"error": _non_json_error({"expected": "acyclic_json"}), "metrics": metrics}

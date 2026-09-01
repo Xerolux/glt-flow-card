@@ -46,6 +46,7 @@ async def coordinator_for(
     backend: dict[tuple[int, str], Any] | None = None,
     *,
     failure_hook=None,
+    **coordinator_options,
 ) -> tuple[ProjectTransactionCoordinator, ProjectRepository, dict[tuple[int, str], Any]]:
     persistence = backend if backend is not None else {}
     repository = ProjectRepository(object(), store_factory=store_factory(persistence))
@@ -55,6 +56,7 @@ async def coordinator_for(
         repository,
         failure_hook=failure_hook,
         id_factory=lambda: f"opaque-{next(identifiers)}",
+        **coordinator_options,
     )
     await coordinator.async_recover()
     return coordinator, repository, persistence
@@ -131,6 +133,13 @@ async def test_preview_and_selection_are_user_revision_and_server_bound() -> Non
             selected_ids=["forged:/config"],
         )
 
+    preview = await coordinator.preview(
+        user_id="designer-a",
+        project_id="plant-a",
+        expected_revision=1,
+        candidate=original,
+    )
+
     applied = await coordinator.apply(
         user_id="designer-a",
         project_id="plant-a",
@@ -142,6 +151,79 @@ async def test_preview_and_selection_are_user_revision_and_server_bound() -> Non
     assert applied["config"]["equipment"][0]["x"] == 8
     assert applied["config"]["paths"] == []
     assert repository.get_head("plant-a") == applied
+
+
+async def test_preview_cache_expires_and_rejects_consumed_authority() -> None:
+    clock = [10.0]
+    coordinator, _repository, _backend = await coordinator_for(
+        time_factory=lambda: clock[0],
+        preview_ttl_seconds=30,
+    )
+    preview = await coordinator.preview(
+        user_id="designer-a",
+        project_id="plant-a",
+        expected_revision=0,
+        candidate=project(),
+    )
+    assert preview["preview_id"] in coordinator._previews
+
+    clock[0] = 40.0
+    with pytest.raises(ValueError, match="unknown preview id"):
+        await coordinator.apply(
+            user_id="designer-a",
+            project_id="plant-a",
+            preview_id=preview["preview_id"],
+            expected_revision=0,
+            selected_ids=[],
+        )
+    assert coordinator._previews == {}
+
+
+async def test_preview_cache_replaces_per_user_project_and_evicts_by_bytes() -> None:
+    candidate_a = project("plant-a", extensions={"payload": "a" * 600})
+    retained_size = len(digest_canonical_json(candidate_a)["canonical"].encode("utf-8"))
+    clock = [1.0]
+    coordinator, _repository, _backend = await coordinator_for(
+        time_factory=lambda: clock[0],
+        preview_max_entries=10,
+        preview_max_retained_bytes=(retained_size * 2) - 1,
+    )
+
+    first = await coordinator.preview(
+        user_id="designer-a", project_id="plant-a", expected_revision=0, candidate=candidate_a
+    )
+    clock[0] += 1
+    second = await coordinator.preview(
+        user_id="designer-a", project_id="plant-a", expected_revision=0, candidate=candidate_a
+    )
+    assert first["preview_id"] not in coordinator._previews
+    assert second["preview_id"] in coordinator._previews
+
+    clock[0] += 1
+    other_user = await coordinator.preview(
+        user_id="designer-b", project_id="plant-a", expected_revision=0, candidate=candidate_a
+    )
+    assert other_user["preview_id"] in coordinator._previews
+    assert second["preview_id"] not in coordinator._previews
+    assert sum(
+        preview["retained_bytes"] for preview in coordinator._previews.values()
+    ) <= coordinator._preview_max_retained_bytes
+
+
+async def test_terminal_apply_failure_discards_preview() -> None:
+    coordinator, _repository, _backend = await coordinator_for()
+    preview = await coordinator.preview(
+        user_id="designer-a", project_id="plant-a", expected_revision=0, candidate=project()
+    )
+    with pytest.raises(ValueError, match="unknown selected operation"):
+        await coordinator.apply(
+            user_id="designer-a",
+            project_id="plant-a",
+            preview_id=preview["preview_id"],
+            expected_revision=0,
+            selected_ids=["forged:/operation"],
+        )
+    assert preview["preview_id"] not in coordinator._previews
 
 
 async def test_stale_preview_and_incomplete_dependency_input_fail_closed() -> None:
@@ -184,7 +266,7 @@ async def test_stale_preview_and_incomplete_dependency_input_fail_closed() -> No
         candidate={**applied["config"], "project": {**applied["config"]["project"], "revision": 2}},
     )
     await coordinator.compatibility_save(
-        user_id="designer-a",
+        user_id="designer-b",
         project={
             "id": "plant-a",
             "config": {
@@ -206,6 +288,59 @@ async def test_stale_preview_and_incomplete_dependency_input_fail_closed() -> No
         )
 
 
+@pytest.mark.parametrize(
+    ("base_tags", "candidate_tags", "base_nested", "candidate_nested"),
+    [
+        (["a", "b", "c"], [], [["a", "b", "c"]], [[]]),
+        (["a", "b", "c"], ["updated", "b"], [["a", "b"], ["c"]], [["x"], ["c", "d"]]),
+        (["a", "b", "c", "d"], ["a"], [["a"], ["b"], ["c"]], [["z"]]),
+    ],
+)
+async def test_compatibility_save_materializes_array_changes_exactly(
+    base_tags: list[str],
+    candidate_tags: list[str],
+    base_nested: list[list[str]],
+    candidate_nested: list[list[str]],
+) -> None:
+    coordinator, repository, _backend = await coordinator_for()
+    initial = project(
+        equipment=[{
+            "id": "pump-1",
+            "type": "pump",
+            "profile": "profile-1",
+            "asset_id": "asset-1",
+            "x": 1,
+            "tags": base_tags,
+        }],
+        extensions={"nested": base_nested},
+    )
+    await save_initial(coordinator, initial)
+    candidate = project(
+        project={"id": "plant-a", "name": "Plant A", "revision": 1},
+        equipment=[{
+            "id": "pump-1",
+            "type": "pump",
+            "profile": "profile-1",
+            "asset_id": "asset-1",
+            "x": 1,
+            "tags": candidate_tags,
+        }],
+        extensions={"nested": candidate_nested},
+    )
+
+    result = await coordinator.compatibility_save(
+        user_id="designer-a",
+        project={"id": "plant-a", "config": candidate},
+        expected_revision=1,
+        autosave=False,
+    )
+
+    expected = deepcopy(candidate)
+    expected["project"]["revision"] = 2
+    assert result["config"] == expected
+    assert repository.get_head("plant-a")["config"] == expected
+
+
 async def test_rollback_requires_server_snapshot_and_creates_forward_revision() -> None:
     coordinator, repository, _backend = await coordinator_for()
     revision_one = await save_initial(coordinator)
@@ -225,6 +360,9 @@ async def test_rollback_requires_server_snapshot_and_creates_forward_revision() 
         expected_revision=1,
         autosave=False,
     )
+    assert revision_two["rollback_snapshot_id"] == revision_one_snapshot
+    backup = repository.get_snapshot(revision_two["rollback_snapshot_id"])
+    assert backup["config"]["equipment"][0]["x"] == 1
 
     with pytest.raises(ValueError, match="rollback confirmation mismatch"):
         await coordinator.rollback(
@@ -246,7 +384,7 @@ async def test_rollback_requires_server_snapshot_and_creates_forward_revision() 
     rolled_back = await coordinator.rollback(
         user_id="designer-a",
         project_id="plant-a",
-        snapshot_id=revision_one_snapshot,
+        snapshot_id=revision_two["rollback_snapshot_id"],
         expected_revision=2,
         confirmation="ROLLBACK plant-a",
     )
@@ -255,6 +393,33 @@ async def test_rollback_requires_server_snapshot_and_creates_forward_revision() 
     assert rolled_back["config"]["project"]["revision"] == 3
     assert repository.get_snapshot(revision_one_snapshot)["revision"] == 1
     assert repository.get_snapshot(revision_two["snapshot_id"])["revision"] == 2
+
+
+async def test_first_apply_synthesizes_verified_empty_rollback_snapshot() -> None:
+    coordinator, repository, _backend = await coordinator_for()
+
+    applied = await save_initial(coordinator)
+    rollback_snapshot = repository.get_snapshot(applied["rollback_snapshot_id"])
+
+    assert rollback_snapshot is not None
+    assert rollback_snapshot["revision"] == 0
+    assert rollback_snapshot["config"] == {
+        "type": "custom:glt-flow-card",
+        "schema_version": 2,
+        "project": {"id": "plant-a", "name": "Plant A", "revision": 0},
+    }
+    rolled_back = await coordinator.rollback(
+        user_id="designer-a",
+        project_id="plant-a",
+        snapshot_id=applied["rollback_snapshot_id"],
+        expected_revision=1,
+        confirmation="ROLLBACK plant-a",
+    )
+    assert rolled_back["config"] == {
+        "type": "custom:glt-flow-card",
+        "schema_version": 2,
+        "project": {"id": "plant-a", "name": "Plant A", "revision": 2},
+    }
 
 
 @pytest.mark.parametrize(

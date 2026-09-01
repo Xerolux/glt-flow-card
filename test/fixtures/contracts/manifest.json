@@ -12,8 +12,8 @@
     "scale_prefix": "glt-scale-v1"
   },
   "policies": {
-    "limits_sha256": "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619",
-    "diff_policy_sha256": "6ba0aaaa2460d7b9e6d765a2842cad2eefb6899f681dd1fb487df8539cafce9f",
+    "limits_sha256": "7583acedae79bf28a2e21195c955ef9bd85d165ff34ab875b2ca00cb46ba0d2d",
+    "diff_policy_sha256": "65077abfb58ba69fa87106c69e58aae1169a7f0a778f8186c02b09eea6d62931",
     "bundle_schema_sha256": "5fffd0f5a8932dd27af3c1a3dd2123436842faae62439335d5701c11f6780611",
     "project_schema_sha256": {
       "0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
@@ -107,6 +107,138 @@
         "stage": "contract",
         "path": "/",
         "canonical_sha256": "46eccbabf4d7cd0a66347ce2ffc9c56b2dc009d8cdeb4af74078aa0c68ab4343"
+      }
+    },
+    {
+      "id": "number-safe-integer-edge",
+      "class": "numeric_parity",
+      "file": "bodies/number-safe-integer-edge.json",
+      "bytes": 173,
+      "sha256": "9a0a1c88fbf9efd91d679591dfc0e55d31f82cb7a2c02e6d3da62e69ed78786b",
+      "evidence_scope": "correctness_only",
+      "numeric_literal": "9007199254740991",
+      "expected": {
+        "outcome": "accept",
+        "stage": "contract",
+        "path": "/",
+        "canonical_sha256": "3917eaead5595947181c2e930ccb8125a372c41044d4699f7be72ec4a9def2d9"
+      }
+    },
+    {
+      "id": "number-unsafe-integer-rounding",
+      "class": "numeric_parity",
+      "file": "bodies/number-unsafe-integer-rounding.json",
+      "bytes": 179,
+      "sha256": "14a5cf865a4a53cfed91df5e25a8ea149dc479fde6982901230fac39763d0d60",
+      "evidence_scope": "correctness_only",
+      "numeric_literal": "9007199254740993",
+      "expected": {
+        "outcome": "accept",
+        "stage": "contract",
+        "path": "/",
+        "canonical_sha256": "62afb169eb9711d3f2f11fc9557034e5219c831b5651c7c546016e73b3cc7325"
+      }
+    },
+    {
+      "id": "number-integral-float-fixed",
+      "class": "numeric_parity",
+      "file": "bodies/number-integral-float-fixed.json",
+      "bytes": 181,
+      "sha256": "b34bc54d6e13181568bfdab003fd498c2d56d7dc880a9d39a880d99ef46ec341",
+      "evidence_scope": "correctness_only",
+      "numeric_literal": "1.0000000000000002e20",
+      "expected": {
+        "outcome": "accept",
+        "stage": "contract",
+        "path": "/",
+        "canonical_sha256": "e295c0590a2f715cfca3ac9c4e88019100c6c038fa882bb14199f5320fbb53ea"
+      }
+    },
+    {
+      "id": "number-exponent-threshold-low",
+      "class": "numeric_parity",
+      "file": "bodies/number-exponent-threshold-low.json",
+      "bytes": 170,
+      "sha256": "e4e719a088c5fc1d614ba3ade080e8a3ac2a5840ad96f3634d04ff01d4118000",
+      "evidence_scope": "correctness_only",
+      "numeric_literal": "0.000001",
+      "expected": {
+        "outcome": "accept",
+        "stage": "contract",
+        "path": "/",
+        "canonical_sha256": "fcb66cf1800ba2dedac28e6f59c195cde2fdc49ffd8fff99ad3863ef242e115a"
+      }
+    },
+    {
+      "id": "number-exponent-threshold-high",
+      "class": "numeric_parity",
+      "file": "bodies/number-exponent-threshold-high.json",
+      "bytes": 167,
+      "sha256": "95f830e7f72c3954f63ddcfa6c2a8bd5caa7ecdfb8a32dd3c72b54657b3c782c",
+      "evidence_scope": "correctness_only",
+      "numeric_literal": "1e21",
+      "expected": {
+        "outcome": "accept",
+        "stage": "contract",
+        "path": "/",
+        "canonical_sha256": "21301ecb3774049cee009e3a2f2260edaf4e21a509c04381f5520efa4831eb73"
+      }
+    },
+    {
+      "id": "number-subnormal-minimum",
+      "class": "numeric_parity",
+      "file": "bodies/number-subnormal-minimum.json",
+      "bytes": 163,
+      "sha256": "cb08325518aed1e7e9938b3ba8d695ee13ea691b30a28fac9146994c47e522bc",
+      "evidence_scope": "correctness_only",
+      "numeric_literal": "5e-324",
+      "expected": {
+        "outcome": "accept",
+        "stage": "contract",
+        "path": "/",
+        "canonical_sha256": "e8607ba461cc68884bffc8e437f8b026967abb9c6d1f1b1e7017915dc3e9775f"
+      }
+    },
+    {
+      "id": "unicode-lone-high-surrogate",
+      "class": "unicode_parity",
+      "file": "bodies/unicode-lone-high-surrogate.json",
+      "bytes": 166,
+      "sha256": "213157acb3ff0a931b143113c813ba5d08874ca34a46250c56dd374ad1e79b52",
+      "evidence_scope": "correctness_only",
+      "expected": {
+        "outcome": "reject",
+        "stage": "json_preflight",
+        "code": "contract.type",
+        "path": "/extensions/text"
+      }
+    },
+    {
+      "id": "unicode-lone-low-surrogate",
+      "class": "unicode_parity",
+      "file": "bodies/unicode-lone-low-surrogate.json",
+      "bytes": 165,
+      "sha256": "8ca070c7fb318196b6305731727fa13e8c9a2c40fbed8438501ee04458fb2c70",
+      "evidence_scope": "correctness_only",
+      "expected": {
+        "outcome": "reject",
+        "stage": "json_preflight",
+        "code": "contract.type",
+        "path": "/extensions/text"
+      }
+    },
+    {
+      "id": "unicode-valid-surrogate-pair",
+      "class": "unicode_parity",
+      "file": "bodies/unicode-valid-surrogate-pair.json",
+      "bytes": 173,
+      "sha256": "6304d7780dfd388b9d48862eb3bbab8d33eb453406b0b22190e1c07a6f531708",
+      "evidence_scope": "correctness_only",
+      "expected": {
+        "outcome": "accept",
+        "stage": "json_preflight",
+        "path": "/",
+        "canonical_sha256": "b2b80600b5ff1afcedc932daebc8bfa8b7aa9af80c181b4cc128d07cce8d9080"
       }
     },
     {

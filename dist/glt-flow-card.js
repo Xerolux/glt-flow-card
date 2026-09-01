@@ -12753,7 +12753,7 @@ ${entityId}`)) return;
     return errors === 0;
   }
   validate86.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-  var schemaFingerprints = Object.freeze({ "bundle": "5fffd0f5a8932dd27af3c1a3dd2123436842faae62439335d5701c11f6780611", "project": { "0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8", "1": "0e3e3ba8b547331ce254d00c2cbf91efa85e97dd2a10b313fb47ac4eb95eed37", "2": "ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7" } });
+  var schemaFingerprints = Object.freeze({ "bundle": "1df756577dc81430cfb3ba8c1a4bfe652046eeed2bd774693e50234591a4798e", "project": { "0": "cbb01d00ad0891c737a9d85af6858976f7c0fc747c0c6274ff9f16f756c02805", "1": "8c8b9fa1789ff1679175c304f02e2092cb52dbeeedc964043df0a28f91dac374", "2": "d6d7b2e664d472771324a80f96c6d1a6d967b0f276a4b4e65aee5d7afe44ec72" } });
   var contractLimits = Object.freeze({ "policy_version": 1, "json": { "max_bytes": 5242880, "max_depth": 64, "max_nodes": 1e5, "max_string_bytes": 262144, "max_id_chars": 128, "max_path_chars": 512, "max_errors": 100 }, "archive": { "max_compressed_bytes": 33554432, "max_entries": 256, "max_asset_bytes": 16777216, "max_expanded_bytes": 134217728, "max_compression_ratio": 100 } });
 
   // src/v100/project-contract.mjs
@@ -12937,6 +12937,17 @@ ${entityId}`)) return;
   function nonJsonError(params = { expected: "json" }) {
     return issue("contract.type", "/", params);
   }
+  function hasLoneSurrogate(value) {
+    for (let index = 0; index < value.length; index += 1) {
+      const unit = value.charCodeAt(index);
+      if (unit >= 55296 && unit <= 56319) {
+        const next = value.charCodeAt(index + 1);
+        if (!(next >= 56320 && next <= 57343)) return true;
+        index += 1;
+      } else if (unit >= 56320 && unit <= 57343) return true;
+    }
+    return false;
+  }
   function canonicalNumber(value) {
     if (!Number.isFinite(value)) throw new TypeError("non-finite numbers are not JSON values");
     return Object.is(value, -0) ? "0" : JSON.stringify(value);
@@ -13025,6 +13036,9 @@ ${entityId}`)) return;
         return { error: issue("contract.depth", "/", { actual: depth, limit: maximum.max_depth }), metrics };
       }
       if (typeof value === "string") {
+        if (hasLoneSurrogate(value)) {
+          return { error: issue("contract.type", path || "/", { expected: "unicode_scalar_sequence" }), metrics };
+        }
         const stringBytes = textEncoder.encode(value).byteLength;
         metrics.max_string_bytes = Math.max(metrics.max_string_bytes, stringBytes);
         if (stringBytes > maximum.max_string_bytes) {
@@ -13049,6 +13063,9 @@ ${entityId}`)) return;
         const prototype = Object.getPrototypeOf(value);
         if (prototype !== Object.prototype && prototype !== null) return { error: nonJsonError(), metrics };
         if (Reflect.ownKeys(value).some((key) => typeof key !== "string")) return { error: nonJsonError(), metrics };
+        if (Object.keys(value).some(hasLoneSurrogate)) {
+          return { error: nonJsonError({ expected: "unicode_scalar_sequence" }), metrics };
+        }
       }
       if (active.has(value)) return { error: nonJsonError({ expected: "acyclic_json" }), metrics };
       active.add(value);
@@ -13294,6 +13311,7 @@ ${entityId}`)) return;
     return new Map((document2[collection] || []).map((entry) => [entry[diff_policy_default.identity_fields[collection]], entry]));
   }
   function addDependencies(operations, before, after) {
+    const operationById = new Map(operations.map((operation2) => [operation2.id, operation2]));
     const operationIds = new Set(operations.map(({ id }) => id));
     const beforeMaps = /* @__PURE__ */ new Map();
     const afterMaps = /* @__PURE__ */ new Map();
@@ -13301,28 +13319,54 @@ ${entityId}`)) return;
       beforeMaps.set(collection, identityMap(before, collection));
       afterMaps.set(collection, identityMap(after, collection));
     }
+    const requirementsById = new Map(operations.map(({ id }) => [id, /* @__PURE__ */ new Map()]));
     for (const current of operations) {
+      if (current.category !== "add") continue;
       if (!current.collection || !current.object_id) continue;
       const references = diff_policy_default.dependencies.references.filter(({ from }) => from === current.collection);
-      const sourceMap = current.category === "remove" ? beforeMaps : afterMaps;
-      const source = sourceMap.get(current.collection)?.get(current.object_id);
+      const source = afterMaps.get(current.collection)?.get(current.object_id);
       if (!source) continue;
-      const requirements = /* @__PURE__ */ new Map();
       for (const reference of references) {
         for (const field of reference.fields) {
           const targetId = source[field];
           if (typeof targetId !== "string") continue;
           const targetPath = `/${reference.to}/${pointerPart(targetId)}`;
-          const targetOperation = current.category === "remove" ? `remove:${targetPath}` : `add:${targetPath}`;
+          const targetOperation = `add:${targetPath}`;
           if (operationIds.has(targetOperation)) {
-            requirements.set(targetOperation, {
+            requirementsById.get(current.id).set(targetOperation, {
               operation_id: targetOperation,
               reason: `reference:${reference.from}.${field}->${reference.to}`
             });
           }
         }
       }
-      current.requires = [...requirements.values()].sort((left, right) => compareText2(left.operation_id, right.operation_id));
+    }
+    for (const targetOperation of operations) {
+      if (targetOperation.category !== "remove" || !targetOperation.collection || !targetOperation.object_id) continue;
+      const references = diff_policy_default.dependencies.references.filter(({ to }) => to === targetOperation.collection);
+      for (const reference of references) {
+        for (const [sourceId, source] of beforeMaps.get(reference.from)) {
+          for (const field of reference.fields) {
+            if (source[field] !== targetOperation.object_id) continue;
+            const candidateSource = afterMaps.get(reference.from)?.get(sourceId);
+            let requirementId = "";
+            if (!candidateSource) {
+              requirementId = `remove:/${reference.from}/${pointerPart(sourceId)}`;
+            } else if (candidateSource[field] !== targetOperation.object_id) {
+              requirementId = operations.find((operation2) => operation2.collection === reference.from && operation2.object_id === sourceId && operation2.field === `/${pointerPart(field)}`)?.id || "";
+            }
+            if (operationById.has(requirementId)) {
+              requirementsById.get(targetOperation.id).set(requirementId, {
+                operation_id: requirementId,
+                reason: `reference:${reference.from}.${field}->${reference.to}`
+              });
+            }
+          }
+        }
+      }
+    }
+    for (const current of operations) {
+      current.requires = [...requirementsById.get(current.id).values()].sort((left, right) => compareText2(left.operation_id, right.operation_id));
     }
   }
   function computeProjectDiff(beforeInput, afterInput) {
@@ -23443,7 +23487,7 @@ ${entityId}`)) return;
       const confirm2 = element("section", "glt-safe-card glt-safe-confirm");
       confirm2.append(element("h3", "", copyFor(editor, "restore")));
       const name = editor._config?.project?.name || editor._config?.project?.id || "";
-      confirm2.append(element("p", "", copyFor(editor, "restoreBody", { backup_id: state.applied.snapshot_id, project: name, revision: state.applied.revision })));
+      confirm2.append(element("p", "", copyFor(editor, "restoreBody", { backup_id: state.applied.rollback_snapshot_id, project: name, revision: state.applied.revision })));
       const label = element("label", "", copyFor(editor, "restoreLabel"));
       const input = element("input", "glt-safe-input");
       input.id = `glt-safe-restore-${Math.random().toString(36).slice(2)}`;
@@ -23469,7 +23513,7 @@ ${entityId}`)) return;
         try {
           const result2 = await projectAuthority(editor, "rollback", {
             project_id: editor._config.project.id,
-            snapshot_id: state.applied.snapshot_id,
+            snapshot_id: state.applied.rollback_snapshot_id,
             expected_revision: state.applied.revision,
             confirmation: `ROLLBACK ${editor._config.project.id}`
           });
@@ -23509,7 +23553,7 @@ ${entityId}`)) return;
       state.render();
     });
     actions.append(dryRun);
-    if (state.preview && !["conflict", "unavailable", "failed"].includes(state.phase)) {
+    if (state.preview && state.phase === "preview-ready") {
       const apply = button(copyFor(editor, "applySelected"), "glt-safe-btn primary");
       apply.disabled = selectedClosure(state).length === 0;
       apply.addEventListener("click", () => {
@@ -23518,7 +23562,7 @@ ${entityId}`)) return;
       });
       actions.append(apply);
     }
-    if (state.phase === "applied" && !state.confirmRollback) {
+    if (state.phase === "applied" && state.applied?.rollback_snapshot_id && !state.confirmRollback) {
       const restore = button(copyFor(editor, "restore"));
       restore.addEventListener("click", () => {
         state.confirmRollback = true;
