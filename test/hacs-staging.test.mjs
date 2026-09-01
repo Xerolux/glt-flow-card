@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
@@ -11,6 +11,7 @@ import {
   Uint8ArrayReader,
   Uint8ArrayWriter,
   ZipReader,
+  ZipWriter,
 } from "@zip.js/zip.js/index-native.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -55,6 +56,22 @@ function runStage(outputRoot) {
   );
 }
 
+function runValidator(outputRoot, category) {
+  const args = ["tools/validate-hacs-staging.mjs", "--output-root", outputRoot];
+  if (category) args.push("--category", category);
+  return spawnSync(process.execPath, args, { cwd: ROOT, encoding: "utf8" });
+}
+
+function sorted(value) {
+  if (Array.isArray(value)) return value.map(sorted);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sorted(value[key])]));
+}
+
+function canonicalJson(value) {
+  return `${JSON.stringify(sorted(value), null, 2)}\n`;
+}
+
 async function readZip(zipPath) {
   const bytes = await readFile(zipPath);
   const reader = new ZipReader(new Uint8ArrayReader(bytes), {
@@ -77,6 +94,41 @@ async function readZip(zipPath) {
     return { bytes, entries, contents };
   } finally {
     await reader.close();
+  }
+}
+
+async function rewriteZip(zipPath, additions) {
+  const original = await readZip(zipPath);
+  const output = new Uint8ArrayWriter();
+  const writer = new ZipWriter(output, {
+    bufferedWrite: true,
+    dataDescriptor: false,
+    extendedTimestamp: false,
+    keepOrder: true,
+    level: 0,
+    useCompressionStream: false,
+    useWebWorkers: false,
+    zip64: false,
+  });
+  const fixed = {
+    bufferedWrite: true,
+    dataDescriptor: false,
+    extendedTimestamp: false,
+    lastModDate: new Date(FIXED_ZIP_TIME),
+    level: 0,
+    unixMode: 0o100644,
+    useCompressionStream: false,
+    useWebWorkers: false,
+    versionMadeBy: 20,
+  };
+  try {
+    for (const [filename, bytes] of [...original.contents, ...additions]) {
+      await writer.add(filename, new Uint8ArrayReader(bytes), fixed);
+    }
+    await writeFile(zipPath, Buffer.from(await writer.close(new Uint8Array(), { zip64: false })));
+  } catch (error) {
+    await writer.close().catch(() => undefined);
+    throw error;
   }
 }
 
@@ -190,4 +242,104 @@ test("no publication target credential or upload path is required", async () => 
   assert.ok(!Object.hasOwn(integrationHacs, "user_setup"));
   assert.ok(!Object.keys(packageJson.scripts).some((name) => /publish|upload|mirror/i.test(name)));
   assert.ok(!Object.values(packageJson.scripts).some((command) => /publish|upload|mirror|token/i.test(command)));
+});
+
+test("plugin and integration category validators run independently without credentials", () => {
+  const plugin = runValidator(firstRoot, "plugin");
+  assert.equal(plugin.status, 0, `${plugin.stdout}\n${plugin.stderr}`);
+  assert.match(plugin.stdout, /PASS HACS plugin category/);
+
+  const integration = runValidator(firstRoot, "integration");
+  assert.equal(integration.status, 0, `${integration.stdout}\n${integration.stderr}`);
+  assert.match(integration.stdout, /PASS HACS integration category/);
+  assert.match(integration.stdout, /PASS Companion ZIP install layout/);
+  assert.match(integration.stdout, /PASS no publication credentials required/);
+});
+
+test("category layout version hash and archive mutations are rejected", async () => {
+  const cases = [
+    {
+      name: "category-confusion",
+      expected: "plugin category disagreement",
+      mutate: async (root) => {
+        const manifestPath = path.join(root, "hacs-staging-manifest.json");
+        const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+        manifest.packages.plugin.category = "integration";
+        await writeFile(manifestPath, canonicalJson(manifest));
+      },
+    },
+    {
+      name: "extra-integration-root",
+      expected: "unexpected integration stage file",
+      mutate: async (root) => {
+        const extra = path.join(root, "hacs-integration/custom_components/other/manifest.json");
+        await mkdir(path.dirname(extra), { recursive: true });
+        await writeFile(extra, "{}\n");
+      },
+    },
+    {
+      name: "version-drift",
+      expected: "Companion version disagreement",
+      mutate: async (root) => {
+        const manifestPath = path.join(root, "hacs-integration", COMPONENT_ROOT, "manifest.json");
+        const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+        manifest.version = "9.9.9";
+        await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+      },
+    },
+    {
+      name: "plugin-hash",
+      expected: "plugin artifact hash mismatch",
+      mutate: async (root) => {
+        const cardPath = path.join(root, "hacs-plugin/glt-flow-card.js");
+        await writeFile(cardPath, Buffer.concat([await readFile(cardPath), Buffer.from("\n// drift\n")]));
+      },
+    },
+    {
+      name: "unsafe-zip-root",
+      expected: "unsafe ZIP member",
+      mutate: (root) => rewriteZip(
+        path.join(root, "glt-flow-card-companion.zip"),
+        [["../escape.py", Buffer.from("unsafe\n")]],
+      ),
+    },
+    {
+      name: "extra-zip-member",
+      expected: "ZIP member set disagreement",
+      mutate: (root) => rewriteZip(
+        path.join(root, "glt-flow-card-companion.zip"),
+        [["unexpected.txt", Buffer.from("extra\n")]],
+      ),
+    },
+    {
+      name: "stale-www-copy",
+      expected: "staged Companion file drift: www/glt-flow-card.js",
+      mutate: async (root) => {
+        const cardPath = path.join(root, "hacs-integration", COMPONENT_ROOT, "www/glt-flow-card.js");
+        await writeFile(cardPath, Buffer.concat([await readFile(cardPath), Buffer.from("\n// stale\n")]));
+      },
+    },
+    {
+      name: "stale-schema-copy",
+      expected: "staged Companion file drift: schemas/project/2.schema.json",
+      mutate: async (root) => {
+        const schemaPath = path.join(
+          root,
+          "hacs-integration",
+          COMPONENT_ROOT,
+          "schemas/project/2.schema.json",
+        );
+        await writeFile(schemaPath, Buffer.concat([await readFile(schemaPath), Buffer.from(" ")]));
+      },
+    },
+  ];
+
+  for (const mutation of cases) {
+    const mutationRoot = path.join(tempRoot, `mutation-${mutation.name}`);
+    await cp(firstRoot, mutationRoot, { recursive: true });
+    await mutation.mutate(mutationRoot);
+    const result = runValidator(mutationRoot);
+    assert.notEqual(result.status, 0, `${mutation.name} unexpectedly passed`);
+    assert.match(`${result.stdout}\n${result.stderr}`, new RegExp(mutation.expected), mutation.name);
+  }
 });
