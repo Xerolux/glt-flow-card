@@ -3,10 +3,12 @@ import {
   Uint8ArrayReader,
   Uint8ArrayWriter,
   ZipReader,
-} from "@zip.js/zip.js";
+  ZipWriter,
+} from "@zip.js/zip.js/index-native.js";
 
 import { bundleManifest as validateBundleManifest } from "./generated/project-validators.mjs";
 import { canonicalizeJson, evaluateProjectContract } from "./project-contract.mjs";
+import { migrateProjectDocument } from "./project-migrations.mjs";
 
 const LIMITS = Object.freeze({
   maxCompressedBytes: 33_554_432,
@@ -181,6 +183,10 @@ function preflightCentralDirectory(input) {
   }
 
   const expandedBytes = entries.reduce((total, entry) => total + entry.uncompressedSize, 0);
+  const compressedBytes = entries.reduce((total, entry) => total + entry.compressedSize, 0);
+  if (compressedBytes > LIMITS.maxCompressedBytes) {
+    failure("bundle.compressed_bytes", "/archive/compressed_bytes", { actual: compressedBytes, limit: LIMITS.maxCompressedBytes });
+  }
   if (expandedBytes > LIMITS.maxExpandedBytes) {
     failure("bundle.expanded_bytes", "/archive/expanded_bytes", { actual: expandedBytes, limit: LIMITS.maxExpandedBytes });
   }
@@ -216,9 +222,12 @@ function preflightCentralDirectory(input) {
     const extraLength = u16(view, offset + 28);
     const rawName = bytes.slice(offset + 30, offset + 30 + nameLength);
     const hasDescriptor = (flags & 8) !== 0;
+    if (!hasDescriptor && localCrc !== entry.crc32) {
+      failure("bundle.crc", `/entries/${entry.index}/crc32`, { path: entry.name });
+    }
     const localMatches = BufferlessEqual(rawName, entry.rawName)
       && flags === entry.flags && method === entry.method
-      && (hasDescriptor || (localCrc === entry.crc32 && localCompressed === entry.compressedSize && localExpanded === entry.uncompressedSize));
+      && (hasDescriptor || (localCompressed === entry.compressedSize && localExpanded === entry.uncompressedSize));
     if (!localMatches) failure("bundle.entry_overlap", `/entries/${entry.index}/offset`, { offset, reason: "local_header_mismatch" });
     const dataStart = offset + 30 + nameLength + extraLength;
     const dataEnd = dataStart + entry.compressedSize;
@@ -277,7 +286,10 @@ function manifestProjectAssets(project) {
 }
 
 async function verifiedContents(preflight) {
-  const reader = new ZipReader(new Uint8ArrayReader(preflight.bytes), { strictness: "strict" });
+  const reader = new ZipReader(new Uint8ArrayReader(preflight.bytes), {
+    strictness: "strict",
+    useWebWorkers: false,
+  });
   let zipEntries;
   try {
     zipEntries = await reader.getEntries({ strictness: "strict" });
@@ -293,6 +305,7 @@ async function verifiedContents(preflight) {
           checkSignature: true,
           checkAmbiguity: true,
           checkOverlappingEntry: true,
+          useWebWorkers: false,
         });
       } catch (error) {
         const message = String(error?.message || error);
@@ -411,5 +424,133 @@ export async function bundleDecision(input) {
   } catch (error) {
     if (!(error instanceof BundleError)) throw error;
     return { outcome: "reject", ...error.toJSON() };
+  }
+}
+
+function binaryAssetBytes(value) {
+  if (value instanceof Uint8Array) return value.slice();
+  if (value instanceof ArrayBuffer) return new Uint8Array(value.slice(0));
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength).slice();
+  }
+  throw new TypeError("asset bytes must be a Uint8Array or ArrayBuffer");
+}
+
+async function exportDocuments(rawProject, rawAssets) {
+  const migrated = migrateProjectDocument(rawProject, { dryRun: true }).candidate;
+  const projectAssets = Array.isArray(migrated.assets) ? migrated.assets : [];
+  if (!Array.isArray(rawAssets)) throw new TypeError("assets must be an array");
+  const sources = [];
+  const sourceIds = new Set();
+  const sourcePaths = new Set();
+  for (const [index, rawAsset] of rawAssets.entries()) {
+    if (!rawAsset || typeof rawAsset !== "object") throw new TypeError(`asset ${index} must be an object`);
+    const id = String(rawAsset.id || "");
+    const path = normalizePath(rawAsset.path, index + 2);
+    const mediaType = String(rawAsset.media_type || "");
+    const compression = rawAsset.compression || "store";
+    if (!id || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(id)) {
+      failure("bundle.manifest_mismatch", `/manifest/assets/${index}/id`, { id });
+    }
+    if (!/^[a-z0-9.+-]+\/[a-z0-9.+-]+$/u.test(mediaType) || mediaType.length > 128) {
+      failure("bundle.manifest_mismatch", `/manifest/assets/${index}/media_type`, { media_type: mediaType });
+    }
+    if (compression !== "store" && compression !== "deflate") {
+      failure("bundle.compression_method", `/manifest/assets/${index}/compression`, { actual: compression });
+    }
+    if (sourceIds.has(id) || sourcePaths.has(path)) {
+      failure("bundle.path_duplicate", `/manifest/assets/${index}/path`, { path });
+    }
+    const bytes = binaryAssetBytes(rawAsset.bytes);
+    if (bytes.length > LIMITS.maxAssetBytes) {
+      failure("bundle.asset_bytes", `/manifest/assets/${index}/size`, { actual: bytes.length, limit: LIMITS.maxAssetBytes });
+    }
+    sourceIds.add(id);
+    sourcePaths.add(path);
+    sources.push({ id, path, media_type: mediaType, compression, bytes, sha256: await sha256(bytes), size: bytes.length });
+  }
+  sources.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  const projectById = new Map(projectAssets.map((asset) => [asset?.id, asset]));
+  if (projectAssets.length !== sources.length) {
+    failure("bundle.manifest_mismatch", "/manifest/assets", { reason: "project_asset_closure" });
+  }
+  const enrichedAssets = sources.map((source, index) => {
+    const projectAsset = projectById.get(source.id);
+    if (!projectAsset || projectAsset.path !== source.path) {
+      failure("bundle.manifest_mismatch", `/manifest/assets/${index}/id`, { id: source.id, path: source.path });
+    }
+    if (projectAsset.media_type !== undefined && projectAsset.media_type !== source.media_type) {
+      failure("bundle.manifest_mismatch", `/manifest/assets/${index}/media_type`, { path: source.path });
+    }
+    return {
+      ...projectAsset,
+      id: source.id,
+      path: source.path,
+      media_type: source.media_type,
+      sha256: source.sha256,
+      size: source.size,
+    };
+  });
+  const project = JSON.parse(canonicalizeJson({ ...migrated, assets: enrichedAssets }));
+  const evidence = evaluateProjectContract(project);
+  if (!evidence.valid) {
+    const first = evidence.errors[0];
+    failure(first.code, first.path, first.params);
+  }
+  const projectBytes = encoder.encode(evidence.canonical);
+  const manifest = {
+    format: "gltproject",
+    bundle_version: 1,
+    project: {
+      id: project.project.id,
+      path: "project.json",
+      schema_version: evidence.schema_version,
+      sha256: await sha256(projectBytes),
+      size: projectBytes.length,
+    },
+    assets: sources.map(({ bytes, ...source }) => source),
+  };
+  if (!validateBundleManifest(manifest)) {
+    const first = validateBundleManifest.errors?.[0];
+    failure("bundle.manifest_mismatch", manifestErrorPath(first), { keyword: first?.keyword || "schema" });
+  }
+  return { manifest, manifestBytes: encoder.encode(canonicalizeJson(manifest)), project, projectBytes, sources };
+}
+
+export async function createProjectBundle(rawProject, assets = []) {
+  const documents = await exportDocuments(rawProject, assets);
+  const output = new Uint8ArrayWriter();
+  const writer = new ZipWriter(output, {
+    bufferedWrite: true,
+    dataDescriptor: false,
+    extendedTimestamp: false,
+    keepOrder: true,
+    level: 0,
+    useUnicodeFileNames: true,
+    useWebWorkers: false,
+    zip64: false,
+  });
+  const fixed = {
+    bufferedWrite: true,
+    dataDescriptor: false,
+    extendedTimestamp: false,
+    lastModDate: new Date(Date.UTC(1980, 0, 1, 0, 0, 0)),
+    versionMadeBy: 20,
+    externalFileAttributes: 0,
+    useWebWorkers: false,
+  };
+  try {
+    await writer.add("manifest.json", new Uint8ArrayReader(documents.manifestBytes), { ...fixed, level: 0 });
+    await writer.add("project.json", new Uint8ArrayReader(documents.projectBytes), { ...fixed, level: 0 });
+    for (const source of documents.sources) {
+      await writer.add(source.path, new Uint8ArrayReader(source.bytes), {
+        ...fixed,
+        level: source.compression === "store" ? 0 : 6,
+      });
+    }
+    return await writer.close(new Uint8Array(), { zip64: false });
+  } catch (error) {
+    await writer.close().catch(() => undefined);
+    throw error;
   }
 }

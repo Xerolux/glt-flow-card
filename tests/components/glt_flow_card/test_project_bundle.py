@@ -11,6 +11,7 @@ import pytest
 from custom_components.glt_flow_card.project_bundle import (
     BundleError,
     bundle_decision,
+    extract_project_bundle,
     read_project_bundle,
     write_project_bundle,
 )
@@ -212,3 +213,24 @@ def test_deterministic_entry_order_metadata_and_compression() -> None:
         assert [info.compress_type for info in infos] == [0, 0, 8, 0]
         assert all(info.date_time == (1980, 1, 1, 0, 0, 0) for info in infos)
         assert all(not info.is_dir() for info in infos)
+
+
+def test_controlled_extraction_starts_only_after_full_preflight(tmp_path) -> None:
+    rejected = _archive([("../project.json", b"x")])
+    with pytest.raises(BundleError):
+        extract_project_bundle(rejected, tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+    asset = {
+        "id": "opaque",
+        "path": "assets/opaque.bin",
+        "media_type": "application/octet-stream",
+        "compression": "store",
+        "bytes": b"\x00\xffopaque",
+    }
+    archive = write_project_bundle(_project([asset]), [asset])
+    restored = extract_project_bundle(archive, tmp_path)
+    transaction = restored["transaction_directory"]
+    assert transaction.parent == tmp_path.resolve()
+    assert (transaction / "project.json").read_bytes() == restored["project_bytes"]
+    assert (transaction / "assets" / "opaque.bin").read_bytes() == asset["bytes"]

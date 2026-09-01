@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-import { Uint8ArrayReader, ZipReader } from "@zip.js/zip.js";
+import { Uint8ArrayReader, ZipReader } from "@zip.js/zip.js/index-native.js";
 
 import { makeProjectBundle, readProjectBundle } from "../src/v100/core.mjs";
 import { canonicalizeJson } from "../src/v100/project-contract.mjs";
@@ -13,6 +13,7 @@ import {
 } from "../src/v100/project-bundle.mjs";
 
 const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 function crc32(bytes) {
   let value = 0xffffffff;
@@ -385,30 +386,25 @@ test("JavaScript and Python accept each other's deterministic opaque bundles", a
     action: "read",
     raw_base64: Buffer.from(jsArchive).toString("base64"),
   };
-  const pythonRead = spawnSync("py", [
-    "-3.13", "-m", "custom_components.glt_flow_card.project_bundle", "--json-lines",
-  ], { input: `${JSON.stringify(request)}\n`, encoding: "utf8" });
-  assert.equal(pythonRead.status, 0, pythonRead.stderr);
-  const pythonResult = JSON.parse(pythonRead.stdout).result;
-  assert.equal(Buffer.from(pythonResult.project_base64, "base64").toString("utf8"), canonicalizeJson(pythonResult.project));
-  assert.deepEqual(Buffer.from(pythonResult.assets[0].bytes_base64, "base64"), Buffer.from(asset.bytes));
-
   const writeRequest = {
     id: "write-python",
     action: "write",
     project,
     assets: [{ ...asset, bytes: undefined, bytes_base64: Buffer.from(asset.bytes).toString("base64") }],
   };
-  const first = spawnSync("py", [
+  const python = spawnSync("py", [
     "-3.13", "-m", "custom_components.glt_flow_card.project_bundle", "--json-lines",
-  ], { input: `${JSON.stringify(writeRequest)}\n`, encoding: "utf8" });
-  const second = spawnSync("py", [
-    "-3.13", "-m", "custom_components.glt_flow_card.project_bundle", "--json-lines",
-  ], { input: `${JSON.stringify(writeRequest)}\n`, encoding: "utf8" });
-  assert.equal(first.status, 0, first.stderr);
-  assert.equal(second.status, 0, second.stderr);
-  assert.equal(JSON.parse(first.stdout).archive_base64, JSON.parse(second.stdout).archive_base64);
-  const restored = await readProjectBundleArchive(Buffer.from(JSON.parse(first.stdout).archive_base64, "base64"));
+  ], {
+    input: `${[request, writeRequest, { ...writeRequest, id: "write-python-again" }].map((item) => JSON.stringify(item)).join("\n")}\n`,
+    encoding: "utf8",
+  });
+  assert.equal(python.status, 0, python.stderr);
+  const [readResponse, firstWrite, secondWrite] = python.stdout.trim().split(/\r?\n/u).map((line) => JSON.parse(line));
+  const pythonResult = readResponse.result;
+  assert.equal(Buffer.from(pythonResult.project_base64, "base64").toString("utf8"), canonicalizeJson(pythonResult.project));
+  assert.deepEqual(Buffer.from(pythonResult.assets[0].bytes_base64, "base64"), Buffer.from(asset.bytes));
+  assert.equal(firstWrite.archive_base64, secondWrite.archive_base64);
+  const restored = await readProjectBundleArchive(Buffer.from(firstWrite.archive_base64, "base64"));
   assert.deepEqual(restored.assets[0].bytes, asset.bytes);
   assert.deepEqual(restored.manifest, pythonResult.manifest);
 });

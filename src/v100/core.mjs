@@ -1,6 +1,7 @@
 /* GLT Flow Card Platform 1.0 pure engineering core */
 import { COMPONENT_PROFILES, SYMBOL_VARIANTS, profileForEquipment, portsForEquipment } from "./catalog.mjs";
 import { computeProjectDiff } from "./project-diff.mjs";
+import { createProjectBundle, readProjectBundleArchive } from "./project-bundle.mjs";
 import { migrateProjectDocument } from "./project-migrations.mjs";
 
 export const SCHEMA_VERSION = 1;
@@ -376,24 +377,19 @@ export function projectDiff(a, b, path = "") {
   }));
 }
 
-// Minimal ZIP store implementation for .gltproject (manifest.json + project.json). No compression.
-function crc32(bytes) {
-  let crc = -1; for (const b of bytes) { crc ^= b; for (let k=0;k<8;k++) crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1)); } return (crc ^ -1) >>> 0;
+export async function makeProjectBundle(config, assets = []) {
+  return createProjectBundle(ensureV1(config), assets);
 }
-function u16(n){ return [n&255,(n>>>8)&255]; } function u32(n){ return [n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]; }
-export function makeProjectBundle(config) {
-  const enc = new TextEncoder(); const c = ensureV1(config); const manifest = { format: "gltproject", schema_version: SCHEMA_VERSION, created: new Date().toISOString(), project_id: c.project.id, files: ["project.json"] };
-  const files = [["manifest.json", JSON.stringify(manifest,null,2)], ["project.json", JSON.stringify(c,null,2)]].map(([name,text])=>({name, data:enc.encode(text)}));
-  const local=[], central=[]; let offset=0;
-  for (const f of files) { const name=enc.encode(f.name), crc=crc32(f.data); const lh=[...u32(0x04034b50),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(f.data.length),...u32(f.data.length),...u16(name.length),...u16(0),...name,...f.data]; local.push(...lh); const ch=[...u32(0x02014b50),...u16(20),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(f.data.length),...u32(f.data.length),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(offset),...name]; central.push(...ch); offset += lh.length; }
-  const end=[...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(central.length),...u32(local.length),...u16(0)]; return new Uint8Array([...local,...central,...end]);
+
+export async function readProjectBundle(input, { includeAssets = false, onExtract } = {}) {
+  const restored = await readProjectBundleArchive(input, { onExtract });
+  if (includeAssets) {
+    return { project: restored.project, assets: restored.assets, manifest: restored.manifest };
+  }
+  return restored.project;
 }
-function rd16(b,o){return b[o]|(b[o+1]<<8)} function rd32(b,o){return (b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0}
-export function readProjectBundle(input) {
-  const b=input instanceof Uint8Array?input:new Uint8Array(input); const dec=new TextDecoder(); let o=0, project=null, manifest=null;
-  while (o+30<=b.length && rd32(b,o)===0x04034b50) { const method=rd16(b,o+8), size=rd32(b,o+18), nlen=rd16(b,o+26), xlen=rd16(b,o+28); if(method!==0) throw new Error("Komprimierte .gltproject-Dateien werden nicht unterstützt"); const name=dec.decode(b.slice(o+30,o+30+nlen)); const data=b.slice(o+30+nlen+xlen,o+30+nlen+xlen+size); const text=dec.decode(data); if(name==="manifest.json") manifest=JSON.parse(text); if(name==="project.json") project=JSON.parse(text); o+=30+nlen+xlen+size; }
-  if(!manifest||manifest.format!=="gltproject"||!project) throw new Error("Ungültiges .gltproject Bundle"); return migrateProject(project).config;
-}
+
+export { BundleError, bundleDecision, createProjectBundle, readProjectBundleArchive } from "./project-bundle.mjs";
 
 export function symbolCatalogStats() {
   return { base_symbols: new Set(SYMBOL_VARIANTS.map((x)=>x.base_symbol)).size, variants: SYMBOL_VARIANTS.length, profiles: COMPONENT_PROFILES.length };

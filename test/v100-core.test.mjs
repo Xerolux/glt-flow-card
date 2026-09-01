@@ -60,11 +60,11 @@ test("project diff identifies nested changes", () => {
   assert.ok(diff.some(x=>x.path.includes("equipment[b]") && x.type==="added"));
 });
 
-test(".gltproject bundle round trips schema v1", () => {
+test(".gltproject bundle migrates and round trips through the safe async API", async () => {
   const cfg = ensureV1({title:"Test",equipment:[{id:"p1",type:"pump",x:10,y:20}]});
-  const bundle = makeProjectBundle(cfg);
+  const bundle = await makeProjectBundle(cfg);
   assert.ok(bundle.length > 100);
-  const restored = readProjectBundle(bundle);
-  assert.equal(restored.schema_version, 1);
+  const restored = await readProjectBundle(bundle);
+  assert.equal(restored.schema_version, 2);
   assert.equal(restored.equipment[0].id, "p1");
 });

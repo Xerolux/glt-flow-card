@@ -6,18 +6,22 @@ import base64
 import hashlib
 import io
 import json
+import shutil
 import stat
 import struct
 import sys
+import tempfile
 import unicodedata
 import zipfile
 from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
 
 from . import project_contract
 from .project_contract import canonicalize_json, evaluate_project_contract
+from .project_migrations import migrate_project_document
 
 _MAX_COMPRESSED_BYTES = 33_554_432
 _MAX_ENTRIES = 256
@@ -217,6 +221,13 @@ def _preflight_central_directory(raw_input: bytes | bytearray | memoryview) -> d
             )
 
     expanded_bytes = sum(entry["uncompressed_size"] for entry in entries)
+    compressed_bytes = sum(entry["compressed_size"] for entry in entries)
+    if compressed_bytes > _MAX_COMPRESSED_BYTES:
+        _fail(
+            "bundle.compressed_bytes",
+            "/archive/compressed_bytes",
+            {"actual": compressed_bytes, "limit": _MAX_COMPRESSED_BYTES},
+        )
     if expanded_bytes > _MAX_EXPANDED_BYTES:
         _fail(
             "bundle.expanded_bytes",
@@ -255,6 +266,12 @@ def _preflight_central_directory(raw_input: bytes | bytearray | memoryview) -> d
         extra_length = _u16(raw, offset + 28)
         raw_name = raw[offset + 30 : offset + 30 + name_length]
         descriptor = bool(flags & 8)
+        if not descriptor and local_crc != entry["crc32"]:
+            _fail(
+                "bundle.crc",
+                f'/entries/{entry["index"]}/crc32',
+                {"path": entry["name"]},
+            )
         matches = (
             raw_name == entry["raw_name"]
             and flags == entry["flags"]
@@ -262,8 +279,7 @@ def _preflight_central_directory(raw_input: bytes | bytearray | memoryview) -> d
             and (
                 descriptor
                 or (
-                    local_crc == entry["crc32"]
-                    and local_compressed == entry["compressed_size"]
+                    local_compressed == entry["compressed_size"]
                     and local_expanded == entry["uncompressed_size"]
                 )
             )
@@ -472,6 +488,198 @@ def bundle_decision(raw_input: bytes | bytearray | memoryview) -> dict[str, Any]
         return {"outcome": "reject", **error.as_dict()}
 
 
+def extract_project_bundle(
+    raw_input: bytes | bytearray | memoryview,
+    transaction_parent: str | Path,
+) -> dict[str, Any]:
+    """Preflight fully, then write into one new contained transaction directory."""
+
+    restored = read_project_bundle(raw_input)
+    parent = Path(transaction_parent).resolve(strict=True)
+    if not parent.is_dir():
+        raise ValueError("transaction parent must be a directory")
+    transaction = Path(tempfile.mkdtemp(prefix=".gltproject-", dir=parent)).resolve(strict=True)
+    try:
+        members = [
+            ("manifest.json", canonicalize_json(restored["manifest"]).encode("utf-8")),
+            ("project.json", restored["project_bytes"]),
+            *((asset["path"], asset["bytes"]) for asset in restored["assets"]),
+        ]
+        for name, data in members:
+            destination = (transaction / Path(*name.split("/"))).resolve(strict=False)
+            if transaction not in destination.parents:
+                _fail("bundle.path_traversal", "/transaction", {"path": name})
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with destination.open("xb") as member:
+                member.write(data)
+        return {**restored, "transaction_directory": transaction}
+    except Exception:
+        shutil.rmtree(transaction)
+        raise
+
+
+def _asset_bytes(value: Any) -> bytes:
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return bytes(value)
+    raise TypeError("asset bytes must be bytes-like")
+
+
+def _export_documents(raw_project: Any, raw_assets: list[Mapping[str, Any]]) -> dict[str, Any]:
+    migrated = migrate_project_document(raw_project, dry_run=True)["candidate"]
+    project_assets = migrated.get("assets", []) if isinstance(migrated.get("assets"), list) else []
+    if not isinstance(raw_assets, list):
+        raise TypeError("assets must be an array")
+    sources: list[dict[str, Any]] = []
+    source_ids: set[str] = set()
+    source_paths: set[str] = set()
+    for index, raw_asset in enumerate(raw_assets):
+        if not isinstance(raw_asset, Mapping):
+            raise TypeError(f"asset {index} must be an object")
+        asset_id = str(raw_asset.get("id") or "")
+        path = _normalize_path(str(raw_asset.get("path") or ""), index + 2)
+        media_type = str(raw_asset.get("media_type") or "")
+        compression = raw_asset.get("compression", "store")
+        if not asset_id or len(asset_id) > 128 or not all(
+            char.isascii() and (char.isalnum() or char in "._:-") for char in asset_id
+        ):
+            _fail("bundle.manifest_mismatch", f"/manifest/assets/{index}/id", {"id": asset_id})
+        media_parts = media_type.split("/")
+        allowed_media_chars = set("abcdefghijklmnopqrstuvwxyz0123456789.+-")
+        if (
+            len(media_parts) != 2
+            or not all(part and set(part) <= allowed_media_chars for part in media_parts)
+            or len(media_type) > 128
+        ):
+            _fail(
+                "bundle.manifest_mismatch",
+                f"/manifest/assets/{index}/media_type",
+                {"media_type": media_type},
+            )
+        if compression not in ("store", "deflate"):
+            _fail(
+                "bundle.compression_method",
+                f"/manifest/assets/{index}/compression",
+                {"actual": compression},
+            )
+        if asset_id in source_ids or path in source_paths:
+            _fail("bundle.path_duplicate", f"/manifest/assets/{index}/path", {"path": path})
+        data = _asset_bytes(raw_asset.get("bytes"))
+        if len(data) > _MAX_ASSET_BYTES:
+            _fail(
+                "bundle.asset_bytes",
+                f"/manifest/assets/{index}/size",
+                {"actual": len(data), "limit": _MAX_ASSET_BYTES},
+            )
+        source_ids.add(asset_id)
+        source_paths.add(path)
+        sources.append(
+            {
+                "id": asset_id,
+                "path": path,
+                "media_type": media_type,
+                "compression": compression,
+                "bytes": data,
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "size": len(data),
+            }
+        )
+    sources.sort(key=lambda source: source["path"])
+    project_by_id = {
+        asset.get("id"): asset for asset in project_assets if isinstance(asset, Mapping)
+    }
+    if len(project_assets) != len(sources):
+        _fail("bundle.manifest_mismatch", "/manifest/assets", {"reason": "project_asset_closure"})
+    enriched_assets: list[dict[str, Any]] = []
+    for index, source in enumerate(sources):
+        project_asset = project_by_id.get(source["id"])
+        if not project_asset or project_asset.get("path") != source["path"]:
+            _fail(
+                "bundle.manifest_mismatch",
+                f"/manifest/assets/{index}/id",
+                {"id": source["id"], "path": source["path"]},
+            )
+        if project_asset.get("media_type") is not None and project_asset["media_type"] != source["media_type"]:
+            _fail(
+                "bundle.manifest_mismatch",
+                f"/manifest/assets/{index}/media_type",
+                {"path": source["path"]},
+            )
+        enriched_assets.append(
+            {
+                **project_asset,
+                "id": source["id"],
+                "path": source["path"],
+                "media_type": source["media_type"],
+                "sha256": source["sha256"],
+                "size": source["size"],
+            }
+        )
+    project = json.loads(canonicalize_json({**migrated, "assets": enriched_assets}))
+    evidence = evaluate_project_contract(project)
+    if not evidence["valid"]:
+        first = evidence["errors"][0]
+        _fail(first["code"], first["path"], first["params"])
+    project_bytes = evidence["canonical"].encode("utf-8")
+    manifest = {
+        "format": "gltproject",
+        "bundle_version": 1,
+        "project": {
+            "id": project["project"]["id"],
+            "path": "project.json",
+            "schema_version": evidence["schema_version"],
+            "sha256": hashlib.sha256(project_bytes).hexdigest(),
+            "size": len(project_bytes),
+        },
+        "assets": [
+            {key: value for key, value in source.items() if key != "bytes"}
+            for source in sources
+        ],
+    }
+    manifest_errors = list(_MANIFEST_VALIDATOR.iter_errors(manifest))
+    if manifest_errors:
+        first = sorted(manifest_errors, key=lambda error: list(error.absolute_path))[0]
+        _fail("bundle.manifest_mismatch", _manifest_error_path(first), {"keyword": first.validator or "schema"})
+    return {
+        "manifest": manifest,
+        "manifest_bytes": canonicalize_json(manifest).encode("utf-8"),
+        "project": project,
+        "project_bytes": project_bytes,
+        "sources": sources,
+    }
+
+
+def _zip_info(path: str, compression: int) -> zipfile.ZipInfo:
+    info = zipfile.ZipInfo(path, date_time=(1980, 1, 1, 0, 0, 0))
+    info.compress_type = compression
+    info.create_system = 0
+    info.create_version = 20
+    info.extract_version = 20
+    info.external_attr = 0
+    info.internal_attr = 0
+    info.comment = b""
+    info.extra = b""
+    return info
+
+
+def write_project_bundle(raw_project: Any, assets: list[Mapping[str, Any]] | None = None) -> bytes:
+    """Create a deterministic bundle without parsing or inspecting asset contents."""
+
+    documents = _export_documents(raw_project, assets or [])
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", allowZip64=False) as bundle:
+        bundle.writestr(_zip_info("manifest.json", zipfile.ZIP_STORED), documents["manifest_bytes"])
+        bundle.writestr(_zip_info("project.json", zipfile.ZIP_STORED), documents["project_bytes"])
+        for source in documents["sources"]:
+            compression = zipfile.ZIP_STORED if source["compression"] == "store" else zipfile.ZIP_DEFLATED
+            bundle.writestr(
+                _zip_info(source["path"], compression),
+                source["bytes"],
+                compress_type=compression,
+                compresslevel=None if compression == zipfile.ZIP_STORED else 6,
+            )
+    return output.getvalue()
+
+
 def _json_lines() -> None:
     sys.stdin.reconfigure(encoding="utf-8")
     sys.stdout.reconfigure(encoding="utf-8", newline="\n")
@@ -479,8 +687,42 @@ def _json_lines() -> None:
         if not line.strip():
             continue
         request = json.loads(line)
-        raw = base64.b64decode(request["raw_base64"], validate=True)
-        response = {"id": request["id"], "decision": bundle_decision(raw)}
+        action = request.get("action", "decision")
+        if action == "write":
+            assets = [
+                {
+                    **{key: value for key, value in asset.items() if key != "bytes_base64"},
+                    "bytes": base64.b64decode(asset["bytes_base64"], validate=True),
+                }
+                for asset in request.get("assets", [])
+            ]
+            archive = write_project_bundle(request["project"], assets)
+            response = {
+                "id": request["id"],
+                "archive_base64": base64.b64encode(archive).decode("ascii"),
+            }
+        else:
+            raw = base64.b64decode(request["raw_base64"], validate=True)
+            if action == "read":
+                result = read_project_bundle(raw)
+                response = {
+                    "id": request["id"],
+                    "result": {
+                        "manifest": result["manifest"],
+                        "project": result["project"],
+                        "project_base64": base64.b64encode(result["project_bytes"]).decode("ascii"),
+                        "assets": [
+                            {
+                                **{key: value for key, value in asset.items() if key != "bytes"},
+                                "bytes_base64": base64.b64encode(asset["bytes"]).decode("ascii"),
+                            }
+                            for asset in result["assets"]
+                        ],
+                        "entries": result["entries"],
+                    },
+                }
+            else:
+                response = {"id": request["id"], "decision": bundle_decision(raw)}
         print(json.dumps(response, ensure_ascii=False, separators=(",", ":")), flush=True)
 
 
