@@ -81,6 +81,7 @@ class LifecycleEffects:
 
     hass: HomeAssistant
     websocket_commands: list[str] = field(default_factory=list)
+    registered_commands: dict[str, Callable[..., Any]] = field(default_factory=dict)
     active_listeners: dict[int, str] = field(default_factory=dict)
     service_attempts: list[dict[str, Any]] = field(default_factory=list)
     session_attempts: list[dict[str, Any]] = field(default_factory=list)
@@ -129,6 +130,7 @@ def lifecycle_effects(hass: HomeAssistant) -> Generator[LifecycleEffects]:
         schema = getattr(command, "schema", {})
         command_type = str(schema.get("type", getattr(command, "__name__", "unknown")))
         effects.websocket_commands.append(command_type)
+        effects.registered_commands[command.__name__] = command
         original_register(test_hass, command)
 
     def bus_listen(event_type: str, listener: Callable[..., Any], *args: Any, **kwargs: Any):
