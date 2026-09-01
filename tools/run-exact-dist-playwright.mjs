@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 
@@ -11,10 +11,17 @@ const manifestPath = resolve(projectRoot, "custom_components/glt_flow_card/build
 const cliPath = resolve(projectRoot, "node_modules/@playwright/test/cli.js");
 
 function parseArgs(argv) {
-  const result = { grep: null };
+  const result = {
+    evidence: resolve(projectRoot, ".planning/tmp/exact-dist-results.json"),
+    grep: null,
+  };
   for (const arg of argv) {
     if (arg.startsWith("--grep=")) {
       result.grep = arg.slice("--grep=".length);
+      continue;
+    }
+    if (arg.startsWith("--evidence=")) {
+      result.evidence = resolve(projectRoot, arg.slice("--evidence=".length));
       continue;
     }
     throw new Error(`Unknown exact-dist argument: ${arg}`);
@@ -100,6 +107,15 @@ try {
     cwd: projectRoot,
     env: { ...process.env, EXACT_DIST_BASE_URL: baseUrl },
   });
+  await mkdir(resolve(options.evidence, ".."), { recursive: true });
+  await writeFile(options.evidence, `${JSON.stringify({
+    card_sha256: distSha256,
+    format: "glt-flow-card-exact-dist-results",
+    grep: options.grep,
+    passed: exitCode === 0,
+    report_version: 1,
+    skipped: false,
+  }, null, 2)}\n`);
   process.stderr.write(`EXACT_DIST_EFFECTS ${JSON.stringify({ filesystem: requests })}\n`);
   process.exitCode = exitCode;
 } finally {

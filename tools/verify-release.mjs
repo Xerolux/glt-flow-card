@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import {
   appendFile,
   cp,
+  mkdir,
   mkdtemp,
   readFile,
   readdir,
@@ -44,6 +45,19 @@ const SCHEMAS = [
   ["project1", "schemas/project/1.schema.json"],
   ["project2", "schemas/project/2.schema.json"],
 ];
+const DEFAULT_EVIDENCE_PATH = path.join(ROOT, ".planning/tmp/release-build-verification.json");
+
+function parseArgs(argv) {
+  let evidencePath = DEFAULT_EVIDENCE_PATH;
+  for (const argument of argv) {
+    if (argument.startsWith("--evidence=")) {
+      evidencePath = path.resolve(ROOT, argument.slice("--evidence=".length));
+      continue;
+    }
+    throw new Error(`unknown release verification argument: ${argument}`);
+  }
+  return { evidencePath };
+}
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
@@ -246,6 +260,7 @@ async function updateArtifactDescriptor(outputRoot, relativePaths) {
 }
 
 async function main() {
+  const { evidencePath } = parseArgs(process.argv.slice(2));
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "glt-release-verify-"));
   const firstRoot = path.join(temporaryRoot, "first");
   const secondRoot = path.join(temporaryRoot, "second");
@@ -308,6 +323,21 @@ async function main() {
       async (mutationRoot) => rm(path.join(mutationRoot, "docs/editor/app.js")),
       "missing generated output: docs/editor/app.js",
     );
+
+    const buildManifestBytes = await readFile(path.join(ROOT, MANIFEST_PATH));
+    const buildManifest = JSON.parse(buildManifestBytes);
+    const report = {
+      build_manifest_sha256: sha256(buildManifestBytes),
+      checked_in_outputs: { passed: true },
+      double_build: { passed: true },
+      format: "glt-flow-card-release-build-verification",
+      report_version: 1,
+      source_commit: buildManifest.build.commit,
+      verified: true,
+    };
+    await mkdir(path.dirname(evidencePath), { recursive: true });
+    await writeFile(evidencePath, canonicalJson(report));
+    console.log(`PASS release build evidence ${path.relative(ROOT, evidencePath)}`);
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }

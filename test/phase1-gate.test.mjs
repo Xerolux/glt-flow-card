@@ -31,6 +31,7 @@ async function createAcceptanceFixture() {
   const required = new Set([
     "package.json",
     "package-lock.json",
+    "tools/provenance-allowlist.json",
     "custom_components/glt_flow_card/manifest.json",
     "custom_components/glt_flow_card/build-manifest.json",
     ...buildManifest.sources.map(({ path: sourcePath }) => sourcePath),
@@ -162,12 +163,13 @@ test("release acceptance fails closed on mutated skipped or stale evidence", asy
 
 test("release workflow publishes downloaded exact assets without rebuild or mirror", async () => {
   const workflow = await readFile(path.join(ROOT, ".github/workflows/release.yml"), "utf8");
+  const publishJob = workflow.slice(workflow.indexOf("  release:"));
   assert.match(workflow, /^permissions:\s*\n\s+contents: read/m);
   assert.match(workflow, /actions\/download-artifact@[a-f0-9]{40}/);
   assert.match(workflow, /attest(?:-build-provenance)?@[a-f0-9]{40}/);
   assert.match(workflow, /contents: write/);
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /attestations: write/);
-  assert.doesNotMatch(workflow, /npm (?:run )?build|npm install|npm ci[\s\S]*?name: Publish verified release/);
+  assert.doesNotMatch(publishJob, /npm (?:run )?build|npm install|npm ci/);
   assert.doesNotMatch(workflow, /mirror|companion[_-](?:repo|token)|repository_dispatch/i);
 });
