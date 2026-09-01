@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-09-PLAN.md
-last_updated: "2026-09-01T01:46:26.526Z"
-last_activity: 2026-09-01 -- Plan 01-09 deterministic release build and independent drift verification completed
+stopped_at: Completed 01-10-PLAN.md
+last_updated: "2026-09-01T02:08:11.124Z"
+last_activity: 2026-09-01 -- Plan 01-10 local HACS category staging and validation completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (trusted-contract-release-foundation) — EXECUTING
-Plan: 10 of 13
+Plan: 11 of 13
 Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-09 deterministic release build and independent drift verification completed
+Last activity: 2026-09-01 -- Plan 01-10 local HACS category staging and validation completed
 
-Progress: [███████░░░] 69%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [███████░░░] 69%
 | Phase 01 P07 | 26min | 2 tasks | 7 files |
 | Phase 01 P08 | 24min | 3 tasks | 13 files |
 | Phase 01 P09 | 22min | 2 tasks | 22 files |
+| Phase 01 P10 | 18min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01]: Use a non-circular canonical manifest with relative source/artifact SHA-256 evidence and latest source-affecting commit plus dirty marker.
 - [Phase 01]: Record Node 22 as the declared build target and retain exact Ajv/esbuild versions to avoid host-patch manifest drift.
 - [Phase 01]: Keep release verification independent and prove it with isolated double builds plus four seeded drift failures.
+- [Phase 01]: Keep integration repository stage rooted at custom_components/glt_flow_card while zip_release members remain component-relative for direct HACS extraction. — Repository validation and release-asset extraction have distinct roots.
+- [Phase 01]: Validate HACS stages independently by re-enumerating and hashing source, build, stage, and ZIP bytes without importing the stager. — Independent verification must not trust staging implementation or metadata.
+- [Phase 01]: Keep Companion category evidence local and credential-free; public repository creation or discoverability is not a Phase-1 success criterion. — Publication requires separate explicit authorization and an exact target.
 
 ### Pending Todos
 
@@ -123,6 +127,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-09-01T01:46:06.577Z
-Stopped at: Completed 01-09-PLAN.md
+Last session: 2026-09-01T02:08:11.089Z
+Stopped at: Completed 01-10-PLAN.md
 Resume file: None
