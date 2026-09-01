@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-12-PLAN.md
-last_updated: "2026-09-01T14:42:20.459Z"
-last_activity: 2026-09-01 -- Plan 01-12 immutable Home Assistant artifact lanes completed
+status: verifying
+stopped_at: Completed 01-13-PLAN.md
+last_updated: "2026-09-01T15:16:24.702Z"
+last_activity: 2026-09-01 -- Plan 01-13 exact release acceptance and Phase-1 evidence gate completed
 progress:
   total_phases: 10
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 10
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 
 ## Current Position
 
-Phase: 01 (trusted-contract-release-foundation) — EXECUTING
+Phase: 01 (trusted-contract-release-foundation) — COMPLETE
 Plan: 13 of 13
-Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-12 immutable Home Assistant artifact lanes completed
+Status: Phase complete — ready for verification
+Last activity: 2026-09-01 -- Plan 01-13 exact release acceptance and Phase-1 evidence gate completed
 
-Progress: [█████████░] 92%
+Progress: [█░░░░░░░░░] 10%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [█████████░] 92%
 | Phase 01 P10 | 18min | 2 tasks | 10 files |
 | Phase 01 P11 | 33min | 3 tasks | 11 files |
 | Phase 01 P12 | 28min | 2 tasks | 25 files |
+| Phase 01 P13 | 34min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01]: Match each HA lane to the exact official pytest harness dependency and run the complete component suite from exact staged artifacts.
 - [Phase 01]: Preserve the evidence-backed 2024.8.0 minimum; package schema authorities component-locally and bridge OptionsFlow compatibility.
 - [Phase 01]: Keep CI read-only, preflight provenance before image execution, and transfer one manifest-hashed stage into separate validation jobs.
+- [Phase 01]: Make double-build and exact-dist tools emit hash-bound evidence so release acceptance can consume proof without rebuilding.
+- [Phase 01]: Separate read-only release verification from same-repository publication with narrowly scoped contents, identity-token and attestation permissions.
+- [Phase 01]: Run twenty unique current commands including each T-01 through T-08 owner exactly once and map all thirty task rows to behavioral evidence.
+- [Phase 01]: Treat the Companion integration-category shape as local release evidence, not public HACS availability or capacity certification.
 
 ### Pending Todos
 
@@ -137,6 +142,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-09-01T14:42:20.289Z
-Stopped at: Completed 01-12-PLAN.md
+Last session: 2026-09-01T15:16:24.691Z
+Stopped at: Completed 01-13-PLAN.md
 Resume file: None

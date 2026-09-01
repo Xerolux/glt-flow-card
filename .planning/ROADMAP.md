@@ -8,7 +8,7 @@ Milestone v1.1 hardens the existing Platform 1.0 surface as ten dependency-order
 
 **Phase Numbering:** Integer phases are planned milestone work; decimal phases are reserved for urgent insertions.
 
-- [ ] **Phase 1: Trusted Contract & Release Foundation** - Make project data, Companion lifecycle, migrations, and shipped artifacts safe and reproducible.
+- [x] **Phase 1: Trusted Contract & Release Foundation** - Make project data, Companion lifecycle, migrations, and shipped artifacts safe and reproducible. (completed 2026-09-01)
 - [ ] **Phase 2: Authoritative Policy, Controls & Collaboration** - Enforce server-owned permissions, exact control targets, trustworthy audit, and conflict-safe shared editing.
 - [ ] **Phase 3: Semantic Equipment & Provenance** - Establish stable semantics, profiles, mapping, provenance, and deterministic operational state.
 - [ ] **Phase 4: Runtime Operations & Drill-Down** - Deliver profile-driven plant operation with confirmed commands and permission-safe contextual navigation.
@@ -245,7 +245,7 @@ Every v1.1 requirement has exactly one primary owner. Cross-cutting gates in lat
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Trusted Contract & Release Foundation | 12/13 | In Progress|  |
+| 1. Trusted Contract & Release Foundation | 13/13 | Complete   | 2026-09-01 |
 | 2. Authoritative Policy, Controls & Collaboration | 0/TBD | Not started | - |
 | 3. Semantic Equipment & Provenance | 0/TBD | Not started | - |
 | 4. Runtime Operations & Drill-Down | 0/TBD | Not started | - |
