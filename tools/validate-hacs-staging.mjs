@@ -28,6 +28,8 @@ const COMPONENT_FILES = [
   "project_repository.py",
   "project_transactions.py",
   "schemas/bundle-manifest.schema.json",
+  "schemas/diff-policy.json",
+  "schemas/limits.json",
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",
@@ -45,6 +47,8 @@ const INTEGRATION_FILES = [
 const BUILD_ARTIFACT_PATHS = new Map([
   ["www/glt-flow-card.js", `${COMPONENT_ROOT}/www/glt-flow-card.js`],
   ["schemas/bundle-manifest.schema.json", `${COMPONENT_ROOT}/schemas/bundle-manifest.schema.json`],
+  ["schemas/diff-policy.json", `${COMPONENT_ROOT}/schemas/diff-policy.json`],
+  ["schemas/limits.json", `${COMPONENT_ROOT}/schemas/limits.json`],
   ["schemas/project/0.schema.json", `${COMPONENT_ROOT}/schemas/project/0.schema.json`],
   ["schemas/project/1.schema.json", `${COMPONENT_ROOT}/schemas/project/1.schema.json`],
   ["schemas/project/2.schema.json", `${COMPONENT_ROOT}/schemas/project/2.schema.json`],

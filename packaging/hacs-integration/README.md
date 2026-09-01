@@ -1,5 +1,8 @@
 # GLT Flow Card Companion — local HACS staging
 
+Requires Home Assistant 2024.8.0 or newer. The minimum is verified against the
+exact staged Companion ZIP before release.
+
 This directory describes the integration-category package produced from the same
 verified build as the GLT Flow Card dashboard package. It is release-only local
 evidence for Phase 1; it does not claim that a separate Companion repository is

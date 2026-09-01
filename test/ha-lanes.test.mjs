@@ -43,12 +43,15 @@ function registryFetch(fixtures = {}) {
     }
     if (/pypi\.org\/pypi\/homeassistant\/[^/]+\/json$/u.test(target)) {
       const version = target.split("/").at(-2);
-      return response({ info: { version }, urls: [{ upload_time_iso_8601: "2024-08-07T00:00:00Z" }] });
+      const upload = version === "2026.8.3" ? "2026-08-21T00:00:00Z" : "2024-08-07T00:00:00Z";
+      return response({ info: { version }, urls: [{ upload_time_iso_8601: upload }] });
     }
     if (target === "https://pypi.org/pypi/pytest-homeassistant-custom-component/json") {
       return response({ releases: {
         "0.13.151": [{ upload_time_iso_8601: "2024-08-07T00:00:00Z" }],
         "0.13.152": [{ upload_time_iso_8601: "2024-08-08T00:00:00Z" }],
+        "0.13.153": [{ upload_time_iso_8601: "2024-08-09T00:00:00Z" }],
+        "0.13.357": [{ upload_time_iso_8601: "2026-08-22T00:00:00Z" }],
       } });
     }
     if (target.endsWith("pytest-homeassistant-custom-component/0.13.151/json")) {
@@ -56,6 +59,12 @@ function registryFetch(fixtures = {}) {
     }
     if (target.endsWith("pytest-homeassistant-custom-component/0.13.152/json")) {
       return response({ info: { requires_dist: ["homeassistant==2024.8.0"] } });
+    }
+    if (target.endsWith("pytest-homeassistant-custom-component/0.13.153/json")) {
+      return response({ info: { requires_dist: ["homeassistant==2024.8.1"] } });
+    }
+    if (target.endsWith("pytest-homeassistant-custom-component/0.13.357/json")) {
+      return response({ info: { requires_dist: ["homeassistant==2026.8.3"] } });
     }
     if (target.startsWith("https://ghcr.io/token?")) return response({ token: "read-only-token" });
     if (target.includes("/manifests/")) {

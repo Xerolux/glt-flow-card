@@ -31,6 +31,7 @@
     "validate:hacs-staging": "npm run stage:hacs && node tools/validate-hacs-staging.mjs",
     "verify:release": "node tools/verify-release.mjs",
     "test:release-acceptance": "node tools/verify-release-acceptance.mjs",
+    "resolve:ha-minimum": "node tools/resolve-ha-lanes.mjs",
     "test:ha-artifacts": "node tools/test-ha-artifacts.mjs",
     "test:phase1": "node tools/verify-phase1.mjs"
   },

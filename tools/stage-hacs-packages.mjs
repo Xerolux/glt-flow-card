@@ -37,6 +37,8 @@ const COMPONENT_FILES = [
   "project_repository.py",
   "project_transactions.py",
   "schemas/bundle-manifest.schema.json",
+  "schemas/diff-policy.json",
+  "schemas/limits.json",
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",
@@ -48,6 +50,8 @@ const COMPONENT_FILES = [
 const GENERATED_COMPONENT_ARTIFACTS = new Set([
   "build-manifest.json",
   "schemas/bundle-manifest.schema.json",
+  "schemas/diff-policy.json",
+  "schemas/limits.json",
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",

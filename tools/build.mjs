@@ -31,18 +31,24 @@ const EDITOR_END_MARKER = "/*! END GLT Online Designer v1 Engineering extensions
 const MANIFEST_PATH = "custom_components/glt_flow_card/build-manifest.json";
 const SCHEMA_COPIES = [
   ["schemas/bundle-manifest.schema.json", "dist/schemas/bundle-manifest.schema.json"],
+  ["schemas/diff-policy.json", "dist/schemas/diff-policy.json"],
+  ["schemas/limits.json", "dist/schemas/limits.json"],
   ["schemas/project/0.schema.json", "dist/schemas/project/0.schema.json"],
   ["schemas/project/1.schema.json", "dist/schemas/project/1.schema.json"],
   ["schemas/project/2.schema.json", "dist/schemas/project/2.schema.json"],
 ];
 const ARTIFACT_PATHS = [
   "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
+  "custom_components/glt_flow_card/schemas/diff-policy.json",
+  "custom_components/glt_flow_card/schemas/limits.json",
   "custom_components/glt_flow_card/schemas/project/0.schema.json",
   "custom_components/glt_flow_card/schemas/project/1.schema.json",
   "custom_components/glt_flow_card/schemas/project/2.schema.json",
   "custom_components/glt_flow_card/www/glt-flow-card.js",
   "dist/glt-flow-card.js",
   "dist/schemas/bundle-manifest.schema.json",
+  "dist/schemas/diff-policy.json",
+  "dist/schemas/limits.json",
   "dist/schemas/project/0.schema.json",
   "dist/schemas/project/1.schema.json",
   "dist/schemas/project/2.schema.json",
@@ -289,7 +295,11 @@ async function main() {
 
     const sourcePaths = await canonicalSourcePaths();
     const schemaFingerprints = Object.fromEntries(await Promise.all(
-      PROJECT_SCHEMA_SPECS.map(async ([name, sourcePath]) => [
+      [
+        ...PROJECT_SCHEMA_SPECS,
+        ["diffPolicy", "schemas/diff-policy.json"],
+        ["limits", "schemas/limits.json"],
+      ].map(async ([name, sourcePath]) => [
         name,
         sha256(await readFile(path.join(ROOT, sourcePath))),
       ]),

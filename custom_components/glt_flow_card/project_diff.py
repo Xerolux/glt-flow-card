@@ -8,7 +8,7 @@ from typing import Any, Mapping
 
 from .project_contract import digest_canonical_json, evaluate_project_contract
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = Path(__file__).resolve().parent
 DIFF_POLICY = json.loads((_ROOT / "schemas" / "diff-policy.json").read_text(encoding="utf-8"))
 _IDENTITY_COLLECTIONS = set(DIFF_POLICY["order"]["identity_keyed_collections"])
 _MOVE_FIELDS = set(DIFF_POLICY["category_rules"]["move_fields"])

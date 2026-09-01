@@ -83,6 +83,10 @@ Die folgenden Bilder werden automatisch aus der **aktuellen GitHub-Pages-Oberfl�
 
 ## Installation
 
+Erfordert Home Assistant 2024.8.0 oder neuer. Die Release-Prüfung installiert
+die exakt bereitgestellte Dashboard-Karte und Companion-ZIP auf unveränderlich
+gepinnten Minimum-/Current-HA-Lanes.
+
 ### HACS
 
 1. HACS → Drei-Punkte-Menü → **Benutzerdefinierte Repositories**.

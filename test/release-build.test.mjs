@@ -10,12 +10,16 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUILD_OUTPUTS = [
   "custom_components/glt_flow_card/build-manifest.json",
   "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
+  "custom_components/glt_flow_card/schemas/diff-policy.json",
+  "custom_components/glt_flow_card/schemas/limits.json",
   "custom_components/glt_flow_card/schemas/project/0.schema.json",
   "custom_components/glt_flow_card/schemas/project/1.schema.json",
   "custom_components/glt_flow_card/schemas/project/2.schema.json",
   "custom_components/glt_flow_card/www/glt-flow-card.js",
   "dist/glt-flow-card.js",
   "dist/schemas/bundle-manifest.schema.json",
+  "dist/schemas/diff-policy.json",
+  "dist/schemas/limits.json",
   "dist/schemas/project/0.schema.json",
   "dist/schemas/project/1.schema.json",
   "dist/schemas/project/2.schema.json",
@@ -23,6 +27,8 @@ const BUILD_OUTPUTS = [
 ];
 const SCHEMA_OUTPUTS = [
   ["schemas/bundle-manifest.schema.json", "dist/schemas/bundle-manifest.schema.json"],
+  ["schemas/diff-policy.json", "dist/schemas/diff-policy.json"],
+  ["schemas/limits.json", "dist/schemas/limits.json"],
   ["schemas/project/0.schema.json", "dist/schemas/project/0.schema.json"],
   ["schemas/project/1.schema.json", "dist/schemas/project/1.schema.json"],
   ["schemas/project/2.schema.json", "dist/schemas/project/2.schema.json"],

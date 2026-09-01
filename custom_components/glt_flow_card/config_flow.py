@@ -33,12 +33,20 @@ class GltFlowCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        return GltFlowCardOptionsFlow()
+        return GltFlowCardOptionsFlow(config_entry)
 
 
 class GltFlowCardOptionsFlow(config_entries.OptionsFlow):
+    def __init__(self, config_entry):
+        """Retain the entry for HA versions before OptionsFlow exposes it."""
+        self._compat_config_entry = config_entry
+
     async def async_step_init(self, user_input=None):
-        current = normalize_options(dict(self.config_entry.options))
+        try:
+            config_entry = self.config_entry
+        except (AttributeError, ValueError):
+            config_entry = self._compat_config_entry
+        current = normalize_options(dict(config_entry.options))
         if user_input is not None:
             return self.async_create_entry(
                 title="",

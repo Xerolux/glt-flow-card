@@ -15,7 +15,7 @@ from typing import Any
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = Path(__file__).resolve().parent
 _SCHEMA_PATHS = (
     _ROOT / "schemas" / "project" / "0.schema.json",
     _ROOT / "schemas" / "project" / "1.schema.json",

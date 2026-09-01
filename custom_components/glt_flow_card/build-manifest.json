@@ -6,6 +6,16 @@
       "size": 2321
     },
     {
+      "path": "custom_components/glt_flow_card/schemas/diff-policy.json",
+      "sha256": "6ba0aaaa2460d7b9e6d765a2842cad2eefb6899f681dd1fb487df8539cafce9f",
+      "size": 2530
+    },
+    {
+      "path": "custom_components/glt_flow_card/schemas/limits.json",
+      "sha256": "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619",
+      "size": 406
+    },
+    {
       "path": "custom_components/glt_flow_card/schemas/project/0.schema.json",
       "sha256": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
       "size": 423
@@ -36,6 +46,16 @@
       "size": 2321
     },
     {
+      "path": "dist/schemas/diff-policy.json",
+      "sha256": "6ba0aaaa2460d7b9e6d765a2842cad2eefb6899f681dd1fb487df8539cafce9f",
+      "size": 2530
+    },
+    {
+      "path": "dist/schemas/limits.json",
+      "sha256": "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619",
+      "size": 406
+    },
+    {
       "path": "dist/schemas/project/0.schema.json",
       "sha256": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
       "size": 423
@@ -58,12 +78,14 @@
   ],
   "build": {
     "commit": "9ccc194baa1c609b2b07f8fe0e1c9405af7c16aa",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
   "schemas": {
     "bundleManifest": "5fffd0f5a8932dd27af3c1a3dd2123436842faae62439335d5701c11f6780611",
+    "diffPolicy": "6ba0aaaa2460d7b9e6d765a2842cad2eefb6899f681dd1fb487df8539cafce9f",
+    "limits": "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619",
     "project0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
     "project1": "0e3e3ba8b547331ce254d00c2cbf91efa85e97dd2a10b313fb47ac4eb95eed37",
     "project2": "ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7"
@@ -81,8 +103,8 @@
     },
     {
       "path": "package.json",
-      "sha256": "4e9a4f5cb81ed6c4e2f7a0a37b87d5cf1542206ba0dcb74be89cd54bc0bdb819",
-      "size": 2247
+      "sha256": "96bd895cfd1fc73cb34c63956a012567c20fbb7b7c42613f0864cbad66da8370",
+      "size": 2306
     },
     {
       "path": "schemas/bundle-manifest.schema.json",
@@ -191,8 +213,8 @@
     },
     {
       "path": "tools/build.mjs",
-      "sha256": "4a384aed5c716ba5d61f80561e17b8954f38a5370913d43cd82239666b09f6a3",
-      "size": 12877
+      "sha256": "19b0914482d93fe0d176aab4ff14daaaaad24966d216d5c7aaafaa273df44a92",
+      "size": 13298
     },
     {
       "path": "tools/generate-project-validators.mjs",

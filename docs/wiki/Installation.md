@@ -1,5 +1,9 @@
 # Installation
 
+Voraussetzung ist Home Assistant 2024.8.0 oder neuer. Vor einem Release werden
+die exakt bereitgestellte Karte und Companion-ZIP auf unveränderlich gepinnten
+Minimum-/Current-HA-Lanes installiert und geprüft.
+
 ## HACS Dashboard Card
 
 1. HACS → **Benutzerdefinierte Repositories**.

@@ -80,6 +80,9 @@ The following images are generated automatically from the **current GitHub Pages
 
 ## Installation
 
+Requires Home Assistant 2024.8.0 or newer. Release validation installs the exact
+staged dashboard card and Companion ZIP on immutable minimum/current HA lanes.
+
 ### HACS
 
 1. HACS → three dots → **Custom repositories**.

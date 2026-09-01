@@ -21,12 +21,16 @@ const MANIFEST_PATH = "custom_components/glt_flow_card/build-manifest.json";
 const OUTPUT_PATHS = [
   MANIFEST_PATH,
   "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
+  "custom_components/glt_flow_card/schemas/diff-policy.json",
+  "custom_components/glt_flow_card/schemas/limits.json",
   "custom_components/glt_flow_card/schemas/project/0.schema.json",
   "custom_components/glt_flow_card/schemas/project/1.schema.json",
   "custom_components/glt_flow_card/schemas/project/2.schema.json",
   "custom_components/glt_flow_card/www/glt-flow-card.js",
   "dist/glt-flow-card.js",
   "dist/schemas/bundle-manifest.schema.json",
+  "dist/schemas/diff-policy.json",
+  "dist/schemas/limits.json",
   "dist/schemas/project/0.schema.json",
   "dist/schemas/project/1.schema.json",
   "dist/schemas/project/2.schema.json",
@@ -34,6 +38,8 @@ const OUTPUT_PATHS = [
 ];
 const SCHEMAS = [
   ["bundleManifest", "schemas/bundle-manifest.schema.json"],
+  ["diffPolicy", "schemas/diff-policy.json"],
+  ["limits", "schemas/limits.json"],
   ["project0", "schemas/project/0.schema.json"],
   ["project1", "schemas/project/1.schema.json"],
   ["project2", "schemas/project/2.schema.json"],
