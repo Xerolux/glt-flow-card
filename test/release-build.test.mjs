@@ -128,7 +128,7 @@ test("dist www bytes come from one assembled card image", async () => {
   assert.deepEqual(companion, dist);
   const text = dist.toString("utf8");
   assert.match(text, /const VERSION = "1\.0\.0";/);
-  assert.doesNotMatch(text, /^(\s*\/\/ )(?!node_modules\/).*?node_modules\//gmu);
+  assert.doesNotMatch(text, /(?:\.\.\/)+(?:[^/"\r\n]+\/)*node_modules\//gu);
 });
 
 test("double build produces identical path sets, bytes and manifests", () => {

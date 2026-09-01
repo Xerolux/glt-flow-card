@@ -70,7 +70,7 @@ function canonicalJson(value) {
 }
 
 function normalizeBundlerPaths(source) {
-  return source.replace(/^(\s*\/\/ ).*?node_modules\//gmu, "$1node_modules/");
+  return source.replace(/(?:\.\.\/)+(?:[^/"\r\n]+\/)*node_modules\//gu, "node_modules/");
 }
 
 async function exists(filePath) {
