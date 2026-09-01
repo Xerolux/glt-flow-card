@@ -227,6 +227,33 @@ export async function resolveLanePlan(options) {
   };
 }
 
+export async function resolveLanePreflight(options) {
+  const floor = options.floor;
+  const maxCandidates = options.maxCandidates ?? 12;
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const architecture = options.architecture ?? runnerArchitecture();
+  const catalog = await officialCatalog(fetchImpl);
+  enumerateCandidates(catalog.versions, floor, maxCandidates);
+  const minimum = await officialLane(floor, { architecture, fetchImpl });
+  const current = minimum.tag === catalog.current
+    ? minimum
+    : await officialLane(catalog.current, { architecture, fetchImpl });
+  return {
+    attempts: [],
+    current,
+    floor,
+    generated_at: new Date().toISOString(),
+    minimum,
+    minimum_raised: false,
+    preflight_only: true,
+    resolver: {
+      candidate_limit: maxCandidates,
+      release_source: HOME_ASSISTANT_PYPI,
+      image_source: IMAGE_SOURCE,
+    },
+  };
+}
+
 export function replaceMinimumVersion(source, from, to, relativePath) {
   if (!source.includes(from)) throw new Error(`${relativePath} does not declare Home Assistant ${from}`);
   const replaced = source.replaceAll(from, to);
@@ -301,6 +328,19 @@ function parseArgs(argv) {
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const floor = await readFloor();
+  const evidencePath = options.evidence ?? path.join(ROOT, ".planning/tmp/ha-lanes.json");
+  await mkdir(path.dirname(evidencePath), { recursive: true });
+  if (options.preflightOnly) {
+    const plan = await resolveLanePreflight({
+      architecture: options.architecture,
+      floor,
+      maxCandidates: options.maxCandidates,
+    });
+    await writeFile(evidencePath, `${JSON.stringify(plan, null, 2)}\n`, "utf8");
+    console.log(`PASS immutable Home Assistant lane preflight: ${evidencePath}`);
+    return;
+  }
+
   const runner = await import(pathToFileURL(path.join(ROOT, "tools/test-ha-artifacts.mjs")));
   const plan = await resolveLanePlan({
     architecture: options.architecture,
@@ -308,13 +348,6 @@ async function main() {
     maxCandidates: options.maxCandidates,
     probe: runner.probeLane,
   });
-  const evidencePath = options.evidence ?? path.join(ROOT, ".planning/tmp/ha-lanes.json");
-  await mkdir(path.dirname(evidencePath), { recursive: true });
-  if (options.preflightOnly) {
-    await writeFile(evidencePath, `${JSON.stringify(plan, null, 2)}\n`, "utf8");
-    console.log(`PASS immutable Home Assistant lane preflight: ${evidencePath}`);
-    return;
-  }
 
   let restore = null;
   try {

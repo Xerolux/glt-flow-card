@@ -11,11 +11,50 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      - run: npm install --ignore-scripts
+          cache: npm
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
+      - run: python -m py_compile custom_components/glt_flow_card/*.py
+      - name: Build and stage exact release artifacts once
+        run: |
+          npm run build
+          npm run stage:hacs
+          npm run validate:hacs-staging
+      - name: Upload manifest-hashed HACS stage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hacs-release-stage
+          path: build/release
+          if-no-files-found: error
+          retention-days: 1
+
+  ha-artifacts:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Preflight official immutable Home Assistant lanes
+        run: node tools/resolve-ha-lanes.mjs --preflight-only --evidence=.planning/tmp/ha-lanes.json
+      - name: Download the exact stage produced by validation
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: hacs-release-stage
+          path: build/release
+      - name: Exercise exact artifacts in both supported HA lanes
+        run: npm run test:ha-artifacts -- --lanes-file .planning/tmp/ha-lanes.json
