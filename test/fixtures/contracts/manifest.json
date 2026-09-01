@@ -12,8 +12,8 @@
     "scale_prefix": "glt-scale-v1"
   },
   "policies": {
-    "limits_sha256": "7583acedae79bf28a2e21195c955ef9bd85d165ff34ab875b2ca00cb46ba0d2d",
-    "diff_policy_sha256": "65077abfb58ba69fa87106c69e58aae1169a7f0a778f8186c02b09eea6d62931",
+    "limits_sha256": "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619",
+    "diff_policy_sha256": "6ba0aaaa2460d7b9e6d765a2842cad2eefb6899f681dd1fb487df8539cafce9f",
     "bundle_schema_sha256": "5fffd0f5a8932dd27af3c1a3dd2123436842faae62439335d5701c11f6780611",
     "project_schema_sha256": {
       "0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
@@ -25,7 +25,7 @@
     {
       "source": "examples/idm-neo2030.yaml",
       "role": "documented_legacy_golden",
-      "sha256": "9674bd643013fe5fc537c718d12bf8c77344c03069b1f850739a31df29a2f8aa"
+      "sha256": "1f276e68b299410d0183c21a87ffff6037b0a453a3fdd9916330f4e252518d8b"
     }
   ],
   "stable_error_codes": [
