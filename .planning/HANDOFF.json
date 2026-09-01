@@ -45,9 +45,12 @@
   "git": {
     "branch": "main",
     "planning_commit": "7d77583",
+    "pause_handoff_commit": "0f935ac",
     "remote": "origin",
     "remote_branch": "main",
     "push_authorized": true,
+    "push_completed": true,
+    "push_verified_at": "2026-09-01T20:41:43.1371739+02:00",
     "release_authorized": false,
     "working_tree_expected_after_pause_commit": "clean"
   },
