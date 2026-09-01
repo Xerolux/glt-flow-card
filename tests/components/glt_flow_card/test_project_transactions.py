@@ -206,6 +206,59 @@ async def test_stale_preview_and_incomplete_dependency_input_fail_closed() -> No
         )
 
 
+@pytest.mark.parametrize(
+    ("base_tags", "candidate_tags", "base_nested", "candidate_nested"),
+    [
+        (["a", "b", "c"], [], [["a", "b", "c"]], [[]]),
+        (["a", "b", "c"], ["updated", "b"], [["a", "b"], ["c"]], [["x"], ["c", "d"]]),
+        (["a", "b", "c", "d"], ["a"], [["a"], ["b"], ["c"]], [["z"]]),
+    ],
+)
+async def test_compatibility_save_materializes_array_changes_exactly(
+    base_tags: list[str],
+    candidate_tags: list[str],
+    base_nested: list[list[str]],
+    candidate_nested: list[list[str]],
+) -> None:
+    coordinator, repository, _backend = await coordinator_for()
+    initial = project(
+        equipment=[{
+            "id": "pump-1",
+            "type": "pump",
+            "profile": "profile-1",
+            "asset_id": "asset-1",
+            "x": 1,
+            "tags": base_tags,
+        }],
+        extensions={"nested": base_nested},
+    )
+    await save_initial(coordinator, initial)
+    candidate = project(
+        project={"id": "plant-a", "name": "Plant A", "revision": 1},
+        equipment=[{
+            "id": "pump-1",
+            "type": "pump",
+            "profile": "profile-1",
+            "asset_id": "asset-1",
+            "x": 1,
+            "tags": candidate_tags,
+        }],
+        extensions={"nested": candidate_nested},
+    )
+
+    result = await coordinator.compatibility_save(
+        user_id="designer-a",
+        project={"id": "plant-a", "config": candidate},
+        expected_revision=1,
+        autosave=False,
+    )
+
+    expected = deepcopy(candidate)
+    expected["project"]["revision"] = 2
+    assert result["config"] == expected
+    assert repository.get_head("plant-a")["config"] == expected
+
+
 async def test_rollback_requires_server_snapshot_and_creates_forward_revision() -> None:
     coordinator, repository, _backend = await coordinator_for()
     revision_one = await save_initial(coordinator)

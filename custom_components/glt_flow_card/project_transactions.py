@@ -207,8 +207,33 @@ class ProjectTransactionCoordinator:
     ) -> dict[str, Any]:
         operations = {operation["id"]: operation for operation in diff["operations"]}
         result = _clone(base)
-        for operation_id in selected_ids:
-            operation = operations[operation_id]
+        selected_operations = [operations[operation_id] for operation_id in selected_ids]
+        array_removals: list[tuple[str, int, Mapping[str, Any]]] = []
+        remaining: list[Mapping[str, Any]] = []
+        for operation in selected_operations:
+            pointer = (
+                operation.get("field")
+                if operation.get("collection") and operation.get("object_id")
+                else operation.get("path")
+            )
+            parts = str(pointer or "").rstrip("/").split("/")
+            try:
+                index = int(parts[-1])
+            except (ValueError, IndexError):
+                remaining.append(operation)
+                continue
+            if operation.get("after_hash") is None and index >= 0:
+                array_removals.append(("/".join(parts[:-1]), index, operation))
+            else:
+                remaining.append(operation)
+        ordered_operations = [
+            operation
+            for _parent, _index, operation in sorted(
+                array_removals,
+                key=lambda entry: (entry[0], -entry[1]),
+            )
+        ] + remaining
+        for operation in ordered_operations:
             ProjectTransactionCoordinator._apply_server_operation(
                 result, candidate, operation
             )
