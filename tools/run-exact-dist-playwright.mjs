@@ -1,10 +1,13 @@
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const distPath = resolve(projectRoot, "dist/glt-flow-card.js");
+const companionPath = resolve(projectRoot, "custom_components/glt_flow_card/www/glt-flow-card.js");
+const manifestPath = resolve(projectRoot, "custom_components/glt_flow_card/build-manifest.json");
 const cliPath = resolve(projectRoot, "node_modules/@playwright/test/cli.js");
 
 function parseArgs(argv) {
@@ -29,11 +32,29 @@ function run(command, args, options) {
 
 const options = parseArgs(process.argv.slice(2));
 const dist = await readFile(distPath);
+const companion = await readFile(companionPath);
+const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+const distSha256 = createHash("sha256").update(dist).digest("hex");
+const distDescriptor = manifest.artifacts?.find((entry) => entry.path === "dist/glt-flow-card.js");
+const companionDescriptor = manifest.artifacts?.find((entry) => entry.path === "custom_components/glt_flow_card/www/glt-flow-card.js");
+if (!dist.equals(companion)) throw new Error("exact-dist gate: dist and Companion www bytes differ");
+if (distDescriptor?.sha256 !== distSha256 || distDescriptor?.size !== dist.length) {
+  throw new Error("exact-dist gate: build manifest does not identify dist bytes");
+}
+if (companionDescriptor?.sha256 !== distSha256 || companionDescriptor?.size !== companion.length) {
+  throw new Error("exact-dist gate: build manifest does not identify Companion www bytes");
+}
+const exactDistEvidence = {
+  dist_sha256: distSha256,
+  dist_www_equal: true,
+  manifest_matches_dist: true,
+};
 const requests = [];
 const html = Buffer.from(`<!doctype html>
 <html lang="en">
   <head><meta charset="utf-8"><title>GLT exact-dist harness</title></head>
   <body><main aria-label="GLT exact-dist test surface"></main>
+  <script>window.__exactDistEvidence = ${JSON.stringify(exactDistEvidence)};</script>
   <script src="/dist/glt-flow-card.js"></script>
   <script>window.__exactDistReady = true;</script></body>
 </html>`);

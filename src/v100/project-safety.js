@@ -136,6 +136,7 @@ function renderValidation(editor, state, content) {
   } else {
     content.append(status("fail", copyFor(editor, "validationFailed")));
     content.append(element("p", "", copyFor(editor, "validationInvalid")));
+    content.append(element("p", "glt-safe-code", copyFor(editor, "unchanged")));
     const table = element("table", "glt-safe-table");
     const head = element("thead");
     const headRow = element("tr");

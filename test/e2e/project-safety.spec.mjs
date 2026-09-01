@@ -284,7 +284,7 @@ test("project-safety responsive theme matrix reflows at mobile and 200 percent z
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce", forcedColors: "active" });
   await mountEditor(page);
   const dialog = await openProjectSafety(page);
-  const bounds = await dialog.locator(".glt-safe-dialog").boundingBox();
+  const bounds = await dialog.boundingBox();
   expect(bounds.width).toBeLessThanOrEqual(390);
   expect(bounds.height).toBeLessThanOrEqual(844);
   await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
