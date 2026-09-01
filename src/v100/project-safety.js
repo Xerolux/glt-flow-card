@@ -346,7 +346,7 @@ function renderMigration(editor, state, content) {
     state.render();
   });
   actions.append(dryRun);
-  if (state.preview && !["conflict", "unavailable", "failed"].includes(state.phase)) {
+  if (state.preview && state.phase === "preview-ready") {
     const apply = button(copyFor(editor, "applySelected"), "glt-safe-btn primary");
     apply.disabled = selectedClosure(state).length === 0;
     apply.addEventListener("click", () => { state.confirmApply = true; state.render(); });

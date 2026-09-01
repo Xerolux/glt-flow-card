@@ -185,6 +185,8 @@ test("project-safety selective apply sends only opaque preview authority and sel
   await expect(dialog.getByRole("heading", { name: "Confirm project changes" })).toBeVisible();
   await dialog.getByRole("button", { name: "Confirm project changes" }).click();
   await expect(dialog.getByRole("status")).toContainText("Project changes applied");
+  await expect(dialog.getByRole("button", { name: "Apply selected changes" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Run fresh dry run" })).toBeVisible();
   const effects = await readEffectLedger(page);
   const apply = effects.websocket.find((entry) => entry.type === "glt_flow_card/projects/apply");
   expect(Object.keys(apply).sort()).toEqual(["expected_revision", "preview_id", "project_id", "selected_ids", "type"]);
@@ -219,6 +221,8 @@ test("project-safety rollback requires typed name and server snapshot confirmati
   await expect(restore).toBeEnabled();
   await restore.click();
   await expect(dialog.getByRole("status")).toContainText("Verified backup restored");
+  await expect(dialog.getByRole("button", { name: "Apply selected changes" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Run fresh dry run" })).toBeVisible();
   await expect.poll(() => page.locator('[data-testid="exact-dist-editor"]').evaluate(
     (editor) => editor._config.title,
   )).toBe("Exact-dist Project safety seed");
