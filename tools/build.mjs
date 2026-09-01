@@ -69,6 +69,10 @@ function canonicalJson(value) {
   return `${JSON.stringify(canonical(value), null, 2)}\n`;
 }
 
+function normalizeBundlerPaths(source) {
+  return source.replace(/^(\s*\/\/ ).*?node_modules\//gmu, "$1node_modules/");
+}
+
 async function exists(filePath) {
   try {
     await access(filePath);
@@ -165,7 +169,7 @@ async function bundleV1(compilerRoot, validatorSource) {
   if (result.outputFiles.length !== 1) {
     throw new Error(`expected one browser bundle, received ${result.outputFiles.length}`);
   }
-  return result.outputFiles[0].text;
+  return normalizeBundlerPaths(result.outputFiles[0].text);
 }
 
 async function validateStage(stageRoot, manifest, validatorSource) {

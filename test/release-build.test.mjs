@@ -126,7 +126,9 @@ test("dist www bytes come from one assembled card image", async () => {
     "custom_components/glt_flow_card/www/glt-flow-card.js",
   ));
   assert.deepEqual(companion, dist);
-  assert.match(dist.toString("utf8"), /const VERSION = "1\.0\.0";/);
+  const text = dist.toString("utf8");
+  assert.match(text, /const VERSION = "1\.0\.0";/);
+  assert.doesNotMatch(text, /^(\s*\/\/ )(?!node_modules\/).*?node_modules\//gmu);
 });
 
 test("double build produces identical path sets, bytes and manifests", () => {
