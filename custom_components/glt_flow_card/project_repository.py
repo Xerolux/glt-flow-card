@@ -9,6 +9,7 @@ from homeassistant.helpers.storage import Store
 
 from .const import (
     MAX_AUDIT,
+    MAX_VERSIONS,
     PROJECT_AUDIT_STORE_KEY,
     PROJECT_AUDIT_STORE_VERSION,
     PROJECT_HEADS_STORE_KEY,
@@ -61,11 +62,15 @@ class ProjectRepository:
         self,
         hass: Any,
         *,
+        max_versions: int = MAX_VERSIONS,
+        max_audit: int = MAX_AUDIT,
         store_factory: StoreFactory | None = None,
         failure_hook: FailureHook | None = None,
     ) -> None:
         factory = store_factory or _default_store_factory
         self._failure_hook = failure_hook
+        self.max_versions = max_versions
+        self.max_audit = max_audit
         self.store_specs = {
             "heads": (PROJECT_HEADS_STORE_VERSION, PROJECT_HEADS_STORE_KEY),
             "snapshots": (PROJECT_SNAPSHOTS_STORE_VERSION, PROJECT_SNAPSHOTS_STORE_KEY),
@@ -280,6 +285,7 @@ class ProjectRepository:
 
     async def _merge_import_snapshots(self, snapshots: Mapping[str, dict[str, Any]]) -> None:
         changed = False
+        affected_projects: set[str] = set()
         for snapshot_id, snapshot in snapshots.items():
             existing = self._snapshots["snapshots"].get(snapshot_id)
             if existing is not None and existing != snapshot:
@@ -287,6 +293,9 @@ class ProjectRepository:
             if existing is None:
                 self._snapshots["snapshots"][snapshot_id] = deepcopy(snapshot)
                 changed = True
+                affected_projects.add(str(snapshot.get("project_id") or ""))
+        for project_id in affected_projects:
+            changed = self._prune_snapshots(project_id) or changed
         if changed:
             await self._snapshots_store.async_save(deepcopy(self._snapshots))
             if await self._snapshots_store.async_load() != self._snapshots:
@@ -358,6 +367,27 @@ class ProjectRepository:
         value = self._snapshots["snapshots"].get(snapshot_id)
         return deepcopy(value) if value is not None else None
 
+    def _prune_snapshots(self, project_id: str) -> bool:
+        """Retain the newest configured immutable snapshots for one project."""
+        snapshots = self._snapshots["snapshots"]
+        project_values = [
+            value
+            for value in snapshots.values()
+            if value.get("project_id") == project_id
+        ]
+        project_values.sort(
+            key=lambda value: (
+                int(value.get("revision", 0)),
+                str(value.get("created") or ""),
+                str(value.get("id") or ""),
+            ),
+            reverse=True,
+        )
+        removed = False
+        for value in project_values[self.max_versions :]:
+            removed = snapshots.pop(value["id"], None) is not None or removed
+        return removed
+
     async def put_snapshot(self, snapshot: Mapping[str, Any]) -> None:
         value = deepcopy(dict(snapshot))
         snapshot_id = str(value.get("id") or "")
@@ -368,6 +398,7 @@ class ProjectRepository:
             raise RuntimeError(f"immutable snapshot conflict:{snapshot_id}")
         if existing is None:
             self._snapshots["snapshots"][snapshot_id] = value
+            self._prune_snapshots(str(value.get("project_id") or ""))
             await self._snapshots_store.async_save(deepcopy(self._snapshots))
 
     async def read_snapshot(self, snapshot_id: str) -> dict[str, Any] | None:
@@ -416,7 +447,7 @@ class ProjectRepository:
 
     async def append_audit(self, event: Mapping[str, Any]) -> None:
         self._audit["events"].insert(0, deepcopy(dict(event)))
-        self._audit["events"] = self._audit["events"][:MAX_AUDIT]
+        self._audit["events"] = self._audit["events"][: self.max_audit]
         await self._audit_store.async_save(deepcopy(self._audit))
 
     def list_audit(self, limit: int | None = None) -> list[dict[str, Any]]:

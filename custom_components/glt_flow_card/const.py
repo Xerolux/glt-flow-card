@@ -14,7 +14,29 @@ PROJECT_LEGACY_BACKUP_STORE_KEY = "glt_flow_card.project_legacy_backup"
 MAX_AUDIT = 5000
 MAX_VERSIONS = 60
 DEFAULT_LOCK_TTL = 300
+OPTION_SPECS = {
+    "default_lock_ttl": (DEFAULT_LOCK_TTL, 30, 3600),
+    "max_versions": (MAX_VERSIONS, 5, 500),
+    "max_audit": (MAX_AUDIT, 100, 50000),
+}
 SAFE_SERVICE_DOMAINS = {
     "switch", "fan", "number", "select", "climate", "cover", "light",
     "input_boolean", "input_number", "input_select", "water_heater", "button", "script"
 }
+
+
+def normalize_options(raw, *, strict=False):
+    """Return supported effective options and remove legacy no-effect keys."""
+    source = raw if isinstance(raw, dict) else {}
+    result = {}
+    for name, (default, minimum, maximum) in OPTION_SPECS.items():
+        value = source.get(name, default)
+        valid = type(value) is int and minimum <= value <= maximum
+        if not valid:
+            if strict:
+                raise ValueError(
+                    f"{name} must be an integer from {minimum} to {maximum}"
+                )
+            value = default
+        result[name] = value
+    return result

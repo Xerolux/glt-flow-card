@@ -22,12 +22,12 @@ from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 
 from .const import (
-    DEFAULT_LOCK_TTL,
     DOMAIN,
     MAX_AUDIT,
     SAFE_SERVICE_DOMAINS,
     STORE_KEY,
     STORE_VERSION,
+    normalize_options,
 )
 from .project_repository import ProjectRepository
 from .project_transactions import ProjectTransactionCoordinator, TransactionConflict
@@ -112,8 +112,9 @@ def _state_active(state: str | None, alarm: dict[str, Any], previous_active: boo
 class GltStore:
     """Persistent GLT platform state."""
 
-    def __init__(self, hass: HomeAssistant) -> None:
+    def __init__(self, hass: HomeAssistant, options: dict[str, int] | None = None) -> None:
         self.hass = hass
+        self.effective_options = normalize_options(options or {})
         self.store: Store[dict[str, Any]] = Store(hass, STORE_VERSION, STORE_KEY)
         self.data: dict[str, Any] = {
             "projects": {}, "templates": {}, "audit": [], "alarm_state": {},
@@ -123,7 +124,11 @@ class GltStore:
         self.remote_sites: dict[str, dict[str, Any]] = {}
         self._alarm_tasks: dict[str, asyncio.Task] = {}
         self._unsubs: list[Any] = []
-        self.project_repository = ProjectRepository(hass)
+        self.project_repository = ProjectRepository(
+            hass,
+            max_versions=self.effective_options["max_versions"],
+            max_audit=self.effective_options["max_audit"],
+        )
         self.project_transactions = ProjectTransactionCoordinator(self.project_repository)
         self._legacy_projects: dict[str, Any] = {}
 
@@ -172,7 +177,7 @@ class GltStore:
         entry["user_id"] = user_id
         entry["user_name"] = user_name
         self.data["audit"].insert(0, entry)
-        self.data["audit"] = self.data["audit"][:MAX_AUDIT]
+        self.data["audit"] = self.data["audit"][: self.effective_options["max_audit"]]
         await self.async_save()
         return deepcopy(entry)
 
@@ -200,12 +205,15 @@ class GltStore:
             await self.async_save()
         return existed
 
-    async def lock_project(self, project_id: str, user_id: str | None, user_name: str | None, ttl: int) -> dict[str, Any]:
+    async def lock_project(self, project_id: str, user_id: str | None, user_name: str | None, ttl: int | None) -> dict[str, Any]:
         self._prune_locks()
         lock = self.data["locks"].get(project_id)
         if lock and lock.get("user_id") != user_id:
             raise RuntimeError(f"locked_by:{lock.get('user_name') or lock.get('user_id')}")
-        expires = datetime.now(timezone.utc) + timedelta(seconds=max(30, min(int(ttl), 3600)))
+        effective_ttl = self.effective_options["default_lock_ttl"] if ttl is None else ttl
+        expires = datetime.now(timezone.utc) + timedelta(
+            seconds=max(30, min(int(effective_ttl), 3600))
+        )
         entry = {"project_id": project_id, "user_id": user_id, "user_name": user_name, "expires": expires.isoformat()}
         self.data["locks"][project_id] = entry
         await self.async_save()
@@ -429,6 +437,8 @@ def _component_data(hass: HomeAssistant) -> dict[str, Any]:
     data.setdefault("runtimes", {})
     data.setdefault("commands_registered", False)
     data.setdefault("yaml_config", {})
+    data.setdefault("pending_options", {})
+    data.setdefault("suppress_option_updates", set())
     return data
 
 
@@ -604,12 +614,17 @@ async def ws_projects_delete(hass, connection, msg):
         connection.send_error(msg["id"], "forbidden", str(err))
 
 
-@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/lock", vol.Required("project_id"): str, vol.Optional("ttl_seconds", default=DEFAULT_LOCK_TTL): int})
+@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/lock", vol.Required("project_id"): str, vol.Optional("ttl_seconds"): vol.All(int, vol.Range(min=30, max=3600))})
 @websocket_api.async_response
 async def ws_projects_lock(hass, connection, msg):
     try:
         _project, uid, uname, _admin = _require_project_role(hass, connection, msg, "designer")
-        connection.send_result(msg["id"], await _manager(hass).lock_project(msg["project_id"], uid, uname, msg["ttl_seconds"]))
+        connection.send_result(
+            msg["id"],
+            await _manager(hass).lock_project(
+                msg["project_id"], uid, uname, msg.get("ttl_seconds")
+            ),
+        )
     except (PermissionError, RuntimeError) as err:
         connection.send_error(msg["id"], "locked", str(err))
 
@@ -830,6 +845,47 @@ def _register_commands_once(hass: HomeAssistant) -> None:
     data["commands_registered"] = True
 
 
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload validated options and restore the effective runtime on failure."""
+    data = _component_data(hass)
+    suppressed = data["suppress_option_updates"]
+    if entry.entry_id in suppressed:
+        suppressed.discard(entry.entry_id)
+        return
+    runtime = _runtime_for(hass, entry.entry_id)
+    if runtime is None:
+        return
+    previous = dict(runtime.manager.effective_options)
+    try:
+        candidate = normalize_options(dict(entry.options), strict=True)
+    except ValueError:
+        suppressed.add(entry.entry_id)
+        hass.config_entries.async_update_entry(entry, options=previous)
+        return
+
+    data["pending_options"][entry.entry_id] = candidate
+    try:
+        reloaded = await hass.config_entries.async_reload(entry.entry_id)
+    except Exception:
+        reloaded = False
+    finally:
+        data["pending_options"].pop(entry.entry_id, None)
+    if reloaded:
+        return
+
+    suppressed.add(entry.entry_id)
+    hass.config_entries.async_update_entry(entry, options=previous)
+    await hass.config_entries.async_unload(entry.entry_id)
+    data["pending_options"][entry.entry_id] = previous
+    try:
+        restored = await hass.config_entries.async_setup(entry.entry_id)
+    finally:
+        data["pending_options"].pop(entry.entry_id, None)
+        suppressed.discard(entry.entry_id)
+    if not restored:
+        raise RuntimeError("failed to restore previous GLT Flow Card options")
+
+
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     yaml_config = config.get(DOMAIN, {}) if isinstance(config.get(DOMAIN, {}), dict) else {}
     data = _component_data(hass)
@@ -844,7 +900,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if _runtime_for(hass, entry.entry_id) is not None:
         return True
 
-    manager = GltStore(hass)
+    pending = data["pending_options"].get(entry.entry_id)
+    options = pending or normalize_options(dict(entry.options))
+    if pending is None and dict(entry.options) != options:
+        hass.config_entries.async_update_entry(entry, options=options)
+
+    manager = GltStore(hass, options)
     try:
         await manager.async_load()
         remote = data["yaml_config"].get("remote_sites", [])
@@ -867,6 +928,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     runtime = CompanionRuntime(entry_id=entry.entry_id, manager=manager)
     data["runtimes"][entry.entry_id] = runtime
     data["manager"] = manager
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
 
 
