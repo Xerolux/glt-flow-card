@@ -87,6 +87,31 @@ Erfordert Home Assistant 2024.8.0 oder neuer. Die Release-Prüfung installiert
 die exakt bereitgestellte Dashboard-Karte und Companion-ZIP auf unveränderlich
 gepinnten Minimum-/Current-HA-Lanes.
 
+### Verifizierte Projekt- und Release-Grenze
+
+Phase 1 prüft rohe Validierungsfehler vor der Normalisierung, sequenzielle
+Dry-Run-Migration und Rollback, semantische Diff-Kategorien und
+Abhängigkeitsabschluss, konfliktgeschütztes selektives Anwenden, begrenzte
+`.gltproject`-Bundles, Companion-Lifecycle-Cleanup sowie identische
+Source-/Build-/Stage-/Browser-/Home-Assistant-Release-Artefakte. Dafür gelten
+ausführbare Node-, Python-, Browser- und unveränderlich gepinnte HA-Lane-Tests;
+Quelltext-Token oder Screenshots allein sind kein Nachweis.
+
+Das oben genannte öffentliche HACS-Custom-Repository ist die
+**Dashboard**-Card. Der Companion wird als `glt-flow-card-companion.zip` im
+Release dieses Repositories ausgeliefert. Seine HACS-**Integration**-Form ist
+nur ein lokaler Integration-Category-Stage für die Release-Prüfung und kein
+separat veröffentlichtes HACS-Integrations-Repository.
+
+Standalone eignet sich weiter für lokale Visualisierung und browserlokales
+Engineering. Gemeinsame Projekte, autoritative Migration/Apply/Rollback,
+Locks, Audit, Zeitpläne, Remote-Aktionen und andere privilegierte gemeinsame
+Änderungen benötigen den konfigurierten Companion und bleiben ohne diese
+Autorität geschlossen. Die automatisierten Nachweise führen keinen physischen
+Anlagen-Schreibzugriff aus. Die 100-/500-/2.000-Objekt-Fixtures belegen nur
+begrenzte Korrektheit und sind keine Kapazitätszertifizierung; diese Messung
+gehört zu Phase 10.
+
 ### HACS
 
 1. HACS → Drei-Punkte-Menü → **Benutzerdefinierte Repositories**.

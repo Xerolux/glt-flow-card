@@ -83,6 +83,29 @@ The following images are generated automatically from the **current GitHub Pages
 Requires Home Assistant 2024.8.0 or newer. Release validation installs the exact
 staged dashboard card and Companion ZIP on immutable minimum/current HA lanes.
 
+### Verified project and release boundary
+
+Phase 1 verifies raw validation errors before normalization, sequential dry-run
+migration and rollback, semantic diff categories and dependency closure,
+conflict-safe selective apply, bounded `.gltproject` bundle handling, Companion
+lifecycle cleanup, and exact source/build/stage/browser/Home Assistant release
+identities. These are executable Node, Python, browser, and immutable HA-lane
+checks; source-token matches and screenshots are not accepted as evidence.
+
+The HACS custom repository above is the public **Dashboard** plugin. The
+Companion is delivered as `glt-flow-card-companion.zip` in this repository's
+release. Its HACS **Integration** shape is a local integration-category stage
+used only for release validation; it is not a separately published HACS
+integration repository.
+
+Standalone mode remains suitable for local visualization and browser-local
+engineering. Shared projects, authoritative migration/apply/rollback, locks,
+audit, schedules, remote operations, and other privileged shared mutations
+require the configured Companion and fail closed when that authority is
+required but unavailable. The automated evidence performs no physical plant
+write. The 100/500/2,000-object fixtures prove bounded correctness only; this is
+not a capacity certification, which remains Phase 10 work.
+
 ### HACS
 
 1. HACS → three dots → **Custom repositories**.

@@ -4,6 +4,15 @@ Voraussetzung ist Home Assistant 2024.8.0 oder neuer. Vor einem Release werden
 die exakt bereitgestellte Karte und Companion-ZIP auf unveränderlich gepinnten
 Minimum-/Current-HA-Lanes installiert und geprüft.
 
+## Was öffentlich über HACS verfügbar ist
+
+Dieses Repository ist als HACS-**Dashboard**-Custom-Repository installiert.
+HACS installiert damit die Card, nicht automatisch den Python-Companion. Der
+Release enthält zusätzlich `glt-flow-card-companion.zip` zur manuellen
+Installation. Die im Build geprüfte HACS-**Integration**-Struktur ist ein
+lokaler Integration-Category-Stage. Sie belegt Paketform und Installationsziel,
+aber keine separate öffentliche HACS-Verfügbarkeit des Companions.
+
 ## HACS Dashboard Card
 
 1. HACS → **Benutzerdefinierte Repositories**.
@@ -36,4 +45,26 @@ glt_flow_card:
 
 > HACS behandelt ein Custom Repository jeweils als eine Kategorie. Deshalb bleibt die Card das HACS-**Dashboard**-Repository; der Companion wird im selben Projekt und Release mitgeliefert, aber nicht automatisch durch die Dashboard-Installation nach `custom_components` kopiert.
 
-Ohne Companion funktioniert die Card weiterhin; Projekte fallen dann auf lokalen Browser-Storage zurück und Bedienungen können optional direkt über Home Assistant erfolgen.
+Ohne Companion funktionieren lokale Visualisierung und browserlokale Projekte
+weiterhin. Autoritative gemeinsame Projektänderungen, Migration/Apply/Rollback,
+Locks, Audit und andere Companion-erzwungene Vorgänge werden nicht auf
+browserlokale Speicherung oder direkte Serviceaufrufe zurückgestuft.
+
+## Release-Nachweis und Sicherheitsgrenze
+
+Der Release-Job lädt ausschließlich die zuvor geprüften Artefakte herunter,
+prüft deren SHA-256-Identitäten und baut nicht neu. Minimum- und Current-Lane
+installieren dieselbe Card und dasselbe Companion-ZIP, prüfen Setup, Upgrade,
+Reload, Unload und Re-Setup sowie die bereinigten Ressourcen. Die Testumgebung
+verwendet isolierte Fixtures und führt keinen physischen Anlagen-Schreibzugriff
+aus. 100-/500-/2.000-Objekt-Fixtures sind keine Kapazitätszertifizierung.
+
+## English summary
+
+The public HACS custom repository installs the Dashboard plugin. The Companion
+ZIP is attached to this repository's release; its Integration layout is a local
+integration-category stage for validation, not a separately published HACS
+integration. Standalone mode covers local visualization and browser-local
+projects only. Companion-enforced shared operations fail closed without backend
+authority. Release tests perform no physical plant write and do not certify
+100/500/2,000-object capacity.
