@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-09-01T01:17:01.856Z"
-last_activity: 2026-09-01 -- Plan 01-08 Companion lifecycle, options, and diagnostics completed
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-09-01T01:46:26.526Z"
+last_activity: 2026-09-01 -- Plan 01-09 deterministic release build and independent drift verification completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 13
-  completed_plans: 8
-  percent: 62
+  completed_plans: 9
+  percent: 0
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (trusted-contract-release-foundation) — EXECUTING
-Plan: 9 of 13
+Plan: 10 of 13
 Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-08 Companion lifecycle, options, and diagnostics completed
+Last activity: 2026-09-01 -- Plan 01-09 deterministic release build and independent drift verification completed
 
-Progress: [██████░░░░] 62%
+Progress: [███████░░░] 69%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [██████░░░░] 62%
 | Phase 01 P06 | 30min | 2 tasks | 7 files |
 | Phase 01 P07 | 26min | 2 tasks | 7 files |
 | Phase 01 P08 | 24min | 3 tasks | 13 files |
+| Phase 01 P09 | 22min | 2 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,11 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01]: Keep WebSocket commands component-scoped and guarded; publish one compatibility runtime only after recovery and remove it before awaited unload cleanup. — The supported registration API has no unregister callback, and the declared minimum lane cannot assume ConfigEntry.runtime_data.
 - [Phase 01]: Retain only bounded lock TTL, snapshot retention, and audit retention options, with candidate reload rollback to the prior stored and effective runtime. — Every exposed option must have an observable secure effect and failed setup must not strand the entry on candidate values.
 - [Phase 01]: Construct diagnostics from a fixed metadata allowlist with counts and 12-character digest/build prefixes. — Recursive redaction can miss future project, asset, state, audit, token, URL, and exception fields at the diagnostics trust boundary.
+- [Phase 01]: Treat the pre-v1 card and pre-extension editor bodies as canonical authored bases so generated release files are output-only.
+- [Phase 01]: Compile standalone Ajv validators from canonical schemas inside the temporary compiler tree and bundle src/v100/entry.js exactly once.
+- [Phase 01]: Use a non-circular canonical manifest with relative source/artifact SHA-256 evidence and latest source-affecting commit plus dirty marker.
+- [Phase 01]: Record Node 22 as the declared build target and retain exact Ajv/esbuild versions to avoid host-patch manifest drift.
+- [Phase 01]: Keep release verification independent and prove it with isolated double builds plus four seeded drift failures.
 
 ### Pending Todos
 
@@ -117,6 +123,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-09-01T01:17:01.824Z
-Stopped at: Completed 01-08-PLAN.md
+Last session: 2026-09-01T01:46:06.577Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None
