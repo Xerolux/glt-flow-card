@@ -9,7 +9,6 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -177,7 +176,9 @@ async function makeCompanionZip() {
 }
 
 async function stagePackages(outputRoot) {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "glt-hacs-stage-"));
+  const outputParent = path.dirname(outputRoot);
+  await mkdir(outputParent, { recursive: true });
+  const tempRoot = await mkdtemp(path.join(outputParent, ".glt-hacs-stage-"));
   try {
     const packageJson = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8"));
     const componentManifest = JSON.parse(await readFile(

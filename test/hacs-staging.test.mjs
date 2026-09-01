@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
@@ -149,6 +149,10 @@ after(async () => {
 });
 
 test("stage contains exact plugin and integration category packages", async () => {
+  assert.deepEqual(
+    (await readdir(tempRoot)).filter((entry) => entry.startsWith(".glt-hacs-stage-")),
+    [],
+  );
   const buildManifest = JSON.parse(await readFile(
     path.join(ROOT, COMPONENT_ROOT, "build-manifest.json"),
     "utf8",
