@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { cp, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -11,9 +12,32 @@ const TMP_EVIDENCE = ".planning/tmp";
 
 let acceptance;
 let tempRoot;
+let hermeticStageRoot;
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.keys(value).sort().map((key) => [key, canonical(value[key])]),
+  );
+}
+
+async function writeJson(filePath, value) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function stageHermeticRelease(outputRoot) {
+  const result = spawnSync(
+    process.execPath,
+    ["tools/stage-hacs-packages.mjs", "--output-root", outputRoot],
+    { cwd: ROOT, encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 }
 
 async function copyFile(relativePath, destinationRoot) {
@@ -38,25 +62,38 @@ async function createAcceptanceFixture() {
     ...buildManifest.artifacts.map(({ path: artifactPath }) => artifactPath),
   ]);
   for (const relativePath of required) await copyFile(relativePath, fixtureRoot);
-  await cp(path.join(ROOT, "build/release"), path.join(fixtureRoot, "build/release"), {
+  await cp(hermeticStageRoot, path.join(fixtureRoot, "build/release"), {
     recursive: true,
   });
-  await mkdir(path.join(fixtureRoot, TMP_EVIDENCE), { recursive: true });
-  for (const evidence of [
-    "phase01-provenance.json",
-    "ha-lanes.json",
-    "ha-artifact-results.json",
-  ]) {
-    await copyFile(`${TMP_EVIDENCE}/${evidence}`, fixtureRoot);
-  }
 
   const card = await readFile(path.join(fixtureRoot, "dist/glt-flow-card.js"));
-  const stageManifest = await readFile(path.join(
+  const stageManifestBytes = await readFile(path.join(
     fixtureRoot,
     "build/release/hacs-staging-manifest.json",
   ));
+  const zip = await readFile(path.join(
+    fixtureRoot,
+    "build/release/glt-flow-card-companion.zip",
+  ));
   const evidenceRoot = path.join(fixtureRoot, TMP_EVIDENCE);
-  await writeFile(path.join(evidenceRoot, "release-build-verification.json"), `${JSON.stringify({
+  const allowlist = JSON.parse(await readFile(
+    path.join(fixtureRoot, "tools/provenance-allowlist.json"),
+    "utf8",
+  ));
+  await writeJson(path.join(evidenceRoot, "phase01-provenance.json"), {
+    mode: "online",
+    packages: allowlist.packages.map((entry) => ({
+      artifacts: entry.artifacts.map((artifact) => ({
+        filename: artifact.filename,
+        verified: true,
+      })),
+      name: entry.name,
+    })),
+    policy_sha256: sha256(Buffer.from(`${JSON.stringify(canonical(allowlist))}\n`)),
+    report_version: 1,
+    verified: true,
+  });
+  await writeJson(path.join(evidenceRoot, "release-build-verification.json"), {
     format: "glt-flow-card-release-build-verification",
     report_version: 1,
     source_commit: buildManifest.build.commit,
@@ -67,27 +104,52 @@ async function createAcceptanceFixture() {
     verified: true,
     double_build: { passed: true },
     checked_in_outputs: { passed: true },
-  }, null, 2)}\n`);
-  await writeFile(path.join(evidenceRoot, "exact-dist-results.json"), `${JSON.stringify({
+  });
+  await writeJson(path.join(evidenceRoot, "exact-dist-results.json"), {
     format: "glt-flow-card-exact-dist-results",
     report_version: 1,
     card_sha256: sha256(card),
     passed: true,
     skipped: false,
-  }, null, 2)}\n`);
-
-  const haResultsPath = path.join(evidenceRoot, "ha-artifact-results.json");
-  const haResults = JSON.parse(await readFile(haResultsPath, "utf8"));
-  for (const lane of haResults.evidence) {
-    lane.staging_manifest_sha256 = sha256(stageManifest);
-  }
-  await writeFile(haResultsPath, `${JSON.stringify(haResults, null, 2)}\n`);
+  });
+  const minimum = {
+    architecture: "amd64",
+    digest: `sha256:${"1".repeat(64)}`,
+    tag: "2024.8.0",
+  };
+  const current = {
+    architecture: "amd64",
+    digest: `sha256:${"2".repeat(64)}`,
+    tag: "2026.8.3",
+  };
+  await writeJson(path.join(evidenceRoot, "ha-lanes.json"), {
+    current,
+    minimum,
+    verified: true,
+  });
+  const hashes = {
+    card_sha256: sha256(card),
+    staging_manifest_sha256: sha256(stageManifestBytes),
+    zip_sha256: sha256(zip),
+  };
+  await writeJson(path.join(evidenceRoot, "ha-artifact-results.json"), {
+    evidence: [minimum, current].map((lane) => ({
+      ...hashes,
+      architecture: lane.architecture,
+      digest: lane.digest,
+      passed: true,
+    })),
+    lanes: { current, minimum },
+    verified: true,
+  });
   return fixtureRoot;
 }
 
 before(async () => {
   acceptance = await import("../tools/verify-release-acceptance.mjs");
   tempRoot = await mkdtemp(path.join(os.tmpdir(), "glt-phase1-gate-"));
+  hermeticStageRoot = path.join(tempRoot, "hermetic-hacs-stage");
+  stageHermeticRelease(hermeticStageRoot);
 });
 
 after(async () => {
@@ -172,6 +234,20 @@ test("release workflow publishes downloaded exact assets without rebuild or mirr
   assert.match(workflow, /attestations: write/);
   assert.doesNotMatch(publishJob, /npm (?:run )?build|npm install|npm ci/);
   assert.doesNotMatch(workflow, /mirror|companion[_-](?:repo|token)|repository_dispatch/i);
+});
+
+test("mandatory CI gates stage first and verify a clean tracked export", async () => {
+  for (const relativePath of [
+    ".github/workflows/validate.yml",
+    ".github/workflows/build-v1.yml",
+  ]) {
+    const workflow = await readFile(path.join(ROOT, relativePath), "utf8");
+    const stageIndex = workflow.indexOf("npm run stage:hacs");
+    const testIndex = workflow.indexOf("npm test");
+    const cleanIndex = workflow.indexOf("node tools/test-clean-checkout.mjs");
+    assert.ok(stageIndex >= 0 && stageIndex < testIndex, relativePath);
+    assert.ok(cleanIndex > testIndex, relativePath);
+  }
 });
 
 test("Phase-1 plan executes every canonical threat owner exactly once without recursion", async () => {

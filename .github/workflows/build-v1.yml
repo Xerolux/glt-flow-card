@@ -38,14 +38,16 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Verify deterministic authored and generated release outputs
         run: npm run verify:release
-      - name: JavaScript tests
-        run: npm test
-      - name: Python syntax validation
-        run: python -m py_compile custom_components/glt_flow_card/*.py
       - name: Stage local release packages
         run: |
           npm run stage:hacs
-          npm run validate:hacs-staging
+          node tools/validate-hacs-staging.mjs
+      - name: JavaScript tests
+        run: npm test
+      - name: Clean tracked-export gate
+        run: node tools/test-clean-checkout.mjs
+      - name: Python syntax validation
+        run: python -m py_compile custom_components/glt_flow_card/*.py
       - name: Upload verified release stage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

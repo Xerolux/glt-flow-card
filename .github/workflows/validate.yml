@@ -22,14 +22,15 @@ jobs:
         with:
           python-version: "3.13"
       - run: npm ci --ignore-scripts
-      - run: npm run check
-      - run: npm test
-      - run: python -m py_compile custom_components/glt_flow_card/*.py
       - name: Build and stage exact release artifacts once
         run: |
           npm run build
           npm run stage:hacs
-          npm run validate:hacs-staging
+          node tools/validate-hacs-staging.mjs
+      - run: npm run check
+      - run: npm test
+      - run: node tools/test-clean-checkout.mjs
+      - run: python -m py_compile custom_components/glt_flow_card/*.py
       - name: Upload manifest-hashed HACS stage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
