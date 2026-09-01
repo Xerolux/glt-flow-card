@@ -34,6 +34,7 @@ key-files:
     - custom_components/glt_flow_card/translations/de.json
     - tests/components/glt_flow_card/conftest.py
     - tests/components/glt_flow_card/test_init.py
+    - test/v100-backend.test.mjs
 
 key-decisions:
   - "Register the immutable WebSocket command surface once at component scope, but resolve exactly one currently loaded entry runtime for every invocation and return a stable not_loaded error otherwise."
@@ -63,7 +64,7 @@ completed: 2026-09-01
 - **Started:** 2026-09-01T00:51:49Z
 - **Completed:** 2026-09-01T01:15:30Z
 - **Tasks:** 3
-- **Files modified:** 13
+- **Files modified:** 14
 
 ## Accomplishments
 
@@ -75,6 +76,7 @@ completed: 2026-09-01
 - Added diagnostics containing only integration/schema/build identities, effective options, store versions, resource counts, digest prefixes, and sanitized recovery counts.
 - Proved T-07 with distinct project, snapshot, asset, entity-state, audit-body, remote URL, token, journal identity, state, and raw-exception canaries.
 - Completed English and German setup, options, abort, and error metadata and classified the entityless Companion as a Home Assistant service integration.
+- Updated the backend Node smoke contract to assert the three effective options and Config Entry reload wiring without resurrecting the removed inert option.
 
 ## Task Commits
 
@@ -102,6 +104,7 @@ Each TDD task was committed as a RED specification followed by GREEN implementat
 - `tests/components/glt_flow_card/test_init.py` - Exact resource counts, pending-task cancellation, unavailable command, and recovery-order behavior.
 - `tests/components/glt_flow_card/test_options.py` - Single-instance, range, effect, reload, rollback, and legacy-option behavior.
 - `tests/components/glt_flow_card/test_diagnostics.py` - Allowlist shape, T-07 canary absence, build identity, and bilingual metadata behavior.
+- `test/v100-backend.test.mjs` - Cross-stack smoke assertions for the retained option contract and lifecycle reload wiring.
 
 ## Decisions Made
 
@@ -140,9 +143,17 @@ Each TDD task was committed as a RED specification followed by GREEN implementat
 - **Verification:** Option behavior tests prove six snapshots become revisions 1-5 under a limit of five and both audit paths remain at the configured maximum.
 - **Committed in:** `e3d856d`
 
+**4. [Rule 1 - Regression] Replaced the stale Node smoke assertion for the removed inert option**
+- **Found during:** Post-wave full `npm test` integration gate
+- **Issue:** `test/v100-backend.test.mjs` still required the removed `server_enforced` token even though Plan 01-08 correctly retained only options with executable effects.
+- **Fix:** Assert the three bounded effective option keys, strict normalization, update-listener registration, and Config Entry reload call; explicitly assert that `server_enforced` stays absent from the Options Flow.
+- **Files modified:** `test/v100-backend.test.mjs`
+- **Verification:** Targeted backend tests pass 2/2 and the full Node suite passes 63/63.
+- **Committed in:** `0fcbba4`
+
 ---
 
-**Total deviations:** 3 auto-fixed (2 Rule 1 bugs, 1 Rule 2 missing critical behavior)
+**Total deviations:** 4 auto-fixed (3 Rule 1 bugs/regressions, 1 Rule 2 missing critical behavior)
 **Impact on plan:** All changes were required to make the planned lifecycle and retained options observable and correct. No dependency, live Home Assistant target, network request, remote call, publication, service call, physical bus, or plant write was added.
 
 ## Issues Encountered
@@ -157,6 +168,8 @@ None. The Windows fake-Home-Assistant lane completed all component tests. Its ex
 - T-07 owner command `py -3.13 -m pytest tests/components/glt_flow_card/test_diagnostics.py -q -k "redact or canary or allowlist"` - 2 passed, 1 deselected.
 - `py -3.13 -m pytest tests/components/glt_flow_card -q` - full Companion suite passed 63/63.
 - `py -3.13 -m compileall -q custom_components/glt_flow_card` - all Companion Python modules compiled.
+- `node --test test/v100-backend.test.mjs` - targeted backend smoke tests passed 2/2.
+- `npm test` - full Node suite passed 63/63 after the post-wave regression fix.
 - `git diff --check` - no whitespace errors.
 
 ## TDD Gate Compliance
@@ -190,8 +203,8 @@ None - no external service configuration required.
 ## Self-Check: PASSED
 
 - Created diagnostics and both new test files exist on disk.
-- All six Task 1-3 RED/GREEN commits exist in git history.
-- The full 63-test Companion suite, exact T-07 owner command, compileall, and whitespace gates passed.
+- All six Task 1-3 RED/GREEN commits and post-wave regression commit `0fcbba4` exist in git history.
+- The full 63-test Companion suite, exact T-07 owner command, compileall, targeted backend smoke, full 63-test Node suite, and whitespace gates passed.
 
 ---
 *Phase: 01-trusted-contract-release-foundation*
