@@ -161,13 +161,15 @@ test("diff policy declares identities, five categories, order, dependencies, and
   assert.deepEqual(policy.impact.vocabulary, ["none", "visual", "binding", "operational", "referential", "security"]);
 });
 
-test("canonical paths are singular and no second authored schema tree exists", async () => {
+test("canonical authored schema paths stay singular alongside generated release copies", async () => {
   for (const path of CONTRACT_PATHS) assert.ok(await readJson(path), `${path} must exist and parse`);
   const files = await walk(ROOT_PATH);
   const authoredSchemas = files
     .map((path) => relative(ROOT_PATH, path).replaceAll("\\", "/"))
     .filter((path) => path.endsWith(".schema.json"))
-    .filter((path) => !path.startsWith("dist/") && !path.includes("/www/") && !path.startsWith("test/fixtures/"))
+    .filter((path) => !path.startsWith("dist/"))
+    .filter((path) => !path.startsWith("custom_components/glt_flow_card/schemas/"))
+    .filter((path) => !path.includes("/www/") && !path.startsWith("test/fixtures/"))
     .sort();
   assert.deepEqual(authoredSchemas, [...SCHEMA_PATHS].sort());
 });
