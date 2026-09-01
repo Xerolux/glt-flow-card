@@ -13341,6 +13341,26 @@ ${entityId}`)) return;
         }
       }
     }
+    for (const current of operations) {
+      if (!current.collection || !current.object_id || !current.field) continue;
+      const references = diff_policy_default.dependencies.references.filter(({ from }) => from === current.collection);
+      const source = afterMaps.get(current.collection)?.get(current.object_id);
+      if (!source) continue;
+      for (const reference of references) {
+        for (const field of reference.fields) {
+          if (current.field !== `/${pointerPart(field)}`) continue;
+          const targetId = source[field];
+          if (typeof targetId !== "string") continue;
+          const targetOperation = `add:/${reference.to}/${pointerPart(targetId)}`;
+          if (operationIds.has(targetOperation)) {
+            requirementsById.get(current.id).set(targetOperation, {
+              operation_id: targetOperation,
+              reason: `reference:${reference.from}.${field}->${reference.to}`
+            });
+          }
+        }
+      }
+    }
     for (const targetOperation of operations) {
       if (targetOperation.category !== "remove" || !targetOperation.collection || !targetOperation.object_id) continue;
       const references = diff_policy_default.dependencies.references.filter(({ to }) => to === targetOperation.collection);
@@ -23389,13 +23409,13 @@ ${entityId}`)) return;
       content.append(element("p", "", copyFor(editor, "applySuccessBody", {
         revision: state.applied.revision,
         count: state.appliedCount,
-        backup_id: state.applied.snapshot_id
+        backup_id: state.applied.rollback_snapshot_id
       })));
     }
     if (state.phase === "rolled-back") {
       content.append(element("p", "", copyFor(editor, "rollbackSuccessBody", {
         revision: state.rollback.revision,
-        backup_id: state.applied?.snapshot_id
+        backup_id: state.applied?.rollback_snapshot_id
       })));
     }
     if (state.preview) {
