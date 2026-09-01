@@ -172,6 +172,27 @@ function addDependencies(operations, before, after) {
     }
   }
 
+  for (const current of operations) {
+    if (!current.collection || !current.object_id || !current.field) continue;
+    const references = DIFF_POLICY.dependencies.references.filter(({ from }) => from === current.collection);
+    const source = afterMaps.get(current.collection)?.get(current.object_id);
+    if (!source) continue;
+    for (const reference of references) {
+      for (const field of reference.fields) {
+        if (current.field !== `/${pointerPart(field)}`) continue;
+        const targetId = source[field];
+        if (typeof targetId !== "string") continue;
+        const targetOperation = `add:/${reference.to}/${pointerPart(targetId)}`;
+        if (operationIds.has(targetOperation)) {
+          requirementsById.get(current.id).set(targetOperation, {
+            operation_id: targetOperation,
+            reason: `reference:${reference.from}.${field}->${reference.to}`,
+          });
+        }
+      }
+    }
+  }
+
   for (const targetOperation of operations) {
     if (targetOperation.category !== "remove" || !targetOperation.collection || !targetOperation.object_id) continue;
     const references = DIFF_POLICY.dependencies.references.filter(({ to }) => to === targetOperation.collection);

@@ -161,6 +161,37 @@ test("removal closure protects referenced targets without expanding source remov
   );
 });
 
+test("retargeting a removed reference to a new target closes over the target addition", () => {
+  const before = project({
+    equipment: [{ id: "old", type: "pump" }],
+    paths: [{ id: "path-1", from_equipment: "old", to_equipment: "old" }],
+    datapoints: [],
+  });
+  const after = project({
+    equipment: [{ id: "new", type: "pump" }],
+    paths: [{ id: "path-1", from_equipment: "new", to_equipment: "new" }],
+    datapoints: [],
+  });
+  const diff = computeProjectDiff(before, after);
+
+  assert.deepEqual(
+    expandDiffSelection(diff, ["remove:/equipment/old"]).selected,
+    [
+      "add:/equipment/new",
+      "config:/paths/path-1/from_equipment",
+      "config:/paths/path-1/to_equipment",
+      "remove:/equipment/old",
+    ],
+  );
+  assert.deepEqual(
+    diff.operations.find(({ id }) => id === "config:/paths/path-1/from_equipment").requires,
+    [{
+      operation_id: "add:/equipment/new",
+      reason: "reference:paths.from_equipment->equipment",
+    }],
+  );
+});
+
 test("closure rejects missing selections, missing dependencies, and cycles deterministically", () => {
   const diff = computeProjectDiff(project(), candidateProject());
   assert.throws(() => expandDiffSelection(diff, ["add:/missing/item"]), /unknown selected operation/i);

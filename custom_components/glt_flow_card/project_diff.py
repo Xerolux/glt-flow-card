@@ -200,6 +200,32 @@ def _add_dependencies(
                         "reason": f'reference:{reference["from"]}.{field}->{reference["to"]}',
                     }
 
+    for operation in operations:
+        collection = operation["collection"]
+        object_id = operation["object_id"]
+        operation_field = operation["field"]
+        if not collection or not object_id or not operation_field:
+            continue
+        references = [
+            reference for reference in DIFF_POLICY["dependencies"]["references"] if reference["from"] == collection
+        ]
+        source = after_maps[collection].get(object_id)
+        if source is None:
+            continue
+        for reference in references:
+            for field in reference["fields"]:
+                if operation_field != f'/{_pointer_part(field)}':
+                    continue
+                target_id = source.get(field)
+                if not isinstance(target_id, str):
+                    continue
+                target_operation = f'add:/{reference["to"]}/{_pointer_part(target_id)}'
+                if target_operation in operation_ids:
+                    requirements_by_id[operation["id"]][target_operation] = {
+                        "operation_id": target_operation,
+                        "reason": f'reference:{reference["from"]}.{field}->{reference["to"]}',
+                    }
+
     for target_operation in operations:
         if target_operation["category"] != "remove":
             continue

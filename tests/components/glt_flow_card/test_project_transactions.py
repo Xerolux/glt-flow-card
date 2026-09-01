@@ -288,6 +288,63 @@ async def test_stale_preview_and_incomplete_dependency_input_fail_closed() -> No
         )
 
 
+async def test_remove_and_retarget_to_new_materializes_a_valid_closed_candidate() -> None:
+    coordinator, repository, _backend = await coordinator_for()
+    initial = project(
+        equipment=[{
+            "id": "pump-1",
+            "type": "pump",
+            "profile": "profile-1",
+            "asset_id": "asset-1",
+        }],
+        paths=[{
+            "id": "path-1",
+            "from_equipment": "pump-1",
+            "to_equipment": "pump-1",
+        }],
+    )
+    await save_initial(coordinator, initial)
+    candidate = project(
+        project={"id": "plant-a", "name": "Plant A", "revision": 1},
+        equipment=[{
+            "id": "pump-2",
+            "type": "pump",
+            "profile": "profile-1",
+            "asset_id": "asset-1",
+        }],
+        paths=[{
+            "id": "path-1",
+            "from_equipment": "pump-2",
+            "to_equipment": "pump-2",
+        }],
+    )
+    preview = await coordinator.preview(
+        user_id="designer-a",
+        project_id="plant-a",
+        expected_revision=1,
+        candidate=candidate,
+    )
+    assert preview["closures"]["remove:/equipment/pump-1"]["selected"] == [
+        "add:/equipment/pump-2",
+        "config:/paths/path-1/from_equipment",
+        "config:/paths/path-1/to_equipment",
+        "remove:/equipment/pump-1",
+    ]
+
+    applied = await coordinator.apply(
+        user_id="designer-a",
+        project_id="plant-a",
+        preview_id=preview["preview_id"],
+        expected_revision=1,
+        selected_ids=["remove:/equipment/pump-1"],
+    )
+
+    expected = deepcopy(candidate)
+    expected["project"]["revision"] = 2
+    assert applied["config"] == expected
+    assert repository.get_head("plant-a") == applied
+
+
 @pytest.mark.parametrize(
     ("base_tags", "candidate_tags", "base_nested", "candidate_nested"),
     [

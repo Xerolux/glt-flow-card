@@ -106,6 +106,35 @@ def test_removal_dependencies_protect_referenced_targets_without_expanding_sourc
     ]
 
 
+def test_retargeting_a_removed_reference_requires_the_new_target_addition() -> None:
+    before = _project(
+        equipment=[{"id": "old", "type": "pump"}],
+        paths=[{"id": "path-1", "from_equipment": "old", "to_equipment": "old"}],
+    )
+    after = _project(
+        equipment=[{"id": "new", "type": "pump"}],
+        paths=[{"id": "path-1", "from_equipment": "new", "to_equipment": "new"}],
+    )
+    result = compute_project_diff(before, after)
+
+    closure = expand_diff_selection(result, ["remove:/equipment/old"])
+    assert closure["selected"] == [
+        "add:/equipment/new",
+        "config:/paths/path-1/from_equipment",
+        "config:/paths/path-1/to_equipment",
+        "remove:/equipment/old",
+    ]
+    field_change = next(
+        operation
+        for operation in result["operations"]
+        if operation["id"] == "config:/paths/path-1/from_equipment"
+    )
+    assert field_change["requires"] == [{
+        "operation_id": "add:/equipment/new",
+        "reason": "reference:paths.from_equipment->equipment",
+    }]
+
+
 def test_invalid_contract_and_hostile_closure_metadata_fail_closed() -> None:
     with pytest.raises(ValueError, match="candidate project contract is invalid"):
         compute_project_diff(_project(), {"type": "custom:glt-flow-card", "schema_version": 2})
