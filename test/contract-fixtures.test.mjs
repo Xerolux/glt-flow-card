@@ -169,6 +169,9 @@ test("canonical authored schema paths stay singular alongside generated release 
     .filter((path) => path.endsWith(".schema.json"))
     .filter((path) => !path.startsWith("dist/"))
     .filter((path) => !path.startsWith("custom_components/glt_flow_card/schemas/"))
+    .filter((path) => !path.startsWith(
+      "build/release/hacs-integration/custom_components/glt_flow_card/schemas/",
+    ))
     .filter((path) => !path.includes("/www/") && !path.startsWith("test/fixtures/"))
     .sort();
   assert.deepEqual(authoredSchemas, [...SCHEMA_PATHS].sort());
