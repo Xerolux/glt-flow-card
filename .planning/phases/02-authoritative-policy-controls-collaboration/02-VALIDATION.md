@@ -19,7 +19,7 @@ created: 2026-09-01
 | **Config files** | `pytest.ini`, `playwright.config.mjs`, `tests/components/glt_flow_card/conftest.py` |
 | **Quick run command** | `npm run test:phase2:quick` |
 | **Full local command** | `npm run build && npm test && npm run test:python && npm run test:e2e` |
-| **Release/HA command** | `npm run validate:hacs-staging && npm run test:ha-artifacts && npm run verify:release && npm run test:release-acceptance` |
+| **Release/HA leaf command** | `npm run test:phase2:release` |
 | **Max task feedback latency** | 30 seconds for focused tests; full gates after every wave |
 
 ## Sampling Rate
@@ -46,7 +46,7 @@ created: 2026-09-01
 | SEC-01 / COLLAB-01 | T2-13 | Authority loss is same-render-cycle read-only with no service, shared storage, token, target, or network fallback | Node + exact-dist E2E | `node --test test/phase2-authority.test.mjs && node tools/run-exact-dist-playwright.mjs --grep=authority` | ⬜ pending |
 | SEC-01 / COLLAB-01 | T2-14 | Two browsers prove roles, leases, conflict/retry/merge, DE/EN, keyboard/focus/live regions, 320px reflow, and secret absence | Exact-dist Playwright | `node tools/run-exact-dist-playwright.mjs --grep=phase-2-ui` | ⬜ pending |
 | SEC-01 / COLLAB-01 | T2-15 | Legacy migration is idempotent and reload/unload clears every subscription/task/cursor/lease/rate bucket | HA lifecycle | `py -3.13 -m pytest tests/components/glt_flow_card/test_phase2_migration.py tests/components/glt_flow_card/test_phase2_lifecycle.py -q -x` | ⬜ pending |
-| SEC-01 / COLLAB-01 | T2-16 | Exact generated/HACS artifacts pass minimum/current HA lanes and release gates with zero unintended service attempts | Release/HA artifact | `npm run test:phase2 && npm run validate:hacs-staging && npm run test:ha-artifacts && npm run verify:release` | ⬜ pending |
+| SEC-01 / COLLAB-01 | T2-16 | Exact generated/HACS artifacts pass minimum/current HA lanes and release gates with zero unintended service attempts | Release/HA artifact | `npm run test:phase2:release` | ⬜ pending |
 
 ## Wave 0 Requirements
 
@@ -58,7 +58,14 @@ created: 2026-09-01
 - [ ] `tests/components/glt_flow_card/test_phase2_migration.py`, `test_phase2_lifecycle.py` — upgrade/resource ledgers.
 - [ ] `test/phase2-authority.test.mjs`, `test/phase2-collaboration.test.mjs` — browser state machines.
 - [ ] `test/e2e/fixtures/shared-authority.mjs`, `test/e2e/project-authority.spec.mjs` — shared two-context coordinator and exact-dist scenarios.
-- [ ] `package.json` scripts `test:phase2:quick` and `test:phase2`; release acceptance must require both Phase 1 and Phase 2 evidence.
+- [ ] `package.json` scripts `test:phase2:quick`, outer `test:phase2`, and non-recursive leaf `test:phase2:release`; release acceptance must require both Phase 1 and Phase 2 evidence without invoking either Phase-2 script.
+
+## Non-Recursive Command Ownership
+
+- `npm run test:phase2` is the only outer Phase-2 orchestrator entry and executes `tools/verify-phase2.mjs`.
+- `tools/verify-phase2.mjs` executes each canonical threat owner once and invokes `npm run test:phase2:release` exactly once for T2-16.
+- `npm run test:phase2:release` is a leaf aggregation of `validate:hacs-staging`, `test:ha-artifacts`, `verify:release`, and `test:release-acceptance`; those commands validate the existing manifest-hashed stage and effect evidence and never call the outer orchestrator or the leaf.
+- `test/phase2-gate.test.mjs` must parse the complete `package.json`/tool subprocess dependency graph, reject direct or indirect cycles, reject any second reachable T2-16 leaf invocation, and prove the outer-to-leaf path occurs exactly once.
 
 ## Mandatory Failure Injection
 

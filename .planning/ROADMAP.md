@@ -68,7 +68,26 @@ Milestone v1.1 hardens the existing Platform 1.0 surface as ten dependency-order
   5. A shared project becomes read-only when Companion authority is unavailable and never falls back to direct privileged browser calls; local standalone engineering remains explicitly separate.
 
 **Known defects closed**: Advisory-only locks, optional revision checks, broad authenticated read exposure, caller-selected control/audit mismatch, arbitrary client-authored audit events, self-selected new-project privileges, and unbounded shared API inputs.
-**Plans**: TBD
+**Plans**: 17 plans across 14 dependency-ordered waves
+
+Plans:
+- [ ] 02-01-PLAN.md — Establish authenticated principals, strict RED classification, effects and threat scaffolding.
+- [ ] 02-02-PLAN.md — Specify deny-default policy, server ACL, revocation and cursor RED contracts.
+- [ ] 02-03-PLAN.md — Specify lease, atomic mutation and merge RED contracts.
+- [ ] 02-04-PLAN.md — Specify configured-control, trusted evidence, migration and lifecycle RED contracts.
+- [ ] 02-05-PLAN.md — Specify reducer and two-browser exact-dist RED contracts.
+- [ ] 02-06-PLAN.md — Implement centralized policy and authorized server-owned reads.
+- [ ] 02-07-PLAN.md — Implement bounded membership administration, subscriptions and opaque cursors.
+- [ ] 02-08-PLAN.md — Implement connection-bound purpose leases.
+- [ ] 02-09-PLAN.md — Implement immediate-precommit mutation guards and bounded merge recovery.
+- [ ] 02-10-PLAN.md — Implement trusted evidence and separate telemetry repositories.
+- [ ] 02-11-PLAN.md — Implement configured controls and one-attempt evidence lifecycle.
+- [ ] 02-12-PLAN.md — Implement fail-closed authority UI and evidence surfaces.
+- [ ] 02-13-PLAN.md — Implement collaboration, conflicts, candidate recovery and control UI.
+- [ ] 02-14-PLAN.md — Close conservative migration and resource-zero lifecycle.
+- [ ] 02-15-PLAN.md — Build, stage and test exact HACS artifacts on both HA lanes.
+- [ ] 02-16-PLAN.md — Close bilingual authority/collaboration docs and exact Pages/Wiki workflow delivery.
+- [ ] 02-17-PLAN.md — Close threats, validation, fail-closed evidence and no-rebuild release acceptance.
 **UI hint**: yes
 
 ### Phase 3: Semantic Equipment & Provenance

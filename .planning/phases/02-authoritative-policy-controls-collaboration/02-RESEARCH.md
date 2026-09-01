@@ -596,22 +596,19 @@ The locked context gives the agent discretion over identifiers, lease duration w
 
 ## Open Questions
 
-1. **Should HA administrators automatically read project content?**
+1. **(RESOLVED) Should HA administrators automatically read project content?**
    - What we know: HA admins may administer membership, but grants are capped and project data cannot self-grant. [VERIFIED: CONTEXT.md]
-   - What's unclear: the locked context does not explicitly say that HA admin implies content membership.
-   - Recommendation: no implicit content/control access; expose only minimal membership administration until the admin assigns a fixed project role. This is A2 and is the least-privilege/non-enumerating interpretation.
+   - Resolution: no implicit content/control/audit access; expose only minimal membership administration until the admin assigns a fixed project role. This binds A2 as the least-privilege/non-enumerating implementation default and prevents first-assignment bootstrap deadlock.
 
-2. **Does “shared mutation” include plant controls?**
+2. **(RESOLVED) Does “shared mutation” include plant controls?**
    - What we know: rollback/import/ACL/metadata explicitly require leases; Operator must be able to use configured controls, while engineering lease acquisition is exposed to Engineer/Admin in the UI. [VERIFIED: CONTEXT.md/UI-SPEC.md]
-   - What's unclear: the phrase could be read broadly.
-   - Recommendation: define it as shared project/authority mutation, not plant operation. Controls use separate capability, fresh revision/digest/preview, HA entity permission, safety gates, and evidence. This is A4.
+   - Resolution: define it as shared project/authority mutation, not plant operation. Controls use separate capability, fresh revision/digest/preview, HA entity permission, safety gates, and evidence, and do not require an engineering lease. This binds A4.
 
-3. **What exact resource budgets are operationally appropriate?**
+3. **(RESOLVED) What exact resource budgets are operationally appropriate?**
    - What we know: OWASP requires explicit bounds; complete project limits already exist; page size and lease TTL are locked. [CITED: https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html]
-   - What's unclear: no measured telemetry/control traffic baseline exists.
-   - Recommendation: lock A1 defaults, test at boundaries and at 100/500/2,000 objects, then adjust only from recorded measurements without relaxing structural limits.
+   - Resolution: lock the A1 defaults for Phase 2, test at equal/above boundaries and at 100/500/2,000 objects, and permit changes only from recorded measurements without relaxing structural limits.
 
-None of these blocks planning; each has a prescriptive default and a testable acceptance rule. [VERIFIED: research assessment]
+All three questions are resolved for Phase 2. A1-A6 are normative safe defaults for implementation and acceptance; none remains open. [VERIFIED: research assessment]
 
 ## Environment Availability
 
