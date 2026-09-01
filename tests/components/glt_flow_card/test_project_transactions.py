@@ -351,6 +351,15 @@ async def test_remove_and_retarget_to_new_materializes_a_valid_closed_candidate(
         (["a", "b", "c"], [], [["a", "b", "c"]], [[]]),
         (["a", "b", "c"], ["updated", "b"], [["a", "b"], ["c"]], [["x"], ["c", "d"]]),
         (["a", "b", "c", "d"], ["a"], [["a"], ["b"], ["c"]], [["z"]]),
+        (
+            [],
+            [str(index) for index in range(12)],
+            [[], []],
+            [
+                [str(index) for index in range(12)],
+                [str(index) for index in range(12, 24)],
+            ],
+        ),
     ],
 )
 async def test_compatibility_save_materializes_array_changes_exactly(
@@ -396,6 +405,54 @@ async def test_compatibility_save_materializes_array_changes_exactly(
     expected["project"]["revision"] = 2
     assert result["config"] == expected
     assert repository.get_head("plant-a")["config"] == expected
+
+
+async def test_partial_array_selection_updates_exact_double_digit_index() -> None:
+    coordinator, repository, _backend = await coordinator_for()
+    base_tags = [str(index) for index in range(12)]
+    await save_initial(coordinator, project(
+        equipment=[{
+            "id": "pump-1",
+            "type": "pump",
+            "profile": "profile-1",
+            "asset_id": "asset-1",
+            "tags": base_tags,
+        }],
+    ))
+    candidate = project(
+        project={"id": "plant-a", "name": "Plant A", "revision": 1},
+        equipment=[{
+            "id": "pump-1",
+            "type": "pump",
+            "profile": "profile-1",
+            "asset_id": "asset-1",
+            "tags": [
+                *base_tags[:9],
+                "changed-nine",
+                "changed-ten",
+                base_tags[11],
+            ],
+        }],
+    )
+    preview = await coordinator.preview(
+        user_id="designer-a",
+        project_id="plant-a",
+        expected_revision=1,
+        candidate=candidate,
+    )
+
+    applied = await coordinator.apply(
+        user_id="designer-a",
+        project_id="plant-a",
+        preview_id=preview["preview_id"],
+        expected_revision=1,
+        selected_ids=["config:/equipment/pump-1/tags/10"],
+    )
+
+    expected_tags = [*base_tags]
+    expected_tags[10] = "changed-ten"
+    assert applied["config"]["equipment"][0]["tags"] == expected_tags
+    assert repository.get_head("plant-a")["config"] == applied["config"]
 
 
 async def test_rollback_requires_server_snapshot_and_creates_forward_revision() -> None:

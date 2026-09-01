@@ -276,6 +276,7 @@ class ProjectTransactionCoordinator:
         result = _clone(base)
         selected_operations = [operations[operation_id] for operation_id in selected_ids]
         array_removals: list[tuple[str, int, Mapping[str, Any]]] = []
+        array_mutations: list[tuple[str, int, Mapping[str, Any]]] = []
         remaining: list[Mapping[str, Any]] = []
         for operation in selected_operations:
             pointer = (
@@ -291,6 +292,8 @@ class ProjectTransactionCoordinator:
                 continue
             if operation.get("after_hash") is None and index >= 0:
                 array_removals.append(("/".join(parts[:-1]), index, operation))
+            elif index >= 0:
+                array_mutations.append(("/".join(parts[:-1]), index, operation))
             else:
                 remaining.append(operation)
         ordered_operations = [
@@ -298,6 +301,12 @@ class ProjectTransactionCoordinator:
             for _parent, _index, operation in sorted(
                 array_removals,
                 key=lambda entry: (entry[0], -entry[1]),
+            )
+        ] + [
+            operation
+            for _parent, _index, operation in sorted(
+                array_mutations,
+                key=lambda entry: (entry[0], entry[1]),
             )
         ] + remaining
         for operation in ordered_operations:
