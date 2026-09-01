@@ -185,6 +185,9 @@ test("project-safety selective apply sends only opaque preview authority and sel
   await expect(dialog.getByRole("heading", { name: "Confirm project changes" })).toBeVisible();
   await dialog.getByRole("button", { name: "Confirm project changes" }).click();
   await expect(dialog.getByRole("status")).toContainText("Project changes applied");
+  const successEvidence = dialog.getByText(/Revision 5 was validated and verified/u);
+  await expect(successEvidence).toContainText("Verified backup snapshot-verified-01 remains available");
+  await expect(successEvidence).not.toContainText("snapshot-applied-02");
   await expect(dialog.getByRole("button", { name: "Apply selected changes" })).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: "Run fresh dry run" })).toBeVisible();
   const effects = await readEffectLedger(page);
@@ -221,6 +224,9 @@ test("project-safety rollback requires typed name and server snapshot confirmati
   await expect(restore).toBeEnabled();
   await restore.click();
   await expect(dialog.getByRole("status")).toContainText("Verified backup restored");
+  const rollbackEvidence = dialog.getByText(/Project revision 6 matches verified backup/u);
+  await expect(rollbackEvidence).toContainText("snapshot-verified-01");
+  await expect(rollbackEvidence).not.toContainText("snapshot-applied-02");
   await expect(dialog.getByRole("button", { name: "Apply selected changes" })).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: "Run fresh dry run" })).toBeVisible();
   await expect.poll(() => page.locator('[data-testid="exact-dist-editor"]').evaluate(
@@ -235,6 +241,8 @@ test("project-safety rollback requires typed name and server snapshot confirmati
     expected_revision: 5,
     confirmation: "ROLLBACK exact-dist",
   });
+  expect(rollback.snapshot_id).toBe("snapshot-verified-01");
+  expect(rollback.snapshot_id).not.toBe("snapshot-applied-02");
   expect(effects.service).toEqual([]);
 });
 

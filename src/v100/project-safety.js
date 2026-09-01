@@ -184,13 +184,13 @@ function renderMigration(editor, state, content) {
     content.append(element("p", "", copyFor(editor, "applySuccessBody", {
       revision: state.applied.revision,
       count: state.appliedCount,
-      backup_id: state.applied.snapshot_id,
+      backup_id: state.applied.rollback_snapshot_id,
     })));
   }
   if (state.phase === "rolled-back") {
     content.append(element("p", "", copyFor(editor, "rollbackSuccessBody", {
       revision: state.rollback.revision,
-      backup_id: state.applied?.snapshot_id,
+      backup_id: state.applied?.rollback_snapshot_id,
     })));
   }
 
