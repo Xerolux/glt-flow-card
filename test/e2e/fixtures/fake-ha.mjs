@@ -21,7 +21,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
     await route.continue();
   });
 
-  await page.addInitScript(({ states, wsResults }) => {
+  await page.addInitScript(({ states, wsResults, locale }) => {
     const effects = {
       filesystem: [],
       network: [],
@@ -116,7 +116,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
       services: {},
       user: { id: "test-admin", name: "Test Admin", is_admin: true },
       config: { components: ["glt_flow_card"], unit_system: { temperature: "°C" } },
-      locale: { language: "en", number_format: "language" },
+      locale: { language: locale, number_format: "language" },
       themes: { darkMode: false, themes: {} },
       callWS,
       callService,
@@ -138,6 +138,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
     wsResults: options.wsResults ?? {
       "glt_flow_card/projects/list": [],
     },
+    locale: options.locale ?? "en",
   });
 }
 
