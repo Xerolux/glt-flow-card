@@ -241,3 +241,93 @@ test("project-safety no fallback and no service when Companion rejects preview",
   await expect(dialog.getByRole("status")).toContainText("Companion unavailable — shared project operations are read-only.");
   await expectNoProhibitedEffects(page);
 });
+
+test("project-safety exact-dist manifest identity is proven before Chromium", async ({ page }) => {
+  await mountEditor(page);
+  const evidence = await page.evaluate(() => window.__exactDistEvidence);
+  expect(evidence).toMatchObject({
+    dist_www_equal: true,
+    manifest_matches_dist: true,
+  });
+  expect(evidence.dist_sha256).toMatch(/^[a-f0-9]{64}$/u);
+});
+
+test("project-safety invalid and boundary validation shows stable paths", async ({ page }) => {
+  await mountEditor(page, {
+    project: {
+      ...PROJECT,
+      project: { id: "../unsafe", name: "Boundary project", revision: 4 },
+    },
+  });
+  const dialog = await openProjectSafety(page);
+  await dialog.getByRole("tab", { name: "Validate" }).click();
+  await dialog.getByRole("button", { name: "Validate project" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Project validation failed");
+  await expect(dialog).toContainText("/project/id");
+  await expect(dialog).toContainText("Original project unchanged");
+});
+
+test("project-safety failure keeps project unchanged and offers a fresh dry run", async ({ page }) => {
+  await mountEditor(page);
+  await openProjectSafety(page);
+  const dialog = await runDryRun(page);
+  await page.evaluate(() => { window.__fakeHaControl.mode = "apply-failure"; });
+  await dialog.getByRole("button", { name: "Apply selected changes" }).click();
+  await dialog.getByRole("button", { name: "Confirm project changes" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Project changes were not applied. Nothing was changed.");
+  await expect(dialog.getByRole("button", { name: "Run fresh dry run" })).toBeVisible();
+  await expectNoProhibitedEffects(page);
+});
+
+test("project-safety responsive theme matrix reflows at mobile and 200 percent zoom", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce", forcedColors: "active" });
+  await mountEditor(page);
+  const dialog = await openProjectSafety(page);
+  const bounds = await dialog.locator(".glt-safe-dialog").boundingBox();
+  expect(bounds.width).toBeLessThanOrEqual(390);
+  expect(bounds.height).toBeLessThanOrEqual(844);
+  await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
+  const reflow = await dialog.locator(".glt-safe-content").evaluate((node) => ({
+    clientWidth: node.clientWidth,
+    scrollWidth: node.scrollWidth,
+  }));
+  expect(reflow.scrollWidth).toBeLessThanOrEqual(reflow.clientWidth + 1);
+  const primary = dialog.getByRole("button", { name: "Validate project" });
+  await expect(primary).toBeVisible();
+});
+
+test("project-safety keyboard-only apply confirmation can be cancelled", async ({ page }) => {
+  await mountEditor(page);
+  await openProjectSafety(page);
+  const dialog = await runDryRun(page);
+  const apply = dialog.getByRole("button", { name: "Apply selected changes" });
+  await apply.focus();
+  await page.keyboard.press("Enter");
+  const cancel = dialog.getByRole("button", { name: "Cancel project changes" });
+  await cancel.focus();
+  await page.keyboard.press("Enter");
+  await expect(dialog.getByRole("heading", { name: "Confirm project changes" })).toHaveCount(0);
+  const effects = await readEffectLedger(page);
+  expect(effects.websocket.map((entry) => entry.type)).not.toContain("glt_flow_card/projects/apply");
+});
+
+test("project-safety opaque asset xss network and no service canaries remain data", async ({ page }) => {
+  await mountEditor(page, {
+    project: {
+      ...PROJECT,
+      assets: [{
+        ...PROJECT.assets[0],
+        description: '<img src="https://example.invalid/canary" onerror="window.__gltXss=1"><script>window.__gltXss=2</script>',
+        source_url: "https://example.invalid/asset.svg",
+      }],
+    },
+  });
+  await page.evaluate(() => { window.__gltXss = 0; });
+  const dialog = await openProjectSafety(page);
+  await dialog.getByRole("tab", { name: "Bundles" }).click();
+  await expect(dialog).toContainText("assets/canary.svg");
+  await expect(dialog.locator("img, iframe, object, embed, script")).toHaveCount(0);
+  expect(await page.evaluate(() => window.__gltXss)).toBe(0);
+  await expectNoProhibitedEffects(page);
+});
