@@ -141,6 +141,7 @@ function identityMap(document, collection) {
 }
 
 function addDependencies(operations, before, after) {
+  const operationById = new Map(operations.map((operation) => [operation.id, operation]));
   const operationIds = new Set(operations.map(({ id }) => id));
   const beforeMaps = new Map();
   const afterMaps = new Map();
@@ -148,28 +149,61 @@ function addDependencies(operations, before, after) {
     beforeMaps.set(collection, identityMap(before, collection));
     afterMaps.set(collection, identityMap(after, collection));
   }
+  const requirementsById = new Map(operations.map(({ id }) => [id, new Map()]));
   for (const current of operations) {
+    if (current.category !== "add") continue;
     if (!current.collection || !current.object_id) continue;
     const references = DIFF_POLICY.dependencies.references.filter(({ from }) => from === current.collection);
-    const sourceMap = current.category === "remove" ? beforeMaps : afterMaps;
-    const source = sourceMap.get(current.collection)?.get(current.object_id);
+    const source = afterMaps.get(current.collection)?.get(current.object_id);
     if (!source) continue;
-    const requirements = new Map();
     for (const reference of references) {
       for (const field of reference.fields) {
         const targetId = source[field];
         if (typeof targetId !== "string") continue;
         const targetPath = `/${reference.to}/${pointerPart(targetId)}`;
-        const targetOperation = current.category === "remove" ? `remove:${targetPath}` : `add:${targetPath}`;
+        const targetOperation = `add:${targetPath}`;
         if (operationIds.has(targetOperation)) {
-          requirements.set(targetOperation, {
+          requirementsById.get(current.id).set(targetOperation, {
             operation_id: targetOperation,
             reason: `reference:${reference.from}.${field}->${reference.to}`,
           });
         }
       }
     }
-    current.requires = [...requirements.values()].sort((left, right) => compareText(left.operation_id, right.operation_id));
+  }
+
+  for (const targetOperation of operations) {
+    if (targetOperation.category !== "remove" || !targetOperation.collection || !targetOperation.object_id) continue;
+    const references = DIFF_POLICY.dependencies.references.filter(({ to }) => to === targetOperation.collection);
+    for (const reference of references) {
+      for (const [sourceId, source] of beforeMaps.get(reference.from)) {
+        for (const field of reference.fields) {
+          if (source[field] !== targetOperation.object_id) continue;
+          const candidateSource = afterMaps.get(reference.from)?.get(sourceId);
+          let requirementId = "";
+          if (!candidateSource) {
+            requirementId = `remove:/${reference.from}/${pointerPart(sourceId)}`;
+          } else if (candidateSource[field] !== targetOperation.object_id) {
+            requirementId = operations.find((operation) => (
+              operation.collection === reference.from
+              && operation.object_id === sourceId
+              && operation.field === `/${pointerPart(field)}`
+            ))?.id || "";
+          }
+          if (operationById.has(requirementId)) {
+            requirementsById.get(targetOperation.id).set(requirementId, {
+              operation_id: requirementId,
+              reason: `reference:${reference.from}.${field}->${reference.to}`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  for (const current of operations) {
+    current.requires = [...requirementsById.get(current.id).values()]
+      .sort((left, right) => compareText(left.operation_id, right.operation_id));
   }
 }
 

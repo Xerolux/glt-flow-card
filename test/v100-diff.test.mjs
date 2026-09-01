@@ -135,6 +135,32 @@ test("selection expands transitively through policy dependencies", () => {
   assert.ok(closure.added.every((entry) => entry.reason.startsWith("reference:")));
 });
 
+test("removal closure protects referenced targets without expanding source removal", () => {
+  const before = project({
+    equipment: [
+      { id: "pump-1", type: "pump" },
+      { id: "pump-2", type: "pump" },
+    ],
+    paths: [{ id: "path-1", from_equipment: "pump-1", to_equipment: "pump-2" }],
+    datapoints: [],
+  });
+  const after = project({ equipment: [], paths: [], datapoints: [] });
+  const diff = computeProjectDiff(before, after);
+
+  assert.deepEqual(
+    expandDiffSelection(diff, ["remove:/paths/path-1"]).selected,
+    ["remove:/paths/path-1"],
+  );
+  assert.deepEqual(
+    expandDiffSelection(diff, ["remove:/equipment/pump-1"]).selected,
+    ["remove:/equipment/pump-1", "remove:/paths/path-1"],
+  );
+  assert.deepEqual(
+    expandDiffSelection(diff, ["remove:/equipment/pump-2"]).selected,
+    ["remove:/equipment/pump-2", "remove:/paths/path-1"],
+  );
+});
+
 test("closure rejects missing selections, missing dependencies, and cycles deterministically", () => {
   const diff = computeProjectDiff(project(), candidateProject());
   assert.throws(() => expandDiffSelection(diff, ["add:/missing/item"]), /unknown selected operation/i);

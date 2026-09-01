@@ -80,6 +80,32 @@ def test_reorder_noise_and_transitive_closure() -> None:
     ]
 
 
+def test_removal_dependencies_protect_referenced_targets_without_expanding_sources() -> None:
+    before = _project(
+        equipment=[
+            {"id": "pump-1", "type": "pump"},
+            {"id": "pump-2", "type": "pump"},
+        ],
+        paths=[{"id": "path-1", "from_equipment": "pump-1", "to_equipment": "pump-2"}],
+    )
+    after = _project(equipment=[], paths=[])
+    result = compute_project_diff(before, after)
+
+    path_only = expand_diff_selection(result, ["remove:/paths/path-1"])
+    assert path_only["selected"] == ["remove:/paths/path-1"]
+
+    first_target = expand_diff_selection(result, ["remove:/equipment/pump-1"])
+    assert first_target["selected"] == [
+        "remove:/equipment/pump-1",
+        "remove:/paths/path-1",
+    ]
+    second_target = expand_diff_selection(result, ["remove:/equipment/pump-2"])
+    assert second_target["selected"] == [
+        "remove:/equipment/pump-2",
+        "remove:/paths/path-1",
+    ]
+
+
 def test_invalid_contract_and_hostile_closure_metadata_fail_closed() -> None:
     with pytest.raises(ValueError, match="candidate project contract is invalid"):
         compute_project_diff(_project(), {"type": "custom:glt-flow-card", "schema_version": 2})

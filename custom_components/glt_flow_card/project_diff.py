@@ -167,10 +167,16 @@ def _identity_map(document: Mapping[str, Any], collection: str) -> dict[str, dic
 def _add_dependencies(
     operations: list[dict[str, Any]], before: Mapping[str, Any], after: Mapping[str, Any]
 ) -> None:
-    operation_ids = {operation["id"] for operation in operations}
+    operation_by_id = {operation["id"]: operation for operation in operations}
+    operation_ids = set(operation_by_id)
     before_maps = {collection: _identity_map(before, collection) for collection in DIFF_POLICY["identity_fields"]}
     after_maps = {collection: _identity_map(after, collection) for collection in DIFF_POLICY["identity_fields"]}
+    requirements_by_id: dict[str, dict[str, dict[str, str]]] = {
+        operation_id: {} for operation_id in operation_ids
+    }
     for operation in operations:
+        if operation["category"] != "add":
+            continue
         collection = operation["collection"]
         object_id = operation["object_id"]
         if not collection or not object_id:
@@ -178,25 +184,68 @@ def _add_dependencies(
         references = [
             reference for reference in DIFF_POLICY["dependencies"]["references"] if reference["from"] == collection
         ]
-        source_maps = before_maps if operation["category"] == "remove" else after_maps
-        source = source_maps[collection].get(object_id)
+        source = after_maps[collection].get(object_id)
         if source is None:
             continue
-        requirements: dict[str, dict[str, str]] = {}
         for reference in references:
             for field in reference["fields"]:
                 target_id = source.get(field)
                 if not isinstance(target_id, str):
                     continue
                 target_path = f'/{reference["to"]}/{_pointer_part(target_id)}'
-                prefix = "remove" if operation["category"] == "remove" else "add"
-                target_operation = f"{prefix}:{target_path}"
+                target_operation = f"add:{target_path}"
                 if target_operation in operation_ids:
-                    requirements[target_operation] = {
+                    requirements_by_id[operation["id"]][target_operation] = {
                         "operation_id": target_operation,
                         "reason": f'reference:{reference["from"]}.{field}->{reference["to"]}',
                     }
-        operation["requires"] = sorted(requirements.values(), key=lambda value: _utf16_sort_key(value["operation_id"]))
+
+    for target_operation in operations:
+        if target_operation["category"] != "remove":
+            continue
+        target_collection = target_operation["collection"]
+        target_id = target_operation["object_id"]
+        if not target_collection or not target_id:
+            continue
+        references = [
+            reference
+            for reference in DIFF_POLICY["dependencies"]["references"]
+            if reference["to"] == target_collection
+        ]
+        for reference in references:
+            for source_id, source in before_maps[reference["from"]].items():
+                for field in reference["fields"]:
+                    if source.get(field) != target_id:
+                        continue
+                    candidate_source = after_maps[reference["from"]].get(source_id)
+                    if candidate_source is None:
+                        requirement_id = (
+                            f'remove:/{reference["from"]}/{_pointer_part(source_id)}'
+                        )
+                    elif candidate_source.get(field) != target_id:
+                        requirement_id = next(
+                            (
+                                operation["id"]
+                                for operation in operations
+                                if operation["collection"] == reference["from"]
+                                and operation["object_id"] == source_id
+                                and operation["field"] == f'/{_pointer_part(field)}'
+                            ),
+                            "",
+                        )
+                    else:
+                        continue
+                    if requirement_id in operation_ids:
+                        requirements_by_id[target_operation["id"]][requirement_id] = {
+                            "operation_id": requirement_id,
+                            "reason": f'reference:{reference["from"]}.{field}->{reference["to"]}',
+                        }
+
+    for operation in operations:
+        operation["requires"] = sorted(
+            requirements_by_id[operation["id"]].values(),
+            key=lambda value: _utf16_sort_key(value["operation_id"]),
+        )
 
 
 def compute_project_diff(before_input: Any, after_input: Any) -> dict[str, Any]:
