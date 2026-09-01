@@ -195,6 +195,25 @@ export async function generateContractFixtures({ outputDir }) {
     extensions: { fixture: { enabled: true } },
   }), { canonicalDigest: true });
 
+  for (const [id, numericLiteral] of [
+    ["number-safe-integer-edge", "9007199254740991"],
+    ["number-unsafe-integer-rounding", "9007199254740993"],
+    ["number-integral-float-fixed", "1.0000000000000002e20"],
+    ["number-exponent-threshold-low", "0.000001"],
+    ["number-exponent-threshold-high", "1e21"],
+    ["number-subnormal-minimum", "5e-324"],
+  ]) {
+    await addFixture({
+      id,
+      class: "numeric_parity",
+      details: { numeric_literal: numericLiteral },
+      expected: expected("accept", "contract", "/"),
+    }, Buffer.from(
+      `{"type":"custom:glt-flow-card","schema_version":2,"project":{"id":"${id}","name":"Numeric parity","revision":0},"extensions":{"number":${numericLiteral}}}\n`,
+      "utf8",
+    ), { canonicalDigest: true });
+  }
+
   await addJson({
     id: "malformed-root-type",
     class: "malformed",

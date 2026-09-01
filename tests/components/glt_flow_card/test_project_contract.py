@@ -50,6 +50,25 @@ def test_canonical_json_matches_javascript_sorted_key_contract() -> None:
     assert result["digest"] == hashlib.sha256(canonical.encode()).hexdigest()
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (9_007_199_254_740_991, "9007199254740991"),
+        (9_007_199_254_740_992, "9007199254740992"),
+        (9_007_199_254_740_993, "9007199254740992"),
+        (1.0000000000000002e20, "100000000000000020000"),
+        (1e21, "1e+21"),
+        (1e-6, "0.000001"),
+        (5e-324, "5e-324"),
+    ],
+)
+def test_canonical_numbers_match_ecmascript_number_to_string(
+    value: int | float,
+    expected: str,
+) -> None:
+    assert canonicalize_json({"number": value}) == f'{{"number":{expected}}}'
+
+
 def test_valid_input_is_not_mutated_and_emits_serializable_evidence() -> None:
     value = _valid_project()
     original = copy.deepcopy(value)
