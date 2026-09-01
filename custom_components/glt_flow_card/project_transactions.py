@@ -500,6 +500,15 @@ class ProjectTransactionCoordinator:
         new_digest = evidence["digest"]
         snapshot_id = self.repository.snapshot_id(project_id, new_digest)
         transaction_id = f"tx:{self._id_factory()}"
+        allocation_attempts = 0
+        while (
+            self.repository.get_journal(transaction_id) is not None
+            and allocation_attempts < 8
+        ):
+            transaction_id = f"tx:{self._id_factory()}"
+            allocation_attempts += 1
+        if self.repository.get_journal(transaction_id) is not None:
+            raise RuntimeError("unable to allocate unique transaction id")
         now = _utc()
         current_head = await self.repository.read_head(project_id)
         if current_head is not None:
@@ -563,6 +572,7 @@ class ProjectTransactionCoordinator:
             "selected_ids": sorted(selected_ids),
             "prepared_at": now,
         }
+        journal["audit_event"] = self._audit_event(journal, "committed")
         await self.repository.put_journal(journal)
         if await self.repository.read_journal(transaction_id) != journal:
             raise RuntimeError("PREPARED journal read-back mismatch")
@@ -595,12 +605,19 @@ class ProjectTransactionCoordinator:
             raise RuntimeError("active project head read-back mismatch")
         self._fail("after_head_verify")
 
-        journal["state"] = "COMMITTED"
-        journal["committed_at"] = _utc()
+        journal["state"] = "AUDIT_PENDING"
+        journal["final_state"] = "COMMITTED"
         await self.repository.put_journal(journal)
         if await self.repository.read_journal(transaction_id) != journal:
-            raise RuntimeError("COMMITTED journal read-back mismatch")
-        await self._audit(journal, "committed")
+            raise RuntimeError("AUDIT_PENDING journal read-back mismatch")
+        try:
+            await self._complete_audit(journal)
+        except OSError:
+            return {
+                **head,
+                "rollback_snapshot_id": rollback_snapshot_id,
+                "audit_pending": True,
+            }
         return {**head, "rollback_snapshot_id": rollback_snapshot_id}
 
     @staticmethod
@@ -633,11 +650,16 @@ class ProjectTransactionCoordinator:
             raise RuntimeError("server snapshot revision mismatch")
 
     async def async_recover(self) -> list[dict[str, Any]]:
-        """Resolve every PREPARED journal to a verified old or new head."""
+        """Resolve project state and repair audit projections before availability."""
 
         recovered: list[dict[str, Any]] = []
         async with self._lock:
-            for journal in self.repository.list_journals("PREPARED"):
+            journals = [
+                journal
+                for journal in self.repository.list_journals()
+                if journal.get("state") in {"PREPARED", "AUDIT_PENDING"}
+            ]
+            for journal in journals:
                 project_id = journal["project_id"]
                 current = await self.repository.read_head(project_id)
                 snapshot = await self.repository.read_snapshot(journal["snapshot_id"])
@@ -646,11 +668,13 @@ class ProjectTransactionCoordinator:
                         raise RuntimeError(
                             f"unrecoverable project transaction:{journal['id']}"
                         )
-                    journal["state"] = "ABORTED"
+                    journal["state"] = "AUDIT_PENDING"
+                    journal["final_state"] = "ABORTED"
                     journal["recovered_at"] = _utc()
                     journal["recovery_result"] = "verified_old_head"
+                    journal["audit_event"] = self._audit_event(journal, "aborted")
                     await self.repository.put_journal(journal)
-                    await self._audit(journal, "aborted")
+                    await self._complete_audit(journal)
                     recovered.append(deepcopy(journal))
                     continue
                 self._verify_snapshot(snapshot)
@@ -672,11 +696,15 @@ class ProjectTransactionCoordinator:
                     current = await self.repository.read_head(project_id)
                 if current != new_head:
                     raise RuntimeError(f"project recovery read-back mismatch:{journal['id']}")
-                journal["state"] = "COMMITTED"
+                journal["state"] = "AUDIT_PENDING"
+                journal["final_state"] = "COMMITTED"
                 journal["recovered_at"] = _utc()
                 journal["recovery_result"] = "verified_new_head"
+                journal.setdefault(
+                    "audit_event", self._audit_event(journal, "committed")
+                )
                 await self.repository.put_journal(journal)
-                await self._audit(journal, "recovered")
+                await self._complete_audit(journal)
                 recovered.append(deepcopy(journal))
         return recovered
 
@@ -703,10 +731,11 @@ class ProjectTransactionCoordinator:
             and head.get("snapshot_id") == journal["snapshot_id"]
         )
 
-    async def _audit(self, journal: Mapping[str, Any], result: str) -> None:
-        await self.repository.append_audit({
-            "id": f"audit:{journal['id']}:{result}",
-            "at": _utc(),
+    @staticmethod
+    def _audit_event(journal: Mapping[str, Any], result: str) -> dict[str, Any]:
+        return {
+            "id": f"audit:{journal['id']}",
+            "at": journal.get("prepared_at") or _utc(),
             "action": journal["action"],
             "user_id": journal["user_id"],
             "project_id": journal["project_id"],
@@ -719,4 +748,20 @@ class ProjectTransactionCoordinator:
             "selected_ids": deepcopy(journal["selected_ids"]),
             "transaction_id": journal["id"],
             "result": result,
-        })
+        }
+
+    async def _complete_audit(self, journal: dict[str, Any]) -> None:
+        event = journal.get("audit_event")
+        if not isinstance(event, Mapping):
+            result = "aborted" if journal.get("final_state") == "ABORTED" else "committed"
+            event = self._audit_event(journal, result)
+            journal["audit_event"] = event
+        await self.repository.append_audit(event)
+        journal["state"] = str(journal["final_state"])
+        if journal["state"] == "COMMITTED":
+            journal.setdefault("committed_at", _utc())
+        else:
+            journal.setdefault("aborted_at", _utc())
+        await self.repository.put_journal(journal)
+        if await self.repository.read_journal(str(journal["id"])) != journal:
+            raise RuntimeError(f"{journal['state']} journal read-back mismatch")

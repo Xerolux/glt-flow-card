@@ -429,8 +429,15 @@ class ProjectRepository:
         transaction_id = str(value.get("id") or "")
         if not transaction_id:
             raise ValueError("journal id is required")
-        self._journals["journals"][transaction_id] = value
-        await self._journals_store.async_save(deepcopy(self._journals))
+        staged = deepcopy(self._journals)
+        staged["journals"][transaction_id] = value
+        await self._journals_store.async_save(deepcopy(staged))
+        loaded = self._mapping_or(
+            await self._journals_store.async_load(), _empty_journals()
+        )
+        if loaded != staged:
+            raise RuntimeError("project journal read-back mismatch")
+        self._journals = loaded
 
     async def read_journal(self, transaction_id: str) -> dict[str, Any] | None:
         """Re-read one transaction journal from persistence."""
@@ -446,9 +453,60 @@ class ProjectRepository:
         return deepcopy(value) if value is not None else None
 
     async def append_audit(self, event: Mapping[str, Any]) -> None:
-        self._audit["events"].insert(0, deepcopy(dict(event)))
-        self._audit["events"] = self._audit["events"][: self.max_audit]
-        await self._audit_store.async_save(deepcopy(self._audit))
+        value = deepcopy(dict(event))
+        event_id = str(value.get("id") or "")
+        if not event_id:
+            raise ValueError("audit event id is required")
+
+        loaded = self._mapping_or(await self._audit_store.async_load(), _empty_audit())
+        events = loaded.get("events")
+        if not isinstance(events, list):
+            raise RuntimeError("project audit read-back is invalid")
+        merged_events = deepcopy(events)
+        merged_by_id = {
+            str(entry.get("id")): entry
+            for entry in merged_events
+            if isinstance(entry, Mapping) and entry.get("id")
+        }
+        for entry in self._audit.get("events", []):
+            if not isinstance(entry, Mapping) or not entry.get("id"):
+                merged_events.append(deepcopy(entry))
+                continue
+            merged_id = str(entry["id"])
+            durable = merged_by_id.get(merged_id)
+            if durable is not None:
+                if durable != entry:
+                    raise RuntimeError(f"immutable audit event conflict:{merged_id}")
+                continue
+            copied = deepcopy(dict(entry))
+            merged_events.append(copied)
+            merged_by_id[merged_id] = copied
+        existing = next(
+            (entry for entry in merged_events if entry.get("id") == event_id), None
+        )
+        durable_existing = next(
+            (entry for entry in events if entry.get("id") == event_id), None
+        )
+        if existing is not None:
+            if existing != value:
+                raise RuntimeError(f"immutable audit event conflict:{event_id}")
+            if durable_existing is not None:
+                self._audit = {"events": merged_events[: self.max_audit]}
+                return
+
+        staged = {"events": merged_events}
+        if existing is None:
+            staged["events"].insert(0, value)
+        staged["events"] = staged["events"][: self.max_audit]
+        self._fail("before_audit_write")
+        await self._audit_store.async_save(deepcopy(staged))
+        self._fail("after_audit_write")
+        persisted = self._mapping_or(
+            await self._audit_store.async_load(), _empty_audit()
+        )
+        if persisted != staged:
+            raise RuntimeError("project audit read-back mismatch")
+        self._audit = persisted
 
     def list_audit(self, limit: int | None = None) -> list[dict[str, Any]]:
         values = self._audit["events"] if limit is None else self._audit["events"][:limit]

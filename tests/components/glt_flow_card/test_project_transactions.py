@@ -46,10 +46,15 @@ async def coordinator_for(
     backend: dict[tuple[int, str], Any] | None = None,
     *,
     failure_hook=None,
+    repository_failure_hook=None,
     **coordinator_options,
 ) -> tuple[ProjectTransactionCoordinator, ProjectRepository, dict[tuple[int, str], Any]]:
     persistence = backend if backend is not None else {}
-    repository = ProjectRepository(object(), store_factory=store_factory(persistence))
+    repository = ProjectRepository(
+        object(),
+        store_factory=store_factory(persistence),
+        failure_hook=repository_failure_hook,
+    )
     await repository.async_initialize()
     identifiers = count(1)
     coordinator = ProjectTransactionCoordinator(
@@ -628,6 +633,159 @@ async def test_interruption_recovery_selects_verified_old_or_new_head(
     assert head["digest"] == digest_canonical_json(head["config"])["digest"]
     assert evidence[0]["state"] == expected_state
     assert recovered_repository.list_journals()[-1]["state"] == expected_state
+
+
+@pytest.mark.parametrize(
+    ("failure_stage", "durable_before_restart"),
+    [
+        ("before_audit_write", False),
+        ("after_audit_write", True),
+    ],
+)
+async def test_audit_persistence_failure_returns_verified_success_and_repairs_once(
+    failure_stage: str, durable_before_restart: bool
+) -> None:
+    base, _repository, backend = await coordinator_for()
+    initial = await save_initial(base)
+    fired = False
+
+    def interrupt(stage: str) -> None:
+        nonlocal fired
+        if stage == failure_stage and not fired:
+            fired = True
+            raise OSError(f"injected:{stage}")
+
+    interrupted, repository, _ = await coordinator_for(
+        backend, repository_failure_hook=interrupt
+    )
+    candidate = project(
+        project={"id": "plant-a", "name": "Plant A", "revision": 1},
+        equipment=[{
+            "id": "pump-1", "type": "pump", "profile": "profile-1",
+            "asset_id": "asset-1", "x": 17,
+        }],
+    )
+    preview = await interrupted.preview(
+        user_id="designer-a",
+        project_id="plant-a",
+        expected_revision=1,
+        candidate=candidate,
+    )
+
+    result = await interrupted.apply(
+        user_id="designer-a",
+        project_id="plant-a",
+        preview_id=preview["preview_id"],
+        expected_revision=1,
+        selected_ids=["move:/equipment/pump-1/x"],
+    )
+
+    assert result["revision"] == 2
+    assert result["audit_pending"] is True
+    assert result["digest"] != initial["digest"]
+    assert result["digest"] == digest_canonical_json(result["config"])["digest"]
+    assert repository.get_head("plant-a")["digest"] == result["digest"]
+    pending = repository.list_journals("AUDIT_PENDING")
+    assert len(pending) == 1
+    transaction_id = pending[0]["id"]
+    durable_audit = backend.get(repository.store_specs["audit"], {"events": []})
+    projected = [
+        event
+        for event in durable_audit["events"]
+        if event.get("transaction_id") == transaction_id
+    ]
+    assert bool(projected) is durable_before_restart
+
+    recovered_repository = ProjectRepository(
+        object(), store_factory=store_factory(backend)
+    )
+    await recovered_repository.async_initialize()
+    recovered = ProjectTransactionCoordinator(recovered_repository)
+    evidence = await recovered.async_recover()
+
+    final_head = recovered_repository.get_head("plant-a")
+    assert final_head["revision"] == 2
+    assert final_head["digest"] == result["digest"]
+    assert final_head["digest"] == digest_canonical_json(final_head["config"])["digest"]
+    assert evidence[0]["state"] == "COMMITTED"
+    assert recovered_repository.get_journal(transaction_id)["state"] == "COMMITTED"
+    final_events = [
+        event
+        for event in recovered_repository.list_audit()
+        if event.get("transaction_id") == transaction_id
+    ]
+    assert len(final_events) == 1
+    assert final_events[0]["id"] == f"audit:{transaction_id}"
+    assert final_events[0]["result"] == "committed"
+
+    assert await recovered.async_recover() == []
+    assert len([
+        event
+        for event in recovered_repository.list_audit()
+        if event.get("transaction_id") == transaction_id
+    ]) == 1
+
+
+async def test_retried_aborted_transaction_allocates_a_fresh_audit_identity() -> None:
+    base, _repository, backend = await coordinator_for()
+    await save_initial(base)
+    fired = False
+
+    def interrupt(stage: str) -> None:
+        nonlocal fired
+        if stage == "after_prepared" and not fired:
+            fired = True
+            raise RuntimeError("injected:after_prepared")
+
+    interrupted, _repository, _ = await coordinator_for(
+        backend, failure_hook=interrupt
+    )
+    candidate = project(
+        project={"id": "plant-a", "name": "Plant A", "revision": 1},
+        equipment=[{
+            "id": "pump-1", "type": "pump", "profile": "profile-1",
+            "asset_id": "asset-1", "x": 23,
+        }],
+    )
+    preview = await interrupted.preview(
+        user_id="designer-a",
+        project_id="plant-a",
+        expected_revision=1,
+        candidate=candidate,
+    )
+    with pytest.raises(RuntimeError, match="injected:after_prepared"):
+        await interrupted.apply(
+            user_id="designer-a",
+            project_id="plant-a",
+            preview_id=preview["preview_id"],
+            expected_revision=1,
+            selected_ids=["move:/equipment/pump-1/x"],
+        )
+
+    restarted, repository, _ = await coordinator_for(backend)
+    retried_preview = await restarted.preview(
+        user_id="designer-a",
+        project_id="plant-a",
+        expected_revision=1,
+        candidate=candidate,
+    )
+    result = await restarted.apply(
+        user_id="designer-a",
+        project_id="plant-a",
+        preview_id=retried_preview["preview_id"],
+        expected_revision=1,
+        selected_ids=["move:/equipment/pump-1/x"],
+    )
+
+    assert result["revision"] == 2
+    retried_events = [
+        event
+        for event in repository.list_audit()
+        if event.get("expected_revision") == 1
+    ]
+    assert {event["result"] for event in retried_events} == {"aborted", "committed"}
+    assert len({event["transaction_id"] for event in retried_events}) == 2
+    assert len({event["id"] for event in retried_events}) == 2
 
 
 async def test_transaction_audit_contains_metadata_only() -> None:

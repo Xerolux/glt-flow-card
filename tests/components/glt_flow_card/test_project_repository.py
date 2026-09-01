@@ -204,3 +204,8 @@ async def test_snapshots_are_immutable_and_metadata_stores_are_bounded_copies() 
     journal["state"] = "tampered"
     assert repository.get_journal("tx-1")["state"] == "PREPARED"
     assert repository.list_audit() == [{"id": "audit-1", "result": "prepared"}]
+
+    await repository.append_audit({"id": "audit-1", "result": "prepared"})
+    assert repository.list_audit() == [{"id": "audit-1", "result": "prepared"}]
+    with pytest.raises(RuntimeError, match="immutable audit event conflict"):
+        await repository.append_audit({"id": "audit-1", "result": "changed"})
