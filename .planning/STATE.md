@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-08-31T23:45:39.142Z"
-last_activity: 2026-09-01 -- Plan 01-05 deterministic migration and semantic diff parity completed
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-09-01T00:21:46.171Z"
+last_activity: 2026-09-01 -- Plan 01-06 safe cross-runtime project bundles completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 13
-  completed_plans: 5
-  percent: 38
+  completed_plans: 6
+  percent: 46
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (trusted-contract-release-foundation) — EXECUTING
-Plan: 6 of 13
+Plan: 7 of 13
 Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-05 deterministic migration and semantic diff parity completed
+Last activity: 2026-09-01 -- Plan 01-06 safe cross-runtime project bundles completed
 
-Progress: [████░░░░░░] 38%
+Progress: [█████░░░░░] 46%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [████░░░░░░] 38%
 | Phase 01 P03 | 10min | 2 tasks | 9 files |
 | Phase 01 P04 | 19min | 2 tasks | 11 files |
 | Phase 01 P05 | 15min | 3 tasks | 9 files |
+| Phase 01 P06 | 30min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01]: Preserve the legacy schema-v1 core config shape while adding validated schema-v2 migration candidates and receipts. — Compatible additive evidence avoids breaking existing browser and bundle consumers.
 - [Phase 01]: Treat only policy-declared identity collection order as irrelevant and keep semantic diff output non-executable. — This removes reorder noise without creating an unsafe patch path or hiding undeclared array semantics.
 - [Phase 01]: Expand diff selection only through changed add/remove dependencies and fail closed on missing or cyclic metadata. — Unchanged targets need no selected operation while ambiguous dependency evidence must block.
+- [Phase 01]: Preflight the complete ZIP32 central/local directory and archive limits before exposing bytes or creating extraction paths. — Reject traversal, aliases, collisions, overlap, encryption, unsupported methods, CRC/hash mismatches, and resource bombs at the trust boundary.
+- [Phase 01]: Treat bundle assets as opaque bytes authenticated by SHA-256, with active-content canaries proving zero execution. — Asset names, MIME types, and contents remain data throughout read, write, parity, and extraction tests.
+- [Phase 01]: Use canonical JSON, fixed ZIP metadata, lexical paths, and store-or-deflate parity for deterministic JavaScript/Python bundles. — Identical logical input must produce byte-stable archives and identical acceptance evidence in both runtimes.
 
 ### Pending Todos
 
@@ -103,6 +107,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-08-31T23:45:24.860Z
-Stopped at: Completed 01-05-PLAN.md
+Last session: 2026-09-01T00:21:15.058Z
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None
