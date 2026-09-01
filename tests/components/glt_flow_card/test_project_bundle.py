@@ -23,10 +23,19 @@ pytestmark = [
 
 def _archive(entries: list[tuple[zipfile.ZipInfo | str, bytes]]) -> bytes:
     output = io.BytesIO()
+    replacements: list[tuple[bytes, bytes]] = []
     with zipfile.ZipFile(output, "w", allowZip64=False) as bundle:
         for name, data in entries:
+            if isinstance(name, str) and ("\x00" in name or "\\" in name):
+                hostile_name = name
+                safe_name = name.replace("\x00", "X").replace("\\", "X")
+                replacements.append((safe_name.encode(), hostile_name.encode()))
+                name = safe_name
             bundle.writestr(name, data)
-    return output.getvalue()
+    raw = output.getvalue()
+    for safe_name, hostile_name in replacements:
+        raw = raw.replace(safe_name, hostile_name)
+    return raw
 
 
 def _assert_rejects(raw: bytes, code: str, path: str) -> None:

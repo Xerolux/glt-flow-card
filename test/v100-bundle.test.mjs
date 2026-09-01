@@ -212,7 +212,8 @@ test("rejects CRC, SHA-256, manifest identity and exact-member closure failures 
   const baseline = validBundle();
   const corrupted = baseline.slice();
   const projectName = Buffer.from("project.json");
-  const projectHeader = Buffer.from(corrupted).indexOf(projectName);
+  const firstProjectName = Buffer.from(corrupted).indexOf(projectName);
+  const projectHeader = Buffer.from(corrupted).indexOf(projectName, firstProjectName + projectName.length);
   corrupted[projectHeader + projectName.length] ^= 1;
   await rejection(corrupted, "bundle.crc", "/entries/1/crc32");
 
@@ -251,9 +252,19 @@ test("rejects CRC, SHA-256, manifest identity and exact-member closure failures 
     { name: "manifest.json", data: jsonBytes(missingManifest) },
     { name: "project.json", data: missingProjectBytes },
   ]), "bundle.asset_missing", "/manifest/assets/0/path");
+  const emptyProjectBytes = jsonBytes(validProject());
+  const emptyManifest = {
+    ...missingManifest,
+    project: {
+      ...missingManifest.project,
+      sha256: sha256(emptyProjectBytes),
+      size: emptyProjectBytes.length,
+    },
+    assets: [],
+  };
   await rejection(zip([
-    { name: "manifest.json", data: jsonBytes({ ...missingManifest, assets: [] }) },
-    { name: "project.json", data: jsonBytes(validProject()) },
+    { name: "manifest.json", data: jsonBytes(emptyManifest) },
+    { name: "project.json", data: emptyProjectBytes },
     { name: asset.path, data: asset.bytes },
   ]), "bundle.asset_unreferenced", "/entries/2/path");
 });
