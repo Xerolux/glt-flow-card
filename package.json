@@ -28,6 +28,7 @@
     "test:e2e": "node tools/run-exact-dist-playwright.mjs",
     "test:e2e:red": "node tools/assert-red.mjs --expected=missing-project-safety-ui -- node tools/run-exact-dist-playwright.mjs --grep=project-safety",
     "stage:hacs": "node tools/stage-hacs-packages.mjs",
+    "validate:hacs-staging": "npm run stage:hacs && node tools/validate-hacs-staging.mjs",
     "verify:release": "node tools/verify-release.mjs",
     "test:release-acceptance": "node tools/verify-release-acceptance.mjs",
     "test:ha-artifacts": "node tools/test-ha-artifacts.mjs",

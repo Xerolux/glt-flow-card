@@ -108,6 +108,12 @@ async function verifyBuildManifest(buildManifest, buildManifestBytes, packageJso
   if (buildManifestBytes.toString("utf8") !== canonicalJson(buildManifest)) {
     throw new Error("build manifest is not canonical JSON");
   }
+  for (const source of buildManifest.sources) {
+    const bytes = await readFile(path.join(ROOT, source.path));
+    if (sha256(bytes) !== source.sha256 || bytes.length !== source.size) {
+      throw new Error(`canonical build source drift: ${source.path}`);
+    }
+  }
 
   const requiredArtifacts = [
     "dist/glt-flow-card.js",
