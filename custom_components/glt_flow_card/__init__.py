@@ -23,11 +23,12 @@ from .const import (
     DEFAULT_LOCK_TTL,
     DOMAIN,
     MAX_AUDIT,
-    MAX_VERSIONS,
     SAFE_SERVICE_DOMAINS,
     STORE_KEY,
     STORE_VERSION,
 )
+from .project_repository import ProjectRepository
+from .project_transactions import ProjectTransactionCoordinator, TransactionConflict
 
 
 def _utc() -> str:
@@ -120,20 +121,31 @@ class GltStore:
         self.remote_sites: dict[str, dict[str, Any]] = {}
         self._alarm_tasks: dict[str, asyncio.Task] = {}
         self._unsubs: list[Any] = []
+        self.project_repository = ProjectRepository(hass)
+        self.project_transactions = ProjectTransactionCoordinator(self.project_repository)
+        self._legacy_projects: dict[str, Any] = {}
 
     async def async_load(self) -> None:
         loaded = await self.store.async_load()
         if isinstance(loaded, dict):
             self.data.update(loaded)
+            self._legacy_projects = deepcopy(loaded.get("projects", {}))
         for key, default in {
             "projects": {}, "templates": {}, "audit": [], "alarm_state": {},
             "alarm_history": [], "work_orders": {}, "report_history": [],
             "locks": {}, "schedule_runs": {},
         }.items():
             self.data.setdefault(key, default)
+        await self.project_repository.async_initialize()
+        await self.project_transactions.async_recover()
+        self.data["projects"] = {
+            project["id"]: project for project in self.project_repository.list_heads()
+        }
 
     async def async_save(self) -> None:
-        await self.store.async_save(self.data)
+        legacy_payload = deepcopy(self.data)
+        legacy_payload["projects"] = deepcopy(self._legacy_projects)
+        await self.store.async_save(legacy_payload)
 
     async def add_audit(self, event: dict[str, Any], user_id: str | None, user_name: str | None) -> dict[str, Any]:
         entry = deepcopy(event)
@@ -147,46 +159,24 @@ class GltStore:
         return deepcopy(entry)
 
     def projects(self) -> list[dict[str, Any]]:
-        result = list(self.data["projects"].values())
-        result.sort(key=lambda item: item.get("updated", ""), reverse=True)
-        return deepcopy(result)
+        return self.project_repository.list_heads()
 
     def project(self, project_id: str) -> dict[str, Any] | None:
-        item = self.data["projects"].get(project_id)
-        return deepcopy(item) if item else None
+        return self.project_repository.get_head(project_id)
 
     async def save_project(self, project: dict[str, Any], autosave: bool, user_id: str | None, expected_revision: int | None = None) -> dict[str, Any]:
-        project_id = str(project.get("id") or project.get("config", {}).get("project", {}).get("id") or "").strip()
-        if not project_id:
-            raise ValueError("project.id is required")
-        old = self.data["projects"].get(project_id, {})
-        old_revision = int(old.get("revision", 0))
-        if expected_revision is not None and int(expected_revision) != old_revision:
-            raise RuntimeError(f"revision_conflict:{old_revision}")
-        versions = list(old.get("versions", []))
-        if old.get("config") and not autosave:
-            versions.insert(0, {
-                "id": f"v-{int(datetime.now(timezone.utc).timestamp()*1000)}",
-                "created": _utc(), "user_id": user_id,
-                "revision": old_revision, "config": deepcopy(old["config"]),
-            })
-            versions = versions[:MAX_VERSIONS]
-        entry = deepcopy(project)
-        entry["id"] = project_id
-        entry["revision"] = old_revision + 1
-        entry["updated"] = _utc()
-        entry["updated_by"] = user_id
-        entry["versions"] = versions
-        entry.setdefault("config", {})
-        entry["config"].setdefault("schema_version", 1)
-        entry["config"].setdefault("project", {})
-        entry["config"]["project"].update({"id": project_id, "revision": entry["revision"]})
-        self.data["projects"][project_id] = entry
-        await self.async_save()
-        return deepcopy(entry)
+        entry = await self.project_transactions.compatibility_save(
+            user_id=user_id,
+            project=project,
+            expected_revision=expected_revision,
+            autosave=autosave,
+        )
+        self.data["projects"][entry["id"]] = deepcopy(entry)
+        return entry
 
     async def delete_project(self, project_id: str) -> bool:
-        existed = self.data["projects"].pop(project_id, None) is not None
+        existed = await self.project_repository.delete_head(project_id)
+        self.data["projects"].pop(project_id, None)
         self.data["locks"].pop(project_id, None)
         if existed:
             await self.async_save()
@@ -408,7 +398,7 @@ def _manager(hass: HomeAssistant) -> GltStore:
 
 
 def _project_for(hass: HomeAssistant, project_id: str) -> dict[str, Any] | None:
-    return _manager(hass).data["projects"].get(project_id)
+    return _manager(hass).project(project_id)
 
 
 def _require_project_role(hass, connection, msg, required: str) -> tuple[dict[str, Any] | None, str | None, str | None, bool]:
@@ -443,15 +433,106 @@ async def ws_projects_save(hass, connection, msg):
         existing = _project_for(hass, pid)
         if existing and not _role_at_least(_project_role(existing, user_id, is_admin), "designer"):
             raise PermissionError("designer role required")
+        if not existing and not is_admin:
+            raise PermissionError("admin required to create a shared project")
         result = await _manager(hass).save_project(project, msg["autosave"], user_id, msg.get("expected_revision"))
         await _manager(hass).add_audit({"action":"project.save","detail":{"project_id":pid,"revision":result["revision"]}}, user_id, user_name)
         connection.send_result(msg["id"], result)
     except PermissionError as err:
         connection.send_error(msg["id"], "forbidden", str(err))
-    except RuntimeError as err:
+    except (TransactionConflict, RuntimeError) as err:
         connection.send_error(msg["id"], "revision_conflict", str(err))
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_project", str(err))
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/projects/preview",
+    vol.Required("project_id"): str,
+    vol.Required("expected_revision"): vol.All(int, vol.Range(min=0)),
+    vol.Required("candidate"): dict,
+})
+@websocket_api.async_response
+async def ws_projects_preview(hass, connection, msg):
+    try:
+        project, uid, _uname, admin = _require_project_role(
+            hass, connection, msg, "designer"
+        )
+        if project is None and not admin:
+            raise PermissionError("designer role required")
+        result = await _manager(hass).project_transactions.preview(
+            user_id=uid,
+            project_id=msg["project_id"],
+            expected_revision=msg["expected_revision"],
+            candidate=msg["candidate"],
+        )
+        connection.send_result(msg["id"], result)
+    except PermissionError as err:
+        connection.send_error(msg["id"], "forbidden", str(err))
+    except TransactionConflict as err:
+        connection.send_error(msg["id"], "revision_conflict", str(err))
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_project", str(err))
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/projects/apply",
+    vol.Required("project_id"): str,
+    vol.Required("preview_id"): str,
+    vol.Required("expected_revision"): vol.All(int, vol.Range(min=0)),
+    vol.Required("selected_ids"): vol.All([str], vol.Length(max=5000)),
+})
+@websocket_api.async_response
+async def ws_projects_apply(hass, connection, msg):
+    try:
+        _project, uid, _uname, _admin = _require_project_role(
+            hass, connection, msg, "designer"
+        )
+        result = await _manager(hass).project_transactions.apply(
+            user_id=uid,
+            project_id=msg["project_id"],
+            preview_id=msg["preview_id"],
+            expected_revision=msg["expected_revision"],
+            selected_ids=msg["selected_ids"],
+        )
+        _manager(hass).data["projects"][msg["project_id"]] = deepcopy(result)
+        connection.send_result(msg["id"], result)
+    except PermissionError as err:
+        connection.send_error(msg["id"], "forbidden", str(err))
+    except TransactionConflict as err:
+        connection.send_error(msg["id"], "revision_conflict", str(err))
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_selection", str(err))
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/projects/rollback",
+    vol.Required("project_id"): str,
+    vol.Required("snapshot_id"): str,
+    vol.Required("expected_revision"): vol.All(int, vol.Range(min=0)),
+    vol.Required("confirmation"): str,
+})
+@websocket_api.async_response
+async def ws_projects_rollback(hass, connection, msg):
+    try:
+        _project, uid, _uname, _admin = _require_project_role(
+            hass, connection, msg, "designer"
+        )
+        result = await _manager(hass).project_transactions.rollback(
+            user_id=uid,
+            project_id=msg["project_id"],
+            snapshot_id=msg["snapshot_id"],
+            expected_revision=msg["expected_revision"],
+            confirmation=msg["confirmation"],
+        )
+        _manager(hass).data["projects"][msg["project_id"]] = deepcopy(result)
+        connection.send_result(msg["id"], result)
+    except PermissionError as err:
+        connection.send_error(msg["id"], "forbidden", str(err))
+    except TransactionConflict as err:
+        connection.send_error(msg["id"], "revision_conflict", str(err))
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_snapshot", str(err))
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/delete", vol.Required("project_id"): str})
@@ -650,7 +731,8 @@ async def ws_audit_list(hass, connection, msg):
 
 
 COMMANDS = (
-    ws_projects_list, ws_projects_get, ws_projects_save, ws_projects_delete,
+    ws_projects_list, ws_projects_get, ws_projects_save, ws_projects_preview,
+    ws_projects_apply, ws_projects_rollback, ws_projects_delete,
     ws_projects_lock, ws_projects_unlock, ws_templates_list, ws_templates_save,
     ws_templates_delete, ws_control_execute, ws_alarms_list, ws_alarms_ack,
     ws_alarms_shelve, ws_work_orders_list, ws_work_orders_save, ws_reports_run,

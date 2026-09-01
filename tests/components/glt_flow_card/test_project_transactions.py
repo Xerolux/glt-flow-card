@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from itertools import count
 from typing import Any
 
 import pytest
@@ -13,7 +14,7 @@ from custom_components.glt_flow_card.project_transactions import (
     TransactionConflict,
 )
 
-from .test_project_repository import MemoryStore, store_factory
+from .test_project_repository import store_factory
 
 pytestmark = [
     pytest.mark.enable_socket,
@@ -49,10 +50,11 @@ async def coordinator_for(
     persistence = backend if backend is not None else {}
     repository = ProjectRepository(object(), store_factory=store_factory(persistence))
     await repository.async_initialize()
+    identifiers = count(1)
     coordinator = ProjectTransactionCoordinator(
         repository,
         failure_hook=failure_hook,
-        id_factory=lambda: f"opaque-{len(repository.list_journals()) + 1}",
+        id_factory=lambda: f"opaque-{next(identifiers)}",
     )
     await coordinator.async_recover()
     return coordinator, repository, persistence
@@ -315,6 +317,17 @@ async def test_transaction_audit_contains_metadata_only() -> None:
     assert events
     encoded = repr(events)
     assert result["digest"] in encoded
-    for forbidden in ("config", "candidate", "equipment", "service_data", "secret"):
-        assert forbidden not in encoded
+    keys: set[str] = set()
 
+    def collect_keys(value: Any) -> None:
+        if isinstance(value, dict):
+            keys.update(map(str, value))
+            for nested in value.values():
+                collect_keys(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                collect_keys(nested)
+
+    collect_keys(events)
+    assert keys.isdisjoint({"config", "candidate", "equipment", "service_data", "secret"})
+    assert "pump-1" not in encoded

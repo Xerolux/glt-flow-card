@@ -329,6 +329,19 @@ class ProjectRepository:
         self._heads["projects"][project_id] = deepcopy(dict(head))
         await self._heads_store.async_save(deepcopy(self._heads))
 
+    async def read_head(self, project_id: str) -> dict[str, Any] | None:
+        """Re-read one active head from persistence for transaction verification."""
+
+        loaded = self._mapping_or(await self._heads_store.async_load(), _empty_heads())
+        projects = loaded.get("projects")
+        if not isinstance(projects, Mapping):
+            raise RuntimeError("project heads read-back is invalid")
+        value = projects.get(project_id)
+        if value is not None:
+            self._verify_heads({project_id: value})
+        self._heads = loaded
+        return deepcopy(value) if value is not None else None
+
     async def delete_head(self, project_id: str) -> bool:
         existed = self._heads["projects"].pop(project_id, None) is not None
         if existed:
@@ -357,6 +370,19 @@ class ProjectRepository:
             self._snapshots["snapshots"][snapshot_id] = value
             await self._snapshots_store.async_save(deepcopy(self._snapshots))
 
+    async def read_snapshot(self, snapshot_id: str) -> dict[str, Any] | None:
+        """Re-read one immutable snapshot from persistence."""
+
+        loaded = self._mapping_or(
+            await self._snapshots_store.async_load(), _empty_snapshots()
+        )
+        snapshots = loaded.get("snapshots")
+        if not isinstance(snapshots, Mapping):
+            raise RuntimeError("project snapshots read-back is invalid")
+        self._snapshots = loaded
+        value = snapshots.get(snapshot_id)
+        return deepcopy(value) if value is not None else None
+
     def get_journal(self, transaction_id: str) -> dict[str, Any] | None:
         value = self._journals["journals"].get(transaction_id)
         return deepcopy(value) if value is not None else None
@@ -374,6 +400,19 @@ class ProjectRepository:
             raise ValueError("journal id is required")
         self._journals["journals"][transaction_id] = value
         await self._journals_store.async_save(deepcopy(self._journals))
+
+    async def read_journal(self, transaction_id: str) -> dict[str, Any] | None:
+        """Re-read one transaction journal from persistence."""
+
+        loaded = self._mapping_or(
+            await self._journals_store.async_load(), _empty_journals()
+        )
+        journals = loaded.get("journals")
+        if not isinstance(journals, Mapping):
+            raise RuntimeError("project journals read-back is invalid")
+        self._journals = loaded
+        value = journals.get(transaction_id)
+        return deepcopy(value) if value is not None else None
 
     async def append_audit(self, event: Mapping[str, Any]) -> None:
         self._audit["events"].insert(0, deepcopy(dict(event)))
