@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-07-PLAN.md
-last_updated: "2026-09-01T00:49:24.097Z"
-last_activity: 2026-09-01 -- Plan 01-07 authoritative project persistence completed
+stopped_at: Completed 01-08-PLAN.md
+last_updated: "2026-09-01T01:17:01.856Z"
+last_activity: 2026-09-01 -- Plan 01-08 Companion lifecycle, options, and diagnostics completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 13
-  completed_plans: 7
-  percent: 54
+  completed_plans: 8
+  percent: 62
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (trusted-contract-release-foundation) — EXECUTING
-Plan: 8 of 13
+Plan: 9 of 13
 Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-07 authoritative project persistence completed
+Last activity: 2026-09-01 -- Plan 01-08 Companion lifecycle, options, and diagnostics completed
 
-Progress: [█████░░░░░] 54%
+Progress: [██████░░░░] 62%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [█████░░░░░] 54%
 | Phase 01 P05 | 15min | 3 tasks | 9 files |
 | Phase 01 P06 | 30min | 2 tasks | 7 files |
 | Phase 01 P07 | 26min | 2 tasks | 7 files |
+| Phase 01 P08 | 24min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01]: Accept only expected revision, opaque user-bound preview identity, project identity, and stable selected operation IDs; recompute migration, diff, closure, and candidate server-side.
 - [Phase 01]: Represent rollback as a new forward transaction from a verified server-owned content-addressed snapshot, never as history mutation or a client receipt.
 - [Phase 01]: Resolve PREPARED journals deterministically to a verified old head when no snapshot exists or a verified new head when the immutable snapshot exists.
+- [Phase 01]: Keep WebSocket commands component-scoped and guarded; publish one compatibility runtime only after recovery and remove it before awaited unload cleanup. — The supported registration API has no unregister callback, and the declared minimum lane cannot assume ConfigEntry.runtime_data.
+- [Phase 01]: Retain only bounded lock TTL, snapshot retention, and audit retention options, with candidate reload rollback to the prior stored and effective runtime. — Every exposed option must have an observable secure effect and failed setup must not strand the entry on candidate values.
+- [Phase 01]: Construct diagnostics from a fixed metadata allowlist with counts and 12-character digest/build prefixes. — Recursive redaction can miss future project, asset, state, audit, token, URL, and exception fields at the diagnostics trust boundary.
 
 ### Pending Todos
 
@@ -113,6 +117,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-09-01T00:49:24.044Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-09-01T01:17:01.824Z
+Stopped at: Completed 01-08-PLAN.md
 Resume file: None
