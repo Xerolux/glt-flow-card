@@ -177,3 +177,44 @@ test("package scripts expose bounded minimum resolution and exact-artifact lanes
   assert.equal(packageJson.scripts["resolve:ha-minimum"], "node tools/resolve-ha-lanes.mjs");
   assert.equal(packageJson.scripts["test:ha-artifacts"], "node tools/test-ha-artifacts.mjs");
 });
+
+test("exact-artifact runner is isolated and covers the supported lifecycle", async () => {
+  const source = await readFile(RUNNER, "utf8");
+  assert.match(source, /--network",\s*"none"/u);
+  assert.match(source, /hacs-staging-manifest\.json/u);
+  assert.match(source, /integration\.zip\.path/u);
+  assert.match(source, /pytest/u);
+  assert.match(source, /tests\/components\/glt_flow_card/u);
+  assert.doesNotMatch(source, /config_entries\/flow/u);
+});
+
+test("owned workflows are read-only and pin every third-party action to a full commit SHA", async () => {
+  for (const relativePath of [
+    ".github/workflows/validate.yml",
+    ".github/workflows/build-v1.yml",
+    ".github/workflows/hacs.yml",
+  ]) {
+    const workflowPath = path.join(ROOT, relativePath);
+    assert.equal(existsSync(workflowPath), true, `${relativePath} must exist`);
+    const source = await readFile(workflowPath, "utf8");
+    assert.match(source, /permissions:\s*\r?\n\s+contents:\s+read/u, `${relativePath} must be read-only`);
+    for (const match of source.matchAll(/uses:\s+([^\s#]+)/gu)) {
+      assert.match(match[1], /@[a-f0-9]{40}$/u, `${match[1]} must use a full commit SHA`);
+    }
+  }
+});
+
+test("CI transfers one manifest-hashed stage into provenance-gated HA lanes", async () => {
+  const validate = await readFile(path.join(ROOT, ".github/workflows/validate.yml"), "utf8");
+  assert.match(validate, /stage:hacs/u);
+  assert.match(validate, /upload-artifact@[a-f0-9]{40}/u);
+  assert.match(validate, /download-artifact@[a-f0-9]{40}/u);
+  assert.match(validate, /--preflight-only/u);
+  assert.match(validate, /test:ha-artifacts/u);
+  assert.match(validate, /needs:\s+validate/u);
+
+  const hacs = await readFile(path.join(ROOT, ".github/workflows/hacs.yml"), "utf8");
+  assert.match(hacs, /--category plugin/u);
+  assert.match(hacs, /--category integration/u);
+  assert.match(hacs, /needs:\s+stage/u);
+});
