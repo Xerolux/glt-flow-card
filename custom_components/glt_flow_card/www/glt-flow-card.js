@@ -5444,9 +5444,9 @@ ${entityId}`)) return;
     mod
   ));
 
-  // node_modules/ajv/dist/runtime/ucs2length.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/ajv/dist/runtime/ucs2length.js
   var require_ucs2length = __commonJS({
-    "node_modules/ajv/dist/runtime/ucs2length.js"(exports) {
+    "../../../../../Documents/GitHub/glt-flow-card/node_modules/ajv/dist/runtime/ucs2length.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       function ucs2length(str) {
@@ -5470,7 +5470,7 @@ ${entityId}`)) return;
     }
   });
 
-  // ../../../AppData/Local/Temp/glt-flow-card-build-SOSODo/compiler/src/v100/catalog.mjs
+  // src/v100/catalog.mjs
   var VISUAL_STYLES = [
     { id: "neo2030", label: "Neo 2030" },
     { id: "clean", label: "Clean" },
@@ -5681,7 +5681,7 @@ ${entityId}`)) return;
     return Array.isArray(item.ports) && item.ports.length ? item.ports : p.ports;
   }
 
-  // ../../../AppData/Local/Temp/glt-flow-card-build-SOSODo/compiler/schemas/diff-policy.json
+  // schemas/diff-policy.json
   var diff_policy_default = {
     policy_version: 1,
     categories: [
@@ -5822,7 +5822,7 @@ ${entityId}`)) return;
     }
   };
 
-  // ../../../AppData/Local/Temp/glt-flow-card-build-SOSODo/compiler/src/v100/generated/project-validators.mjs
+  // src/v100/generated/project-validators.mjs
   var import_ucs2length = __toESM(require_ucs2length(), 1);
   var project0 = validate20;
   var func1 = import_ucs2length.default.default;
@@ -12752,7 +12752,7 @@ ${entityId}`)) return;
   var schemaFingerprints = Object.freeze({ "bundle": "5fffd0f5a8932dd27af3c1a3dd2123436842faae62439335d5701c11f6780611", "project": { "0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8", "1": "0e3e3ba8b547331ce254d00c2cbf91efa85e97dd2a10b313fb47ac4eb95eed37", "2": "ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7" } });
   var contractLimits = Object.freeze({ "policy_version": 1, "json": { "max_bytes": 5242880, "max_depth": 64, "max_nodes": 1e5, "max_string_bytes": 262144, "max_id_chars": 128, "max_path_chars": 512, "max_errors": 100 }, "archive": { "max_compressed_bytes": 33554432, "max_entries": 256, "max_asset_bytes": 16777216, "max_expanded_bytes": 134217728, "max_compression_ratio": 100 } });
 
-  // ../../../AppData/Local/Temp/glt-flow-card-build-SOSODo/compiler/src/v100/project-contract.mjs
+  // src/v100/project-contract.mjs
   var PROJECT_VALIDATORS = [project0, project1, project2];
   var ID_COLLECTIONS = [
     "alarms",
@@ -13169,7 +13169,7 @@ ${entityId}`)) return;
     });
   }
 
-  // ../../../AppData/Local/Temp/glt-flow-card-build-SOSODo/compiler/src/v100/project-diff.mjs
+  // src/v100/project-diff.mjs
   var clone = (value) => JSON.parse(digestCanonicalJson(value).canonical);
   var pointerPart = (value) => String(value).replace(/~/g, "~0").replace(/\//g, "~1");
   var compareText2 = (left, right) => left < right ? -1 : left > right ? 1 : 0;
@@ -13371,7 +13371,7 @@ ${entityId}`)) return;
     };
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/constants.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/constants.js
   var MAX_32_BITS = 4294967295;
   var MAX_16_BITS = 65535;
   var MAX_8_BITS = 255;
@@ -13441,7 +13441,7 @@ ${entityId}`)) return;
   var FUNCTION_TYPE = "function";
   var OBJECT_TYPE = "object";
 
-  // node_modules/@zip.js/zip.js/lib/core/configuration.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/configuration.js
   var MINIMUM_CHUNK_SIZE = 64;
   var maxWorkers = 2;
   try {
@@ -13505,7 +13505,7 @@ ${entityId}`)) return;
     }
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/web-worker-inline-native.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/web-worker-inline-native.js
   var A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   function g(g3) {
     g3({ workerURI: (g4) => {
@@ -13566,7 +13566,7 @@ ${entityId}`)) return;
     } });
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/streams/codecs/crc32.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/streams/codecs/crc32.js
   var T = [[], [], [], [], [], [], [], []];
   for (let n = 0; n < 256; n++) {
     let t = n;
@@ -13609,7 +13609,7 @@ ${entityId}`)) return;
     }
   };
 
-  // node_modules/@zip.js/zip.js/lib/core/streams/crc32-stream.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/streams/crc32-stream.js
   var Crc32Stream = class extends TransformStream {
     constructor() {
       let stream;
@@ -13630,7 +13630,7 @@ ${entityId}`)) return;
     }
   };
 
-  // node_modules/@zip.js/zip.js/lib/core/util/encode-text.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/util/encode-text.js
   function encodeText(value) {
     if (typeof TextEncoder == UNDEFINED_TYPE) {
       value = unescape(encodeURIComponent(value));
@@ -13644,7 +13644,7 @@ ${entityId}`)) return;
     }
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/streams/codecs/sjcl.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/streams/codecs/sjcl.js
   var bitArray = {
     /**
      * Concatenate two bit arrays.
@@ -14190,7 +14190,7 @@ ${entityId}`)) return;
     }
   };
 
-  // node_modules/@zip.js/zip.js/lib/core/streams/common-crypto.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/streams/common-crypto.js
   var GET_RANDOM_VALUES_SUPPORTED = typeof crypto != UNDEFINED_TYPE && typeof crypto.getRandomValues == FUNCTION_TYPE;
   var ERR_INVALID_PASSWORD = "Invalid password";
   var ERR_INVALID_SIGNATURE = "Invalid signature";
@@ -14204,7 +14204,7 @@ ${entityId}`)) return;
     }
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/streams/aes-crypto-stream.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/streams/aes-crypto-stream.js
   var BLOCK_LENGTH = 16;
   var RAW_FORMAT = "raw";
   var PBKDF2_ALGORITHM = { name: "PBKDF2" };
@@ -14460,7 +14460,7 @@ ${entityId}`)) return;
     return codecBytes2.toBits(chunk);
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/streams/zip-crypto-stream.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/streams/zip-crypto-stream.js
   var HEADER_LENGTH = 12;
   var ZipCryptoDecryptionStream = class extends TransformStream {
     constructor({ password, rawPassword, passwordVerification, checkPasswordOnly }) {
@@ -14577,7 +14577,7 @@ ${entityId}`)) return;
     return number & 4294967295;
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/streams/zip-entry-stream.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/streams/zip-entry-stream.js
   var ERR_INVALID_UNCOMPRESSED_SIZE = "Invalid uncompressed size";
   var ERR_INVALID_COMPRESSED_DATA = "Invalid compressed data";
   var FORMAT_DEFLATE_RAW = "deflate-raw";
@@ -14800,7 +14800,7 @@ ${entityId}`)) return;
     });
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/streams/codec-stream.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/streams/codec-stream.js
   var DEFAULT_CHUNK_SIZE = 64 * 1024;
   var MESSAGE_EVENT_TYPE = "message";
   var MESSAGE_START = "start";
@@ -14895,7 +14895,7 @@ ${entityId}`)) return;
     }
   };
 
-  // node_modules/@zip.js/zip.js/lib/core/codec-worker.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/codec-worker.js
   var MODULE_WORKER_OPTIONS = { type: "module" };
   var ERROR_EVENT_TYPE = "error";
   var MESSAGE_ERROR_EVENT_TYPE = "messageerror";
@@ -15298,7 +15298,7 @@ ${entityId}`)) return;
     }
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/codec-pool.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/codec-pool.js
   var pool = [];
   var pendingRequests = [];
   var starvationTimeout;
@@ -15395,7 +15395,7 @@ ${entityId}`)) return;
     }
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/io.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/io.js
   var ERR_ITERATOR_COMPLETED_TOO_SOON = "Writer iterator completed too soon";
   var ERR_WRITER_NOT_INITIALIZED = "Writer not initialized";
   var DEFAULT_CHUNK_SIZE2 = 64 * 1024;
@@ -15700,7 +15700,7 @@ ${entityId}`)) return;
     return reader.readUint8Array(offset, size, diskNumber);
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/util/decode-cp437.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/util/decode-cp437.js
   var CP437 = "\0☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ".split("");
   var VALID_CP437 = CP437.length == 256;
   function decodeCP437(stringValue) {
@@ -15715,7 +15715,7 @@ ${entityId}`)) return;
     }
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/util/decode-text.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/util/decode-text.js
   function decodeText(value, encoding) {
     if (encoding && encoding.trim().toLowerCase() == "cp437") {
       return decodeCP437(value);
@@ -15724,7 +15724,7 @@ ${entityId}`)) return;
     }
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/zip-entry.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/zip-entry.js
   var PROPERTY_NAME_FILENAME = "filename";
   var PROPERTY_NAME_RAW_FILENAME = "rawFilename";
   var PROPERTY_NAME_COMMENT = "comment";
@@ -15826,7 +15826,7 @@ ${entityId}`)) return;
     }
   };
 
-  // node_modules/@zip.js/zip.js/lib/core/options.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/options.js
   var OPTION_FILENAME_ENCODING = "filenameEncoding";
   var OPTION_COMMENT_ENCODING = "commentEncoding";
   var OPTION_DECODE_TEXT = "decodeText";
@@ -15865,7 +15865,7 @@ ${entityId}`)) return;
   var STRICTNESS_BALANCED = "balanced";
   var STRICTNESS_TOLERANT = "tolerant";
 
-  // node_modules/@zip.js/zip.js/lib/core/zip-reader.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/zip-reader.js
   var ERR_BAD_FORMAT = "File format is not recognized";
   var ERR_EOCDR_NOT_FOUND = "End of central directory not found";
   var ERR_EOCDR_LOCATOR_ZIP64_NOT_FOUND = "End of Zip64 central directory locator not found";
@@ -16840,7 +16840,7 @@ ${entityId}`)) return;
     return new DataView(array.buffer, array.byteOffset, array.byteLength);
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/zip-writer.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/zip-writer.js
   var ERR_DUPLICATED_NAME = "File already exists";
   var ERR_INVALID_COMMENT = "Zip file comment exceeds 64KB";
   var ERR_INVALID_ENTRY_COMMENT = "File entry comment exceeds 64KB";
@@ -18461,17 +18461,17 @@ ${entityId}`)) return;
     return bitFlag;
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/util/opfs-temp-stream.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/util/opfs-temp-stream.js
   var DEFAULT_THRESHOLD = 1024 * 1024;
 
-  // node_modules/@zip.js/zip.js/lib/zip-core-base.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/zip-core-base.js
   var import_meta = {};
   try {
     configure({ baseURI: import_meta.url });
   } catch {
   }
 
-  // node_modules/@zip.js/zip.js/lib/core/streams/zlib-js/zlib-streams.min.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/streams/zlib-js/zlib-streams.min.js
   var { Uint8Array: x, Uint16Array: E, Int32Array: H, TransformStream: U, Math: N, Error: z, Array: v } = globalThis;
   var Se = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
   var Z = new x(0);
@@ -19874,7 +19874,7 @@ ${entityId}`)) return;
     }
   };
 
-  // node_modules/@zip.js/zip.js/lib/zip-module-native.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/zip-module-native.js
   configure({
     workerURI: "./core/web-worker-native.js",
     wasmURI: null,
@@ -19882,7 +19882,7 @@ ${entityId}`)) return;
     DecompressionStreamZlib: p_
   });
 
-  // node_modules/@zip.js/zip.js/lib/core/util/mime-type.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/core/util/mime-type.js
   var table = {
     "application": {
       "andrew-inset": "ez",
@@ -21481,10 +21481,10 @@ ${entityId}`)) return;
     return mimeTypes2;
   })();
 
-  // node_modules/@zip.js/zip.js/lib/zip-fs-native.js
+  // ../../../../../Documents/GitHub/glt-flow-card/node_modules/@zip.js/zip.js/lib/zip-fs-native.js
   g(configure);
 
-  // ../../../AppData/Local/Temp/glt-flow-card-build-SOSODo/compiler/src/v100/project-migrations.mjs
+  // src/v100/project-migrations.mjs
   var CURRENT_PROJECT_SCHEMA_VERSION = 2;
   var cloneCanonical = (value) => JSON.parse(digestCanonicalJson(value).canonical);
   function slug(value) {
@@ -21574,7 +21574,7 @@ ${entityId}`)) return;
     };
   }
 
-  // ../../../AppData/Local/Temp/glt-flow-card-build-SOSODo/compiler/src/v100/project-bundle.mjs
+  // src/v100/project-bundle.mjs
   var LIMITS = Object.freeze({
     maxCompressedBytes: 33554432,
     maxEntries: 256,
@@ -22093,7 +22093,7 @@ ${entityId}`)) return;
     }
   }
 
-  // ../../../AppData/Local/Temp/glt-flow-card-build-SOSODo/compiler/src/v100/core.mjs
+  // src/v100/core.mjs
   var SCHEMA_VERSION = 1;
   var OPERATIONAL_STATES = {
     comm_error: { label: "Kommunikationsfehler", severity: 100, className: "comm-error" },
@@ -22471,7 +22471,7 @@ ${entityId}`)) return;
     return { base_symbols: new Set(SYMBOL_VARIANTS.map((x2) => x2.base_symbol)).size, variants: SYMBOL_VARIANTS.length, profiles: COMPONENT_PROFILES.length };
   }
 
-  // ../../../AppData/Local/Temp/glt-flow-card-build-SOSODo/compiler/src/v100/index.js
+  // src/v100/index.js
   (() => {
     "use strict";
     const Card = customElements.get("glt-flow-card");
@@ -23028,7 +23028,7 @@ ${entityId}`)) return;
     console.info(`GLT Flow Card Engineering Platform 1.0 enabled · ${symbolCatalogStats().variants} symbol variants · ${COMPONENT_PROFILES.length} parametric profiles`);
   })();
 
-  // ../../../AppData/Local/Temp/glt-flow-card-build-SOSODo/compiler/src/v100/v1-addons.js
+  // src/v100/v1-addons.js
   (() => {
     "use strict";
     const Card = customElements.get("glt-flow-card"), Editor = customElements.get("glt-flow-card-editor");

@@ -144,10 +144,10 @@ async function bundleV1(compilerRoot, validatorSource) {
     validatorSource,
   );
   const result = await esbuild({
-    absWorkingDir: ROOT,
+    absWorkingDir: compilerRoot,
     bundle: true,
     charset: "utf8",
-    entryPoints: [path.join(sourceRoot, "entry.js")],
+    entryPoints: ["src/v100/entry.js"],
     format: "iife",
     legalComments: "inline",
     nodePaths: [path.join(ROOT, "node_modules")],
