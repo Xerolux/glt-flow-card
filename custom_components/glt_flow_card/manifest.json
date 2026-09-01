@@ -6,5 +6,6 @@
   "issue_tracker": "https://github.com/Xerolux/glt-flow-card/issues",
   "codeowners": ["@Xerolux"],
   "config_flow": true,
+  "integration_type": "service",
   "iot_class": "local_push"
 }

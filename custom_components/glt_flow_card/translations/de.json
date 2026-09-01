@@ -8,6 +8,9 @@
     },
     "abort": {
       "single_instance_allowed": "Es wird nur eine GLT Flow Card Companion Instanz benötigt."
+    },
+    "error": {
+      "setup_failed": "Die Companion konnte nicht geladen werden. Die vorherige wirksame Konfiguration bleibt aktiv."
     }
   },
   "options": {
@@ -15,12 +18,14 @@
       "init": {
         "title": "GLT Flow Card Companion Optionen",
         "data": {
-          "server_enforced": "Bedienungen serverseitig erzwingen",
           "default_lock_ttl": "Standard Projekt-Lock TTL (Sekunden)",
           "max_versions": "Maximale Projektversionen",
           "max_audit": "Maximale Audit-Einträge"
         }
       }
+    },
+    "error": {
+      "invalid_options": "Geben Sie Ganzzahlen innerhalb der dokumentierten Grenzen ein."
     }
   }
 }
