@@ -3,6 +3,7 @@ node_modules/
 *.log
 playwright-report/
 test-results/
+build/
 .planning/tmp/
 __pycache__/
 *.py[cod]
