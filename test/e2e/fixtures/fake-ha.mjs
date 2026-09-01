@@ -10,6 +10,72 @@ function isLoopback(url) {
 export async function installFakeHomeAssistant(page, options = {}) {
   const blockedNetwork = [];
   nodeEffects.set(page, { blockedNetwork });
+  const defaultWsResults = {
+    "glt_flow_card/projects/list": [],
+    "glt_flow_card/projects/preview": {
+      preview_id: "preview-opaque-01",
+      project_id: "exact-dist",
+      base_revision: 4,
+      base_digest: "b".repeat(64),
+      candidate_digest: "c".repeat(64),
+      migration_receipt: {
+        source_schema_version: 1,
+        candidate_schema_version: 2,
+        source_digest: "d".repeat(64),
+        candidate_digest: "c".repeat(64),
+        steps: [{ id: "1->2", from: 1, to: 2 }],
+      },
+      policy_version: 1,
+      operations: [
+        { id: "add:/equipment/pump-2", category: "add", path: "/equipment/pump-2", impact: { severity: "info", areas: ["none"] }, requires: [] },
+        { id: "remove:/equipment/pump-1", category: "remove", path: "/equipment/pump-1", impact: { severity: "warning", areas: ["operational", "referential"] }, requires: [] },
+        { id: "move:/equipment/pump-2/x", category: "move", path: "/equipment/pump-2/x", impact: { severity: "info", areas: ["visual"] }, requires: [] },
+        { id: "binding:/equipment/pump-2/entity", category: "binding", path: "/equipment/pump-2/entity", impact: { severity: "warning", areas: ["binding", "operational"] }, requires: [] },
+        { id: "config:/paths/path-2/medium", category: "config", path: "/paths/path-2/medium", impact: { severity: "warning", areas: ["operational"] }, requires: [{ operation_id: "add:/equipment/pump-2", reason: "reference:paths.to_equipment->equipment" }] },
+      ],
+      ordering_noise: ["/views"],
+      closures: {
+        "add:/equipment/pump-2": { requested: ["add:/equipment/pump-2"], selected: ["add:/equipment/pump-2"], added: [] },
+        "remove:/equipment/pump-1": { requested: ["remove:/equipment/pump-1"], selected: ["remove:/equipment/pump-1"], added: [] },
+        "move:/equipment/pump-2/x": { requested: ["move:/equipment/pump-2/x"], selected: ["move:/equipment/pump-2/x"], added: [] },
+        "binding:/equipment/pump-2/entity": { requested: ["binding:/equipment/pump-2/entity"], selected: ["binding:/equipment/pump-2/entity"], added: [] },
+        "config:/paths/path-2/medium": { requested: ["config:/paths/path-2/medium"], selected: ["add:/equipment/pump-2", "config:/paths/path-2/medium"], added: [{ operation_id: "add:/equipment/pump-2", required_by: "config:/paths/path-2/medium", reason: "reference:paths.to_equipment->equipment" }] },
+      },
+    },
+    "glt_flow_card/projects/apply": {
+      id: "exact-dist",
+      revision: 5,
+      digest: "e".repeat(64),
+      snapshot_id: "snapshot-verified-01",
+      transaction_id: "tx-apply-01",
+      config: {
+        type: "custom:glt-flow-card",
+        schema_version: 2,
+        project: { id: "exact-dist", name: "Exact Dist Plant", revision: 5 },
+        views: [{ id: "plant", name: "Plant", kind: "image" }],
+        equipment: [],
+        paths: [],
+        datapoints: [],
+      },
+    },
+    "glt_flow_card/projects/rollback": {
+      id: "exact-dist",
+      revision: 6,
+      digest: "f".repeat(64),
+      snapshot_id: "snapshot-restored-02",
+      transaction_id: "tx-rollback-02",
+      config: {
+        type: "custom:glt-flow-card",
+        schema_version: 2,
+        project: { id: "exact-dist", name: "Exact Dist Plant", revision: 6 },
+        views: [{ id: "plant", name: "Plant", kind: "image" }],
+        equipment: [],
+        paths: [],
+        datapoints: [],
+      },
+    },
+    ...(options.wsResults ?? {}),
+  };
 
   await page.route("**/*", async (route) => {
     const url = route.request().url();
@@ -33,6 +99,8 @@ export async function installFakeHomeAssistant(page, options = {}) {
       sessions: [{ kind: "fake-ha", id: "exact-dist" }],
     };
     Object.defineProperty(window, "__gltEffects", { value: effects });
+    const control = { mode: "normal" };
+    Object.defineProperty(window, "__fakeHaControl", { value: control });
 
     const loopback = (value) => {
       const url = new URL(String(value), window.location.href);
@@ -99,6 +167,18 @@ export async function installFakeHomeAssistant(page, options = {}) {
 
     const callWS = async (message) => {
       effects.websocket.push(structuredClone(message));
+      if (control.mode === "unavailable" && message.type.startsWith("glt_flow_card/")) {
+        throw Object.assign(new Error("Companion unavailable"), { code: "unavailable" });
+      }
+      if (control.mode === "revision-conflict" && message.type === "glt_flow_card/projects/apply") {
+        throw Object.assign(new Error("revision_conflict:5"), { code: "revision_conflict", actual_revision: 5 });
+      }
+      if (control.mode === "apply-failure" && message.type === "glt_flow_card/projects/apply") {
+        throw Object.assign(new Error("injected apply failure"), { code: "apply_failed" });
+      }
+      if (control.mode === "rollback-failure" && message.type === "glt_flow_card/projects/rollback") {
+        throw Object.assign(new Error("rollback verification failed"), { code: "rollback_failed" });
+      }
       return structuredClone(wsResults[message.type] ?? {});
     };
     const callService = async (domain, service, data) => {
@@ -135,9 +215,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
         last_updated: "2026-01-01T00:00:00.000Z",
       },
     },
-    wsResults: options.wsResults ?? {
-      "glt_flow_card/projects/list": [],
-    },
+    wsResults: defaultWsResults,
     locale: options.locale ?? "en",
   });
 }

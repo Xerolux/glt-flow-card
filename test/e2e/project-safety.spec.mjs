@@ -139,3 +139,105 @@ test("project-safety locale renders approved German shell copy", async ({ page }
   const effects = await readEffectLedger(page);
   expect(effects.service).toEqual([]);
 });
+
+async function runDryRun(page) {
+  const dialog = page.getByRole("dialog", { name: "Project safety" });
+  await dialog.getByRole("tab", { name: "Migrate & compare" }).click();
+  await dialog.getByRole("button", { name: "Run dry run" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Migration preview ready");
+  return dialog;
+}
+
+test("project-safety migrate previews five diff categories before mutation", async ({ page }) => {
+  await mountEditor(page);
+  await openProjectSafety(page);
+  const dialog = await runDryRun(page);
+  await expect(dialog.getByRole("list", { name: "Migration workflow" }).getByRole("listitem")).toHaveText([
+    /Inspect/,
+    /Preview/,
+    /Backup/,
+    /Apply/,
+    /Verify/,
+  ]);
+  for (const category of ["Added", "Removed", "Moved", "Binding", "Configuration"]) {
+    await expect(dialog.getByText(category, { exact: true })).toBeVisible();
+  }
+  const effects = await readEffectLedger(page);
+  expect(effects.websocket.map((entry) => entry.type)).toContain("glt_flow_card/projects/preview");
+  expect(effects.websocket.map((entry) => entry.type)).not.toContain("glt_flow_card/projects/apply");
+});
+
+test("project-safety selective apply keeps server-declared dependencies locked", async ({ page }) => {
+  await mountEditor(page);
+  await openProjectSafety(page);
+  const dialog = await runDryRun(page);
+  const dependency = dialog.getByRole("checkbox", { name: /add:\/equipment\/pump-2/ });
+  await expect(dependency).toBeChecked();
+  await expect(dependency).toBeDisabled();
+  await expect(dialog).toContainText("Required dependency");
+});
+
+test("project-safety apply sends only opaque preview authority and selected IDs", async ({ page }) => {
+  await mountEditor(page);
+  await openProjectSafety(page);
+  const dialog = await runDryRun(page);
+  await dialog.getByRole("button", { name: "Apply selected changes" }).click();
+  await expect(dialog.getByRole("heading", { name: "Confirm project changes" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Confirm project changes" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Project changes applied");
+  const effects = await readEffectLedger(page);
+  const apply = effects.websocket.find((entry) => entry.type === "glt_flow_card/projects/apply");
+  expect(Object.keys(apply).sort()).toEqual(["expected_revision", "preview_id", "project_id", "selected_ids", "type"]);
+  expect(apply.preview_id).toBe("preview-opaque-01");
+  expect(apply.expected_revision).toBe(4);
+  expect(apply).not.toHaveProperty("candidate");
+  expect(effects.service).toEqual([]);
+});
+
+test("project-safety conflict requires fresh compare with no local fallback", async ({ page }) => {
+  await mountEditor(page);
+  await openProjectSafety(page);
+  const dialog = await runDryRun(page);
+  await page.evaluate(() => { window.__fakeHaControl.mode = "revision-conflict"; });
+  await dialog.getByRole("button", { name: "Apply selected changes" }).click();
+  await dialog.getByRole("button", { name: "Confirm project changes" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Revision 4 is no longer current; revision 5 is active. Reload and compare again.");
+  await expect(dialog.getByRole("button", { name: "Run fresh dry run" })).toBeVisible();
+  await expectNoProhibitedEffects(page);
+});
+
+test("project-safety rollback requires typed name and server snapshot confirmation", async ({ page }) => {
+  await mountEditor(page);
+  await openProjectSafety(page);
+  const dialog = await runDryRun(page);
+  await dialog.getByRole("button", { name: "Apply selected changes" }).click();
+  await dialog.getByRole("button", { name: "Confirm project changes" }).click();
+  await dialog.getByRole("button", { name: "Restore verified backup" }).click();
+  const restore = dialog.getByRole("button", { name: "Restore verified backup" }).last();
+  await expect(restore).toBeDisabled();
+  await dialog.getByRole("textbox", { name: "Enter the project name to confirm" }).fill("Exact Dist Plant");
+  await expect(restore).toBeEnabled();
+  await restore.click();
+  await expect(dialog.getByRole("status")).toContainText("Verified backup restored");
+  const effects = await readEffectLedger(page);
+  const rollback = effects.websocket.find((entry) => entry.type === "glt_flow_card/projects/rollback");
+  expect(rollback).toEqual({
+    type: "glt_flow_card/projects/rollback",
+    project_id: "exact-dist",
+    snapshot_id: "snapshot-verified-01",
+    expected_revision: 5,
+    confirmation: "ROLLBACK exact-dist",
+  });
+  expect(effects.service).toEqual([]);
+});
+
+test("project-safety no fallback and no service when Companion rejects preview", async ({ page }) => {
+  await mountEditor(page);
+  await openProjectSafety(page);
+  await page.evaluate(() => { window.__fakeHaControl.mode = "unavailable"; });
+  const dialog = page.getByRole("dialog", { name: "Project safety" });
+  await dialog.getByRole("tab", { name: "Migrate & compare" }).click();
+  await dialog.getByRole("button", { name: "Run dry run" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Companion unavailable — shared project operations are read-only.");
+  await expectNoProhibitedEffects(page);
+});
