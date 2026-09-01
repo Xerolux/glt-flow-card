@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-09-01T17:32:05.278Z"
-last_activity: 2026-09-01 -- Plan 01-13 exact release acceptance and Phase-1 evidence gate completed
+status: paused
+stopped_at: Phase 2 planning complete; final bounded plan check pending
+last_updated: "2026-09-01T18:39:55.907Z"
+last_activity: 2026-09-01 -- Phase 2 context, research, validation, threats, source audit, and 17 plans committed; paused before implementation
 progress:
   total_phases: 10
   completed_phases: 1
-  total_plans: 13
+  total_plans: 30
   completed_plans: 13
   percent: 10
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-31)
 
 **Core value:** Operators and engineers can safely understand, operate, engineer, and diagnose a real building plant from one trustworthy Home Assistant interface.
-**Current focus:** Phase 01 — trusted-contract-release-foundation
+**Current focus:** Phase 02 — authoritative-policy-controls-collaboration
 
 ## Current Position
 
-Phase: 01 (trusted-contract-release-foundation) — COMPLETE
-Plan: 13 of 13
-Status: Phase complete — ready for verification
-Last activity: 2026-09-01 -- Plan 01-13 exact release acceptance and Phase-1 evidence gate completed
+Phase: 02 (authoritative-policy-controls-collaboration) — PLANNED, PAUSED
+Plan: 0 of 17 implemented (61 tasks planned)
+Status: Planning complete — final bounded plan check pending; implementation not started
+Last activity: 2026-09-01 -- Phase 2 planning committed as `7d77583`; paused at explicit user request
 
 Progress: [█░░░░░░░░░] 10%
 
@@ -131,6 +131,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Blockers/Concerns
 
+- [Phase 2]: No known technical blocker. The final plan-check run after the T2-16 recursion correction was intentionally interrupted at the user's stop request; run one bounded checker before execution.
 - [Phase 1]: Resolved in planning — lanes are discovered and digest-pinned at execution, and Companion packaging is validated as a local integration-category artifact without unauthorized publication.
 - [Phase 5]: SDK trust, distribution, and compatibility policy must forbid project-bundled privileged execution.
 - [Phase 6]: Deployment alarm philosophy and supported schedule/calendar authoring APIs require decisions.
@@ -144,6 +145,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-09-01T17:32:05.267Z
-Stopped at: Phase 2 UI-SPEC approved
-Resume file: .planning/phases/02-authoritative-policy-controls-collaboration/02-UI-SPEC.md
+Last session: 2026-09-01T18:39:55.907Z
+Stopped at: Phase 2 planning complete; final bounded plan check pending
+Resume file: .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md

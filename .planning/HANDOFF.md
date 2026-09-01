@@ -1,8 +1,8 @@
 # GLT Flow Card v1.1 — Living Cross-AI Execution Handoff
 
-**Last updated:** 2026-09-01T19:21:11+02:00  
-**Canonical scope:** Implement and verify all original roadmap items **1-30**.  
-**Overall status:** Phase 1 implementation and all 14 reported code-review fixes are committed with full post-fix gates passing. Repetitive re-review was stopped at the user's request; the consolidated security/UI/goal verification remains open. Phases 2-10 have not started.  
+**Last updated:** 2026-09-01T20:39:55+02:00
+**Canonical scope:** Implement and verify all original roadmap items **1-30**.
+**Overall status:** Paused at the user's request. Phase 1 implementation and all 14 reported code-review fixes are committed with full post-fix gates passing. Phase 2 planning is complete with 17 plans and 61 tasks, but implementation has not started; one bounded final plan-check verdict remains open because its last run was intentionally interrupted. Phases 3-10 have not started.
 **Maintainer rule:** Update this file whenever implementation, review, verification, or blockers change.
 
 ## Purpose and User Intent
@@ -15,7 +15,7 @@ The user explicitly requested implementation of **all original items 1-30**. No 
 
 - Work is limited to repository source, generated artifacts, documentation, isolated development environments, and tests unless the user gives new explicit authorization.
 - Do not perform live Home Assistant writes, remote-site writes, physical-bus writes, or plant/equipment service calls. Live control validation requires separate approval with exact bounded targets.
-- Do not create, publish, push, or advertise a public HACS repository, GitHub release, GitHub Pages deployment, or other public artifact without an exact target and explicit authorization.
+- Do not create, publish, push, or advertise a public HACS repository, GitHub release, GitHub Pages deployment, or other public artifact without an exact target and explicit authorization. The user authorized this paused repository snapshot to be pushed to `origin/main`; no release or other publication was authorized.
 - Local HACS staging and isolated Home Assistant container tests are allowed; they are not public publication.
 - Never echo, store, log, or commit credentials, tokens, secrets, remote URLs containing secrets, or private payloads.
 - Shared and security-sensitive behavior must fail closed when Companion authority is unavailable. Browser role checks are UX only.
@@ -26,14 +26,14 @@ The user explicitly requested implementation of **all original items 1-30**. No 
 
 This is a timestamped snapshot, not a substitute for a fresh `git status` when resuming.
 
-| Field | Snapshot at 2026-09-01T17:38:29+02:00 |
+| Field | Snapshot at 2026-09-01T20:39:55+02:00 |
 |---|---|
 | Repository | `C:\Users\basti\Documents\GitHub\glt-flow-card` |
 | Branch | `main` |
-| HEAD before this handoff update | `fc05158` |
-| Upstream comparison | `origin/main...HEAD`: 0 behind, 132 ahead |
-| Push/publication | Not performed or authorized by this handoff |
-| Working tree | Clean before this handoff update |
+| HEAD before this pause handoff update | `7d77583` |
+| Upstream comparison | `origin/main...HEAD`: 0 behind, 140 ahead |
+| Push/publication | Exact upload to `origin/main` authorized and pending; no release authorized |
+| Working tree | Clean after committing Phase 2 planning and before creating pause artifacts |
 | Active recovery marker | None |
 | Preserved local fix branch | `gsd-reviewfix/01-phase1-code-fixes` is already merged; retained only as local history |
 | Temporary worktrees/containers | None active |
@@ -49,6 +49,8 @@ Read these as a set; no single file is sufficient:
 - Exact requirement language and Definition of Done: [REQUIREMENTS.md](REQUIREMENTS.md)
 - Current workflow position, decisions, todos, and blockers: [STATE.md](STATE.md)
 - This living cross-AI checklist: [HANDOFF.md](HANDOFF.md)
+- Machine-readable pause handoff: [HANDOFF.json](HANDOFF.json)
+- Exact Phase 2 resume marker: [`.continue-here.md`](phases/02-authoritative-policy-controls-collaboration/.continue-here.md)
 - Phase 1 decisions and acceptance model: [01-CONTEXT.md](phases/01-trusted-contract-release-foundation/01-CONTEXT.md)
 - Phase 1 research: [01-RESEARCH.md](phases/01-trusted-contract-release-foundation/01-RESEARCH.md)
 - Phase 1 UI contract: [01-UI-SPEC.md](phases/01-trusted-contract-release-foundation/01-UI-SPEC.md)
@@ -57,6 +59,7 @@ Read these as a set; no single file is sufficient:
 - Phase 1 implementation plans and summaries: `.planning/phases/01-trusted-contract-release-foundation/01-01-PLAN.md` through `01-13-PLAN.md` and matching `SUMMARY.md` files
 - Independent Phase 1 code review and open findings: [01-REVIEW.md](phases/01-trusted-contract-release-foundation/01-REVIEW.md)
 - Compact Phase 1 execution evidence, when regenerated: `.planning/tmp/phase1-evidence.json`
+- Phase 2 decisions and planning: `phases/02-authoritative-policy-controls-collaboration/02-CONTEXT.md`, `02-UI-SPEC.md`, `02-RESEARCH.md`, `02-PATTERNS.md`, `02-THREATS.md`, `02-VALIDATION.md`, `02-SOURCE-AUDIT.md`, and `02-01-PLAN.md` through `02-17-PLAN.md`
 
 The current `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` record Phase 1 as implementation-complete/ready for verification. The stricter acceptance status in this handoff takes precedence for resumption: Phase 1 and its requirements are **not finally verified** until the remaining checklist below passes and a final verification report exists.
 
@@ -65,7 +68,7 @@ The current `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` record Phase 1 as im
 | Phase | Name | Owned requirements | Current status | Next action |
 |---:|---|---|---|---|
 | 1 | Trusted Contract & Release Foundation | SCHEMA-01, DIFF-01, HACS-01 | ◆ 13/13 plans and 14/14 review fixes implemented; final verification open | Resume with one consolidated verification pass, not another review loop |
-| 2 | Authoritative Policy, Controls & Collaboration | SEC-01, COLLAB-01 | ○ Not started | Discuss/research/plan after Phase 1 verifier passes |
+| 2 | Authoritative Policy, Controls & Collaboration | SEC-01, COLLAB-01 | ◆ Planning complete: 17 plans/61 tasks; 0 implemented; paused before final plan check | Run one bounded plan check, then execute Phase 2 only |
 | 3 | Semantic Equipment & Provenance | OPS-01, SEM-01, MAP-01, PROF-01, PROTO-01 | ○ Not started | Start after Phase 2 verification |
 | 4 | Runtime Operations & Drill-Down | OPS-02, NAV-01 | ○ Not started | Start after Phase 3 verification |
 | 5 | CAD Engineering & Extension Platform | CAT-01, ENG-01, ENG-02, CAD-01, SDK-01 | ○ Not started | Start after Phase 4 verification |
@@ -81,7 +84,7 @@ Checkboxes represent final acceptance, not implementation alone. All remain unch
 
 - [ ] **1 — OPS-01: Deterministic operational state** — Owner: Phase 3 — Status: Not started.
 - [ ] **2 — OPS-02: Profile-driven object panels and command outcomes** — Owner: Phase 4 — Status: Not started.
-- [ ] **3 — SEC-01: Authoritative server-side permissions** — Owner: Phase 2 — Status: Not started.
+- [ ] **3 — SEC-01: Authoritative server-side permissions** — Owner: Phase 2 — Status: Planning complete; implementation and verification not started.
 - [ ] **4 — ALM-01: Restart-safe alarm lifecycle** — Owner: Phase 6 — Status: Not started.
 - [ ] **5 — ALM-02: Notification and escalation policies** — Owner: Phase 6 — Status: Not started.
 - [ ] **6 — SCH-01: Schedules, calendars, exceptions, and DST** — Owner: Phase 6 — Status: Not started.
@@ -104,7 +107,7 @@ Checkboxes represent final acceptance, not implementation alone. All remain unch
 - [ ] **23 — PROTO-01: Registry-derived protocol provenance** — Owner: Phase 3 — Status: Not started.
 - [ ] **24 — SCHEMA-01: Bounded shared schema, migrations, and bundles** — Owner: Phase 1 — Status: Implementation complete; independent review fixes and final verification pending.
 - [ ] **25 — DIFF-01: Semantic selective comparison and rollback** — Owner: Phase 1 — Status: Implementation complete; CR-02/CR-03/CR-04 fixes and final verification pending.
-- [ ] **26 — COLLAB-01: Revision-plus-lease collaborative editing** — Owner: Phase 2 — Status: Not started.
+- [ ] **26 — COLLAB-01: Revision-plus-lease collaborative editing** — Owner: Phase 2 — Status: Planning complete; implementation and verification not started.
 - [ ] **27 — HACS-01: Correct Companion/plugin packaging and lifecycle** — Owner: Phase 1 — Status: Implementation complete; independent review fixes and final verification pending. Local staging only; no public publication authorized.
 - [ ] **28 — I18N-01: Complete extensible localization** — Owner: Phase 10 — Status: Not started.
 - [ ] **29 — A11Y-01: WCAG 2.2 AA-oriented behavior and evidence** — Owner: Phase 10 — Status: Not started.
@@ -146,6 +149,8 @@ The last [01-REVIEW.md](phases/01-trusted-contract-release-foundation/01-REVIEW.
 
 For each remaining phase, follow the phase's exact goal and requirements in `ROADMAP.md` and `REQUIREMENTS.md`. Do not replace behavioral evidence with source-token assertions.
 
+Phase 2 planning is complete and committed as `7d77583`. Its 17 plans contain 61 tasks across 14 waves. The prior checker found a recursive T2-16 owner; the planning revision corrected it. The final checker was then intentionally interrupted at the user's stop request, so the first resume action is one bounded plan check—not another planning cycle.
+
 - [ ] **Phase 2:** Establish authoritative default-deny Companion permissions, configured exact control targets, trusted audit, and atomic revision-plus-lease collaboration; prove multi-user denials and fail-closed shared behavior.
 - [ ] **Phase 3:** Build the validated semantic hierarchy, versioned profiles, explainable entity mapping, registry-derived provenance, and deterministic operational state shared across UI/backend.
 - [ ] **Phase 4:** Deliver profile-driven operational panels, explicit command result states, contextual drill-down, deep links, breadcrumbs, and permission-filtered navigation.
@@ -160,7 +165,7 @@ For every phase: discuss unresolved product decisions, research unstable framewo
 
 ## How to Resume Safely
 
-1. Read, in order: `AGENTS.md`, `.planning/HANDOFF.md`, `.planning/STATE.md`, `.planning/ROADMAP.md`, `.planning/REQUIREMENTS.md`, then the current phase's `CONTEXT`, `RESEARCH`, `UI-SPEC`, `THREATS`, `VALIDATION`, plans, summaries, and review/verification reports.
+1. Read, in order: `AGENTS.md`, `.planning/HANDOFF.json`, `.planning/HANDOFF.md`, `.planning/STATE.md`, `.planning/ROADMAP.md`, `.planning/REQUIREMENTS.md`, and `.planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md`, then the current phase's planning artifacts.
 2. Refresh Git state. Inspect the current branch, HEAD, upstream divergence, working tree, worktrees, active recovery markers, and recent commits. Do not discard or fold concurrent work silently.
 3. If a recovery marker exists, determine whether its worker/worktree/branch is active. Resume or reconcile that exact effort before starting an overlapping fix. Preserve the marker until recovery is complete.
 4. Treat claims in summaries as historical evidence. Re-run the relevant gates after any source, dependency, generator, test, workflow, packaging, schema, or generated-artifact change.
@@ -185,5 +190,6 @@ For every phase: discuss unresolved product decisions, research unstable framewo
 
 | Timestamp | Change | Commit/evidence |
 |---|---|---|
+| 2026-09-01T20:39:55+02:00 | Paused all phase work at explicit user request. Committed the complete Phase 2 planning package (17 plans/61 tasks), recorded the interrupted final plan check as the exact resume gate, and authorized only the current upload to `origin/main`; no release. | `7d77583`; `HANDOFF.json`; `phases/02-authoritative-policy-controls-collaboration/.continue-here.md` |
 | 2026-09-01T19:21:11+02:00 | Stopped repeated review loops at explicit user request; recorded all 14 findings fixed and the full post-fix gate results; left consolidated security/UI/goal verification and Phases 2-10 open. | `83d8b32`; `fc05158`; `phases/01-trusted-contract-release-foundation/01-REVIEW-FIX.md` |
 | 2026-09-01T17:38:29+02:00 | Created the canonical cross-AI handoff; captured the strict distinction between Phase 1 implementation and final verification; recorded all 30 requirements, open review findings, safety boundaries, and remaining phases. | Handoff commit pending at document creation; todo capture `d9ad33d`; review report `.planning/phases/01-trusted-contract-release-foundation/01-REVIEW.md` |

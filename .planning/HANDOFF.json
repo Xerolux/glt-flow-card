@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "project": "GLT Flow Card",
+  "milestone": "v1.1",
+  "created_at": "2026-09-01T20:39:55.9074407+02:00",
+  "status": "paused",
+  "pause_reason": "User requested that phase work stop, be documented, and be uploaded to GitHub for later continuation.",
+  "current_position": {
+    "phase": "02",
+    "phase_name": "authoritative-policy-controls-collaboration",
+    "stage": "planning",
+    "plans_created": 17,
+    "tasks_planned": 61,
+    "plans_implemented": 0,
+    "implementation_started": false,
+    "resume_file": ".planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md"
+  },
+  "completed": [
+    "Phase 1: all 13 implementation plans and all 14 recorded code-review fixes are committed; full post-fix gates pass.",
+    "Phase 2 context, UI contract, technical research, validation strategy, pattern map, threat ledger, source audit, and 17 implementation plans are committed.",
+    "Phase 2 UI contract passed its six-dimension design check without recommendations.",
+    "The only blocker from the penultimate Phase 2 plan check, a recursive T2-16 verification command, was corrected consistently in the planning artifacts."
+  ],
+  "remaining": [
+    "Run one bounded final Phase 2 plan check to confirm the T2-16 recursion correction; the final checker was intentionally interrupted when the user requested the stop.",
+    "Execute Phase 2 plans 02-01 through 02-17 in dependency order.",
+    "Complete Phase 2 code review, security audit, UI audit, drift checks, and independent goal verification.",
+    "Complete Phases 3 through 10 and the final milestone/release verification in a later session.",
+    "Close the still-open consolidated Phase 1 security, UI, drift, and goal verification when work resumes."
+  ],
+  "decisions": [
+    "No Phase 2 implementation is part of this paused checkpoint.",
+    "No release is created at this checkpoint.",
+    "The current repository state is uploaded to origin/main because the user explicitly authorized that exact push.",
+    "Future work resumes at the bounded Phase 2 plan check, not by repeating completed planning or starting another open-ended review loop.",
+    "Live Home Assistant, remote-site, physical-bus, and plant writes remain outside authorization."
+  ],
+  "blockers": [],
+  "open_verification": [
+    "Phase 1 consolidated security, UI, drift, and goal verification.",
+    "Phase 2 final plan-check verdict after the recursion correction."
+  ],
+  "human_actions_required": [],
+  "background_processes": [],
+  "git": {
+    "branch": "main",
+    "planning_commit": "7d77583",
+    "remote": "origin",
+    "remote_branch": "main",
+    "push_authorized": true,
+    "release_authorized": false,
+    "working_tree_expected_after_pause_commit": "clean"
+  },
+  "resume": {
+    "first_action": "Read .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md and refresh Git state.",
+    "next_gate": "Run one bounded Phase 2 plan checker over all 17 plans and record the verdict.",
+    "after_gate": "If the plan check passes, execute Phase 2 only with $gsd-execute-phase 2 --no-transition."
+  }
+}
