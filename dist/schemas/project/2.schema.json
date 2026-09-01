@@ -1,0 +1,577 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.glt-flow-card.invalid/project/2.schema.json",
+  "title": "GLT Flow Card raw project schema version 2",
+  "allOf": [
+    {
+      "$ref": "#/$defs/rawProject"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 2
+        },
+        "project": {
+          "$ref": "#/$defs/projectMetadata"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project"
+      ]
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "boundedString": {
+      "type": "string",
+      "maxLength": 262144
+    },
+    "entityReference": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 256,
+      "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
+    },
+    "assetPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,511}$"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "unevaluatedProperties": true
+    },
+    "point": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "field": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "view": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "kind": {
+          "$ref": "#/$defs/id"
+        },
+        "order": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "equipment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "$ref": "#/$defs/id"
+        },
+        "profile": {
+          "$ref": "#/$defs/id"
+        },
+        "asset_id": {
+          "$ref": "#/$defs/id"
+        },
+        "layer": {
+          "$ref": "#/$defs/id"
+        },
+        "state_entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field"
+          },
+          "maxItems": 100000
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/boundedString"
+          },
+          "maxItems": 100000
+        },
+        "bindings": {
+          "type": "object",
+          "propertyNames": {
+            "maxLength": 128
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/entityReference"
+          },
+          "maxProperties": 100000
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "path": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "from_equipment": {
+          "$ref": "#/$defs/id"
+        },
+        "to_equipment": {
+          "$ref": "#/$defs/id"
+        },
+        "from_port": {
+          "$ref": "#/$defs/id"
+        },
+        "to_port": {
+          "$ref": "#/$defs/id"
+        },
+        "layer": {
+          "$ref": "#/$defs/id"
+        },
+        "medium": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point"
+          },
+          "maxItems": 100000
+        },
+        "order": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "datapoint": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "layer": {
+          "$ref": "#/$defs/id"
+        },
+        "positions": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/position"
+          },
+          "maxProperties": 100000
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "identifiedObject": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "openObject": {
+      "type": "object",
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "profile": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "equipment_type": {
+          "$ref": "#/$defs/id"
+        },
+        "extends": {
+          "$ref": "#/$defs/id"
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        }
+      },
+      "required": [
+        "id",
+        "equipment_type"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "path": {
+          "$ref": "#/$defs/assetPath"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777216
+        }
+      },
+      "required": [
+        "id",
+        "path"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "projectMetadata": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 262144
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "revision"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "rawProject": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "custom:glt-flow-card"
+        },
+        "schema_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "project": {
+          "$ref": "#/$defs/projectMetadata"
+        },
+        "title": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "subtitle": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "appearance": {
+          "$ref": "#/$defs/openObject"
+        },
+        "canvas": {
+          "$ref": "#/$defs/openObject"
+        },
+        "replay": {
+          "$ref": "#/$defs/openObject"
+        },
+        "trend": {
+          "$ref": "#/$defs/openObject"
+        },
+        "security": {
+          "$ref": "#/$defs/openObject"
+        },
+        "permissions": {
+          "$ref": "#/$defs/openObject"
+        },
+        "diagnostics": {
+          "$ref": "#/$defs/openObject"
+        },
+        "semantic_model": {
+          "$ref": "#/$defs/openObject"
+        },
+        "energy": {
+          "$ref": "#/$defs/openObject"
+        },
+        "reports": {
+          "$ref": "#/$defs/openObject"
+        },
+        "routing": {
+          "$ref": "#/$defs/openObject"
+        },
+        "historian": {
+          "$ref": "#/$defs/openObject"
+        },
+        "simulation": {
+          "$ref": "#/$defs/openObject"
+        },
+        "ui": {
+          "$ref": "#/$defs/openObject"
+        },
+        "extensions": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/id"
+          },
+          "maxProperties": 512,
+          "unevaluatedProperties": true
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/view"
+          },
+          "maxItems": 100000
+        },
+        "equipment": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/equipment"
+          },
+          "maxItems": 100000
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path"
+          },
+          "maxItems": 100000
+        },
+        "datapoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/datapoint"
+          },
+          "maxItems": 100000
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/profile"
+          },
+          "maxItems": 100000
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/asset"
+          },
+          "maxItems": 100000
+        },
+        "kpis": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/openObject"
+          },
+          "maxItems": 100000
+        },
+        "alarms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "schedules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "work_orders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "remote_sites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "plugins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "sites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    }
+  }
+}

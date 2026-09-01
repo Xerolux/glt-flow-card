@@ -1,13 +1,15 @@
 /* Generate deterministic Ajv standalone validators from repository-owned schemas. */
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import standaloneCode from "ajv/dist/standalone/index.js";
 
 const ROOT = new URL("../", import.meta.url);
 const OUTPUT_URL = new URL("src/v100/generated/project-validators.mjs", ROOT);
 const LIMITS_URL = new URL("schemas/limits.json", ROOT);
-const SCHEMA_SPECS = [
+export const PROJECT_SCHEMA_SPECS = [
   ["project0", "schemas/project/0.schema.json"],
   ["project1", "schemas/project/1.schema.json"],
   ["project2", "schemas/project/2.schema.json"],
@@ -18,8 +20,8 @@ function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-async function generatedSource() {
-  const loaded = await Promise.all(SCHEMA_SPECS.map(async ([name, path]) => {
+export async function generateProjectValidatorSource() {
+  const loaded = await Promise.all(PROJECT_SCHEMA_SPECS.map(async ([name, path]) => {
     const bytes = await readFile(new URL(path, ROOT));
     return { name, path, bytes, schema: JSON.parse(bytes) };
   }));
@@ -55,7 +57,7 @@ async function generatedSource() {
 }
 
 async function main() {
-  const expected = await generatedSource();
+  const expected = await generateProjectValidatorSource();
   if (process.argv.includes("--check")) {
     let actual = "";
     try {
@@ -71,7 +73,10 @@ async function main() {
   await writeFile(OUTPUT_URL, expected, "utf8");
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exitCode = 1;
-});
+const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : "";
+if (invokedPath === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
+}

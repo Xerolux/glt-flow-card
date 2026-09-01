@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.glt-flow-card.invalid/bundle-manifest.schema.json",
+  "title": "GLT Flow Card project bundle manifest",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "gltproject"
+    },
+    "bundle_version": {
+      "const": 1
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "https://schemas.glt-flow-card.invalid/project/2.schema.json#/$defs/id"
+        },
+        "path": {
+          "const": "project.json"
+        },
+        "schema_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5242880
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "schema_version",
+        "sha256",
+        "size"
+      ],
+      "unevaluatedProperties": false
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "https://schemas.glt-flow-card.invalid/project/2.schema.json#/$defs/id"
+          },
+          "path": {
+            "$ref": "https://schemas.glt-flow-card.invalid/project/2.schema.json#/$defs/assetPath"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16777216
+          },
+          "media_type": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 128,
+            "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+          },
+          "compression": {
+            "enum": [
+              "store",
+              "deflate"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "sha256",
+          "size",
+          "media_type",
+          "compression"
+        ],
+        "unevaluatedProperties": false
+      },
+      "maxItems": 254
+    }
+  },
+  "required": [
+    "format",
+    "bundle_version",
+    "project",
+    "assets"
+  ],
+  "unevaluatedProperties": false
+}

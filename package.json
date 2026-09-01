@@ -11,6 +11,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "build": "node tools/build.mjs",
     "check": "node --check dist/glt-flow-card.js",
     "test": "node --test test/*.test.mjs",
     "test:v1": "node --test test/v100-*.test.mjs",

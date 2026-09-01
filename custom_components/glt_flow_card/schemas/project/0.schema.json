@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.glt-flow-card.invalid/project/0.schema.json",
+  "title": "GLT Flow Card raw legacy project schema version 0",
+  "allOf": [
+    {
+      "$ref": "https://schemas.glt-flow-card.invalid/project/2.schema.json#/$defs/rawProject"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": false
+      }
+    }
+  ]
+}
