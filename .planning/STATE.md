@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-11-PLAN.md
-last_updated: "2026-09-01T02:44:29.888Z"
-last_activity: 2026-09-01 -- Plan 01-11 exact-dist Project safety UI and T-05 evidence completed
+stopped_at: Completed 01-12-PLAN.md
+last_updated: "2026-09-01T14:42:20.459Z"
+last_activity: 2026-09-01 -- Plan 01-12 immutable Home Assistant artifact lanes completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 13
-  completed_plans: 11
-  percent: 85
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (trusted-contract-release-foundation) — EXECUTING
-Plan: 12 of 13
+Plan: 13 of 13
 Status: Ready to execute
-Last activity: 2026-09-01 -- Plan 01-11 exact-dist Project safety UI and T-05 evidence completed
+Last activity: 2026-09-01 -- Plan 01-12 immutable Home Assistant artifact lanes completed
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [█████████░] 85%
 | Phase 01 P09 | 22min | 2 tasks | 22 files |
 | Phase 01 P10 | 18min | 2 tasks | 10 files |
 | Phase 01 P11 | 33min | 3 tasks | 11 files |
+| Phase 01 P12 | 28min | 2 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 01]: Use local pure contract and bundle functions only for read-only inspection; route every shared mutation through authoritative Companion preview, apply, and rollback.
 - [Phase 01]: Render custom assets as opaque text metadata and prove zero HTML, SVG, script, remote network, service, or localStorage effects.
 - [Phase 01]: Fail shared v0.4 ProjectStore operations closed when a present Companion rejects, retaining local behavior only without WebSocket authority.
+- [Phase 01]: Resolve stable HA releases from official PyPI metadata and pin architecture-specific official GHCR platform digests before execution.
+- [Phase 01]: Match each HA lane to the exact official pytest harness dependency and run the complete component suite from exact staged artifacts.
+- [Phase 01]: Preserve the evidence-backed 2024.8.0 minimum; package schema authorities component-locally and bridge OptionsFlow compatibility.
+- [Phase 01]: Keep CI read-only, preflight provenance before image execution, and transfer one manifest-hashed stage into separate validation jobs.
 
 ### Pending Todos
 
@@ -132,6 +137,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-09-01T02:44:29.860Z
-Stopped at: Completed 01-11-PLAN.md
+Last session: 2026-09-01T14:42:20.289Z
+Stopped at: Completed 01-12-PLAN.md
 Resume file: None
