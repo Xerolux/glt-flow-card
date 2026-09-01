@@ -210,6 +210,47 @@ async def test_preview_cache_replaces_per_user_project_and_evicts_by_bytes() -> 
     ) <= coordinator._preview_max_retained_bytes
 
 
+@pytest.mark.parametrize("limit_kind", ["entries", "bytes"])
+async def test_preview_cache_equal_clock_evicts_oldest_insertion(
+    limit_kind: str,
+) -> None:
+    clock = [1.0]
+    candidate_a = project("plant-a", extensions={"payload": "a" * 600})
+    retained_size = len(
+        digest_canonical_json(candidate_a)["canonical"].encode("utf-8")
+    )
+    options = {
+        "time_factory": lambda: clock[0],
+        "preview_max_entries": 1 if limit_kind == "entries" else 10,
+        "preview_max_retained_bytes": (
+            20 * 1024 * 1024
+            if limit_kind == "entries"
+            else (retained_size * 2) - 1
+        ),
+    }
+    coordinator, _repository, _backend = await coordinator_for(**options)
+    preview_ids = iter(["z-oldest", "a-newest"])
+    coordinator._id_factory = preview_ids.__next__
+
+    oldest = await coordinator.preview(
+        user_id="designer-a",
+        project_id="plant-a",
+        expected_revision=0,
+        candidate=candidate_a,
+    )
+    newest = await coordinator.preview(
+        user_id="designer-b",
+        project_id="plant-b",
+        expected_revision=0,
+        candidate=project("plant-b", extensions={"payload": "b" * 600}),
+    )
+
+    assert oldest["preview_id"] == "z-oldest"
+    assert newest["preview_id"] == "a-newest"
+    assert oldest["preview_id"] not in coordinator._previews
+    assert newest["preview_id"] in coordinator._previews
+
+
 async def test_terminal_apply_failure_discards_preview() -> None:
     coordinator, _repository, _backend = await coordinator_for()
     preview = await coordinator.preview(

@@ -55,6 +55,7 @@ class ProjectTransactionCoordinator:
             1, int(preview_max_retained_bytes)
         )
         self._previews: dict[str, dict[str, Any]] = {}
+        self._preview_insertion_sequence = 0
         self._lock = asyncio.Lock()
 
     def _fail(self, stage: str) -> None:
@@ -105,6 +106,8 @@ class ProjectTransactionCoordinator:
                 self._previews.pop(existing_id, None)
         if preview["retained_bytes"] > self._preview_max_retained_bytes:
             raise ValueError("preview candidate exceeds retained byte limit")
+        self._preview_insertion_sequence += 1
+        preview["insertion_sequence"] = self._preview_insertion_sequence
         self._previews[preview_id] = preview
         while (
             len(self._previews) > self._preview_max_entries
@@ -115,12 +118,13 @@ class ProjectTransactionCoordinator:
         ):
             oldest_id = min(
                 self._previews,
-                key=lambda key: (
-                    float(self._previews[key]["created_at"]),
-                    key,
+                key=lambda key: int(
+                    self._previews[key]["insertion_sequence"]
                 ),
             )
             self._previews.pop(oldest_id, None)
+        if preview_id not in self._previews:
+            raise RuntimeError("new preview could not be retained")
 
     @staticmethod
     def _prepare_candidate(
