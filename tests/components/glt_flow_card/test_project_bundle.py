@@ -12,6 +12,7 @@ from custom_components.glt_flow_card.project_bundle import (
     BundleError,
     bundle_decision,
     read_project_bundle,
+    write_project_bundle,
 )
 from custom_components.glt_flow_card.project_contract import canonicalize_json
 
@@ -127,3 +128,87 @@ def test_rejects_noncanonical_manifest_before_any_member_is_exposed() -> None:
         "bundle.manifest_mismatch",
         "/manifest",
     )
+
+
+def _project(assets: list[dict[str, object]]) -> dict[str, object]:
+    return {
+        "type": "custom:glt-flow-card",
+        "schema_version": 2,
+        "project": {"id": "python-bundle", "name": "Python Bundle", "revision": 0},
+        "assets": [
+            {key: value for key, value in asset.items() if key not in ("bytes", "compression")}
+            for asset in assets
+        ],
+        "equipment": [],
+        "paths": [],
+        "datapoints": [],
+        "profiles": [],
+        "views": [],
+    }
+
+
+def test_roundtrip_preserves_opaque_assets_and_is_deterministic(monkeypatch: pytest.MonkeyPatch) -> None:
+    assets = [
+        {
+            "id": "active-svg",
+            "path": "assets/active.svg",
+            "media_type": "image/svg+xml",
+            "compression": "deflate",
+            "bytes": b'<svg onload="fetch(\'https://invalid.example\')"><script>raise SystemExit</script></svg>',
+        },
+        {
+            "id": "active-html",
+            "path": "assets/active.html",
+            "media_type": "text/html",
+            "compression": "store",
+            "bytes": b'<script type="module">import("https://invalid.example/module.js")</script>',
+        },
+    ]
+    effects: list[str] = []
+    monkeypatch.setattr("urllib.request.urlopen", lambda *_args, **_kwargs: effects.append("network"))
+
+    first = write_project_bundle(_project(assets), assets)
+    second = write_project_bundle(_project(assets), assets)
+    assert first == second
+    restored = read_project_bundle(first)
+
+    assert restored["project_bytes"].decode() == canonicalize_json(restored["project"])
+    assert [asset["path"] for asset in restored["assets"]] == [
+        "assets/active.html",
+        "assets/active.svg",
+    ]
+    for source in assets:
+        restored_asset = next(asset for asset in restored["assets"] if asset["id"] == source["id"])
+        assert restored_asset["bytes"] == source["bytes"]
+    assert effects == []
+
+
+def test_deterministic_entry_order_metadata_and_compression() -> None:
+    assets = [
+        {
+            "id": "z",
+            "path": "assets/z.bin",
+            "media_type": "application/octet-stream",
+            "compression": "store",
+            "bytes": b"\x00\x01\x02",
+        },
+        {
+            "id": "a",
+            "path": "assets/a.txt",
+            "media_type": "text/plain",
+            "compression": "deflate",
+            "bytes": b"compress me " * 20,
+        },
+    ]
+    archive = write_project_bundle(_project(assets), assets)
+    with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
+        infos = bundle.infolist()
+        assert [info.filename for info in infos] == [
+            "manifest.json",
+            "project.json",
+            "assets/a.txt",
+            "assets/z.bin",
+        ]
+        assert [info.compress_type for info in infos] == [0, 0, 8, 0]
+        assert all(info.date_time == (1980, 1, 1, 0, 0, 0) for info in infos)
+        assert all(not info.is_dir() for info in infos)

