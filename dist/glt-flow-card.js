@@ -4489,21 +4489,24 @@
       async listProjects() {
         try {
           return await this._ws("projects/list");
-        } catch (_err) {
+        } catch (err) {
+          if (this.hass?.callWS) throw err;
           return localRead("glt-flow-card.projects", []);
         }
       }
       async getProject(id) {
         try {
           return await this._ws("projects/get", { project_id: id });
-        } catch (_err) {
+        } catch (err) {
+          if (this.hass?.callWS) throw err;
           return localRead("glt-flow-card.projects", []).find((p) => p.id === id) || null;
         }
       }
       async saveProject(project, options = {}) {
         try {
           return await this._ws("projects/save", { project, autosave: !!options.autosave });
-        } catch (_err) {
+        } catch (err) {
+          if (this.hass?.callWS) throw err;
           const list = localRead("glt-flow-card.projects", []);
           const current = list.find((p) => p.id === project.id);
           const stamp = nowIso();
@@ -4522,7 +4525,8 @@
       async deleteProject(id) {
         try {
           return await this._ws("projects/delete", { project_id: id });
-        } catch (_err) {
+        } catch (err) {
+          if (this.hass?.callWS) throw err;
           localWrite("glt-flow-card.projects", localRead("glt-flow-card.projects", []).filter((p) => p.id !== id));
           return true;
         }
@@ -23066,7 +23070,35 @@ ${entityId}`)) return;
       artifactEquality: "Artifact equality",
       byteIdentical: "Byte-identical",
       noEvidence: "Release evidence is incomplete. Missing or stale gates are listed below.",
-      errors: "Validation issues"
+      errors: "Validation issues",
+      workflow: ["Inspect", "Preview", "Backup", "Apply", "Verify"],
+      dryRun: "Run dry run",
+      dryRunFresh: "Run fresh dry run",
+      previewReady: "Migration preview ready",
+      previewFailed: "Migration preview failed. The original project is unchanged. Run a fresh dry run after reviewing the diagnostic.",
+      categories: { add: "Added", remove: "Removed", move: "Moved", binding: "Binding", config: "Configuration" },
+      impact: "Impact",
+      requiredDependency: "Required dependency",
+      ignoredNoise: "Ignored ordering noise",
+      applySelected: "Apply selected changes",
+      confirmApplyHeading: "Confirm project changes",
+      confirmApplyBody: "Apply {count} validated changes to “{project}” at revision {revision}? A verified backup will be created first. This changes project data only and sends no plant command.",
+      cancelApply: "Cancel project changes",
+      applying: "Applying {count} project changes",
+      applySuccess: "Project changes applied",
+      applySuccessBody: "Revision {revision} was validated and verified after applying {count} changes. Verified backup {backup_id} remains available.",
+      applyFailure: "Project changes were not applied. Nothing was changed. Review the diagnostic and run a fresh dry run.",
+      revisionConflict: "Revision {expected} is no longer current; revision {actual} is active. Reload and compare again.",
+      restore: "Restore verified backup",
+      restoreBody: "Restore verified backup {backup_id} for “{project}”? The current revision {revision} will be replaced. A new evidence receipt will be created. This changes project data only and sends no plant command.",
+      restoreLabel: "Enter the project name to confirm",
+      restoreAwaiting: "Enter “{project}” to enable Restore verified backup.",
+      restoreReady: "Project name confirmed. Review the revision and backup before continuing.",
+      restoreMismatch: "The project name does not match. The project remains unchanged.",
+      rollbackRunning: "Restoring verified backup",
+      rollbackSuccess: "Verified backup restored",
+      rollbackSuccessBody: "Project revision {revision} matches verified backup {backup_id}. A rollback evidence receipt was created.",
+      rollbackFailure: "Backup restore verification failed. Both snapshots were retained. Download the rollback diagnostic and request administrator recovery."
     },
     de: {
       title: "Projektsicherheit",
@@ -23104,7 +23136,35 @@ ${entityId}`)) return;
       artifactEquality: "Artefaktgleichheit",
       byteIdentical: "Byte-identisch",
       noEvidence: "Die Release-Nachweise sind unvollständig. Fehlende oder veraltete Prüfungen sind unten aufgeführt.",
-      errors: "Validierungsprobleme"
+      errors: "Validierungsprobleme",
+      workflow: ["Prüfen", "Vorschau", "Backup", "Übernehmen", "Verifizieren"],
+      dryRun: "Probelauf starten",
+      dryRunFresh: "Neuen Probelauf starten",
+      previewReady: "Migrationsvorschau bereit",
+      previewFailed: "Die Migrationsvorschau ist fehlgeschlagen. Das Originalprojekt bleibt unverändert. Prüfen Sie die Diagnose und starten Sie einen neuen Probelauf.",
+      categories: { add: "Hinzugefügt", remove: "Entfernt", move: "Verschoben", binding: "Bindung", config: "Konfiguration" },
+      impact: "Auswirkung",
+      requiredDependency: "Erforderliche Abhängigkeit",
+      ignoredNoise: "Ignorierte Reihenfolgenänderung",
+      applySelected: "Ausgewählte Änderungen übernehmen",
+      confirmApplyHeading: "Projektänderungen bestätigen",
+      confirmApplyBody: "{count} validierte Änderungen auf „{project}“ in Revision {revision} übernehmen? Zuerst wird ein verifiziertes Backup erstellt. Dies ändert nur Projektdaten und sendet keinen Anlagenbefehl.",
+      cancelApply: "Projektänderungen abbrechen",
+      applying: "{count} Projektänderungen werden übernommen",
+      applySuccess: "Projektänderungen übernommen",
+      applySuccessBody: "Revision {revision} wurde nach dem Übernehmen von {count} Änderungen validiert und verifiziert. Das verifizierte Backup {backup_id} bleibt verfügbar.",
+      applyFailure: "Projektänderungen wurden nicht übernommen. Es wurde nichts geändert. Prüfen Sie die Diagnose und starten Sie einen neuen Probelauf.",
+      revisionConflict: "Revision {expected} ist nicht mehr aktuell; Revision {actual} ist aktiv. Laden Sie neu und vergleichen Sie erneut.",
+      restore: "Verifiziertes Backup wiederherstellen",
+      restoreBody: "Verifiziertes Backup {backup_id} für „{project}“ wiederherstellen? Die aktuelle Revision {revision} wird ersetzt. Ein neuer Nachweis wird erstellt. Dies ändert nur Projektdaten und sendet keinen Anlagenbefehl.",
+      restoreLabel: "Projektname zur Bestätigung eingeben",
+      restoreAwaiting: "Geben Sie „{project}“ ein, um „Verifiziertes Backup wiederherstellen“ zu aktivieren.",
+      restoreReady: "Projektname bestätigt. Prüfen Sie vor dem Fortfahren die Revision und das Backup.",
+      restoreMismatch: "Der Projektname stimmt nicht überein. Das Projekt bleibt unverändert.",
+      rollbackRunning: "Verifiziertes Backup wird wiederhergestellt",
+      rollbackSuccess: "Verifiziertes Backup wiederhergestellt",
+      rollbackSuccessBody: "Projektrevision {revision} entspricht dem verifizierten Backup {backup_id}. Ein Rollback-Nachweis wurde erstellt.",
+      rollbackFailure: "Verifizierung der Backup-Wiederherstellung fehlgeschlagen. Beide Snapshots wurden beibehalten. Laden Sie die Rollback-Diagnose herunter und fordern Sie eine Wiederherstellung durch die Administration an."
     }
   };
   function projectSafetyLocale(hass, documentLanguage = "en") {
@@ -23114,6 +23174,7 @@ ${entityId}`)) return;
   function projectSafetyCopy(locale, key, values = {}) {
     const value = COPY[locale]?.[key] ?? COPY.en[key] ?? key;
     if (Array.isArray(value)) return [...value];
+    if (value && typeof value === "object") return { ...value };
     return String(value).replace(/\{([a-z_]+)\}/giu, (_match, name) => String(values[name] ?? ""));
   }
 
@@ -23134,6 +23195,7 @@ ${entityId}`)) return;
   .glt-safe-content{min-width:0;overflow:auto;padding:24px}.glt-safe-content h3{font-size:18px;line-height:1.3;margin:0 0 16px}.glt-safe-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:16px}.glt-safe-card{min-width:0;padding:16px;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:10px;background:color-mix(in srgb,var(--bg,var(--card-background-color,#0a1826)) 94%,var(--mut,#8198ad) 6%)}.glt-safe-card h4{margin:0 0 8px;font-size:14px}.glt-safe-value{font-weight:700;overflow-wrap:anywhere}.glt-safe-help,.glt-safe-code{color:var(--mut,var(--secondary-text-color,#8198ad));font-size:12px}.glt-safe-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}
   .glt-safe-status{display:flex;align-items:center;gap:8px;margin:0 0 16px;padding:12px;border:1px solid currentColor;border-radius:10px}.glt-safe-status.pass{color:#31d879}.glt-safe-status.fail{color:#ff4f4f}.glt-safe-status.info{color:var(--e,#36c7ff)}
   .glt-safe-table{width:100%;border-collapse:collapse}.glt-safe-table th,.glt-safe-table td{padding:8px;border-bottom:1px solid var(--b,var(--divider-color,#19334a));text-align:left;vertical-align:top}.glt-safe-table th{font-size:12px}.glt-safe-table td{overflow-wrap:anywhere}.glt-safe-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.glt-safe-footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--b,var(--divider-color,#19334a));background:var(--bg,var(--card-background-color,#0a1826))}
+  .glt-safe-stepper{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:0;list-style:none}.glt-safe-stepper li{padding:8px;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:8px;color:var(--mut,var(--secondary-text-color,#8198ad));font-size:12px}.glt-safe-stepper li.complete{border-color:var(--e,#0aa8ff);color:inherit}.glt-safe-input{width:min(100%,420px);min-height:44px;display:block;margin-top:8px;padding:8px;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:8px;background:var(--bg,var(--card-background-color,#0a1826));color:inherit;font:14px/1.5 inherit}.glt-safe-confirm{margin-top:16px}
   @media(max-width:767px){.glt-safe-modal{padding:0}.glt-safe-dialog{width:100vw;max-height:none;height:100dvh;border:0;border-radius:0}.glt-safe-content{padding:16px}.glt-safe-table,.glt-safe-table tbody,.glt-safe-table tr,.glt-safe-table th,.glt-safe-table td{display:block}.glt-safe-table thead{display:none}.glt-safe-table tr{padding:8px 0;border-bottom:1px solid var(--b,var(--divider-color,#19334a))}.glt-safe-table td{border:0}.glt-safe-table td::before{content:attr(data-label);display:block;color:var(--mut,var(--secondary-text-color,#8198ad));font-size:12px;font-weight:700}}
   @media(forced-colors:active){.glt-safe-dialog,.glt-safe-card,.glt-safe-status,.glt-safe-btn,.glt-safe-tab{border:1px solid CanvasText}.glt-safe-tab[aria-selected="true"]{outline:2px solid Highlight}}
   @media(prefers-reduced-motion:reduce){.glt-safe-modal,.glt-safe-dialog,.glt-safe-tab{scroll-behavior:auto;transition:none!important;animation:none!important}}
@@ -23165,6 +23227,41 @@ ${entityId}`)) return;
     node.setAttribute("aria-live", "polite");
     node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text));
     return node;
+  }
+  function projectAuthority(editor, type, payload) {
+    if (!editor._hass?.callWS) return Promise.reject(Object.assign(new Error("Companion unavailable"), { code: "unavailable" }));
+    return editor._hass.callWS({ type: `glt_flow_card/projects/${type}`, ...payload });
+  }
+  function selectedClosure(state) {
+    const selected = /* @__PURE__ */ new Set();
+    const locked = /* @__PURE__ */ new Set();
+    for (const requested of state.requested || []) {
+      const closure = state.preview?.closures?.[requested];
+      for (const operationId of closure?.selected || [requested]) {
+        selected.add(operationId);
+        if (operationId !== requested) locked.add(operationId);
+      }
+    }
+    state.locked = locked;
+    return [...selected].sort();
+  }
+  function actualRevision(error, fallback) {
+    if (Number.isInteger(error?.actual_revision)) return error.actual_revision;
+    const match = String(error?.message || "").match(/revision_conflict:(\d+)/u);
+    return match ? Number(match[1]) : fallback;
+  }
+  function migrationStatus(editor, state) {
+    if (state.phase === "preview-ready") return ["pass", copyFor(editor, "previewReady")];
+    if (state.phase === "applying") return ["info", copyFor(editor, "applying", { count: selectedClosure(state).length })];
+    if (state.phase === "applied") return ["pass", copyFor(editor, "applySuccess")];
+    if (state.phase === "conflict") return ["fail", copyFor(editor, "revisionConflict", { expected: state.expectedRevision, actual: state.actualRevision })];
+    if (state.phase === "rollback-running") return ["info", copyFor(editor, "rollbackRunning")];
+    if (state.phase === "rolled-back") return ["pass", copyFor(editor, "rollbackSuccess")];
+    if (state.phase === "unavailable") return ["fail", copyFor(editor, "standalone")];
+    if (state.phase === "rollback-failed") return ["fail", copyFor(editor, "rollbackFailure")];
+    if (state.phase === "failed") return ["fail", copyFor(editor, "applyFailure")];
+    if (state.phase === "preview-failed") return ["fail", copyFor(editor, "previewFailed")];
+    return ["info", copyFor(editor, "notRun")];
   }
   function focusable(dialog) {
     return [...dialog.querySelectorAll("button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])")].filter((node) => !node.hidden && node.getAttribute("aria-hidden") !== "true");
@@ -23233,10 +23330,202 @@ ${entityId}`)) return;
       queueMicrotask(() => validate.click());
     }
   }
-  function renderMigration(editor, content) {
+  function renderMigration(editor, state, content) {
     content.append(element("h3", "", copyFor(editor, "tabs")[2]));
-    content.append(status("info", editor._hass?.callWS ? copyFor(editor, "notRun") : copyFor(editor, "standalone")));
-    content.append(element("p", "glt-safe-help", copyFor(editor, "scope")));
+    const workflow = element("ol", "glt-safe-stepper");
+    workflow.setAttribute("aria-label", "Migration workflow");
+    for (const [index, label] of copyFor(editor, "workflow").entries()) {
+      workflow.append(element("li", state.preview || index === 0 ? "complete" : "", `${index + 1}. ${label}`));
+    }
+    content.append(workflow);
+    const [kind, message] = migrationStatus(editor, state);
+    content.append(status(kind, message));
+    if (state.phase === "applied") {
+      content.append(element("p", "", copyFor(editor, "applySuccessBody", {
+        revision: state.applied.revision,
+        count: state.appliedCount,
+        backup_id: state.applied.snapshot_id
+      })));
+    }
+    if (state.phase === "rolled-back") {
+      content.append(element("p", "", copyFor(editor, "rollbackSuccessBody", {
+        revision: state.rollback.revision,
+        backup_id: state.applied?.snapshot_id
+      })));
+    }
+    if (state.preview) {
+      const receipt = state.preview.migration_receipt || {};
+      content.append(card("Migration", `${receipt.source_schema_version ?? "—"} → ${receipt.candidate_schema_version ?? "—"}`, `${receipt.steps?.length || 0} sequential step(s)`));
+      const table2 = element("table", "glt-safe-table");
+      const head = element("thead");
+      const headRow = element("tr");
+      for (const label of ["Select", "Category", copyFor(editor, "path"), copyFor(editor, "impact")]) headRow.append(element("th", "", label));
+      head.append(headRow);
+      const body = element("tbody");
+      selectedClosure(state);
+      for (const operation2 of state.preview.operations || []) {
+        const row = element("tr");
+        const selectCell = element("td");
+        selectCell.dataset.label = "Select";
+        const checkbox = element("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = state.requested.has(operation2.id) || state.locked.has(operation2.id);
+        checkbox.disabled = state.locked.has(operation2.id);
+        checkbox.setAttribute("aria-label", operation2.id);
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) state.requested.add(operation2.id);
+          else state.requested.delete(operation2.id);
+          state.render();
+        });
+        selectCell.append(checkbox);
+        if (state.locked.has(operation2.id)) selectCell.append(element("span", "glt-safe-help", copyFor(editor, "requiredDependency")));
+        const category = copyFor(editor, "categories")[operation2.category] || operation2.category;
+        const values = [category, operation2.path, `${operation2.impact?.severity || "—"}: ${(operation2.impact?.areas || []).join(", ")}`];
+        row.append(selectCell);
+        for (const [index, value] of values.entries()) {
+          const cell = element("td", index > 0 ? "glt-safe-code" : "", value);
+          cell.dataset.label = ["Category", copyFor(editor, "path"), copyFor(editor, "impact")][index];
+          row.append(cell);
+        }
+        body.append(row);
+      }
+      table2.append(head, body);
+      content.append(table2);
+      if (state.preview.ordering_noise?.length) content.append(element("p", "glt-safe-help", `${copyFor(editor, "ignoredNoise")}: ${state.preview.ordering_noise.join(", ")}`));
+    }
+    if (state.confirmApply) {
+      const confirm2 = element("section", "glt-safe-card glt-safe-confirm");
+      confirm2.append(element("h3", "", copyFor(editor, "confirmApplyHeading")));
+      const selectedIds = selectedClosure(state);
+      confirm2.append(element("p", "", copyFor(editor, "confirmApplyBody", {
+        count: selectedIds.length,
+        project: editor._config?.project?.name || editor._config?.project?.id,
+        revision: state.expectedRevision
+      })));
+      const actions2 = element("div", "glt-safe-actions");
+      const cancel2 = button(copyFor(editor, "cancelApply"));
+      cancel2.addEventListener("click", () => {
+        state.confirmApply = false;
+        state.render();
+      });
+      const apply = button(copyFor(editor, "confirmApplyHeading"), "glt-safe-btn primary");
+      apply.addEventListener("click", async () => {
+        state.confirmApply = false;
+        state.phase = "applying";
+        state.render();
+        try {
+          const selected_ids = selectedClosure(state);
+          const result2 = await projectAuthority(editor, "apply", {
+            project_id: editor._config.project.id,
+            preview_id: state.preview.preview_id,
+            expected_revision: state.expectedRevision,
+            selected_ids
+          });
+          state.applied = result2;
+          state.appliedCount = selected_ids.length;
+          state.phase = "applied";
+          if (result2?.config) editor._config = structuredClone(result2.config);
+        } catch (error) {
+          if (error?.code === "revision_conflict" || /revision_conflict/u.test(String(error?.message))) {
+            state.phase = "conflict";
+            state.actualRevision = actualRevision(error, state.expectedRevision);
+          } else if (error?.code === "unavailable") state.phase = "unavailable";
+          else state.phase = "failed";
+        }
+        state.render();
+      });
+      actions2.append(cancel2, apply);
+      confirm2.append(actions2);
+      content.append(confirm2);
+    }
+    if (state.confirmRollback) {
+      const confirm2 = element("section", "glt-safe-card glt-safe-confirm");
+      confirm2.append(element("h3", "", copyFor(editor, "restore")));
+      const name = editor._config?.project?.name || editor._config?.project?.id || "";
+      confirm2.append(element("p", "", copyFor(editor, "restoreBody", { backup_id: state.applied.snapshot_id, project: name, revision: state.applied.revision })));
+      const label = element("label", "", copyFor(editor, "restoreLabel"));
+      const input = element("input", "glt-safe-input");
+      input.id = `glt-safe-restore-${Math.random().toString(36).slice(2)}`;
+      label.htmlFor = input.id;
+      const hint = element("p", "glt-safe-help", copyFor(editor, "restoreAwaiting", { project: name }));
+      const actions2 = element("div", "glt-safe-actions");
+      const cancel2 = button(copyFor(editor, "cancelApply"));
+      cancel2.addEventListener("click", () => {
+        state.confirmRollback = false;
+        state.render();
+      });
+      const restore = button(copyFor(editor, "restore"), "glt-safe-btn primary");
+      restore.disabled = true;
+      input.addEventListener("input", () => {
+        restore.disabled = input.value !== name;
+        hint.textContent = copyFor(editor, input.value === name ? "restoreReady" : input.value ? "restoreMismatch" : "restoreAwaiting", { project: name });
+      });
+      restore.addEventListener("click", async () => {
+        if (input.value !== name) return;
+        state.confirmRollback = false;
+        state.phase = "rollback-running";
+        state.render();
+        try {
+          const result2 = await projectAuthority(editor, "rollback", {
+            project_id: editor._config.project.id,
+            snapshot_id: state.applied.snapshot_id,
+            expected_revision: state.applied.revision,
+            confirmation: `ROLLBACK ${editor._config.project.id}`
+          });
+          state.rollback = result2;
+          state.phase = "rolled-back";
+          if (result2?.config) editor._config = structuredClone(result2.config);
+        } catch (_error) {
+          state.phase = "rollback-failed";
+        }
+        state.render();
+      });
+      actions2.append(cancel2, restore);
+      confirm2.append(label, input, hint, actions2);
+      content.append(confirm2);
+    }
+    const actions = element("div", "glt-safe-actions");
+    const dryRun = button(state.preview ? copyFor(editor, "dryRunFresh") : copyFor(editor, "dryRun"), state.preview ? "glt-safe-btn" : "glt-safe-btn primary");
+    dryRun.addEventListener("click", async () => {
+      state.phase = "previewing";
+      state.preview = null;
+      state.requested = /* @__PURE__ */ new Set();
+      state.render();
+      try {
+        const expected_revision = Number(editor._config?.project?.revision || 0);
+        const preview = await projectAuthority(editor, "preview", {
+          project_id: editor._config.project.id,
+          expected_revision,
+          candidate: structuredClone(editor._config)
+        });
+        state.preview = preview;
+        state.expectedRevision = preview.base_revision;
+        state.requested = new Set((preview.operations || []).map((operation2) => operation2.id));
+        state.phase = "preview-ready";
+      } catch (error) {
+        state.phase = error?.code === "unavailable" ? "unavailable" : "preview-failed";
+      }
+      state.render();
+    });
+    actions.append(dryRun);
+    if (state.preview && !["conflict", "unavailable", "failed"].includes(state.phase)) {
+      const apply = button(copyFor(editor, "applySelected"), "glt-safe-btn primary");
+      apply.disabled = selectedClosure(state).length === 0;
+      apply.addEventListener("click", () => {
+        state.confirmApply = true;
+        state.render();
+      });
+      actions.append(apply);
+    }
+    if (state.phase === "applied" && !state.confirmRollback) {
+      const restore = button(copyFor(editor, "restore"));
+      restore.addEventListener("click", () => {
+        state.confirmRollback = true;
+        state.render();
+      });
+      actions.append(restore);
+    }
+    content.append(actions);
   }
   function appendAssetTable(editor, content, assets) {
     content.append(element("h3", "", copyFor(editor, "assetMetadata")));
@@ -23296,7 +23585,21 @@ ${entityId}`)) return;
   }
   function openProjectSafety(editor, trigger) {
     editor.shadowRoot.querySelector(".glt-safe-modal")?.remove();
-    const state = { tab: 0, validation: null, bundle: null, bundleError: null, runValidation: false };
+    const state = {
+      tab: 0,
+      validation: null,
+      bundle: null,
+      bundleError: null,
+      runValidation: false,
+      phase: "idle",
+      preview: null,
+      requested: /* @__PURE__ */ new Set(),
+      locked: /* @__PURE__ */ new Set(),
+      applied: null,
+      rollback: null,
+      confirmApply: false,
+      confirmRollback: false
+    };
     const modal = element("div", "glt-safe-modal");
     const dialog = element("section", "glt-safe-dialog");
     dialog.setAttribute("role", "dialog");
@@ -23382,7 +23685,7 @@ ${entityId}`)) return;
       }
       if (state.tab === 0) renderOverview(editor, state, content);
       if (state.tab === 1) renderValidation(editor, state, content);
-      if (state.tab === 2) renderMigration(editor, content);
+      if (state.tab === 2) renderMigration(editor, state, content);
       if (state.tab === 3) renderBundles(editor, state, content);
       if (state.tab === 4) renderEvidence(editor, content);
     };

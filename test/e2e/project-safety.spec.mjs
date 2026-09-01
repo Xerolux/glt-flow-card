@@ -177,7 +177,7 @@ test("project-safety selective apply keeps server-declared dependencies locked",
   await expect(dialog).toContainText("Required dependency");
 });
 
-test("project-safety apply sends only opaque preview authority and selected IDs", async ({ page }) => {
+test("project-safety selective apply sends only opaque preview authority and selected IDs", async ({ page }) => {
   await mountEditor(page);
   await openProjectSafety(page);
   const dialog = await runDryRun(page);

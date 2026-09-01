@@ -4489,21 +4489,24 @@
       async listProjects() {
         try {
           return await this._ws("projects/list");
-        } catch (_err) {
+        } catch (err) {
+          if (this.hass?.callWS) throw err;
           return localRead("glt-flow-card.projects", []);
         }
       }
       async getProject(id) {
         try {
           return await this._ws("projects/get", { project_id: id });
-        } catch (_err) {
+        } catch (err) {
+          if (this.hass?.callWS) throw err;
           return localRead("glt-flow-card.projects", []).find((p) => p.id === id) || null;
         }
       }
       async saveProject(project, options = {}) {
         try {
           return await this._ws("projects/save", { project, autosave: !!options.autosave });
-        } catch (_err) {
+        } catch (err) {
+          if (this.hass?.callWS) throw err;
           const list = localRead("glt-flow-card.projects", []);
           const current = list.find((p) => p.id === project.id);
           const stamp = nowIso();
@@ -4522,7 +4525,8 @@
       async deleteProject(id) {
         try {
           return await this._ws("projects/delete", { project_id: id });
-        } catch (_err) {
+        } catch (err) {
+          if (this.hass?.callWS) throw err;
           localWrite("glt-flow-card.projects", localRead("glt-flow-card.projects", []).filter((p) => p.id !== id));
           return true;
         }
