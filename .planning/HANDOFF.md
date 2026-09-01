@@ -1,8 +1,8 @@
 # GLT Flow Card v1.1 — Living Cross-AI Execution Handoff
 
-**Last updated:** 2026-09-01T17:38:29+02:00  
+**Last updated:** 2026-09-01T19:21:11+02:00  
 **Canonical scope:** Implement and verify all original roadmap items **1-30**.  
-**Overall status:** Phase 1 implementation is complete, but Phase 1 final verification is still open. Phases 2-10 have not started.  
+**Overall status:** Phase 1 implementation and all 14 reported code-review fixes are committed with full post-fix gates passing. Repetitive re-review was stopped at the user's request; the consolidated security/UI/goal verification remains open. Phases 2-10 have not started.  
 **Maintainer rule:** Update this file whenever implementation, review, verification, or blockers change.
 
 ## Purpose and User Intent
@@ -30,13 +30,13 @@ This is a timestamped snapshot, not a substitute for a fresh `git status` when r
 |---|---|
 | Repository | `C:\Users\basti\Documents\GitHub\glt-flow-card` |
 | Branch | `main` |
-| HEAD | `d9ad33d` |
-| Upstream comparison | `origin/main...HEAD`: 0 behind, 109 ahead |
+| HEAD before this handoff update | `fc05158` |
+| Upstream comparison | `origin/main...HEAD`: 0 behind, 132 ahead |
 | Push/publication | Not performed or authorized by this handoff |
-| Working tree | Not clean because the active review-fix recovery marker was untracked |
-| Active recovery marker | `.planning/phases/01-trusted-contract-release-foundation/.review-fix-recovery-pending.json` |
-| Active fix branch recorded by marker | `gsd-reviewfix/01-phase1-code-fixes` |
-| Active fix worktree recorded by marker | `C:\Users\basti\AppData\Local\Temp\sv-01-reviewfix-phase1` |
+| Working tree | Clean before this handoff update |
+| Active recovery marker | None |
+| Preserved local fix branch | `gsd-reviewfix/01-phase1-code-fixes` is already merged; retained only as local history |
+| Temporary worktrees/containers | None active |
 
 Before editing, refresh this section with `git status --short --branch`, `git rev-parse --short HEAD`, `git rev-list --left-right --count origin/main...HEAD`, and `git worktree list`. If the recovery marker still exists, inspect it and coordinate with the active review fixer before touching overlapping files.
 
@@ -64,7 +64,7 @@ The current `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` record Phase 1 as im
 
 | Phase | Name | Owned requirements | Current status | Next action |
 |---:|---|---|---|---|
-| 1 | Trusted Contract & Release Foundation | SCHEMA-01, DIFF-01, HACS-01 | ◆ 13/13 plans implemented; final verification open | Complete review fixes and all Phase 1 audits/gates |
+| 1 | Trusted Contract & Release Foundation | SCHEMA-01, DIFF-01, HACS-01 | ◆ 13/13 plans and 14/14 review fixes implemented; final verification open | Resume with one consolidated verification pass, not another review loop |
 | 2 | Authoritative Policy, Controls & Collaboration | SEC-01, COLLAB-01 | ○ Not started | Discuss/research/plan after Phase 1 verifier passes |
 | 3 | Semantic Equipment & Provenance | OPS-01, SEM-01, MAP-01, PROF-01, PROTO-01 | ○ Not started | Start after Phase 2 verification |
 | 4 | Runtime Operations & Drill-Down | OPS-02, NAV-01 | ○ Not started | Start after Phase 3 verification |
@@ -123,27 +123,19 @@ Checkboxes represent final acceptance, not implementation alone. All remain unch
 
 These checks are a pre-review baseline. They must be rerun after fixes; they do not close final verification by themselves.
 
-### Independent review result
+### Independent review and fix result
 
-The standard-depth review inspected 95 files and reported **5 critical blockers and 2 warnings** in [01-REVIEW.md](phases/01-trusted-contract-release-foundation/01-REVIEW.md):
+The standard-depth reviews inspected the same 95-file scope and cumulatively reported **14 concrete findings**. All 14 are implemented and recorded in [01-REVIEW-FIX.md](phases/01-trusted-contract-release-foundation/01-REVIEW-FIX.md), status `all_fixed`, committed by `fc05158`. The fixes cover cross-runtime number/Unicode parity, array mutation ordering, dependency closure, rollback identity, bounded preview retention, deterministic clean-checkout artifacts, hermetic gates, equal-clock eviction, and recoverable exactly-once audit persistence.
 
-| Finding | Severity | Short description | Status at last update |
-|---|---|---|---|
-| CR-01 | Critical | Python/JavaScript canonical number bytes diverge for valid large numbers | Fixer in progress |
-| CR-02 | Critical | Multiple array deletions can persist the wrong project | Fixer in progress |
-| CR-03 | Critical | Removal dependency closure can select destructive unrequested removals | Fixer in progress |
-| CR-04 | Critical | UI restore targets the post-apply snapshot instead of the pre-change backup | Fixer in progress |
-| CR-05 | Critical | Dry-run previews are unbounded and can exhaust Home Assistant memory | Fixer in progress |
-| WR-01 | Warning | Lone Unicode surrogates can crash Python validation | Fixer in progress |
-| WR-02 | Warning | UI keeps a consumed preview actionable after apply/rollback | Fixer in progress |
+Post-fix evidence is green: Node **93/93**, local Python **90/90**, exact-dist Chromium **18/18**, Home Assistant 2024.8.0 **91/91**, Home Assistant 2026.8.3 **91/91**, HACS categories, release acceptance, provenance, clean tracked export, Windows checkout, and Linux Node 22 checkout. No service attempts, live HA writes, bus/plant writes, publication, or running containers remain.
 
-At the last update, the dedicated review fixer was active under the recovery marker listed in the repository snapshot. Do not assume the fixes are merged or correct until the marker is resolved, the fix report is committed, and re-review passes.
+The last [01-REVIEW.md](phases/01-trusted-contract-release-foundation/01-REVIEW.md) records the audit-persistence blocker that was subsequently fixed by `83d8b32`. A further clean-review rerun was deliberately interrupted on 2026-09-01 at the user's instruction to stop repeated checking. Do not restart an iterative review loop; if closing Phase 1 later, use one bounded consolidated verifier and record its verdict.
 
 ### Phase 1 remaining acceptance checklist
 
-- [ ] Complete and commit the fix report for CR-01 through CR-05 and WR-01 through WR-02, including targeted behavioral regression tests and exact commit references.
-- [ ] Re-run an independent code review against the fixed source and generated artifacts; resolve every remaining Critical and Warning or record an explicit accepted exception authorized by the user.
-- [ ] Re-run the complete Phase 1 gate set against the post-fix exact artifacts, including deterministic build, full Node tests, Python/Companion tests, exact-dist browser tests, both immutable HA lanes, HACS staging validation, provenance, release acceptance, T-01 through T-08, and generated-artifact equality.
+- [x] Complete and commit the cumulative fix report for all 14 review findings, including targeted behavioral regression tests and exact commit references (`83d8b32`, report commit `fc05158`).
+- [ ] Obtain a final clean consolidated verdict if Phase 1 is formally closed later. Repetitive review loops were stopped by explicit user instruction on 2026-09-01.
+- [x] Re-run the complete post-fix implementation gate set: Node 93/93, Python 90/90, exact-dist 18/18, both HA lanes 91/91, HACS, provenance, release acceptance, clean tracked export, Windows and Linux checkout evidence.
 - [ ] Run the Phase 1 security audit against [01-THREATS.md](phases/01-trusted-contract-release-foundation/01-THREATS.md); create and pass the security report, with no unresolved blocking severity.
 - [ ] Run the Phase 1 UI audit against [01-UI-SPEC.md](phases/01-trusted-contract-release-foundation/01-UI-SPEC.md); create and pass the UI review, including exact-dist keyboard/reflow/no-side-effect evidence.
 - [ ] Run schema drift and codebase drift checks; record results and resolve blocking drift without editing generated artifacts alone.
@@ -193,5 +185,5 @@ For every phase: discuss unresolved product decisions, research unstable framewo
 
 | Timestamp | Change | Commit/evidence |
 |---|---|---|
+| 2026-09-01T19:21:11+02:00 | Stopped repeated review loops at explicit user request; recorded all 14 findings fixed and the full post-fix gate results; left consolidated security/UI/goal verification and Phases 2-10 open. | `83d8b32`; `fc05158`; `phases/01-trusted-contract-release-foundation/01-REVIEW-FIX.md` |
 | 2026-09-01T17:38:29+02:00 | Created the canonical cross-AI handoff; captured the strict distinction between Phase 1 implementation and final verification; recorded all 30 requirements, open review findings, safety boundaries, and remaining phases. | Handoff commit pending at document creation; todo capture `d9ad33d`; review report `.planning/phases/01-trusted-contract-release-foundation/01-REVIEW.md` |
-
