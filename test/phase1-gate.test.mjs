@@ -173,3 +173,82 @@ test("release workflow publishes downloaded exact assets without rebuild or mirr
   assert.doesNotMatch(publishJob, /npm (?:run )?build|npm install|npm ci/);
   assert.doesNotMatch(workflow, /mirror|companion[_-](?:repo|token)|repository_dispatch/i);
 });
+
+test("Phase-1 plan executes every canonical threat owner exactly once without recursion", async () => {
+  const phase1 = await import("../tools/verify-phase1.mjs");
+  const plan = await phase1.loadPhase1Plan({ root: ROOT });
+  assert.deepEqual(plan.owner_commands.map(({ id }) => id), [
+    "T-01",
+    "T-02",
+    "T-03",
+    "T-04",
+    "T-05",
+    "T-06",
+    "T-07",
+    "T-08",
+  ]);
+  assert.equal(new Set(plan.owner_commands.map(({ command }) => command)).size, 8);
+  for (const owner of plan.owner_commands) {
+    assert.equal(plan.commands.filter(({ command }) => command === owner.command).length, 1, owner.id);
+  }
+  assert.ok(plan.commands.every(({ command }) => !command.includes("test:phase1")));
+  assert.deepEqual(Object.keys(plan.requirements), ["SCHEMA-01", "DIFF-01", "HACS-01"]);
+  assert.equal(Object.keys(plan.roadmap).length, 5);
+  assert.equal(Object.keys(plan.threats).length, 8);
+  assert.equal(Object.keys(plan.tasks).length, 30);
+});
+
+test("Phase-1 evidence refuses missing skipped zero-test stale and unmapped results", async () => {
+  const phase1 = await import("../tools/verify-phase1.mjs");
+  const plan = await phase1.loadPhase1Plan({ root: ROOT });
+  const results = Object.fromEntries(plan.commands.map(({ id, command }) => [id, {
+    command,
+    duration_ms: 1,
+    exit_code: 0,
+    output_sha256: "a".repeat(64),
+    passed: true,
+    skipped: false,
+    test_count: 1,
+  }]));
+  const valid = phase1.validatePhase1Evidence(plan, results);
+  assert.equal(valid.verified, true);
+
+  const cases = [
+    ["missing", (copy) => { delete copy[plan.commands[0].id]; }, /missing command result/i],
+    ["skipped", (copy) => { copy[plan.commands[0].id].skipped = true; }, /skipped/i],
+    ["zero-test", (copy) => { copy[plan.commands[0].id].test_count = 0; }, /zero tests/i],
+    ["stale", (copy) => { copy[plan.commands[0].id].command = "stale"; }, /stale command/i],
+  ];
+  for (const [name, mutate, expected] of cases) {
+    const copy = structuredClone(results);
+    mutate(copy);
+    assert.throws(() => phase1.validatePhase1Evidence(plan, copy), expected, name);
+  }
+  const unmapped = structuredClone(plan);
+  unmapped.requirements["SCHEMA-01"].evidence = [];
+  assert.throws(() => phase1.validatePhase1Evidence(unmapped, results), /SCHEMA-01.*unmapped/i);
+});
+
+test("Phase-1 documentation states tested boundaries without public or capacity overclaim", async () => {
+  const files = await Promise.all([
+    "README.md",
+    "README.de.md",
+    "docs/wiki/Installation.md",
+    "docs/wiki/YAML-Projects.md",
+    "docs/wiki/Companion-Backend.md",
+  ].map((relativePath) => readFile(path.join(ROOT, relativePath), "utf8")));
+  const joined = files.join("\n");
+  for (const expected of [
+    /raw (?:validation )?errors/i,
+    /migration/i,
+    /rollback|restore/i,
+    /diff/i,
+    /conflict/i,
+    /bundle/i,
+    /standalone/i,
+    /local integration-category stage/i,
+    /no physical plant write/i,
+    /not a capacity certification/i,
+  ]) assert.match(joined, expected);
+  assert.doesNotMatch(joined, /Companion (?:is|now) (?:public|available) (?:in|through) HACS/i);
+});
