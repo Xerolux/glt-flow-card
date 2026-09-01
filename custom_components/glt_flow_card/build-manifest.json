@@ -58,7 +58,7 @@
   ],
   "build": {
     "commit": "fb789ed694b958746597e350d697c7617127f85f",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -181,8 +181,8 @@
     },
     {
       "path": "tools/build.mjs",
-      "sha256": "594fb09f91e93c0045683d4ebbf36c4524d21f48eb1aba2352e15016967a30a0",
-      "size": 12894
+      "sha256": "4a384aed5c716ba5d61f80561e17b8954f38a5370913d43cd82239666b09f6a3",
+      "size": 12877
     },
     {
       "path": "tools/generate-project-validators.mjs",
@@ -193,7 +193,7 @@
   "tools": {
     "ajv": "8.20.0",
     "esbuild": "0.25.12",
-    "node": "25.9.0"
+    "node": "22"
   },
   "validator": {
     "sha256": "0d09b3faef9c9e55a6c362cff4825414271444b3eb545ebdbc2f4c8bb81b193c",

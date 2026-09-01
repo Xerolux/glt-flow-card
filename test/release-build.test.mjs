@@ -88,7 +88,7 @@ test("manifest is canonical, deterministic and non-circular", async () => {
   assert.deepEqual(manifest.versions.project_schema, [0, 1, 2]);
   assert.match(manifest.build.commit, /^(?:[a-f0-9]{40}|WORKTREE)$/);
   assert.equal(typeof manifest.build.dirty, "boolean");
-  assert.match(manifest.tools.node, /^\d+\.\d+\.\d+$/);
+  assert.equal(manifest.tools.node, "22");
   assert.match(manifest.tools.esbuild, /^\d+\.\d+\.\d+$/);
   assert.match(manifest.tools.ajv, /^\d+\.\d+\.\d+$/);
   assert.deepEqual(

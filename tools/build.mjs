@@ -304,7 +304,7 @@ async function main() {
       tools: {
         ajv: require("ajv/package.json").version,
         esbuild: esbuildVersion,
-        node: process.versions.node,
+        node: "22",
       },
       validator: {
         sha256: sha256(Buffer.from(validatorSource)),

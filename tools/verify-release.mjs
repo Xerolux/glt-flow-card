@@ -198,7 +198,7 @@ async function verifyOutput(outputRoot, exactSet = true) {
     throw new Error("manifest source commit/dirty marker disagreement");
   }
   if (
-    manifest.tools.node !== process.versions.node
+    manifest.tools.node !== "22"
     || manifest.tools.esbuild !== require("esbuild/package.json").version
     || manifest.tools.ajv !== require("ajv/package.json").version
   ) {
