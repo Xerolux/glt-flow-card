@@ -74,7 +74,11 @@ export function buildCorpus() {
   return {
     cases,
     format: "glt-flow-card-schedule-transitions",
-    generated_by: "npm run generate:schedule:parity",
+    // Phrased so the string does not *start* with the command: the phase gate's
+    // graph builder treats a quoted `npm run x` as a real outgoing edge, and a
+    // generator naming its own script that way reports itself as a cycle. Phase
+    // 5 hit this and the convention is to name the script mid-string.
+    generated_by: "regenerate with npm run generate:schedule:parity",
     report_version: 1,
     zones: ZONES.map(([zone]) => zone),
   };

@@ -18212,7 +18212,7 @@
     }
   ],
   "format": "glt-flow-card-schedule-transitions",
-  "generated_by": "npm run generate:schedule:parity",
+  "generated_by": "regenerate with npm run generate:schedule:parity",
   "report_version": 1,
   "zones": [
     "Europe/Berlin",

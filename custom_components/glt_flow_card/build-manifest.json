@@ -117,7 +117,7 @@
     }
   ],
   "build": {
-    "commit": "cdc89c865b8a820e8e11b63e4e6a6a49f77badbc",
+    "commit": "66466a3fae0ff5e5d3f37b9598a397998d98bf60",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -147,8 +147,8 @@
     },
     {
       "path": "package.json",
-      "sha256": "1791844d470444a16addfa219fb294345b0f66e158ef1e49655ce23b16f4a9f1",
-      "size": 4276
+      "sha256": "7d1f5838a8a042339776d5f3cb547602dba97f24763cff606257f9a1cf3b2cbb",
+      "size": 4446
     },
     {
       "path": "schemas/bundle-manifest.schema.json",
@@ -329,6 +329,11 @@
       "path": "src/v100/routing.mjs",
       "sha256": "7a3795e708c7f68bcfd32b3804ef17e0452a5fbf3319b30b457a232b92fb594b",
       "size": 31731
+    },
+    {
+      "path": "src/v100/schedule-time.mjs",
+      "sha256": "83c4d004984770cc4ea08f079ba0e4505392f591d4a5ce87f6a8113178254e67",
+      "size": 9005
     },
     {
       "path": "src/v100/sdk-manifest.mjs",
