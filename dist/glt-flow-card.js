@@ -23096,6 +23096,483 @@ ${entityId}`)) return;
     console.info(`GLT Flow Card Engineering Platform 1.0 enabled · ${symbolCatalogStats().variants} symbol variants · ${COMPONENT_PROFILES.length} parametric profiles`);
   })();
 
+  // src/v100/project-authority.mjs
+  var SUPPORTED_POLICY_VERSION = 1;
+  var ROLES = Object.freeze(["viewer", "operator", "engineer", "admin"]);
+  var AUTHORITY_STATES = Object.freeze([
+    "absent",
+    "loading",
+    "current",
+    "stale",
+    "rejected",
+    "incompatible",
+    "unavailable"
+  ]);
+  var STABLE_ERROR_CODES = Object.freeze([
+    "not_found_or_denied",
+    "capability_denied",
+    "authority_stale",
+    "lease_required",
+    "lease_expired",
+    "lease_held",
+    "revision_conflict",
+    "invalid_input",
+    "effect_unknown",
+    "rate_limited",
+    "feature_unavailable",
+    "not_loaded"
+  ]);
+  var DIRTY_AUTO_RENEW_AT = 0.4;
+  var MANUAL_RENEW_PROMPT_AT = 0.5;
+  var SNAPSHOT_REFRESH_AT = 0.5;
+  var READ_ONLY_REASONS = Object.freeze({
+    "authority/absent": "authority_absent",
+    "authority/loading": "authority_loading",
+    "authority/stale": "authority_stale",
+    "authority/rejected": "authority_rejected",
+    "authority/incompatible": "authority_incompatible",
+    "authority/sequence-gap": "authority_sequence_gap",
+    "role/revoked": "role_revoked",
+    "lease/expired": "lease_expired",
+    "lease/lost": "lease_lost",
+    "companion/disconnected": "companion_disconnected"
+  });
+  var READ_ONLY_AUTHORITY = Object.freeze({
+    "authority/absent": "absent",
+    "authority/loading": "loading",
+    "authority/stale": "stale",
+    "authority/rejected": "rejected",
+    "authority/incompatible": "incompatible",
+    "authority/sequence-gap": "stale",
+    "role/revoked": "current",
+    "lease/expired": "current",
+    "lease/lost": "current",
+    "companion/disconnected": "unavailable"
+  });
+  var CLEARS_AUTHORIZED_ROWS = Object.freeze(/* @__PURE__ */ new Set([
+    "authority/absent",
+    "authority/stale",
+    "authority/rejected",
+    "authority/incompatible",
+    "authority/sequence-gap",
+    "role/revoked",
+    "companion/disconnected"
+  ]));
+  function toCode(value) {
+    const code = typeof value === "string" ? value : "";
+    return STABLE_ERROR_CODES.includes(code) ? code : "effect_unknown";
+  }
+  function toRole(value) {
+    return ROLES.includes(value) ? value : null;
+  }
+  function toCapabilities(value) {
+    if (!Array.isArray(value)) return [];
+    const unique = /* @__PURE__ */ new Set();
+    for (const entry of value) {
+      if (typeof entry === "string" && entry.length > 0 && entry.length <= 64) unique.add(entry);
+    }
+    return [...unique].sort();
+  }
+  function toRevision(value) {
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+  function toSeconds(value) {
+    return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+  }
+  function at2(action, state) {
+    return Number.isFinite(action?.now) ? action.now : state.observedAt;
+  }
+  function initialAuthorityState(options = {}) {
+    return {
+      mode: options.mode === "local" ? "local" : "shared",
+      authority: "absent",
+      role: null,
+      capabilities: [],
+      policyVersion: null,
+      policyCompatible: false,
+      accessRevision: null,
+      revision: null,
+      expectedRevision: null,
+      sequence: 0,
+      generation: null,
+      observedAt: 0,
+      snapshotAt: null,
+      snapshotExpiresAt: null,
+      snapshotRefreshAt: null,
+      lease: null,
+      candidate: { dirty: false, preserved: false },
+      projects: [],
+      evidence: { rows: [], cursor: null, hasMore: false, stale: false, error: null },
+      telemetry: { rows: [], cursor: null, hasMore: false, stale: false, error: null },
+      readOnlyReason: "authority_absent",
+      error: null,
+      announcement: null
+    };
+  }
+  function normalize(state, now) {
+    const next = state;
+    if (next.lease && Number.isFinite(now) && now >= next.lease.expiresAt) {
+      next.lease = { ...next.lease, state: "expired", holder: "none" };
+      next.readOnlyReason = next.readOnlyReason ?? "lease_expired";
+    }
+    next.observedAt = Number.isFinite(now) ? now : next.observedAt;
+    return next;
+  }
+  function clearAuthorizedRows(state) {
+    state.projects = [];
+    state.evidence = { ...state.evidence, rows: [], cursor: null, hasMore: false, stale: true };
+    state.telemetry = { ...state.telemetry, rows: [], cursor: null, hasMore: false, stale: true };
+  }
+  function authorityReducer(state, action) {
+    const current = state ?? initialAuthorityState();
+    const type = String(action?.type ?? "");
+    const now = at2(action, current);
+    const next = {
+      ...current,
+      candidate: { ...current.candidate },
+      evidence: { ...current.evidence },
+      telemetry: { ...current.telemetry }
+    };
+    if (type in READ_ONLY_REASONS) {
+      next.authority = READ_ONLY_AUTHORITY[type];
+      next.readOnlyReason = READ_ONLY_REASONS[type];
+      next.announcement = { level: "assertive", code: READ_ONLY_REASONS[type] };
+      if (type === "role/revoked") {
+        next.role = null;
+        next.capabilities = [];
+      }
+      if (type === "lease/expired" || type === "lease/lost" || type === "companion/disconnected") {
+        next.lease = next.lease ? { ...next.lease, state: type === "lease/expired" ? "expired" : "lost", holder: "none" } : null;
+      }
+      if (CLEARS_AUTHORIZED_ROWS.has(type)) clearAuthorizedRows(next);
+      if (next.candidate.dirty) next.candidate.preserved = true;
+      return normalize(next, now);
+    }
+    switch (type) {
+      case "authority/snapshot": {
+        const snapshot = action.snapshot ?? {};
+        const policyVersion = Number.isInteger(snapshot.policy_version) ? snapshot.policy_version : null;
+        const sequence = Number.isInteger(snapshot.sequence) ? snapshot.sequence : null;
+        if (policyVersion !== SUPPORTED_POLICY_VERSION) {
+          next.authority = "incompatible";
+          next.policyVersion = policyVersion;
+          next.policyCompatible = false;
+          next.readOnlyReason = "authority_incompatible";
+          next.announcement = { level: "assertive", code: "authority_incompatible" };
+          clearAuthorizedRows(next);
+          return normalize(next, now);
+        }
+        if (sequence !== null && sequence < current.sequence) {
+          next.authority = "stale";
+          next.readOnlyReason = "authority_sequence_gap";
+          next.announcement = { level: "assertive", code: "authority_sequence_gap" };
+          clearAuthorizedRows(next);
+          return normalize(next, now);
+        }
+        const lifetime = toSeconds(snapshot.expires_in);
+        next.authority = "current";
+        next.policyVersion = policyVersion;
+        next.policyCompatible = true;
+        next.role = toRole(snapshot.role);
+        next.capabilities = toCapabilities(snapshot.capabilities);
+        next.accessRevision = toRevision(snapshot.access_revision);
+        next.generation = toRevision(snapshot.generation);
+        next.sequence = sequence ?? current.sequence;
+        next.snapshotAt = now;
+        next.snapshotExpiresAt = lifetime === null ? null : now + lifetime;
+        next.snapshotRefreshAt = lifetime === null ? null : now + lifetime * SNAPSHOT_REFRESH_AT;
+        next.readOnlyReason = next.role === null ? "role_missing" : null;
+        next.error = null;
+        next.announcement = { level: "polite", code: "authority_current" };
+        if (next.role === null) next.capabilities = [];
+        return normalize(next, now);
+      }
+      case "lease/acquired":
+      case "lease/renewed": {
+        const lease = action.lease ?? {};
+        const ttl = toSeconds(lease.expires_in);
+        if (ttl === null) {
+          next.error = { code: "invalid_input" };
+          return normalize(next, now);
+        }
+        next.lease = {
+          state: "held-self",
+          holder: "this-session",
+          // The server names this purpose `membership_admin`; the UI calls the
+          // same thing administration. Anything that is not engineering is
+          // treated as administration so a new server purpose cannot silently
+          // acquire content-write affordances.
+          purpose: lease.purpose === "engineering" ? "engineering" : "administration",
+          acquiredAt: now,
+          ttlSeconds: ttl,
+          expiresAt: now + ttl,
+          autoRenewAt: now + ttl * (1 - DIRTY_AUTO_RENEW_AT),
+          promptRenewAt: now + ttl * (1 - MANUAL_RENEW_PROMPT_AT)
+        };
+        next.readOnlyReason = current.authority === "current" && next.role !== null ? null : current.readOnlyReason;
+        next.error = null;
+        next.announcement = { level: "polite", code: type === "lease/acquired" ? "lease_acquired" : "lease_renewed" };
+        return normalize(next, now);
+      }
+      case "lease/released": {
+        next.lease = null;
+        next.announcement = { level: "polite", code: "lease_released" };
+        return normalize(next, now);
+      }
+      case "lease/held-elsewhere": {
+        next.lease = { state: "held-other", holder: "another-session", purpose: "engineering" };
+        next.error = { code: "lease_held" };
+        next.announcement = { level: "polite", code: "lease_held" };
+        return normalize(next, now);
+      }
+      case "revision/observed": {
+        next.revision = toRevision(action.revision) ?? next.revision;
+        return normalize(next, now);
+      }
+      case "candidate/changed": {
+        next.candidate = { dirty: Boolean(action.dirty), preserved: false };
+        next.expectedRevision = toRevision(action.expectedRevision) ?? next.revision;
+        return normalize(next, now);
+      }
+      case "candidate/discarded": {
+        next.candidate = { dirty: false, preserved: false };
+        next.expectedRevision = null;
+        return normalize(next, now);
+      }
+      case "projects/listed": {
+        next.projects = Array.isArray(action.projects) ? action.projects.filter((entry) => entry && typeof entry.id === "string").map((entry) => ({ id: entry.id, revision: toRevision(entry.revision) })) : [];
+        return normalize(next, now);
+      }
+      case "evidence/page":
+      case "telemetry/page": {
+        const key = type === "evidence/page" ? "evidence" : "telemetry";
+        const trusted = key === "evidence";
+        next[key] = {
+          rows: [
+            ...action.append ? current[key].rows : [],
+            ...Array.isArray(action.rows) ? action.rows.map((row) => ({ ...row, trusted })) : []
+          ],
+          cursor: typeof action.cursor === "string" ? action.cursor : null,
+          hasMore: Boolean(action.hasMore),
+          stale: false,
+          error: null
+        };
+        return normalize(next, now);
+      }
+      case "evidence/page-failed":
+      case "telemetry/page-failed": {
+        const key = type === "evidence/page-failed" ? "evidence" : "telemetry";
+        next[key] = { ...current[key], stale: true, error: { code: toCode(action.code) } };
+        next.announcement = { level: "polite", code: "evidence_page_failed" };
+        return normalize(next, now);
+      }
+      case "error/denied": {
+        const code = toCode(action.code);
+        next.error = { code };
+        if (code === "revision_conflict") {
+          next.revision = toRevision(action.currentRevision) ?? next.revision;
+          next.candidate = { ...next.candidate, preserved: true };
+        }
+        if (code === "authority_stale" || code === "not_loaded") {
+          next.authority = code === "not_loaded" ? "unavailable" : "stale";
+          next.readOnlyReason = code === "not_loaded" ? "companion_disconnected" : "authority_stale";
+        }
+        if (code === "lease_expired" || code === "lease_required") {
+          next.lease = null;
+          next.readOnlyReason = "lease_expired";
+        }
+        next.announcement = { level: "assertive", code };
+        return normalize(next, now);
+      }
+      case "clock/tick":
+        return normalize(next, now);
+      default:
+        return current;
+    }
+  }
+  function sharedWritable(state) {
+    if (!state || state.mode !== "shared") return false;
+    if (state.authority !== "current") return false;
+    if (state.readOnlyReason) return false;
+    if (!state.policyCompatible) return false;
+    if (!state.role) return false;
+    if (!state.capabilities.includes("project.write")) return false;
+    const lease = state.lease;
+    return Boolean(lease && lease.state === "held-self" && lease.purpose === "engineering");
+  }
+  function authorityAffordances(state) {
+    const current = state ?? initialAuthorityState();
+    const may = (capability) => current.authority === "current" && !current.readOnlyReason && current.capabilities.includes(capability);
+    const writable = sharedWritable(current);
+    const holdsLease = current.lease?.state === "held-self";
+    return {
+      readOnly: !writable,
+      readOnlyReason: writable ? null : current.readOnlyReason ?? "lease_required",
+      canReadProject: may("project.read"),
+      canReadEvidence: may("evidence.read"),
+      canWriteTelemetry: may("evidence.telemetry.write"),
+      canExecuteControl: may("control.execute"),
+      canAcquireLease: may("lease.engineering") && !holdsLease && current.lease?.state !== "held-other",
+      canRenewLease: holdsLease,
+      canReleaseLease: holdsLease,
+      canApply: writable,
+      canManageAccess: may("project.access.write"),
+      canReadAccess: may("project.access.read")
+    };
+  }
+  function authorityError(error) {
+    return { code: toCode(error?.code) };
+  }
+  function createProjectAuthorityClient(options = {}) {
+    const hass = options.hass ?? null;
+    const projectId = options.projectId ?? null;
+    const onChange = typeof options.onChange === "function" ? options.onChange : () => {
+    };
+    const clock = typeof options.clock === "function" ? options.clock : () => Date.now() / 1e3;
+    let state = initialAuthorityState({ mode: options.mode });
+    let unsubscribe = null;
+    let bearer = null;
+    const dispatch = (action) => {
+      state = authorityReducer(state, { now: clock(), ...action });
+      onChange(state);
+      return state;
+    };
+    const call = async (type, payload = {}) => {
+      if (!hass?.callWS) {
+        dispatch({ type: "companion/disconnected" });
+        throw Object.assign(new Error("not_loaded"), { code: "not_loaded" });
+      }
+      try {
+        return await hass.callWS({ type, project_id: projectId, ...payload });
+      } catch (error) {
+        const { code } = authorityError(error);
+        dispatch({ type: "error/denied", code, currentRevision: error?.current_revision });
+        throw Object.assign(new Error(code), { code });
+      }
+    };
+    return {
+      get state() {
+        return state;
+      },
+      /** Fetch and apply the server capability snapshot. */
+      async refresh() {
+        dispatch({ type: "authority/loading" });
+        const snapshot = await call("glt_flow_card/capabilities/get");
+        return dispatch({ type: "authority/snapshot", snapshot });
+      },
+      /** Subscribe to server-pushed access changes; a gap forces a refresh. */
+      async watch() {
+        if (!hass?.connection?.subscribeMessage) return null;
+        unsubscribe = await hass.connection.subscribeMessage(
+          (event) => {
+            if (event?.type === "access_revoked") dispatch({ type: "role/revoked" });
+            else if (event?.type === "sequence_gap") dispatch({ type: "authority/sequence-gap" });
+            else if (Number.isInteger(event?.sequence) && event.sequence !== state.sequence + 1) {
+              dispatch({ type: "authority/sequence-gap" });
+            }
+          },
+          { type: "glt_flow_card/access/subscribe", project_id: projectId }
+        );
+        return unsubscribe;
+      },
+      async acquireLease(purpose = "engineering", ttlSeconds = 300) {
+        const lease = await call("glt_flow_card/leases/acquire", {
+          purpose,
+          ttl_seconds: ttlSeconds
+        });
+        bearer = lease?.lease_token ?? null;
+        return dispatch({
+          type: "lease/acquired",
+          lease: { expires_in: lease?.expires_in, purpose: lease?.purpose }
+        });
+      },
+      async renewLease(ttlSeconds = 300) {
+        const lease = await call("glt_flow_card/leases/renew", {
+          lease_token: bearer,
+          ttl_seconds: ttlSeconds
+        });
+        bearer = lease?.lease_token ?? bearer;
+        return dispatch({
+          type: "lease/renewed",
+          lease: { expires_in: lease?.expires_in, purpose: lease?.purpose ?? state.lease?.purpose }
+        });
+      },
+      async releaseLease() {
+        try {
+          await call("glt_flow_card/leases/release", { lease_token: bearer });
+        } finally {
+          bearer = null;
+        }
+        return dispatch({ type: "lease/released" });
+      },
+      /** Apply a candidate. The bearer travels in the request and nowhere else. */
+      async apply(candidate, expectedRevision) {
+        const result2 = await call("glt_flow_card/projects/apply", {
+          lease_token: bearer,
+          expected_revision: expectedRevision,
+          candidate
+        });
+        dispatch({ type: "revision/observed", revision: result2?.revision });
+        return dispatch({ type: "candidate/discarded" });
+      },
+      /** Load one evidence page through the server's opaque cursor. */
+      async evidencePage({ cursor = null, append: append2 = false } = {}) {
+        try {
+          const page = await call("glt_flow_card/evidence/list", cursor ? { cursor } : {});
+          return dispatch({
+            type: "evidence/page",
+            rows: page?.rows ?? [],
+            cursor: page?.cursor ?? null,
+            hasMore: Boolean(page?.has_more),
+            append: append2
+          });
+        } catch (error) {
+          return dispatch({ type: "evidence/page-failed", code: error?.code });
+        }
+      },
+      async telemetryPage({ cursor = null, append: append2 = false } = {}) {
+        try {
+          const page = await call("glt_flow_card/telemetry/list", cursor ? { cursor } : {});
+          return dispatch({
+            type: "telemetry/page",
+            rows: page?.rows ?? [],
+            cursor: page?.cursor ?? null,
+            hasMore: Boolean(page?.has_more),
+            append: append2
+          });
+        } catch (error) {
+          return dispatch({ type: "telemetry/page-failed", code: error?.code });
+        }
+      },
+      /** Read the membership inventory the server is willing to disclose. */
+      async accessInventory() {
+        return call("glt_flow_card/access/get");
+      },
+      /**
+       * Assign or revoke one fixed role.
+       *
+       * The exact access revision and the administration bearer both travel in
+       * the request, so a change made against a membership list the user has not
+       * seen is refused by the server rather than merged by the browser.
+       */
+      async setAccess({ userId, role, expectedAccessRevision }) {
+        return call("glt_flow_card/access/set", {
+          user_id: userId,
+          role,
+          expected_access_revision: expectedAccessRevision,
+          lease_token: bearer
+        });
+      },
+      /** Release every browser-held resource; the bearer dies with the client. */
+      destroy() {
+        bearer = null;
+        if (typeof unsubscribe === "function") unsubscribe();
+        unsubscribe = null;
+        dispatch({ type: "companion/disconnected" });
+      }
+    };
+  }
+
   // src/v100/project-safety-i18n.mjs
   var COPY = {
     en: {
@@ -23162,7 +23639,121 @@ ${entityId}`)) return;
       rollbackRunning: "Restoring verified backup",
       rollbackSuccess: "Verified backup restored",
       rollbackSuccessBody: "Project revision {revision} matches verified backup {backup_id}. A rollback evidence receipt was created.",
-      rollbackFailure: "Backup restore verification failed. Both snapshots were retained. Download the rollback diagnostic and request administrator recovery."
+      rollbackFailure: "Backup restore verification failed. Both snapshots were retained. Download the rollback diagnostic and request administrator recovery.",
+      authorityBar: "Authority state",
+      modeShared: "Shared project",
+      modeLocal: "Local-only project",
+      companionStates: {
+        current: "Authority current",
+        refreshing: "Refreshing authority",
+        stale: "Authority stale",
+        unavailable: "Companion unavailable",
+        incompatible: "Policy version unsupported"
+      },
+      myRole: "My role",
+      roleNames: { viewer: "Viewer", operator: "Operator", engineer: "Engineer", admin: "Admin", none: "No assignment" },
+      editing: "Editing",
+      leaseStates: {
+        readOnly: "Read-only",
+        available: "Lease available",
+        heldSelf: "This session",
+        heldOther: "Another session is editing",
+        renewing: "Renewing",
+        expired: "Lease expired",
+        lost: "Lease lost"
+      },
+      currentRevision: "Revision",
+      expectedRevision: "Expected",
+      readOnlyReasons: {
+        authority_absent: "No server authority yet. Shared editing stays read-only until the Companion answers.",
+        authority_loading: "Refreshing server authority. Shared editing is read-only until it returns.",
+        authority_stale: "Server authority is stale. Refresh before editing.",
+        authority_rejected: "The Companion refused the authority refresh. Shared editing is read-only.",
+        authority_incompatible: "The Companion uses a policy version this card does not support.",
+        authority_sequence_gap: "An authority update was missed. Refresh before editing.",
+        role_revoked: "Your role for this project changed. Shared editing is read-only.",
+        role_missing: "You have no role on this project.",
+        lease_expired: "The editing lease expired. Your unsaved candidate is kept.",
+        lease_lost: "The editing lease was lost. Your unsaved candidate is kept.",
+        lease_required: "Acquire the editing lease to make changes.",
+        companion_disconnected: "The Companion is unavailable. Shared editing is read-only."
+      },
+      errorCodes: {
+        not_found_or_denied: "This project is not available to you.",
+        capability_denied: "Your role does not permit this action.",
+        authority_stale: "Server authority is stale. Refresh and try again.",
+        lease_required: "An editing lease is required.",
+        lease_expired: "The editing lease expired.",
+        lease_held: "Another session is editing.",
+        revision_conflict: "A newer revision exists. Your candidate is kept.",
+        invalid_input: "The request was rejected as invalid. Nothing changed.",
+        effect_unknown: "The result is unknown. Check the trusted audit before retrying.",
+        rate_limited: "Too many requests. Wait and try again.",
+        feature_unavailable: "This feature is not available in this version.",
+        not_loaded: "The Companion is not loaded."
+      },
+      sharedAuthority: "Shared authority",
+      myAccess: "My access",
+      collaboration: "Collaboration",
+      controlPolicy: "Control policy",
+      policyVersion: "Policy version",
+      lastRefresh: "Last refresh",
+      never: "Never",
+      capabilityCodes: "Show capability codes",
+      noCapabilities: "No capabilities on this project.",
+      controlsVisible: "{count} controls visible to you",
+      serverNormalization: "Server normalization active",
+      manageAccess: "Manage project access",
+      backToOverview: "Back to overview",
+      accessHeading: "Project access",
+      accessRevision: "Access revision",
+      memberColumn: "Member",
+      roleColumn: "Role",
+      capabilitiesColumn: "Effective capabilities",
+      assignmentColumn: "Assignment",
+      actionColumn: "Action",
+      assigned: "Assigned",
+      addMember: "Add member",
+      eligibleUser: "Eligible user",
+      chooseUser: "Choose an eligible user",
+      removeAccess: "Remove access",
+      roleMatrix: "Role capability matrix",
+      roleMatrixUnavailable: "The Companion did not return a capability matrix for this role.",
+      accessLoading: "Loading project access",
+      accessEmpty: "No member holds a role on this project yet.",
+      confirmAccessHeading: "Confirm access change",
+      confirmAccessBody: "Change {member} to {role} at access revision {revision}? The change is applied atomically and recorded in the trusted audit.",
+      confirmRemoveBody: "Remove all access for {member} at access revision {revision}? They keep no role on this project.",
+      cancelAccessChange: "Cancel access change",
+      applyAccessChange: "Apply access change",
+      accessSaved: "Access change applied",
+      accessDenied: "The access change was refused. Nothing changed.",
+      trustedAudit: "Trusted audit",
+      serverAuthored: "Server-authored",
+      clientTelemetry: "Client telemetry (untrusted)",
+      notEvidence: "Not security or control evidence",
+      loadNext: "Load next 50 events",
+      trustedEmpty: "No trusted audit event is visible to you yet.",
+      telemetryEmpty: "No client telemetry has been recorded in this session.",
+      rowsStale: "The next page could not be loaded. The events shown are no longer current.",
+      exportTrusted: "Export trusted audit",
+      exportTelemetry: "Export client telemetry",
+      auditAt: "Server time",
+      auditActor: "Actor",
+      auditEvent: "Event",
+      auditResult: "Result",
+      auditCorrelation: "Correlation ID",
+      telemetryReceived: "Received",
+      telemetryCategory: "Category",
+      telemetryPayload: "Payload summary",
+      announcements: {
+        authority_current: "Server authority refreshed.",
+        lease_acquired: "Editing lease acquired by this session.",
+        lease_renewed: "Editing lease renewed.",
+        lease_released: "Editing lease released.",
+        lease_held: "Another session is editing.",
+        evidence_page_failed: "The next evidence page could not be loaded."
+      }
     },
     de: {
       title: "Projektsicherheit",
@@ -23228,7 +23819,121 @@ ${entityId}`)) return;
       rollbackRunning: "Verifiziertes Backup wird wiederhergestellt",
       rollbackSuccess: "Verifiziertes Backup wiederhergestellt",
       rollbackSuccessBody: "Projektrevision {revision} entspricht dem verifizierten Backup {backup_id}. Ein Rollback-Nachweis wurde erstellt.",
-      rollbackFailure: "Verifizierung der Backup-Wiederherstellung fehlgeschlagen. Beide Snapshots wurden beibehalten. Laden Sie die Rollback-Diagnose herunter und fordern Sie eine Wiederherstellung durch die Administration an."
+      rollbackFailure: "Verifizierung der Backup-Wiederherstellung fehlgeschlagen. Beide Snapshots wurden beibehalten. Laden Sie die Rollback-Diagnose herunter und fordern Sie eine Wiederherstellung durch die Administration an.",
+      authorityBar: "Autoritätsstatus",
+      modeShared: "Gemeinsames Projekt",
+      modeLocal: "Nur lokales Projekt",
+      companionStates: {
+        current: "Autorität aktuell",
+        refreshing: "Autorität wird aktualisiert",
+        stale: "Autorität veraltet",
+        unavailable: "Companion nicht verfügbar",
+        incompatible: "Richtlinienversion nicht unterstützt"
+      },
+      myRole: "Meine Rolle",
+      roleNames: { viewer: "Betrachter", operator: "Bediener", engineer: "Ingenieur", admin: "Administrator", none: "Keine Zuweisung" },
+      editing: "Bearbeitung",
+      leaseStates: {
+        readOnly: "Schreibgeschützt",
+        available: "Lease verfügbar",
+        heldSelf: "Diese Sitzung",
+        heldOther: "Eine andere Sitzung bearbeitet",
+        renewing: "Wird verlängert",
+        expired: "Lease abgelaufen",
+        lost: "Lease verloren"
+      },
+      currentRevision: "Revision",
+      expectedRevision: "Erwartet",
+      readOnlyReasons: {
+        authority_absent: "Noch keine Serverautorität. Gemeinsames Bearbeiten bleibt schreibgeschützt, bis der Companion antwortet.",
+        authority_loading: "Serverautorität wird aktualisiert. Bearbeiten ist bis dahin schreibgeschützt.",
+        authority_stale: "Die Serverautorität ist veraltet. Vor dem Bearbeiten aktualisieren.",
+        authority_rejected: "Der Companion hat die Aktualisierung der Autorität abgelehnt. Gemeinsames Bearbeiten ist schreibgeschützt.",
+        authority_incompatible: "Der Companion verwendet eine Richtlinienversion, die diese Karte nicht unterstützt.",
+        authority_sequence_gap: "Eine Autoritätsaktualisierung wurde verpasst. Vor dem Bearbeiten aktualisieren.",
+        role_revoked: "Ihre Rolle für dieses Projekt hat sich geändert. Gemeinsames Bearbeiten ist schreibgeschützt.",
+        role_missing: "Sie haben keine Rolle in diesem Projekt.",
+        lease_expired: "Das Bearbeitungslease ist abgelaufen. Ihr ungespeicherter Entwurf bleibt erhalten.",
+        lease_lost: "Das Bearbeitungslease ging verloren. Ihr ungespeicherter Entwurf bleibt erhalten.",
+        lease_required: "Fordern Sie das Bearbeitungslease an, um Änderungen vorzunehmen.",
+        companion_disconnected: "Der Companion ist nicht verfügbar. Gemeinsames Bearbeiten ist schreibgeschützt."
+      },
+      errorCodes: {
+        not_found_or_denied: "Dieses Projekt ist für Sie nicht verfügbar.",
+        capability_denied: "Ihre Rolle erlaubt diese Aktion nicht.",
+        authority_stale: "Die Serverautorität ist veraltet. Aktualisieren Sie und versuchen Sie es erneut.",
+        lease_required: "Ein Bearbeitungslease ist erforderlich.",
+        lease_expired: "Das Bearbeitungslease ist abgelaufen.",
+        lease_held: "Eine andere Sitzung bearbeitet gerade.",
+        revision_conflict: "Es existiert eine neuere Revision. Ihr Entwurf bleibt erhalten.",
+        invalid_input: "Die Anfrage wurde als ungültig abgelehnt. Es wurde nichts geändert.",
+        effect_unknown: "Das Ergebnis ist unbekannt. Prüfen Sie das vertrauenswürdige Auditprotokoll vor einem erneuten Versuch.",
+        rate_limited: "Zu viele Anfragen. Warten Sie und versuchen Sie es erneut.",
+        feature_unavailable: "Diese Funktion ist in dieser Version nicht verfügbar.",
+        not_loaded: "Der Companion ist nicht geladen."
+      },
+      sharedAuthority: "Gemeinsame Autorität",
+      myAccess: "Mein Zugriff",
+      collaboration: "Zusammenarbeit",
+      controlPolicy: "Steuerungsrichtlinie",
+      policyVersion: "Richtlinienversion",
+      lastRefresh: "Letzte Aktualisierung",
+      never: "Nie",
+      capabilityCodes: "Berechtigungscodes anzeigen",
+      noCapabilities: "Keine Berechtigungen in diesem Projekt.",
+      controlsVisible: "{count} für Sie sichtbare Steuerungen",
+      serverNormalization: "Servernormalisierung aktiv",
+      manageAccess: "Projektzugriff verwalten",
+      backToOverview: "Zurück zur Übersicht",
+      accessHeading: "Projektzugriff",
+      accessRevision: "Zugriffsrevision",
+      memberColumn: "Mitglied",
+      roleColumn: "Rolle",
+      capabilitiesColumn: "Effektive Berechtigungen",
+      assignmentColumn: "Zuweisung",
+      actionColumn: "Aktion",
+      assigned: "Zugewiesen",
+      addMember: "Mitglied hinzufügen",
+      eligibleUser: "Berechtigter Benutzer",
+      chooseUser: "Berechtigten Benutzer auswählen",
+      removeAccess: "Zugriff entfernen",
+      roleMatrix: "Rollen-Berechtigungsmatrix",
+      roleMatrixUnavailable: "Der Companion hat für diese Rolle keine Berechtigungsmatrix zurückgegeben.",
+      accessLoading: "Projektzugriff wird geladen",
+      accessEmpty: "Bisher hat kein Mitglied eine Rolle in diesem Projekt.",
+      confirmAccessHeading: "Zugriffsänderung bestätigen",
+      confirmAccessBody: "{member} auf {role} ändern, Zugriffsrevision {revision}? Die Änderung wird atomar übernommen und im vertrauenswürdigen Auditprotokoll festgehalten.",
+      confirmRemoveBody: "Gesamten Zugriff für {member} entfernen, Zugriffsrevision {revision}? Es verbleibt keine Rolle in diesem Projekt.",
+      cancelAccessChange: "Zugriffsänderung abbrechen",
+      applyAccessChange: "Zugriffsänderung übernehmen",
+      accessSaved: "Zugriffsänderung übernommen",
+      accessDenied: "Die Zugriffsänderung wurde abgelehnt. Es wurde nichts geändert.",
+      trustedAudit: "Vertrauenswürdiges Auditprotokoll",
+      serverAuthored: "Serverseitig erzeugt",
+      clientTelemetry: "Client-Telemetrie (nicht vertrauenswürdig)",
+      notEvidence: "Kein Sicherheits- oder Steuerungsnachweis",
+      loadNext: "Nächste 50 Ereignisse laden",
+      trustedEmpty: "Für Sie ist noch kein vertrauenswürdiges Auditereignis sichtbar.",
+      telemetryEmpty: "In dieser Sitzung wurde keine Client-Telemetrie aufgezeichnet.",
+      rowsStale: "Die nächste Seite konnte nicht geladen werden. Die angezeigten Ereignisse sind nicht mehr aktuell.",
+      exportTrusted: "Vertrauenswürdiges Auditprotokoll exportieren",
+      exportTelemetry: "Client-Telemetrie exportieren",
+      auditAt: "Serverzeit",
+      auditActor: "Akteur",
+      auditEvent: "Ereignis",
+      auditResult: "Ergebnis",
+      auditCorrelation: "Korrelations-ID",
+      telemetryReceived: "Empfangen",
+      telemetryCategory: "Kategorie",
+      telemetryPayload: "Nutzdaten-Zusammenfassung",
+      announcements: {
+        authority_current: "Serverautorität aktualisiert.",
+        lease_acquired: "Bearbeitungslease von dieser Sitzung übernommen.",
+        lease_renewed: "Bearbeitungslease verlängert.",
+        lease_released: "Bearbeitungslease freigegeben.",
+        lease_held: "Eine andere Sitzung bearbeitet gerade.",
+        evidence_page_failed: "Die nächste Nachweisseite konnte nicht geladen werden."
+      }
     }
   };
   function projectSafetyLocale(hass, documentLanguage = "en") {
@@ -23247,7 +23952,7 @@ ${entityId}`)) return;
   var STYLE = `
   .glt-safe-trigger{min-height:31px}
   .glt-safe-modal{position:fixed;inset:0;z-index:13000;display:grid;place-items:center;padding:16px;background:#020617bd;backdrop-filter:blur(3px)}
-  .glt-safe-dialog{display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto;width:min(1120px,calc(100vw - 32px));max-height:92vh;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:16px;background:var(--bg,var(--card-background-color,#0a1826));color:var(--tx,var(--primary-text-color,#edf6ff));box-shadow:0 24px 70px #02061788;font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden}
+  .glt-safe-dialog{display:grid;grid-template-rows:auto auto auto auto minmax(0,1fr) auto;width:min(1120px,calc(100vw - 32px));max-height:92vh;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:16px;background:var(--bg,var(--card-background-color,#0a1826));color:var(--tx,var(--primary-text-color,#edf6ff));box-shadow:0 24px 70px #02061788;font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden}
   .glt-safe-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px;border-bottom:1px solid var(--b,var(--divider-color,#19334a))}
   .glt-safe-head h2{font-size:24px;line-height:1.2;margin:0}.glt-safe-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;color:var(--mut,var(--secondary-text-color,#8198ad));font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
   .glt-safe-close,.glt-safe-btn,.glt-safe-tab{min-height:44px;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:8px;background:transparent;color:inherit;padding:8px 12px;font:700 14px/1.5 inherit;cursor:pointer}
@@ -23263,6 +23968,17 @@ ${entityId}`)) return;
   @media(max-width:767px){.glt-safe-modal{padding:0}.glt-safe-dialog{width:100vw;max-height:none;height:100dvh;border:0;border-radius:0}.glt-safe-content{padding:16px}.glt-safe-table,.glt-safe-table tbody,.glt-safe-table tr,.glt-safe-table th,.glt-safe-table td{display:block}.glt-safe-table thead{display:none}.glt-safe-table tr{padding:8px 0;border-bottom:1px solid var(--b,var(--divider-color,#19334a))}.glt-safe-table td{border:0}.glt-safe-table td::before{content:attr(data-label);display:block;color:var(--mut,var(--secondary-text-color,#8198ad));font-size:12px;font-weight:700}}
   @media(forced-colors:active){.glt-safe-dialog,.glt-safe-card,.glt-safe-status,.glt-safe-btn,.glt-safe-tab{border:1px solid CanvasText}.glt-safe-tab[aria-selected="true"]{outline:2px solid Highlight}}
   @media(prefers-reduced-motion:reduce){.glt-safe-modal,.glt-safe-dialog,.glt-safe-tab{scroll-behavior:auto;transition:none!important;animation:none!important}}
+  .glt-safe-authority{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--b,var(--divider-color,#19334a))}
+  .glt-safe-chip{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:4px 12px;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:999px;font:700 12px/1.4 inherit}
+  .glt-safe-chip[data-state="current"]{color:#31d879}.glt-safe-chip[data-state="stale"],.glt-safe-chip[data-state="unavailable"],.glt-safe-chip[data-state="incompatible"],.glt-safe-chip[data-state="expired"],.glt-safe-chip[data-state="lost"]{color:#ff4f4f}.glt-safe-chip[data-state="revision"]{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums}
+  .glt-safe-readonly{margin:0;padding:12px 16px;border-bottom:1px solid var(--b,var(--divider-color,#19334a));background:color-mix(in srgb,#8198ad 16%,transparent);font-weight:700}
+  .glt-safe-live{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .glt-safe-section{margin:24px 0 0;padding:16px;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:10px}.glt-safe-section h4{margin:0 0 8px;font-size:18px;line-height:1.3}.glt-safe-section>.glt-safe-help{margin:0 0 16px}
+  .glt-safe-provenance{display:inline-block;margin-left:8px;padding:2px 8px;border:1px solid currentColor;border-radius:999px;font:700 12px/1.4 inherit;letter-spacing:.06em}
+  .glt-safe-select{min-height:44px;padding:8px;border:1px solid var(--b,var(--divider-color,#19334a));border-radius:8px;background:var(--bg,var(--card-background-color,#0a1826));color:inherit;font:14px/1.5 inherit}
+  .glt-safe-disclosure summary{min-height:44px;display:flex;align-items:center;cursor:pointer}.glt-safe-disclosure ul{margin:8px 0 0;padding-left:20px;font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
+  @media(max-width:767px){.glt-safe-authority{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}.glt-safe-chip[data-state="revision"]{grid-column:1/-1}}
+  @media(forced-colors:active){.glt-safe-chip,.glt-safe-section,.glt-safe-provenance{border:1px solid CanvasText}}
 `;
   function copyFor(editor, key, values) {
     const locale = projectSafetyLocale(editor._hass || editor._glt4Hass, document.documentElement.lang);
@@ -23291,6 +24007,199 @@ ${entityId}`)) return;
     node.setAttribute("aria-live", "polite");
     node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text));
     return node;
+  }
+  var COMPANION_STATE = {
+    current: "current",
+    loading: "refreshing",
+    stale: "stale",
+    rejected: "stale",
+    incompatible: "incompatible",
+    absent: "unavailable",
+    unavailable: "unavailable"
+  };
+  var BANNER_REASONS = /* @__PURE__ */ new Set([
+    "authority_stale",
+    "authority_rejected",
+    "authority_incompatible",
+    "authority_sequence_gap",
+    "role_revoked",
+    "role_missing",
+    "lease_lost",
+    "companion_disconnected"
+  ]);
+  function chip(glyph, text, state) {
+    const node = element("span", "glt-safe-chip");
+    node.dataset.state = state;
+    const icon = element("span", "", glyph);
+    icon.setAttribute("aria-hidden", "true");
+    node.append(icon, element("span", "", text));
+    return node;
+  }
+  function leaseChipState(state, affordances) {
+    const lease = state.lease;
+    if (!lease) return affordances.canAcquireLease ? "available" : "readOnly";
+    if (lease.state === "held-self") return "heldSelf";
+    if (lease.state === "held-other") return "heldOther";
+    if (lease.state === "expired") return "expired";
+    if (lease.state === "lost") return "lost";
+    return "readOnly";
+  }
+  function disclosure(summaryText, items, emptyText) {
+    const node = element("details", "glt-safe-disclosure");
+    node.append(element("summary", "", summaryText));
+    if (items.length === 0) {
+      node.append(element("p", "glt-safe-help", emptyText));
+      return node;
+    }
+    const list = element("ul");
+    for (const item of items) list.append(element("li", "", item));
+    node.append(list);
+    return node;
+  }
+  var GltAuthorityBar = class extends HTMLElement {
+    constructor() {
+      super();
+      this._state = null;
+      this._copy = (key) => key;
+      this._announced = null;
+    }
+    set copy(value) {
+      if (typeof value !== "function") return;
+      this._copy = value;
+      this._paint();
+    }
+    set state(value) {
+      this._state = value;
+      this._paint();
+    }
+    get state() {
+      return this._state;
+    }
+    connectedCallback() {
+      this._paint();
+    }
+    _build() {
+      if (this._row) return;
+      this._row = element("div", "glt-safe-authority");
+      this._row.setAttribute("role", "group");
+      this._banner = element("p", "glt-safe-readonly");
+      this._banner.setAttribute("role", "alert");
+      this._banner.hidden = true;
+      this._polite = element("div", "glt-safe-live");
+      this._polite.setAttribute("aria-live", "polite");
+      this._polite.setAttribute("aria-atomic", "true");
+      this._assertive = element("div", "glt-safe-live");
+      this._assertive.setAttribute("aria-live", "assertive");
+      this._assertive.setAttribute("aria-atomic", "true");
+      this.append(this._row, this._banner, this._polite, this._assertive);
+    }
+    _paint() {
+      if (!this.isConnected || !this._state) return;
+      this._build();
+      const t = this._copy;
+      const state = this._state;
+      const shared = state.mode === "shared";
+      const affordances = authorityAffordances(state);
+      this._row.setAttribute("aria-label", t("authorityBar"));
+      const chips = [chip("◆", shared ? t("modeShared") : t("modeLocal"), shared ? "shared" : "local")];
+      if (shared) {
+        const companion = COMPANION_STATE[state.authority] || "unavailable";
+        chips.push(chip("●", t("companionStates")[companion], companion));
+        const role = state.role || "none";
+        chips.push(chip("◎", `${t("myRole")}: ${t("roleNames")[role]}`, role));
+        const lease = leaseChipState(state, affordances);
+        chips.push(chip("✎", `${t("editing")}: ${t("leaseStates")[lease]}`, lease));
+      }
+      const revision = state.revision === null || state.revision === void 0 ? "—" : String(state.revision);
+      const expected = state.expectedRevision === null || state.expectedRevision === void 0 ? null : String(state.expectedRevision);
+      chips.push(chip("#", expected ? `${t("currentRevision")} ${revision} · ${t("expectedRevision")} ${expected}` : `${t("currentRevision")} ${revision}`, "revision"));
+      this._row.replaceChildren(...chips);
+      const reason = shared && !sharedWritable(state) ? state.readOnlyReason : null;
+      const blocking = Boolean(reason) && BANNER_REASONS.has(reason);
+      this._banner.hidden = !blocking;
+      this._banner.textContent = blocking ? t("readOnlyReasons")[reason] : "";
+      const announcement = state.announcement;
+      if (!announcement || announcement.code === this._announced) return;
+      this._announced = announcement.code;
+      const text = t("announcements")[announcement.code] || t("readOnlyReasons")[announcement.code] || t("errorCodes")[announcement.code] || "";
+      if (!text) return;
+      const assertive = announcement.level === "assertive";
+      (assertive ? this._assertive : this._polite).textContent = text;
+      (assertive ? this._polite : this._assertive).textContent = "";
+    }
+  };
+  var GltProjectAuthority = class extends HTMLElement {
+    constructor() {
+      super();
+      this._client = null;
+      this._state = initialAuthorityState();
+      this._copy = (key) => key;
+      this._bar = document.createElement("glt-flow-card-authority-bar");
+    }
+    connectedCallback() {
+      if (this._bar.parentNode !== this) this.append(this._bar);
+      this._publish();
+    }
+    disconnectedCallback() {
+      this.release();
+    }
+    set copy(value) {
+      if (typeof value !== "function") return;
+      this._copy = value;
+      this._bar.copy = value;
+    }
+    get authorityState() {
+      return this._state;
+    }
+    get client() {
+      return this._client;
+    }
+    get affordances() {
+      return authorityAffordances(this._state);
+    }
+    /**
+     * Attach a live Companion connection.
+     *
+     * Without one this is an explicit local-only project - a separate labelled
+     * mode, never a shared project that has quietly stopped being shared.
+     */
+    connect({ hass, projectId }) {
+      this.release();
+      if (!hass?.callWS) {
+        this._state = initialAuthorityState({ mode: "local" });
+        this._publish();
+        return null;
+      }
+      this._client = createProjectAuthorityClient({
+        hass,
+        projectId,
+        onChange: (state) => {
+          this._state = state;
+          this._publish();
+        }
+      });
+      return this._client;
+    }
+    release() {
+      if (!this._client) return;
+      const client = this._client;
+      this._client = null;
+      client.destroy();
+    }
+    _publish() {
+      this._bar.copy = this._copy;
+      this._bar.state = this._state;
+      this.dispatchEvent(new CustomEvent("glt-authority-change", {
+        bubbles: true,
+        detail: { state: this._state }
+      }));
+    }
+  };
+  if (!customElements.get("glt-flow-card-authority-bar")) {
+    customElements.define("glt-flow-card-authority-bar", GltAuthorityBar);
+  }
+  if (!customElements.get("glt-flow-card-project-authority")) {
+    customElements.define("glt-flow-card-project-authority", GltProjectAuthority);
   }
   function projectAuthority(editor, type, payload) {
     if (!editor._hass?.callWS) return Promise.reject(Object.assign(new Error("Companion unavailable"), { code: "unavailable" }));
@@ -23330,7 +24239,208 @@ ${entityId}`)) return;
   function focusable(dialog) {
     return [...dialog.querySelectorAll("button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])")].filter((node) => !node.hidden && node.getAttribute("aria-hidden") !== "true");
   }
+  function loadAccessInventory(editor, state) {
+    if (state.access.loading || !state.client) return;
+    state.access.loading = true;
+    state.client.accessInventory().then(
+      (inventory) => {
+        state.access.loading = false;
+        state.access.inventory = inventory;
+        state.access.error = null;
+        state.render();
+      },
+      (error) => {
+        state.access.loading = false;
+        state.access.error = error?.code || "effect_unknown";
+        state.render();
+      }
+    );
+  }
+  function applyAccessChange(editor, state) {
+    const pending = state.access.pending;
+    const inventory = state.access.inventory;
+    if (!pending || !inventory || !state.client) return;
+    state.access.pending = null;
+    state.access.busy = true;
+    state.render();
+    const client = state.client;
+    client.acquireLease("membership_admin", 300).then(() => client.setAccess({
+      userId: pending.userId,
+      role: pending.role,
+      expectedAccessRevision: inventory.access_revision
+    })).then(
+      () => {
+        state.access.notice = "accessSaved";
+      },
+      (error) => {
+        state.access.notice = "accessDenied";
+        state.access.lastCode = error?.code || "effect_unknown";
+      }
+    ).then(() => client.releaseLease().catch(() => {
+    })).then(() => {
+      state.access.inventory = null;
+      state.access.busy = false;
+      state.render();
+    });
+  }
+  function accessConfirmation(editor, state) {
+    const pending = state.access.pending;
+    const inventory = state.access.inventory;
+    const values = {
+      member: pending.name || pending.userId,
+      role: copyFor(editor, "roleNames")[pending.role] || copyFor(editor, "roleNames").none,
+      revision: inventory.access_revision
+    };
+    const block = element("section", "glt-safe-confirm");
+    block.setAttribute("role", "group");
+    block.append(
+      element("h4", "", copyFor(editor, "confirmAccessHeading")),
+      element("p", "", copyFor(editor, pending.role === null ? "confirmRemoveBody" : "confirmAccessBody", values))
+    );
+    const actions = element("div", "glt-safe-actions");
+    const cancel2 = button(copyFor(editor, "cancelAccessChange"));
+    cancel2.addEventListener("click", () => {
+      state.access.pending = null;
+      state.render();
+    });
+    const apply = button(copyFor(editor, "applyAccessChange"), "glt-safe-btn primary");
+    apply.addEventListener("click", () => applyAccessChange(editor, state));
+    actions.append(cancel2, apply);
+    block.append(actions);
+    queueMicrotask(() => cancel2.focus());
+    return block;
+  }
+  function renderAccessSurface(editor, state, content) {
+    const heading = element("h3", "", copyFor(editor, "accessHeading"));
+    heading.tabIndex = -1;
+    content.append(heading);
+    const back = button(copyFor(editor, "backToOverview"));
+    back.addEventListener("click", () => {
+      state.accessSurface = false;
+      state.render();
+    });
+    content.append(back);
+    if (state.access.notice) {
+      const saved = state.access.notice === "accessSaved";
+      content.append(status(saved ? "pass" : "fail", copyFor(editor, state.access.notice)));
+      if (!saved && state.access.lastCode) {
+        content.append(element("p", "glt-safe-help", copyFor(editor, "errorCodes")[state.access.lastCode] || ""));
+      }
+    }
+    if (state.access.error) {
+      content.append(status("fail", copyFor(editor, "errorCodes")[state.access.error] || copyFor(editor, "errorCodes").effect_unknown));
+      return;
+    }
+    const inventory = state.access.inventory;
+    if (!inventory) {
+      content.append(status("info", copyFor(editor, "accessLoading")));
+      loadAccessInventory(editor, state);
+      return;
+    }
+    content.append(element("p", "glt-safe-code", `${copyFor(editor, "accessRevision")} ${inventory.access_revision}`));
+    const eligible = Array.isArray(inventory.eligible_users) ? inventory.eligible_users : [];
+    const named = new Map(eligible.map((entry) => [entry.user_id, entry.name || entry.user_id]));
+    const assignments = Array.isArray(inventory.assignments) ? inventory.assignments : [];
+    if (assignments.length === 0) {
+      content.append(element("p", "glt-safe-help", copyFor(editor, "accessEmpty")));
+    } else {
+      const table2 = element("table", "glt-safe-table");
+      const head = element("tr");
+      for (const key of ["memberColumn", "roleColumn", "capabilitiesColumn", "assignmentColumn", "actionColumn"]) {
+        head.append(element("th", "", copyFor(editor, key)));
+      }
+      const header = element("thead");
+      header.append(head);
+      table2.append(header);
+      const body = element("tbody");
+      for (const entry of assignments) {
+        const row = element("tr");
+        const name = named.get(entry.user_id) || entry.user_id;
+        const member = element("td", "", name);
+        member.dataset.label = copyFor(editor, "memberColumn");
+        const roleCell = element("td");
+        roleCell.dataset.label = copyFor(editor, "roleColumn");
+        const select = element("select", "glt-safe-select");
+        select.setAttribute("aria-label", `${copyFor(editor, "roleColumn")} — ${name}`);
+        for (const role of ROLES) {
+          const option = element("option", "", copyFor(editor, "roleNames")[role]);
+          option.value = role;
+          option.selected = role === entry.role;
+          select.append(option);
+        }
+        select.disabled = Boolean(state.access.busy);
+        select.addEventListener("change", () => {
+          state.access.pending = { userId: entry.user_id, name, role: select.value };
+          state.render();
+        });
+        roleCell.append(select);
+        const matrix = inventory.role_matrix?.[entry.role];
+        const capabilities = element("td");
+        capabilities.dataset.label = copyFor(editor, "capabilitiesColumn");
+        capabilities.append(Array.isArray(matrix) ? disclosure(copyFor(editor, "roleMatrix"), matrix, copyFor(editor, "noCapabilities")) : element("span", "glt-safe-help", copyFor(editor, "roleMatrixUnavailable")));
+        const assignment = element("td", "", copyFor(editor, "assigned"));
+        assignment.dataset.label = copyFor(editor, "assignmentColumn");
+        const action = element("td");
+        action.dataset.label = copyFor(editor, "actionColumn");
+        const remove = button(copyFor(editor, "removeAccess"));
+        remove.disabled = Boolean(state.access.busy);
+        remove.addEventListener("click", () => {
+          state.access.pending = { userId: entry.user_id, name, role: null };
+          state.render();
+        });
+        action.append(remove);
+        row.append(member, roleCell, capabilities, assignment, action);
+        body.append(row);
+      }
+      table2.append(body);
+      content.append(table2);
+    }
+    const assigned = new Set(assignments.map((entry) => entry.user_id));
+    const candidates = eligible.filter((entry) => !assigned.has(entry.user_id));
+    if (candidates.length > 0) {
+      const add = element("section", "glt-safe-card");
+      add.append(element("h4", "", copyFor(editor, "addMember")));
+      const picker = element("select", "glt-safe-select");
+      picker.setAttribute("aria-label", copyFor(editor, "eligibleUser"));
+      const placeholder = element("option", "", copyFor(editor, "chooseUser"));
+      placeholder.value = "";
+      picker.append(placeholder);
+      for (const entry of candidates) {
+        const option = element("option", "", entry.name || entry.user_id);
+        option.value = entry.user_id;
+        picker.append(option);
+      }
+      const role = element("select", "glt-safe-select");
+      role.setAttribute("aria-label", copyFor(editor, "roleColumn"));
+      for (const name of ROLES) {
+        const option = element("option", "", copyFor(editor, "roleNames")[name]);
+        option.value = name;
+        role.append(option);
+      }
+      const confirm2 = button(copyFor(editor, "addMember"), "glt-safe-btn primary");
+      confirm2.addEventListener("click", () => {
+        if (!picker.value) return;
+        state.access.pending = {
+          userId: picker.value,
+          name: picker.selectedOptions[0]?.textContent || picker.value,
+          role: role.value
+        };
+        state.render();
+      });
+      const actions = element("div", "glt-safe-actions");
+      actions.append(picker, role, confirm2);
+      add.append(actions);
+      content.append(add);
+    }
+    if (state.access.pending) content.append(accessConfirmation(editor, state));
+  }
   function renderOverview(editor, state, content) {
+    const authority = state.authority || initialAuthorityState();
+    const affordances = authorityAffordances(authority);
+    if (state.accessSurface && affordances.canManageAccess) {
+      renderAccessSurface(editor, state, content);
+      return;
+    }
     content.append(element("h3", "", copyFor(editor, "overview")));
     const grid = element("div", "glt-safe-grid");
     const project = editor._config?.project || {};
@@ -23341,6 +24451,38 @@ ${entityId}`)) return;
       card(copyFor(editor, "bundleSafety"), copyFor(editor, "notRun")),
       card(copyFor(editor, "releaseEvidence"), copyFor(editor, "byteIdentical"), `v${window.GLTFlowCardSDK?.version || "—"}`)
     );
+    const companion = COMPANION_STATE[authority.authority] || "unavailable";
+    const refreshed = authority.snapshotAt === null ? copyFor(editor, "never") : `${copyFor(editor, "lastRefresh")} +${Math.round(authority.snapshotAt)}s`;
+    grid.append(card(
+      copyFor(editor, "sharedAuthority"),
+      copyFor(editor, "companionStates")[companion],
+      `${copyFor(editor, "policyVersion")} ${authority.policyVersion ?? "—"} · ${refreshed}`
+    ));
+    const access = card(
+      copyFor(editor, "myAccess"),
+      copyFor(editor, "roleNames")[authority.role || "none"],
+      authority.readOnlyReason ? copyFor(editor, "readOnlyReasons")[authority.readOnlyReason] : void 0
+    );
+    access.append(disclosure(
+      copyFor(editor, "capabilityCodes"),
+      authority.capabilities,
+      copyFor(editor, "noCapabilities")
+    ));
+    grid.append(access);
+    grid.append(card(
+      copyFor(editor, "collaboration"),
+      copyFor(editor, "leaseStates")[leaseChipState(authority, affordances)],
+      `${copyFor(editor, "currentRevision")} ${authority.revision ?? project.revision ?? 0}`
+    ));
+    if (affordances.canReadProject) {
+      grid.append(card(
+        copyFor(editor, "controlPolicy"),
+        copyFor(editor, "controlsVisible", {
+          count: Array.isArray(editor._config?.controls) ? editor._config.controls.length : 0
+        }),
+        copyFor(editor, "serverNormalization")
+      ));
+    }
     content.append(grid);
     const actions = element("div", "glt-safe-actions");
     const validate = button(copyFor(editor, "validate"), "glt-safe-btn primary");
@@ -23350,6 +24492,15 @@ ${entityId}`)) return;
       state.render();
     });
     actions.append(validate);
+    if (affordances.canManageAccess) {
+      const manage = button(copyFor(editor, "manageAccess"));
+      manage.addEventListener("click", () => {
+        state.accessSurface = true;
+        state.access.notice = null;
+        state.render();
+      });
+      actions.append(manage);
+    }
     content.append(actions);
   }
   function renderValidation(editor, state, content) {
@@ -23639,7 +24790,88 @@ ${entityId}`)) return;
     content.append(actions);
     if (state.bundleError) content.append(status("fail", String(state.bundleError.message || state.bundleError)));
   }
-  function renderEvidence(editor, content) {
+  function exportEvidence(kind, rows) {
+    const provenance = kind === "trusted" ? "trusted" : "untrusted";
+    const payload = JSON.stringify({
+      format: "glt-flow-card-evidence-export",
+      version: 1,
+      provenance,
+      rows
+    }, null, 2);
+    const url = URL.createObjectURL(new Blob([payload], { type: "application/json" }));
+    const anchor = element("a");
+    anchor.href = url;
+    anchor.download = `glt-${provenance}-evidence.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+  function evidenceRow(editor, kind, row) {
+    const cells = kind === "trusted" ? [
+      ["auditAt", row.at],
+      ["auditActor", row.actor ?? row.user_id ?? "—"],
+      ["auditEvent", row.action ?? "—"],
+      ["auditResult", row.result ?? row.state ?? "—"],
+      ["auditCorrelation", row.correlation_id ?? "—"]
+    ] : [
+      ["telemetryReceived", row.at],
+      ["telemetryCategory", row.payload?.category ?? "—"],
+      ["telemetryPayload", JSON.stringify(row.payload ?? {}).slice(0, 200)]
+    ];
+    const node = element("tr");
+    for (const [key, value] of cells) {
+      const cell = element("td", "", value === void 0 || value === null ? "—" : String(value));
+      cell.dataset.label = copyFor(editor, key);
+      node.append(cell);
+    }
+    return node;
+  }
+  function evidenceSection(editor, state, kind) {
+    const trusted = kind === "trusted";
+    const page = trusted ? state.authority.evidence : state.authority.telemetry;
+    const section = element("section", "glt-safe-section");
+    const heading = element("h4", "", copyFor(editor, trusted ? "trustedAudit" : "clientTelemetry"));
+    const label = element("span", "glt-safe-provenance", copyFor(editor, trusted ? "serverAuthored" : "notEvidence"));
+    heading.append(label);
+    section.setAttribute("aria-label", `${copyFor(editor, trusted ? "trustedAudit" : "clientTelemetry")} — ${label.textContent}`);
+    section.append(heading);
+    if (page.stale) section.append(status("fail", copyFor(editor, "rowsStale")));
+    if (page.error) {
+      section.append(element(
+        "p",
+        "glt-safe-help",
+        copyFor(editor, "errorCodes")[page.error.code] || copyFor(editor, "errorCodes").effect_unknown
+      ));
+    }
+    if (page.rows.length === 0) {
+      section.append(element("p", "glt-safe-help", copyFor(editor, trusted ? "trustedEmpty" : "telemetryEmpty")));
+      return section;
+    }
+    const table2 = element("table", "glt-safe-table");
+    const header = element("thead");
+    const headRow = element("tr");
+    const columns = trusted ? ["auditAt", "auditActor", "auditEvent", "auditResult", "auditCorrelation"] : ["telemetryReceived", "telemetryCategory", "telemetryPayload"];
+    for (const key of columns) headRow.append(element("th", "", copyFor(editor, key)));
+    header.append(headRow);
+    const body = element("tbody");
+    for (const row of page.rows) body.append(evidenceRow(editor, kind, row));
+    table2.append(header, body);
+    section.append(table2);
+    const actions = element("div", "glt-safe-actions");
+    if (page.hasMore) {
+      const next = button(copyFor(editor, "loadNext"));
+      next.addEventListener("click", () => {
+        const load = trusted ? state.client?.evidencePage : state.client?.telemetryPage;
+        load?.call(state.client, { cursor: page.cursor, append: true });
+      });
+      actions.append(next);
+    }
+    const download = button(copyFor(editor, trusted ? "exportTrusted" : "exportTelemetry"));
+    download.addEventListener("click", () => exportEvidence(kind, page.rows));
+    actions.append(download);
+    section.append(actions);
+    return section;
+  }
+  function renderEvidence(editor, state, content) {
     content.append(element("h3", "", copyFor(editor, "releaseEvidence")));
     const grid = element("div", "glt-safe-grid");
     grid.append(
@@ -23647,6 +24879,14 @@ ${entityId}`)) return;
       card(copyFor(editor, "artifactEquality"), copyFor(editor, "byteIdentical"), "dist/glt-flow-card.js = Companion www")
     );
     content.append(grid, element("p", "glt-safe-help", copyFor(editor, "noEvidence")));
+    const affordances = authorityAffordances(state.authority);
+    if (!affordances.canReadEvidence) return;
+    if (!state.evidenceRequested && state.client) {
+      state.evidenceRequested = true;
+      state.client.evidencePage();
+      state.client.telemetryPage();
+    }
+    content.append(evidenceSection(editor, state, "trusted"), evidenceSection(editor, state, "telemetry"));
   }
   function openProjectSafety(editor, trigger) {
     editor.shadowRoot.querySelector(".glt-safe-modal")?.remove();
@@ -23663,7 +24903,12 @@ ${entityId}`)) return;
       applied: null,
       rollback: null,
       confirmApply: false,
-      confirmRollback: false
+      confirmRollback: false,
+      authority: initialAuthorityState(),
+      client: null,
+      accessSurface: false,
+      access: { loading: false, inventory: null, error: null, pending: null, busy: false, notice: null, lastCode: null },
+      evidenceRequested: false
     };
     const modal = element("div", "glt-safe-modal");
     const dialog = element("section", "glt-safe-dialog");
@@ -23687,13 +24932,16 @@ ${entityId}`)) return;
     tabs.setAttribute("role", "tablist");
     tabs.setAttribute("aria-label", copyFor(editor, "title"));
     const content = element("main", "glt-safe-content");
+    const authority = document.createElement("glt-flow-card-project-authority");
+    authority.copy = (key, values) => copyFor(editor, key, values);
     const footer = element("footer", "glt-safe-footer");
     const footerClose = button(copyFor(editor, "close"));
     footer.append(footerClose);
-    dialog.append(head, banner, tabs, content, footer);
+    dialog.append(head, banner, authority, tabs, content, footer);
     modal.append(dialog);
     editor.shadowRoot.append(modal);
     const closeDialog = () => {
+      authority.release();
       modal.remove();
       trigger.focus();
     };
@@ -23722,6 +24970,7 @@ ${entityId}`)) return;
       }
     });
     state.render = () => {
+      const focused = dialog.contains(editor.shadowRoot.activeElement);
       tabs.replaceChildren();
       const labels = copyFor(editor, "tabs");
       labels.forEach((label, index) => {
@@ -23752,9 +25001,24 @@ ${entityId}`)) return;
       if (state.tab === 1) renderValidation(editor, state, content);
       if (state.tab === 2) renderMigration(editor, state, content);
       if (state.tab === 3) renderBundles(editor, state, content);
-      if (state.tab === 4) renderEvidence(editor, content);
+      if (state.tab === 4) renderEvidence(editor, state, content);
+      if (focused && !dialog.contains(editor.shadowRoot.activeElement)) {
+        const target = content.querySelector("h3");
+        if (target) {
+          target.tabIndex = -1;
+          target.focus();
+        }
+      }
     };
+    authority.addEventListener("glt-authority-change", (event) => {
+      state.authority = event.detail.state;
+      state.render();
+    });
+    state.client = authority.connect({ hass: editor._hass, projectId: project.id });
+    state.authority = authority.authorityState;
     state.render();
+    state.client?.refresh().catch(() => {
+    });
     queueMicrotask(() => close.focus());
   }
   function installProjectSafety(editor) {

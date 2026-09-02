@@ -281,7 +281,11 @@ export function authorityReducer(state, action) {
       next.lease = {
         state: "held-self",
         holder: "this-session",
-        purpose: lease.purpose === "administration" ? "administration" : "engineering",
+        // The server names this purpose `membership_admin`; the UI calls the
+        // same thing administration. Anything that is not engineering is
+        // treated as administration so a new server purpose cannot silently
+        // acquire content-write affordances.
+        purpose: lease.purpose === "engineering" ? "engineering" : "administration",
         acquiredAt: now,
         ttlSeconds: ttl,
         expiresAt: now + ttl,
@@ -626,6 +630,27 @@ export function createProjectAuthorityClient(options = {}) {
       } catch (error) {
         return dispatch({ type: "telemetry/page-failed", code: error?.code });
       }
+    },
+
+    /** Read the membership inventory the server is willing to disclose. */
+    async accessInventory() {
+      return call("glt_flow_card/access/get");
+    },
+
+    /**
+     * Assign or revoke one fixed role.
+     *
+     * The exact access revision and the administration bearer both travel in
+     * the request, so a change made against a membership list the user has not
+     * seen is refused by the server rather than merged by the browser.
+     */
+    async setAccess({ userId, role, expectedAccessRevision }) {
+      return call("glt_flow_card/access/set", {
+        user_id: userId,
+        role,
+        expected_access_revision: expectedAccessRevision,
+        lease_token: bearer,
+      });
     },
 
     /** Release every browser-held resource; the bearer dies with the client. */
