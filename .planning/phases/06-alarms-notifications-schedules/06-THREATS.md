@@ -87,6 +87,20 @@ resolves and the leaf cannot execute. Marking the row from the legs that do run
 would be marking a composed leaf nobody composed, which is the thing this
 register exists to prevent.
 
+**T6-05's evidence was strengthened after the register was marked.** The row's
+owner, `node --test test/shipped-alarm-truth.test.mjs`, greps the shipped
+artifact for `alarms/list` and for an inert `activeAlarm`. Both were true, and
+the row's verdict was right -- but the assertion was weaker than the claim it
+stood in for. `card._alarmState` was written in exactly one place, `alarmsPanel`,
+so the toolbar badge, the per-site active count and the report's Status column
+each read `undefined` and reported *no active alarms* until an operator happened
+to open the modal. A grep over the artifact cannot tell reachable from reached.
+
+The outcome assertion now lives in the exact-dist suite, which renders the card,
+opens nothing, and requires the authoritative state to be present. It was
+confirmed to fail without the fix and pass with it. The row stays `verified`,
+and its evidence is no longer only a grep.
+
 **A second environment limit, distinct from T6-21's.** The composed
 `npm run test:phase6` gate also cannot complete in this container, and not for
 T6-21's reason. Phase 6's `F6-06` runs the Phase-5 gate, which runs Phase 4's,

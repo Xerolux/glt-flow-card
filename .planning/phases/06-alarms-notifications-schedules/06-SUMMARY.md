@@ -113,6 +113,14 @@ a correct implementation failed its own contract. The gap was rewritten to
 assert the behaviour by AST. A contract that names a file rather than an effect
 tests the plan, not the product.
 
+**A grep cannot tell reachable from reached.** T6-05's owner asserted that the
+shipped artifact contains `alarms/list` and that `activeAlarm` is inert. Both
+held, and three surfaces still reported a confident zero, because the one place
+that fetched the state was the panel that displayed it. The fix moved the fetch
+to the card, throttled; the assertion moved to the exact-dist suite, where it
+renders the card, opens nothing, and demands the state be there. An artifact
+grep is the right test for *what shipped* and the wrong test for *what runs*.
+
 ## Limitations, stated
 
 **T6-21 is `planned`.** Its owner is the composed `test:phase6:release` leaf.
