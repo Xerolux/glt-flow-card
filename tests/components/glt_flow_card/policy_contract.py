@@ -176,7 +176,8 @@ COMMAND_POLICY_CONTRACT: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/projects/list", "project.list", scope="component",
            enumeration="filter"),
     _route("glt_flow_card/projects/get", "project.read"),
-    _route("glt_flow_card/projects/save", "project.write", lease=True, revision=True),
+    _route("glt_flow_card/projects/save", "project.write", project_field="project.id",
+           lease=True, revision=True),
     _route("glt_flow_card/projects/preview", "project.write", lease=True, revision=True),
     _route("glt_flow_card/projects/apply", "project.write", lease=True, revision=True),
     _route("glt_flow_card/projects/rollback", "project.write", lease=True, revision=True),
@@ -208,7 +209,7 @@ COMMAND_POLICY_CONTRACT: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/remote/control", "remote.control", state="deferred"),
     # -- audit ------------------------------------------------------------
     # Client-authored trusted audit is retired; telemetry replaces it.
-    _route("glt_flow_card/audit/add", None, state="retired"),
+    _route("glt_flow_card/audit/add", None, scope="component", state="retired"),
     _route("glt_flow_card/audit/list", "evidence.read", scope="component",
            enumeration="filter"),
 )
@@ -244,8 +245,17 @@ def expect_allowed(principal_key: str, policy: RoutePolicy) -> bool:
 
     Deferred and retired routes are never allowed for anyone, which is what
     makes them safe to keep declared.
+
+    A ``filter`` collection is reachable by every authenticated principal and
+    protected by omitting rows. Refusing the call outright would leak the fact
+    that rows exist, which is exactly the enumeration T2-04 forbids; the probe
+    checks the row filtering separately.
     """
-    if policy.state != "active" or policy.capability is None:
+    if policy.state != "active":
+        return False
+    if policy.enumeration == "filter":
+        return True
+    if policy.capability is None:
         return False
     return policy.capability in capabilities_for(principal_key)
 

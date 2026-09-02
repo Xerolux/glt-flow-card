@@ -90,7 +90,7 @@ ROUTE_PAYLOADS: dict[str, dict[str, Any]] = {
 def payload_for(policy: RoutePolicy, project_id: str = PROJECT_ID) -> dict[str, Any]:
     """Return a schema-valid request body for one declared route."""
     body = {"type": policy.route, **ROUTE_PAYLOADS.get(policy.route, {})}
-    if policy.scope == "project" and policy.project_field:
+    if policy.scope == "project" and policy.project_field and "." not in policy.project_field:
         body[policy.project_field] = project_id
     return body
 
@@ -116,7 +116,7 @@ def test_every_declared_route_has_a_schema_valid_probe_payload() -> None:
     for policy in COMMAND_POLICY_CONTRACT:
         body = payload_for(policy)
         assert body["type"] == policy.route
-        if policy.scope == "project":
+        if policy.scope == "project" and "." not in policy.project_field:
             assert body[policy.project_field] == PROJECT_ID
 
 
@@ -176,6 +176,28 @@ async def enumeration_gaps(
     if runtime_access is None:
         gaps.append("the loaded runtime exposes no ACL repository")
         return gaps
+
+    # Seed one real project so an authorized direct read has something to read,
+    # and one the probe never assigns anyone to, so "hidden" is really hidden.
+    manager = hass.data["glt_flow_card"]["manager"]
+    for seeded in (PROJECT_ID, HIDDEN_PROJECT_ID):
+        await manager.save_project(
+            {
+                "id": seeded,
+                "config": {
+                    "type": "custom:glt-flow-card",
+                    "schema_version": 2,
+                    "project": {"id": seeded, "name": seeded, "revision": 0},
+                    "views": [],
+                    "equipment": [],
+                    "paths": [],
+                    "datapoints": [],
+                },
+            },
+            autosave=False,
+            user_id=phase2_users.principal("admin").user_id,
+            expected_revision=0,
+        )
 
     for key in ("viewer", "operator", "engineer", "admin"):
         principal = phase2_users.principal(key)

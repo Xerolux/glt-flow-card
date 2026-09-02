@@ -6,6 +6,7 @@ schedules, work orders, reports, audit and optional remote Home Assistant sites.
 from __future__ import annotations
 
 import asyncio
+import itertools
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -29,6 +30,8 @@ from .const import (
     STORE_VERSION,
     normalize_options,
 )
+from .policy import PolicyCoordinator, PolicyDenied
+from .project_access import ProjectAccessRepository
 from .project_repository import ProjectRepository
 from .project_transactions import ProjectTransactionCoordinator, TransactionConflict
 
@@ -419,15 +422,35 @@ class GltStore:
             await self.async_save()
 
 
+#: Incremented on every runtime publication. Every ephemeral capability the
+#: Companion issues carries the generation it was issued under, so nothing that
+#: survives an unload can be replayed against the next setup.
+_GENERATION = itertools.count(1)
+
+
 @dataclass(slots=True)
 class CompanionRuntime:
     """Entry-scoped runtime compatible with HA versions without runtime_data."""
 
     entry_id: str
     manager: GltStore
+    access: ProjectAccessRepository | None = None
+    policy: PolicyCoordinator | None = None
+    leases: Any = None
+    generation: int = 0
+    available: bool = True
+
+    async def async_invalidate(self) -> None:
+        """Hide the runtime before anything it owns is released.
+
+        Availability disappears first so no request admitted after this point
+        can observe a half-released runtime.
+        """
+        self.available = False
 
     async def async_close(self) -> None:
-        """Close the complete entry-owned runtime."""
+        """Close the complete entry-owned runtime, tolerating repetition."""
+        await self.async_invalidate()
         await self.manager.async_close()
 
 
@@ -483,13 +506,26 @@ def _require_project_role(hass, connection, msg, required: str) -> tuple[dict[st
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/list"})
 @websocket_api.async_response
 async def ws_projects_list(hass, connection, msg):
-    connection.send_result(msg["id"], _manager(hass).projects())
+    """Return only the projects this principal may read.
+
+    Filtering happens at the source: an unauthorized project is omitted, never
+    returned with redacted fields, so the response cannot reveal that it exists.
+    """
+    runtime = _runtime_for(hass)
+    heads = _manager(hass).projects()
+    visible = set(runtime.policy.visible_projects(connection, [head["id"] for head in heads]))
+    connection.send_result(msg["id"], [head for head in heads if head["id"] in visible])
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/get", vol.Required("project_id"): str})
 @websocket_api.async_response
 async def ws_projects_get(hass, connection, msg):
-    connection.send_result(msg["id"], _manager(hass).project(msg["project_id"]))
+    """Return one project, answering missing and unauthorized identically."""
+    project = _manager(hass).project(msg["project_id"])
+    if project is None:
+        connection.send_error(msg["id"], "not_found_or_denied", "not_found_or_denied")
+        return
+    connection.send_result(msg["id"], project)
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/save", vol.Required("project"): dict, vol.Optional("autosave", default=False): bool, vol.Optional("expected_revision"): int})
@@ -507,8 +543,8 @@ async def ws_projects_save(hass, connection, msg):
         result = await _manager(hass).save_project(project, msg["autosave"], user_id, msg.get("expected_revision"))
         await _manager(hass).add_audit({"action":"project.save","detail":{"project_id":pid,"revision":result["revision"]}}, user_id, user_name)
         connection.send_result(msg["id"], result)
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
     except (TransactionConflict, RuntimeError) as err:
         connection.send_error(msg["id"], "revision_conflict", str(err))
     except ValueError as err:
@@ -536,8 +572,8 @@ async def ws_projects_preview(hass, connection, msg):
             candidate=msg["candidate"],
         )
         connection.send_result(msg["id"], result)
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
     except TransactionConflict as err:
         connection.send_error(msg["id"], "revision_conflict", str(err))
     except ValueError as err:
@@ -566,8 +602,8 @@ async def ws_projects_apply(hass, connection, msg):
         )
         _manager(hass).data["projects"][msg["project_id"]] = deepcopy(result)
         connection.send_result(msg["id"], result)
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
     except TransactionConflict as err:
         connection.send_error(msg["id"], "revision_conflict", str(err))
     except ValueError as err:
@@ -596,8 +632,8 @@ async def ws_projects_rollback(hass, connection, msg):
         )
         _manager(hass).data["projects"][msg["project_id"]] = deepcopy(result)
         connection.send_result(msg["id"], result)
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
     except TransactionConflict as err:
         connection.send_error(msg["id"], "revision_conflict", str(err))
     except ValueError as err:
@@ -610,8 +646,8 @@ async def ws_projects_delete(hass, connection, msg):
     try:
         _require_project_role(hass, connection, msg, "designer")
         connection.send_result(msg["id"], await _manager(hass).delete_project(msg["project_id"]))
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/lock", vol.Required("project_id"): str, vol.Optional("ttl_seconds"): vol.All(int, vol.Range(min=30, max=3600))})
@@ -635,8 +671,8 @@ async def ws_projects_unlock(hass, connection, msg):
     try:
         _project, uid, _uname, admin = _require_project_role(hass, connection, msg, "designer")
         connection.send_result(msg["id"], await _manager(hass).unlock_project(msg["project_id"], uid, admin))
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/templates/list"})
@@ -650,10 +686,8 @@ async def ws_templates_list(hass, connection, msg):
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/templates/save", vol.Required("template"): dict})
 @websocket_api.async_response
 async def ws_templates_save(hass, connection, msg):
-    uid, _uname, admin = _user(connection)
-    if not admin:
-        connection.send_error(msg["id"], "forbidden", "admin required for global templates")
-        return
+    """Save one shared template. Policy already proved template.write."""
+    uid, _uname, _admin = _user(connection)
     t = deepcopy(msg["template"])
     tid = str(t.get("id") or f"template-{int(datetime.now(timezone.utc).timestamp()*1000)}")
     t.update({"id":tid,"updated":_utc(),"updated_by":uid})
@@ -665,10 +699,7 @@ async def ws_templates_save(hass, connection, msg):
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/templates/delete", vol.Required("template_id"): str})
 @websocket_api.async_response
 async def ws_templates_delete(hass, connection, msg):
-    _uid, _uname, admin = _user(connection)
-    if not admin:
-        connection.send_error(msg["id"], "forbidden", "admin required")
-        return
+    """Delete one shared template. Policy already proved template.write."""
     existed = _manager(hass).data["templates"].pop(msg["template_id"], None) is not None
     await _manager(hass).async_save()
     connection.send_result(msg["id"], existed)
@@ -691,8 +722,8 @@ async def ws_control_execute(hass, connection, msg):
         event = {"action":"control.execute","detail":{"project_id":msg["project_id"],"entity_id":entity_id,"service":f"{domain}.{msg['service']}","before":before.state if before else None,"after":after.state if after else None}}
         await _manager(hass).add_audit(event, uid, uname)
         connection.send_result(msg["id"], {"ok":True,"before":before.state if before else None,"after":after.state if after else None})
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
     except Exception as err:
         connection.send_error(msg["id"], "service_failed", str(err))
 
@@ -710,22 +741,22 @@ async def ws_alarms_list(hass, connection, msg):
 @websocket_api.async_response
 async def ws_alarms_ack(hass, connection, msg):
     try:
-        _project, uid, uname, _admin = _require_project_role(hass, connection, msg, "operator")
+        uid, uname, _admin = _user(connection)
         result = await _manager(hass).ack_alarm(msg["project_id"], msg["alarm_id"], uid, uname, msg["comment"])
         await _manager(hass).add_audit({"action":"alarm.ack","detail":{"project_id":msg["project_id"],"alarm_id":msg["alarm_id"],"comment":msg["comment"]}}, uid, uname)
         connection.send_result(msg["id"], result)
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/alarms/shelve", vol.Required("project_id"): str, vol.Required("alarm_id"): str, vol.Optional("minutes", default=60): int})
 @websocket_api.async_response
 async def ws_alarms_shelve(hass, connection, msg):
     try:
-        _project, uid, _uname, _admin = _require_project_role(hass, connection, msg, "operator")
+        uid, _uname, _admin = _user(connection)
         connection.send_result(msg["id"], await _manager(hass).shelve_alarm(msg["project_id"], msg["alarm_id"], msg["minutes"], uid))
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/work_orders/list", vol.Optional("project_id"): str})
@@ -740,21 +771,21 @@ async def ws_work_orders_list(hass, connection, msg):
 @websocket_api.async_response
 async def ws_work_orders_save(hass, connection, msg):
     try:
-        _project, uid, _uname, _admin = _require_project_role(hass, connection, msg, "operator")
+        uid, _uname, _admin = _user(connection)
         work_order = {**msg["work_order"], "project_id":msg["project_id"]}
         connection.send_result(msg["id"], await _manager(hass).save_work_order(work_order, uid))
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/reports/run", vol.Required("project_id"): str, vol.Required("report_id"): str})
 @websocket_api.async_response
 async def ws_reports_run(hass, connection, msg):
     try:
-        _project, uid, _uname, _admin = _require_project_role(hass, connection, msg, "operator")
+        uid, _uname, _admin = _user(connection)
         connection.send_result(msg["id"], await _manager(hass).run_report(msg["project_id"], msg["report_id"], uid))
-    except PermissionError as err:
-        connection.send_error(msg["id"], "forbidden", str(err))
+    except PermissionError:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/reports/list", vol.Optional("project_id"): str})
@@ -815,18 +846,51 @@ _COMMAND_HANDLERS = (
 )
 
 
+#: Private key under which an authorized decision reaches its handler.
+DECISION_KEY = "_glt_decision"
+
+
 def _guard_command(command):
-    """Make component-scope commands resolve only the current loaded entry."""
+    """Enforce the deny-default policy boundary before any handler runs.
+
+    Home Assistant dispatches WebSocket commands through a synchronous
+    callback, and the decision is made here rather than inside the scheduled
+    handler coroutine. That ordering is the guarantee: an unauthorized request
+    never reaches a handler, so it can have no effect to undo.
+    """
 
     @wraps(command)
     def guarded(hass, connection, msg):
-        if _runtime_for(hass) is None:
+        runtime = _runtime_for(hass)
+        if runtime is None or not runtime.available:
             connection.send_error(
                 msg["id"],
                 "not_loaded",
                 "GLT Flow Card Companion is not loaded",
             )
             return None
+
+        coordinator = runtime.policy
+        if coordinator is None:
+            connection.send_error(msg["id"], "not_loaded", "policy is unavailable")
+            return None
+
+        try:
+            decision = coordinator.authorize(connection, msg)
+        except PolicyDenied as denied:
+            connection.send_error(msg["id"], denied.code, denied.code)
+            return None
+
+        if decision.policy.requires_lease and runtime.leases is None:
+            # Leases arrive with plan 02-08. Until then every shared mutation is
+            # unreachable rather than unguarded: a write with no lease evidence
+            # is exactly what COLLAB-01 forbids.
+            connection.send_error(msg["id"], "lease_required", "lease_required")
+            return None
+
+        # `ActiveConnection` is slotted, so the decision travels with the
+        # already-validated message under a private key instead.
+        msg[DECISION_KEY] = decision
         return command(hass, connection, msg)
 
     return guarded
@@ -925,7 +989,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await manager.async_close()
         raise
 
-    runtime = CompanionRuntime(entry_id=entry.entry_id, manager=manager)
+    access = ProjectAccessRepository(hass)
+    try:
+        await access.async_initialize()
+    except Exception:
+        await manager.async_close()
+        raise
+
+    runtime = CompanionRuntime(
+        entry_id=entry.entry_id,
+        manager=manager,
+        access=access,
+        policy=PolicyCoordinator(access, hass=hass),
+        generation=next(_GENERATION),
+    )
     data["runtimes"][entry.entry_id] = runtime
     data["manager"] = manager
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
