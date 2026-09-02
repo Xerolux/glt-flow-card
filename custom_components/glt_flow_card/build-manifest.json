@@ -128,7 +128,7 @@
   ],
   "build": {
     "commit": "d11006512712dd1ef1fba3c636074ae9d33cd817",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -278,8 +278,8 @@
     },
     {
       "path": "src/v100/period-resolution.mjs",
-      "sha256": "253fbd830def6d15d67b9e88afb04bb1b1e6f854a343d002c3f1d2392d003231",
-      "size": 7454
+      "sha256": "13909bb63cdcbdd60f6dc33f23a592e0c1137ee5af51da66ca3ed998fd48289b",
+      "size": 10041
     },
     {
       "path": "src/v100/period-vocabulary.mjs",
