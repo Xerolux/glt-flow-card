@@ -24,7 +24,16 @@ const CLASSIFIER = fileURLToPath(new URL("assert-red.mjs", import.meta.url));
  * all.
  */
 function pytest(file) {
-  return [...pythonCommand().split(" "), "-m", "pytest", file, "-q", "-x"];
+  // `-m expected_red` overrides the default deselection in `pytest.ini`. The
+  // sentinels are meant to fail for the length of a wave, so they are out of
+  // the ordinary suite -- a suite that is red for a fortnight stops telling
+  // anyone anything -- and this gate is where their failure is checked. It is
+  // a selection, not a skip: assert-red.mjs rejects a zero-test or skipped run,
+  // so a sentinel that vanished fails here rather than passing quietly.
+  return [
+    ...pythonCommand().split(" "),
+    "-m", "pytest", file, "-q", "-x", "-m", "expected_red",
+  ];
 }
 
 /** Registry key -> the command that must reach exactly that controlled RED. */
