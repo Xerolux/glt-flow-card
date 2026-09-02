@@ -363,3 +363,92 @@ def suppression_for(
         return {"reason": "acknowledged", "by": alarm.get("ack_user_name"), "until": None}
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# Restart safety
+# ---------------------------------------------------------------------------
+
+#: How long after Home Assistant starts transitions are suppressed.
+#:
+#: Entities do not all arrive at once on boot; a scan that runs while they are
+#: still settling sees a plant in a state it was never in. Conservative because
+#: the cost of waiting is a late annunciation and the cost of not waiting is a
+#: page for every alarm in the installation.
+DEFAULT_STARTUP_GRACE_SECONDS = 60
+
+
+def startup_grace_active(
+    *,
+    started_at: Any,
+    now: Any,
+    settings: dict[str, Any] | None = None,
+) -> bool:
+    """Return whether transitions are still suppressed after a start.
+
+    `started_at` is None before Home Assistant has reported itself started, and
+    that counts as inside the grace: the guard must be closed before the event
+    arrives, not opened by its absence.
+    """
+    if started_at is None:
+        return True
+    from datetime import timedelta
+
+    seconds = int(
+        (settings or {}).get("startup_grace_seconds", DEFAULT_STARTUP_GRACE_SECONDS)
+    )
+    return now < started_at + timedelta(seconds=seconds)
+
+
+def rearm_pending_delays(pending: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return what is left of each pending delay after a restart.
+
+    `_alarm_tasks` is in-memory only, so a delay pending at shutdown was lost
+    and never fired. Re-arming it from zero would be almost as wrong: a
+    four-minute-old five-minute delay must fire in one minute, not five, or a
+    restart silently extends every delay in the installation.
+
+    An entry whose delay already elapsed while the process was down returns
+    zero, so it annunciates immediately rather than being skipped.
+    """
+    rearmed: list[dict[str, Any]] = []
+    for entry in pending or []:
+        delay = max(0.0, float(_numeric(entry.get("delay_seconds", 0)) or 0.0))
+        age = max(0.0, float(_numeric(entry.get("anchor_age_seconds", 0)) or 0.0))
+        remaining = max(0.0, delay - age)
+        rearmed.append({
+            **entry,
+            "fires_in_seconds": int(remaining) if remaining.is_integer() else remaining,
+        })
+    return rearmed
+
+
+def pending_from_state(
+    alarm_state: dict[str, Any],
+    *,
+    now: Any,
+) -> list[dict[str, Any]]:
+    """Return the delays that were pending when the process stopped.
+
+    Read from persisted state rather than from the in-memory task registry,
+    which is the whole point: the registry did not survive.
+    """
+    from datetime import datetime
+
+    pending: list[dict[str, Any]] = []
+    for key, row in (alarm_state or {}).items():
+        anchor = row.get("delay_anchor")
+        delay = _numeric(row.get("delay_seconds", 0)) or 0
+        if not anchor or delay <= 0 or row.get("active"):
+            continue
+        parsed = _parse_instant(anchor)
+        if parsed is None:
+            continue
+        pending.append({
+            "key": key,
+            "project_id": row.get("project_id"),
+            "alarm_id": row.get("alarm_id"),
+            "delay_seconds": int(delay),
+            "anchor_age_seconds": max(0.0, (now - parsed).total_seconds()),
+        })
+    return rearm_pending_delays(pending)

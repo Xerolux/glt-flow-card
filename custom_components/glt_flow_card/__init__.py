@@ -188,6 +188,10 @@ class GltStore:
         }
         self.remote_sites: dict[str, dict[str, Any]] = {}
         self._alarm_tasks: dict[str, asyncio.Task] = {}
+        #: When Home Assistant reported itself started. None means "not yet",
+        #: and that counts as inside the startup grace: the guard must be closed
+        #: before the event arrives, not opened by its absence.
+        self._started_at: datetime | None = None
         self._unsubs: list[Any] = []
         self.project_repository = ProjectRepository(
             hass,
@@ -496,6 +500,52 @@ class GltStore:
                 raise RuntimeError(f"remote service failed: HTTP {resp.status}")
             return await resp.json()
 
+    async def async_mark_started(self) -> None:
+        """Open the startup grace period and re-arm the delays that survived.
+
+        Both halves belong together: the grace exists because the boot scan is
+        not trustworthy, and the re-arming exists because the tasks that were
+        pending during the previous run are gone. Doing one without the other
+        leaves either a mute installation or a set of delays that silently
+        restarted from zero.
+        """
+        self._started_at = datetime.now(timezone.utc)
+        pending = alarm_engine.pending_from_state(
+            self.data["alarm_state"], now=self._started_at,
+        )
+        for entry in pending:
+            key = entry["key"]
+            if key in self._alarm_tasks and not self._alarm_tasks[key].done():
+                continue
+            project = self.data["projects"].get(entry["project_id"]) or {}
+            alarm = next(
+                (
+                    candidate
+                    for candidate in (project.get("config") or {}).get("alarms") or []
+                    if candidate.get("id") == entry["alarm_id"]
+                ),
+                None,
+            )
+            if alarm is None:
+                # The alarm is gone from the project. Plan 06-10 reconciles the
+                # orphaned state; re-arming a task for it would annunciate an
+                # alarm nobody can see.
+                continue
+            entity = _entity_id(alarm.get("entity"))
+            if not entity:
+                continue
+            self._alarm_tasks[key] = self.hass.async_create_task(
+                self._delayed_transition(
+                    project_id=entry["project_id"],
+                    alarm=deepcopy(alarm),
+                    entity_id=entity,
+                    key=key,
+                    # What is *left* of the delay, not the whole delay again. A
+                    # four-minute-old five-minute delay fires in one minute.
+                    delay_seconds=entry["fires_in_seconds"],
+                )
+            )
+
     async def process_state_change(self, event) -> None:
         entity_id = event.data.get("entity_id")
         new_state = event.data.get("new_state")
@@ -542,6 +592,20 @@ class GltStore:
                     # like every alarm clearing at once, which is D5.
                     continue
 
+                if alarm_engine.startup_grace_active(
+                    started_at=self._started_at,
+                    now=datetime.now(timezone.utc),
+                    settings=self.alarm_settings(),
+                ):
+                    # D5's other half. Entities do not all arrive at once on
+                    # boot, and a scan that runs while they are settling sees a
+                    # plant in a state it was never in. The last value is still
+                    # recorded, so nothing is lost -- only the transition is
+                    # withheld.
+                    current["last_value"] = raw
+                    self.data["alarm_state"][key] = current
+                    continue
+
                 if decision["reason"] == "delay_pending":
                     # The anchor, not a restart. A pending task is left alone
                     # while the condition stays continuously active, so a sensor
@@ -551,6 +615,13 @@ class GltStore:
                     # fault never annunciated at all.
                     if key in self._alarm_tasks and not self._alarm_tasks[key].done():
                         continue
+                    # Persisted, because `_alarm_tasks` is in-memory only: a
+                    # delay pending at shutdown was lost and never fired.
+                    current.setdefault("delay_anchor", _utc())
+                    current["delay_seconds"] = decision["delay_seconds"]
+                    current["project_id"] = project_id
+                    current["alarm_id"] = alarm.get("id")
+                    self.data["alarm_state"][key] = current
                     self._alarm_tasks[key] = self.hass.async_create_task(
                         self._delayed_transition(
                             project_id=project_id,
@@ -2095,12 +2166,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async def state_listener(event):
             await manager.process_state_change(event)
 
+        async def on_started(_event) -> None:
+            await manager.async_mark_started()
+
         manager._unsubs.extend(
             [
                 hass.bus.async_listen("state_changed", state_listener),
                 async_track_time_change(hass, manager.run_schedules, second=0),
             ]
         )
+        # A reload of the entry inside an already-running Home Assistant never
+        # sees `homeassistant_started` again, so the grace would never lift and
+        # no alarm would ever annunciate. Asking whether HA is already running
+        # is the difference between a guard and a permanent mute.
+        if hass.is_running:
+            await manager.async_mark_started()
+        else:
+            manager._unsubs.append(
+                hass.bus.async_listen_once("homeassistant_started", on_started)
+            )
     except Exception:
         await manager.async_close()
         raise
