@@ -33,6 +33,13 @@
       "covers": "I18N-01. Proven against Polish (four plural forms) and Arabic (six), not only the German/English pair."
     },
     {
+      "id": "wording-parity",
+      "claim": "The Companion and the browser carry the same wording, compared as canonical bytes.",
+      "kind": "command",
+      "command": "node --test test/catalog-parity.test.mjs",
+      "covers": "I18N-01, for the namespaces both runtimes own. The existing vocabulary gates compare codes, not sentences."
+    },
+    {
       "id": "a11y-structure",
       "claim": "Every focusable element in the shipped artifact has a role and an accessible name, focus stays visible with colour removed, and nothing traps the keyboard.",
       "kind": "command",

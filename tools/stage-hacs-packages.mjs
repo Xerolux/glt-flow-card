@@ -35,6 +35,7 @@ const COMPONENT_ROOT = "custom_components/glt_flow_card";
 const COMPONENT_FILES = [
   "__init__.py",
   "build-manifest.json",
+  "catalog.py",
   "config_flow.py",
   "configured_controls.py",
   "equipment_profiles.py",

@@ -85,6 +85,31 @@ function ownRegions(source) {
   return regions;
 }
 
+/**
+ * Offsets of literals that are a thrown diagnostic rather than screen text.
+ *
+ * `throw new Error("asset bytes must be a Uint8Array or ArrayBuffer")` is
+ * addressed to whoever is reading a stack trace, not to a plant operator.
+ * Translating it would be work with no reader, and — worse — it would put a
+ * German sentence in front of the person debugging the failure.
+ *
+ * The distinction is structural rather than a matter of taste: the string is
+ * the argument of an `Error` constructor. Anything a person actually reads
+ * reaches the DOM through a catalog lookup, and the surfaces this codebase
+ * ships already prove that separately: an error a *user* sees is a closed set
+ * of reason codes, which Phase 9 made a security property.
+ */
+function diagnosticRanges(source) {
+  const ranges = [];
+  for (const match of source.matchAll(/(?:new\s+)?Error\s*\(/gu)) {
+    // The literal, if any, starts within the next few characters and the
+    // message is the first argument; a generous window covers a template with
+    // interpolation without swallowing the following statement.
+    ranges.push([match.index, match.index + match[0].length + 400]);
+  }
+  return ranges;
+}
+
 /** Extract quoted literals from the bundle, with their offsets. */
 function literals(source) {
   const found = [];
@@ -148,10 +173,12 @@ export async function findUncatalogued(artifactPath = ARTIFACT) {
 
   const regions = ownRegions(source);
   const isOurs = (index) => regions.some(([from, to]) => index >= from && index < to);
+  const diagnostics = diagnosticRanges(source);
+  const isDiagnostic = (index) => diagnostics.some(([from, to]) => index >= from && index <= to);
 
   const seen = new Map();
   for (const { index, raw } of literals(source)) {
-    if (inCatalog(index) || !isOurs(index)) continue;
+    if (inCatalog(index) || !isOurs(index) || isDiagnostic(index)) continue;
     const value = decode(raw);
     if (!looksUserFacing(value)) continue;
     if (!seen.has(value)) seen.set(value, 0);

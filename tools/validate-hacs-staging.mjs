@@ -26,6 +26,7 @@ const BUILD_MANIFEST_PATH = `${COMPONENT_ROOT}/build-manifest.json`;
 const COMPONENT_FILES = [
   "__init__.py",
   "build-manifest.json",
+  "catalog.py",
   "config_flow.py",
   "configured_controls.py",
   "equipment_profiles.py",
