@@ -3,9 +3,15 @@
 **Audited:** 2026-09-02 at `9a66f0a`
 **Purpose:** Establish what Phase 5 actually inherits, measured rather than assumed.
 
-Phase 5 is the first phase where a large amount of the feature already appears to
-exist. Most of it does not survive contact with its requirement, so this audit
+Phase 5 is the first phase where a large amount of the feature already exists.
+Some of it survives contact with its requirement and some does not, so this audit
 records numbers and signatures rather than impressions.
+
+**Corrected on 2026-09-02, during execution of 05-01.** The first version audited
+`src/v040-extension.*` and treated it as the whole product. It is not:
+`src/v100/core.mjs` carries an obstacle-aware router and already consumes port
+endpoints. Corrected sections are marked. The claim that three of five
+requirements were "essentially greenfield" was an overstatement and is withdrawn.
 
 ## CAT-01 — the catalog
 
@@ -29,6 +35,9 @@ variants "across HVAC, hydraulics, refrigeration, air handling, fire/electrical
 representation, DIN/P&ID, and Neo-2030 styles" — styles are named as part of the
 spread, so the cross product is the reading, and 336 ≥ 300.
 
+`core.mjs:symbolCatalogStats()` already reports `{base_symbols, variants,
+profiles}` — but it counts array entries, which is exactly the unproven claim.
+
 **What is missing is the evidence, not the count.** The roadmap names "unproven
 catalog-count claims" as a defect this phase closes, and success criterion 1
 requires "catalog evidence plus state/contrast visual tests". Neither exists
@@ -42,60 +51,90 @@ fire safety. That is a genuine hole in the required domain spread.
 
 ## ENG-01 — typed ports
 
-Ports exist in `COMPONENT_PROFILES` as `{id, medium, side, direction}` (13 port
-declarations). Against the requirement:
+**Corrected 2026-09-02, during execution.** The first version of this section said
+a connection names equipment rather than ports. That was measured from the legacy
+extension and is wrong about the repository as a whole.
+
+`from_port` and `to_port` **already exist** in the schema-3 `path` definition, and
+`src/v100/core.mjs:256` already consumes them: it selects a port by id, falling
+back to a medium match, then to a default side. The endpoint reference exists and
+is honoured.
 
 | ENG-01 asks for | Present |
 |---|---|
-| medium | yes |
-| direction | yes (`in` / `out` / `bidirectional`) |
-| preferred side | yes (`side`) |
-| signal vs power | **no** |
-| multiplicity | **no** |
-| incompatible connections blocked with an explanation | **no — nothing checks compatibility anywhere** |
-| stable endpoint ids across edits, copy/paste, bundles, migrations | **no — a connection names `from_equipment`/`to_equipment`, not a port** |
+| medium, direction, preferred side | yes, in `COMPONENT_PROFILES` |
+| a connection that names ports | **yes** — `from_port` / `to_port`, consumed by `smartRoute` |
+| signal vs power (`kind`) | no |
+| multiplicity | no |
+| a validated port shape | **no** — `profile.ports` items are `$ref: openObject`, so a port is entirely unvalidated |
+| incompatible connections blocked with an explanation | **no** — a grep for `compatib\|canConnect\|multiplicity` across `src/` returns only Phase-2 authority states |
+| endpoint identity across edits, copy/paste, bundles, migrations | **partly** — the field survives, but nothing preserves or repairs it, and paste does not remap it |
 
-A grep for `compatib|incompatible|canConnect|multiplicity` across `src/` returns
-only Phase-2 authority states. The core guarantee of ENG-01 does not exist.
+ENG-01 is therefore narrower than first stated. The schema change is to give
+`profile.ports` a validated closed shape, not to introduce endpoints at all. The
+missing work is `kind`, `multiplicity`, validation, the compatibility function,
+and identity preservation.
 
 ## ENG-02 — routing
 
-`autoRoute` (`src/v040-extension.part02:36`) is eight lines. It computes a fixed
-four-point Z: leave horizontally, run to the midpoint x, run vertically, arrive.
+**Corrected 2026-09-02, during execution.** The first version described routing as
+an eight-line Z-shape blind to obstacles. That describes the *legacy* router and
+misses the one that ships.
 
-```
-const leftToRight = a.x + a.width / 2 <= b.x + b.width / 2;
-```
+There are two:
 
-Against the requirement:
+- `src/v040-extension.part02:36 autoRoute` — the eight-line Z through the
+  midpoint, no obstacles. Legacy.
+- `src/v100/core.mjs:249 smartRoute` — **obstacle-aware**. It builds obstacle
+  rectangles from every other equipment item with a configurable padding,
+  generates about 34 candidate paths (two direct, then eight offsets in four
+  directions), and returns the first that does not intersect an obstacle, tested
+  by `pathHits`/`segHitsRect`. It honours `from_port`/`to_port`.
 
-| ENG-02 asks for | Present |
+`smartRoute` is exported on `window.GLTFlowCardSDK` and driven from the CAD
+dialog's "recalculate all auto-routes".
+
+| ENG-02 asks for | Present in `smartRoute` |
 |---|---|
-| deterministic | yes — a pure function of two positions |
+| deterministic | yes — pure, with a fixed candidate order |
 | orthogonal | yes |
-| avoids equipment | **no — obstacles are never consulted** |
-| honours port direction and medium | **no — the side is chosen from relative x alone** |
-| stable junctions and T-pieces | **no** |
-| clear crossings | **no** |
-| parallel spacing | **no** |
-| incremental reroute of affected segments | **no — `reroute` rewrites every path in the view on every call** |
+| avoids equipment | **partly, and this is the defect**: when no candidate is clean it returns `candidates[0]`, a path that *does* cross an obstacle, with no signal that it failed |
+| honours port direction | no — only `side` is used; `direction` is ignored |
+| honours medium | partly — medium selects a port, but an incompatible pair is still routed |
+| stable junctions and T-pieces | no |
+| clear crossings | no |
+| parallel spacing | no |
+| incremental reroute | no — the CAD action loops every path with `from_equipment && to_equipment` |
 
-Both defects the roadmap names for routing — "unstable/detached routes" and
-"synchronous full reroutes" — are present and directly demonstrable.
+The routing work is therefore not "write a router". It is: make failure explicit
+instead of silently returning a crossing path, honour direction, add junctions,
+crossings and spacing, and make rerouting incremental. Candidate-and-test may be
+replaced, but it is a real starting point rather than nothing.
 
 ## CAD-01 — the designer
 
-The designer lives in `src/v040-extension.part03` and `part04`. It has selection,
-templates and deletion, and it uses `confirm()` and `alert()` for destructive
-operations (`part03:26`, `part03:76`, `part03:98`, `part04:4`). Phase 4
-deliberately left these alone as Phase 5's, because they are editor affordances
-rather than authorization stand-ins.
+**Corrected 2026-09-02.** More exists than first credited. The designer lives in
+`src/v040-extension.part03`/`part04` and in `src/v100/index.js:showCAD`.
 
-Against CAD-01, the following are absent: layers with visibility and locking,
-z-order commands, guides and snapping, alignment and distribution, lasso
-multi-select, cross-project copy/paste with id remapping, minimap, nested groups,
-reusable masters, and undo/redo. There is no transaction boundary of any kind in
-the editor: edits mutate config directly.
+- `core.mjs:alignObjects` implements align left/right/top/bottom, centre on both
+  axes, and distribute horizontally and vertically.
+- `showCAD` offers layers, a full reroute, and copy/paste.
+- Destructive operations use `confirm()` and `alert()` (`part03:26`, `part03:76`,
+  `part03:98`, `part04:4`). Phase 4 deliberately left these for this phase.
+
+The paste path is T5-10 in the wild:
+
+```
+o.id = `${o.id || c.kind}_${Date.now().toString(36)}_${Math.random()...}`
+```
+
+It regenerates an id but rewrites **no** reference to the old one, so a pasted
+connection still points at the source objects — and it uses `Date.now()` and
+`Math.random()`, so the same paste is not reproducible.
+
+Absent entirely: layer locking, z-order commands, guides and snapping, lasso
+multi-select, minimap, nested groups, reusable masters, undo/redo, and any
+transaction boundary. Edits mutate `config` directly.
 
 ## SDK-01 — extensions
 
