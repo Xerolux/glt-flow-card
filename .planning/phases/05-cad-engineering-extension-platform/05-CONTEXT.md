@@ -80,11 +80,13 @@ history, alarms, reports or remote sites.
 - A symbol pack contributes geometry declarations. A renderer, widget or panel
   contributes a declarative descriptor that first-party code interprets. No
   contributed JavaScript is loaded, evaluated, or executed, in any realm.
-- **Flagged for the user:** this forecloses third-party custom rendering logic.
-  The alternative — running contributed code in a Worker behind a message
-  contract — is defensible engineering, but it is a materially larger phase and a
-  standing security commitment, and neither the requirement nor the roadmap asks
-  for it. Say so and it can be planned instead.
+- **Settled with the user on 2026-09-02.** This forecloses third-party custom
+  rendering logic, and that is accepted. The executable alternative — contributed
+  code in a Worker behind a message contract — is recorded as F-01 in
+  `.planning/FUTURE-ROADMAP.md` with its full cost, so the decision stays visible
+  rather than being rediscovered as a gap. Deferring is cheap because
+  contributions are namespaced and versioned: a `worker` kind can be added later
+  without breaking a pack written against this format.
 - Contributions are namespaced, versioned, and conflict-checked. Installing two
   packs that both claim `pump_inline` must fail with both names, not silently
   pick one.

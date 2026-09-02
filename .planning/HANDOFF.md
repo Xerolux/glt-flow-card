@@ -50,6 +50,7 @@ Read these as a set; no single file is sufficient:
 - Current workflow position, decisions, todos, and blockers: [STATE.md](STATE.md)
 - This living cross-AI checklist: [HANDOFF.md](HANDOFF.md)
 - Machine-readable pause handoff: [HANDOFF.json](HANDOFF.json)
+- Decisions deliberately deferred beyond v1.1: [FUTURE-ROADMAP.md](FUTURE-ROADMAP.md)
 - Exact Phase 4 resume marker: [`.continue-here.md`](phases/04-runtime-operations-drilldown/.continue-here.md)
 - Exact Phase 3 resume marker: [`.continue-here.md`](phases/03-semantic-equipment-provenance/.continue-here.md)
 - Exact Phase 2 resume marker: [`.continue-here.md`](phases/02-authoritative-policy-controls-collaboration/.continue-here.md)

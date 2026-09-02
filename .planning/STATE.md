@@ -201,6 +201,15 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 No numbered v1.1 requirement is deferred.
 
+Two capabilities are deliberately out of v1.1 and recorded in
+[FUTURE-ROADMAP.md](FUTURE-ROADMAP.md) so the decisions stay visible:
+
+- **F-01 Executable extension contributions.** SDK-01 ships contributions as
+  data; no contributed code executes in any realm. This forecloses
+  third-party computed rendering. Confirmed with the user on 2026-09-02.
+- **F-02 Public distribution of symbol packs.** Local installation only;
+  publication needs an exact target and separate authorization.
+
 ## Session Continuity
 
 Last session: 2026-09-02T09:00:00.000Z

@@ -179,7 +179,7 @@ Plans:
   5. Separately installed namespaced SDK contributions for symbols, profiles/templates, renderers/widgets/panels, and translations pass manifest/version/conflict/compatibility checks, survive schema-safe exchange, and cannot introduce arbitrary privileged project-script execution.
 
 **Known defects closed**: Unproven catalog-count claims, unstable/detached routes, synchronous full reroutes, pointer-only editing gaps, executable bundle/plugin risk, and fragile prototype registration without behavioral compatibility tests.
-**Research flag**: Define trusted SDK installation, review, distribution, and compatibility policy; same-realm JavaScript is not treated as a sandbox.
+**Research flag**: Define trusted SDK installation, review, distribution, and compatibility policy; same-realm JavaScript is not treated as a sandbox. **Answered 2026-09-02:** contributions are data; no contributed code executes in any realm (05-RESEARCH section 5). The executable alternative and public pack distribution are deferred and recorded in [FUTURE-ROADMAP.md](FUTURE-ROADMAP.md) as F-01 and F-02.
 **Plans**: 20 plans across 11 dependency-ordered waves
 
 Plans:

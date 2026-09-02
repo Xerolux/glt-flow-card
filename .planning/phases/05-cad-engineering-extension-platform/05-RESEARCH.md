@@ -115,8 +115,12 @@ defensible engineering but neither the requirement nor the roadmap asks for it,
 and adopting it silently would commit the product to a security surface nobody
 chose.
 
-**Flagged for the user.** Option A forecloses third-party rendering logic. If
-that capability is wanted, B can be planned instead — say so and it will be.
+**Settled with the user, 2026-09-02.** Option A stands. It forecloses
+third-party rendering logic, and option B is recorded as F-01 in
+`.planning/FUTURE-ROADMAP.md` — what it is, what it would cost, and what would
+make it worth revisiting. The deferral is cheap: contributions are namespaced and
+versioned, so a `worker` kind is additive later, whereas shipping B and later
+restricting it would not be.
 
 **What A still has to get right.** Not executing is necessary and not sufficient.
 A declarative SVG contribution can still carry `<script>`, an `onload` attribute,
@@ -150,7 +154,8 @@ Installation is all-or-nothing. A half-installed pack is the state from which
 - **Measured capacity.** Phase 10. This phase asserts structural bounds (segments
   recomputed, symbols per pack) and deliberately not wall-clock numbers.
 - **Public pack distribution.** Requires an exact target and separate
-  authorization; local installation only.
+  authorization; local installation only. Recorded as F-02 in
+  `.planning/FUTURE-ROADMAP.md`.
 
 ---
 
