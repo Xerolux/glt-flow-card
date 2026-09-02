@@ -4,7 +4,7 @@ import {
   evaluateProjectContract,
 } from "./project-contract.mjs";
 
-export const CURRENT_PROJECT_SCHEMA_VERSION = 3;
+export const CURRENT_PROJECT_SCHEMA_VERSION = 4;
 
 const cloneCanonical = (value) => JSON.parse(digestCanonicalJson(value).canonical);
 
@@ -57,10 +57,49 @@ function stepTwoToThree(source) {
   return cloneCanonical(candidate);
 }
 
+function stepThreeToFour(source) {
+  const candidate = cloneCanonical(source);
+  candidate.schema_version = 4;
+  // Schema 3's profile ports were `openObject` -- entirely unvalidated, so a
+  // typo in `direction` survived every check. Schema 4 gives a port a closed
+  // shape, which means anything already there has to fit it.
+  //
+  // Two rules, both chosen so nothing an engineer authored is lost or invented:
+  // a field the closed shape does not define is dropped rather than failing the
+  // whole migration, because a port carrying an unknown key is a schema-2-era
+  // accident and not content; and `kind` is defaulted only where the medium
+  // makes it unambiguous. Where it does not, the port is left without one and
+  // the compatibility check treats an absent kind as "unknown", which refuses
+  // less than a wrong guess would.
+  const KNOWN = ["id", "label", "medium", "direction", "side", "kind", "multiplicity"];
+  const SIGNAL_MEDIA = ["signal", "control", "status"];
+  const POWER_MEDIA = ["power", "electrical", "mains"];
+  for (const profile of Array.isArray(candidate.profiles) ? candidate.profiles : []) {
+    if (!Array.isArray(profile.ports)) continue;
+    profile.ports = profile.ports.map((port) => {
+      if (!port || typeof port !== "object") return port;
+      const next = {};
+      for (const key of KNOWN) if (port[key] !== undefined) next[key] = port[key];
+      if (next.kind === undefined) {
+        const medium = String(next.medium ?? "");
+        if (SIGNAL_MEDIA.includes(medium)) next.kind = "signal";
+        else if (POWER_MEDIA.includes(medium)) next.kind = "power";
+        else if (medium) next.kind = "process";
+      }
+      return next;
+    });
+  }
+  // Contributions are new and start empty. An absent collection and an empty
+  // one must not differ, or "no packs installed" reads as two different states.
+  if (!Array.isArray(candidate.contributions)) candidate.contributions = [];
+  return cloneCanonical(candidate);
+}
+
 export const PROJECT_MIGRATIONS = new Map([
   [0, { from: 0, to: 1, migrate: stepZeroToOne }],
   [1, { from: 1, to: 2, migrate: stepOneToTwo }],
   [2, { from: 2, to: 3, migrate: stepTwoToThree }],
+  [3, { from: 3, to: 4, migrate: stepThreeToFour }],
 ]);
 
 function contractFailure(prefix, evidence) {

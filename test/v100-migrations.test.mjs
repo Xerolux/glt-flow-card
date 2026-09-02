@@ -32,21 +32,22 @@ const versionTwoProject = () => ({
 
 const currentProject = () => ({
   ...versionTwoProject(),
-  schema_version: 3,
+  schema_version: 4,
+  contributions: [],
   semantic_model: { nodes: [] },
 });
 
-test("migration executes exact 0→1→2→3 copy-on-write steps with receipted evidence", () => {
+test("migration executes exact 0→1→2→3→4 copy-on-write steps with receipted evidence", () => {
   const source = legacyProject();
   const before = JSON.stringify(source);
   const result = migrateProjectDocument(source, { dryRun: true });
 
-  assert.equal(CURRENT_PROJECT_SCHEMA_VERSION, 3);
+  assert.equal(CURRENT_PROJECT_SCHEMA_VERSION, 4);
   assert.equal(JSON.stringify(source), before);
   assert.notStrictEqual(result.candidate, source);
-  assert.deepEqual(result.receipt.steps.map(({ from, to }) => [from, to]), [[0, 1], [1, 2], [2, 3]]);
+  assert.deepEqual(result.receipt.steps.map(({ from, to }) => [from, to]), [[0, 1], [1, 2], [2, 3], [3, 4]]);
   assert.equal(result.receipt.source_schema_version, 0);
-  assert.equal(result.receipt.candidate_schema_version, 3);
+  assert.equal(result.receipt.candidate_schema_version, 4);
   assert.match(result.receipt.source_digest, /^[a-f0-9]{64}$/);
   assert.match(result.receipt.candidate_digest, /^[a-f0-9]{64}$/);
   assert.deepEqual(result.receipt.warnings, []);
@@ -64,7 +65,7 @@ test("dry-run and apply modes are pure and return identical candidate and receip
   const apply = migrateProjectDocument(source, { dryRun: false });
 
   assert.deepEqual(apply, dryRun);
-  assert.deepEqual(dryRun.receipt.steps.map(({ from, to }) => [from, to]), [[1, 2], [2, 3]]);
+  assert.deepEqual(dryRun.receipt.steps.map(({ from, to }) => [from, to]), [[1, 2], [2, 3], [3, 4]]);
   assert.equal(source.schema_version, 1);
   assert.equal("project" in source, false);
 });
@@ -77,8 +78,8 @@ test("current projects are idempotent and future or invalid inputs fail closed",
   assert.deepEqual(result.receipt.steps, []);
   assert.equal(result.receipt.source_digest, result.receipt.candidate_digest);
   assert.throws(
-    () => migrateProjectDocument({ ...current, schema_version: 4 }),
-    /unsupported project schema version 4/i,
+    () => migrateProjectDocument({ ...current, schema_version: 5 }),
+    /unsupported project schema version 5/i,
   );
   assert.throws(
     () => migrateProjectDocument({ schema_version: 1, title: "missing card type" }),
@@ -114,7 +115,7 @@ test("public migration shape stays compatible while exposing hardened evidence",
   assert.equal(result.to, 1);
   assert.equal(result.changed, true);
   assert.equal(result.config.schema_version, 1);
-  assert.equal(result.candidate.schema_version, 3);
+  assert.equal(result.candidate.schema_version, 4);
   assert.equal(result.receipt.source_digest, migrateProjectDocument(source).receipt.source_digest);
   assert.throws(
     () => migrateProject({ schema_version: 1, title: "silently repairable before hardening" }),

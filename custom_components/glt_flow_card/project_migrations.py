@@ -10,7 +10,7 @@ from typing import Any
 
 from .project_contract import digest_canonical_json, evaluate_project_contract
 
-CURRENT_PROJECT_SCHEMA_VERSION = 3
+CURRENT_PROJECT_SCHEMA_VERSION = 4
 
 
 def _clone_canonical(value: Any) -> Any:
@@ -59,10 +59,56 @@ def _step_two_to_three(source: Mapping[str, Any]) -> dict[str, Any]:
     return _clone_canonical(candidate)
 
 
+def _step_three_to_four(source: Mapping[str, Any]) -> dict[str, Any]:
+    candidate = _clone_canonical(source)
+    candidate["schema_version"] = 4
+    # Schema 3's profile ports were `openObject` -- entirely unvalidated, so a
+    # typo in `direction` survived every check. Schema 4 gives a port a closed
+    # shape, which means anything already there has to fit it.
+    #
+    # Two rules, both chosen so nothing an engineer authored is lost or
+    # invented: a field the closed shape does not define is dropped rather than
+    # failing the whole migration, because a port carrying an unknown key is a
+    # schema-2-era accident and not content; and `kind` is defaulted only where
+    # the medium makes it unambiguous. Where it does not, the port is left
+    # without one, and the compatibility check treats an absent kind as
+    # "unknown" -- which refuses less than a wrong guess would.
+    known = ("id", "label", "medium", "direction", "side", "kind", "multiplicity")
+    signal_media = ("signal", "control", "status")
+    power_media = ("power", "electrical", "mains")
+    profiles = candidate.get("profiles")
+    for profile in profiles if isinstance(profiles, list) else []:
+        ports = profile.get("ports") if isinstance(profile, dict) else None
+        if not isinstance(ports, list):
+            continue
+        rebuilt = []
+        for port in ports:
+            if not isinstance(port, Mapping):
+                rebuilt.append(port)
+                continue
+            nxt = {key: port[key] for key in known if key in port}
+            if "kind" not in nxt:
+                medium = str(nxt.get("medium", ""))
+                if medium in signal_media:
+                    nxt["kind"] = "signal"
+                elif medium in power_media:
+                    nxt["kind"] = "power"
+                elif medium:
+                    nxt["kind"] = "process"
+            rebuilt.append(nxt)
+        profile["ports"] = rebuilt
+    # Contributions are new and start empty. An absent collection and an empty
+    # one must not differ, or "no packs installed" reads as two different states.
+    if not isinstance(candidate.get("contributions"), list):
+        candidate["contributions"] = []
+    return _clone_canonical(candidate)
+
+
 PROJECT_MIGRATIONS: dict[int, dict[str, int | Callable[[Mapping[str, Any]], dict[str, Any]]]] = {
     0: {"from": 0, "to": 1, "migrate": _step_zero_to_one},
     1: {"from": 1, "to": 2, "migrate": _step_one_to_two},
     2: {"from": 2, "to": 3, "migrate": _step_two_to_three},
+    3: {"from": 3, "to": 4, "migrate": _step_three_to_four},
 }
 
 

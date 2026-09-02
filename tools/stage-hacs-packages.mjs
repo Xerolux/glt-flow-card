@@ -1,5 +1,15 @@
 /* Stage local plugin and integration-category HACS packages from verified outputs. */
 import { createHash } from "node:crypto";
+
+import { PROJECT_SCHEMA_SPECS } from "./generate-project-validators.mjs";
+
+// The stager may derive from the generator: they are the same side of the
+// trust boundary. The independent validator must not, and does not -- it
+// discovers the staged schema directory instead.
+const PROJECT_SCHEMA_FILES = PROJECT_SCHEMA_SPECS
+  .filter(([name]) => name.startsWith("project"))
+  .map(([, file]) => file);
+
 import {
   copyFile,
   mkdir,
@@ -52,10 +62,7 @@ const COMPONENT_FILES = [
   "schemas/diff-policy.json",
   "schemas/limits.json",
   "schemas/vocabularies.json",
-  "schemas/project/0.schema.json",
-  "schemas/project/1.schema.json",
-  "schemas/project/2.schema.json",
-  "schemas/project/3.schema.json",
+  ...PROJECT_SCHEMA_FILES,
   "strings.json",
   "translations/de.json",
   "translations/en.json",
@@ -67,10 +74,7 @@ const GENERATED_COMPONENT_ARTIFACTS = new Set([
   "schemas/diff-policy.json",
   "schemas/limits.json",
   "schemas/vocabularies.json",
-  "schemas/project/0.schema.json",
-  "schemas/project/1.schema.json",
-  "schemas/project/2.schema.json",
-  "schemas/project/3.schema.json",
+  ...PROJECT_SCHEMA_FILES,
   "www/glt-flow-card.js",
 ]);
 const FIXED_ZIP_DATE = new Date(Date.UTC(1980, 0, 1, 0, 0, 0));

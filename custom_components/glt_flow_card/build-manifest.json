@@ -41,14 +41,19 @@
       "size": 18139
     },
     {
+      "path": "custom_components/glt_flow_card/schemas/project/4.schema.json",
+      "sha256": "80f355c82d67c8db2c7ae187aadbc59da49eff2314a3d843041766f062269769",
+      "size": 20556
+    },
+    {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "7dfaabdff3231856ce77f243090ec0acb921c950f1b14228d455a63c436aba1a",
-      "size": 1452649
+      "sha256": "55ca45bf21d19e5d704c845b1114159c711d19a9a23444afac2673395dd8d354",
+      "size": 1704030
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "7dfaabdff3231856ce77f243090ec0acb921c950f1b14228d455a63c436aba1a",
-      "size": 1452649
+      "sha256": "55ca45bf21d19e5d704c845b1114159c711d19a9a23444afac2673395dd8d354",
+      "size": 1704030
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -91,6 +96,11 @@
       "size": 18139
     },
     {
+      "path": "dist/schemas/project/4.schema.json",
+      "sha256": "80f355c82d67c8db2c7ae187aadbc59da49eff2314a3d843041766f062269769",
+      "size": 20556
+    },
+    {
       "path": "docs/editor/app.js",
       "sha256": "523cb1e2aec259da18ea6ea8c770ae08b7fb63d118cc8defef1a664cdc020af2",
       "size": 32113
@@ -98,7 +108,7 @@
   ],
   "build": {
     "commit": "452375faac4c39adf81ad84e6459e3c03ee7b49c",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -110,6 +120,7 @@
     "project1": "0e3e3ba8b547331ce254d00c2cbf91efa85e97dd2a10b313fb47ac4eb95eed37",
     "project2": "ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7",
     "project3": "4ffb7214e5e1e041a38416b3293dba476aabc53d1c38ccbeefffe4caf69c4f78",
+    "project4": "80f355c82d67c8db2c7ae187aadbc59da49eff2314a3d843041766f062269769",
     "vocabularies": "abd346b1cbc7a5b581f2e6a3651767d69fbb3d16f0248c20556434e8584ede94"
   },
   "sources": [
@@ -240,8 +251,8 @@
     },
     {
       "path": "src/v100/project-contract.mjs",
-      "sha256": "0a6bd41759e47acdbfdf8a9dee72d170599aa8fc381bf358324ee0b2ca562b7f",
-      "size": 15925
+      "sha256": "681a4865485f2747d0ffdac40bfc05f7a9360b21d4bf29b591bdb552b09a4b6d",
+      "size": 16421
     },
     {
       "path": "src/v100/project-diff.mjs",
@@ -250,8 +261,8 @@
     },
     {
       "path": "src/v100/project-migrations.mjs",
-      "sha256": "8ebd7f21539fb32bb20e56efcc2a5051e74dd06c572e05b8872fb62559c66c69",
-      "size": 4755
+      "sha256": "23de4b60832577f97a180f8af0674deb2318655f27298fac57fcab3f5e1411c9",
+      "size": 6786
     },
     {
       "path": "src/v100/project-operations.js",
@@ -295,13 +306,13 @@
     },
     {
       "path": "tools/build.mjs",
-      "sha256": "c5bcf7b063d77ec2e14d3d89f55502307554561f42109c30b784f2f7e6d2fe5d",
-      "size": 15118
+      "sha256": "1253fcd5dceb802c98282b1cab34d4f8d067f0cbe8f3b7838cd4b0a1aa1683d8",
+      "size": 14954
     },
     {
       "path": "tools/generate-project-validators.mjs",
-      "sha256": "5278edce0a0da19a73929b73f8b50869d57221d9d49c0271eff4745a479c5231",
-      "size": 3808
+      "sha256": "f89320cabd082a04f95a10cde928c013e32b53c761974da6bee00f9c8ee7b797",
+      "size": 3857
     }
   ],
   "tools": {
@@ -310,8 +321,8 @@
     "node": "22"
   },
   "validator": {
-    "sha256": "1d1a48023ce9556c2facb10e581b15586e3b7a8a97ff90f0735bdf96b67ee29c",
-    "size": 413973
+    "sha256": "1f5e5209f1e46d5071f0a48d1bd23dd696f95951c51d623a0bb519887c86609d",
+    "size": 612724
   },
   "versions": {
     "card": "1.0.0",
@@ -321,7 +332,8 @@
       0,
       1,
       2,
-      3
+      3,
+      4
     ]
   }
 }

@@ -15,6 +15,7 @@ export const PROJECT_SCHEMA_SPECS = [
   ["project1", "schemas/project/1.schema.json"],
   ["project2", "schemas/project/2.schema.json"],
   ["project3", "schemas/project/3.schema.json"],
+  ["project4", "schemas/project/4.schema.json"],
   ["bundleManifest", "schemas/bundle-manifest.schema.json"],
 ];
 

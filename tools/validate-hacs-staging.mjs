@@ -13,6 +13,15 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_OUTPUT_ROOT = path.join(ROOT, "build/release");
 const COMPONENT_ROOT = "custom_components/glt_flow_card";
+
+// Discovered from the authored schema directory, never imported from the
+// stager. Independent verification must not trust the staging implementation or
+// its metadata -- but it also must not carry a hand-written list that silently
+// stops covering a version somebody added.
+const PROJECT_SCHEMA_FILES = (await readdir(path.join(ROOT, "schemas/project")))
+  .filter((name) => /^\d+\.schema\.json$/.test(name))
+  .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10))
+  .map((name) => `schemas/project/${name}`);
 const BUILD_MANIFEST_PATH = `${COMPONENT_ROOT}/build-manifest.json`;
 const COMPONENT_FILES = [
   "__init__.py",
@@ -44,10 +53,7 @@ const COMPONENT_FILES = [
   "schemas/diff-policy.json",
   "schemas/limits.json",
   "schemas/vocabularies.json",
-  "schemas/project/0.schema.json",
-  "schemas/project/1.schema.json",
-  "schemas/project/2.schema.json",
-  "schemas/project/3.schema.json",
+  ...PROJECT_SCHEMA_FILES,
   "strings.json",
   "translations/de.json",
   "translations/en.json",
@@ -65,10 +71,7 @@ const BUILD_ARTIFACT_PATHS = new Map([
   ["schemas/diff-policy.json", `${COMPONENT_ROOT}/schemas/diff-policy.json`],
   ["schemas/limits.json", `${COMPONENT_ROOT}/schemas/limits.json`],
   ["schemas/vocabularies.json", `${COMPONENT_ROOT}/schemas/vocabularies.json`],
-  ["schemas/project/0.schema.json", `${COMPONENT_ROOT}/schemas/project/0.schema.json`],
-  ["schemas/project/1.schema.json", `${COMPONENT_ROOT}/schemas/project/1.schema.json`],
-  ["schemas/project/2.schema.json", `${COMPONENT_ROOT}/schemas/project/2.schema.json`],
-  ["schemas/project/3.schema.json", `${COMPONENT_ROOT}/schemas/project/3.schema.json`],
+  ...PROJECT_SCHEMA_FILES.map((file) => [file, `${COMPONENT_ROOT}/${file}`]),
 ]);
 const FIXED_ZIP_TIME = new Date("1980-01-01T00:00:00.000Z").getTime();
 

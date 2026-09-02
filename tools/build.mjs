@@ -29,35 +29,32 @@ const CARD_MARKER = "/*! GLT Flow Card v1 generated extension */";
 const EDITOR_MARKER = "/*! GLT Online Designer v1 Engineering extensions */";
 const EDITOR_END_MARKER = "/*! END GLT Online Designer v1 Engineering extensions */";
 const MANIFEST_PATH = "custom_components/glt_flow_card/build-manifest.json";
+// Project schema versions are derived from PROJECT_SCHEMA_SPECS rather than
+// listed again here. Adding a version used to mean editing six hand-maintained
+// lists, and Phase 3 lost a CI round to exactly that class of omission.
+const PROJECT_SCHEMA_FILES = PROJECT_SCHEMA_SPECS
+  .filter(([name]) => name.startsWith("project"))
+  .map(([, file]) => file);
 const SCHEMA_COPIES = [
   ["schemas/bundle-manifest.schema.json", "dist/schemas/bundle-manifest.schema.json"],
   ["schemas/diff-policy.json", "dist/schemas/diff-policy.json"],
   ["schemas/limits.json", "dist/schemas/limits.json"],
   ["schemas/vocabularies.json", "dist/schemas/vocabularies.json"],
-  ["schemas/project/0.schema.json", "dist/schemas/project/0.schema.json"],
-  ["schemas/project/1.schema.json", "dist/schemas/project/1.schema.json"],
-  ["schemas/project/2.schema.json", "dist/schemas/project/2.schema.json"],
-  ["schemas/project/3.schema.json", "dist/schemas/project/3.schema.json"],
+  ...PROJECT_SCHEMA_FILES.map((file) => [file, `dist/${file}`]),
 ];
 const ARTIFACT_PATHS = [
   "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
   "custom_components/glt_flow_card/schemas/diff-policy.json",
   "custom_components/glt_flow_card/schemas/limits.json",
   "custom_components/glt_flow_card/schemas/vocabularies.json",
-  "custom_components/glt_flow_card/schemas/project/0.schema.json",
-  "custom_components/glt_flow_card/schemas/project/1.schema.json",
-  "custom_components/glt_flow_card/schemas/project/2.schema.json",
-  "custom_components/glt_flow_card/schemas/project/3.schema.json",
+  ...PROJECT_SCHEMA_FILES.map((file) => `custom_components/glt_flow_card/${file}`),
   "custom_components/glt_flow_card/www/glt-flow-card.js",
   "dist/glt-flow-card.js",
   "dist/schemas/bundle-manifest.schema.json",
   "dist/schemas/diff-policy.json",
   "dist/schemas/limits.json",
   "dist/schemas/vocabularies.json",
-  "dist/schemas/project/0.schema.json",
-  "dist/schemas/project/1.schema.json",
-  "dist/schemas/project/2.schema.json",
-  "dist/schemas/project/3.schema.json",
+  ...PROJECT_SCHEMA_FILES.map((file) => `dist/${file}`),
   "docs/editor/app.js",
 ];
 
