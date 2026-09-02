@@ -19,6 +19,7 @@ const BUILD_OUTPUTS = [
   "custom_components/glt_flow_card/schemas/project/3.schema.json",
   "custom_components/glt_flow_card/schemas/project/4.schema.json",
   "custom_components/glt_flow_card/schemas/project/5.schema.json",
+  "custom_components/glt_flow_card/schemas/project/6.schema.json",
   "custom_components/glt_flow_card/www/glt-flow-card.js",
   "dist/glt-flow-card.js",
   "dist/schemas/bundle-manifest.schema.json",
@@ -31,6 +32,7 @@ const BUILD_OUTPUTS = [
   "dist/schemas/project/3.schema.json",
   "dist/schemas/project/4.schema.json",
   "dist/schemas/project/5.schema.json",
+  "dist/schemas/project/6.schema.json",
   "docs/editor/app.js",
 ];
 const SCHEMA_OUTPUTS = [
@@ -101,7 +103,7 @@ test("manifest is canonical, deterministic and non-circular", async () => {
   assert.equal(manifest.versions.package, "1.0.0");
   assert.equal(manifest.versions.companion, "1.0.0");
   assert.equal(manifest.versions.card, "1.0.0");
-  assert.deepEqual(manifest.versions.project_schema, [0, 1, 2, 3, 4, 5]);
+  assert.deepEqual(manifest.versions.project_schema, [0, 1, 2, 3, 4, 5, 6]);
   assert.match(manifest.build.commit, /^(?:[a-f0-9]{40}|WORKTREE)$/);
   assert.equal(typeof manifest.build.dirty, "boolean");
   assert.equal(manifest.tools.node, "22");
