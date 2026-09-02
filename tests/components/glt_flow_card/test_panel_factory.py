@@ -21,7 +21,11 @@ from .panel_factory import (
     restricted_project,
 )
 
-FIXTURE = Path(__file__).resolve().parents[3] / "test/fixtures/operations/site.project.json"
+# Beside this file, not at the repository root. The Home Assistant lanes copy
+# only `custom_components/` and `tests/` into their workspace, so a fixture
+# under a top-level `test/` directory simply does not exist there -- the same
+# mistake that made the semantic parity test reach for a missing `src/`.
+FIXTURE = Path(__file__).resolve().parent / "fixtures/operations-project.json"
 
 
 def test_both_corpus_projects_are_valid_schema_3_projects() -> None:
@@ -95,5 +99,10 @@ def test_no_profile_control_can_name_a_dispatch_target() -> None:
 
 
 def test_the_committed_browser_fixture_matches_the_factory() -> None:
-    """The browser and the Companion must exercise the same project."""
+    """The browser and the Companion must exercise the same project.
+
+    One file, read by both. The browser reaches it from the repository root
+    where Playwright runs; the Companion reaches it from beside this test,
+    which is the only place both the lane and the browser can see.
+    """
     assert json.loads(FIXTURE.read_text("utf-8")) == operations_project()
