@@ -13,7 +13,7 @@ from typing import Any
 
 from .project_contract import digest_canonical_json, evaluate_project_contract
 from .project_diff import DIFF_POLICY, compute_project_diff, expand_diff_selection
-from .project_migrations import migrate_project_document
+from .project_migrations import CURRENT_PROJECT_SCHEMA_VERSION, migrate_project_document
 from .project_repository import ProjectRepository
 
 
@@ -123,9 +123,13 @@ class ProjectTransactionCoordinator:
 
     @staticmethod
     def _empty_project(project_id: str, name: str) -> dict[str, Any]:
+        # The version comes from the migration module rather than a literal: a
+        # synthesized snapshot pinned to a number goes stale on the next schema
+        # bump and starts producing candidates the current contract rejects.
         return {
             "type": "custom:glt-flow-card",
-            "schema_version": 2,
+            "schema_version": CURRENT_PROJECT_SCHEMA_VERSION,
+            "semantic_model": {"nodes": []},
             "project": {"id": project_id, "name": name, "revision": 0},
         }
 

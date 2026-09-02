@@ -1,0 +1,130 @@
+{
+  "units": {
+    "degC": {
+      "dimension": "temperature",
+      "symbol": "\u00b0C"
+    },
+    "K": {
+      "dimension": "temperature",
+      "symbol": "K"
+    },
+    "bar": {
+      "dimension": "pressure",
+      "symbol": "bar"
+    },
+    "Pa": {
+      "dimension": "pressure",
+      "symbol": "Pa"
+    },
+    "hPa": {
+      "dimension": "pressure",
+      "symbol": "hPa"
+    },
+    "W": {
+      "dimension": "power",
+      "symbol": "W"
+    },
+    "kW": {
+      "dimension": "power",
+      "symbol": "kW"
+    },
+    "Wh": {
+      "dimension": "energy",
+      "symbol": "Wh"
+    },
+    "kWh": {
+      "dimension": "energy",
+      "symbol": "kWh"
+    },
+    "h": {
+      "dimension": "time",
+      "symbol": "h"
+    },
+    "s": {
+      "dimension": "time",
+      "symbol": "s"
+    },
+    "percent": {
+      "dimension": "ratio",
+      "symbol": "%"
+    },
+    "m3ph": {
+      "dimension": "volume_flow",
+      "symbol": "m\u00b3/h"
+    },
+    "lps": {
+      "dimension": "volume_flow",
+      "symbol": "l/s"
+    },
+    "rpm": {
+      "dimension": "rotation",
+      "symbol": "rpm"
+    },
+    "A": {
+      "dimension": "current",
+      "symbol": "A"
+    },
+    "V": {
+      "dimension": "voltage",
+      "symbol": "V"
+    },
+    "ppm": {
+      "dimension": "concentration",
+      "symbol": "ppm"
+    },
+    "lx": {
+      "dimension": "illuminance",
+      "symbol": "lx"
+    },
+    "count": {
+      "dimension": "dimensionless",
+      "symbol": ""
+    }
+  },
+  "media": [
+    "heating_flow",
+    "heating_return",
+    "domestic_hot_water",
+    "cooling_flow",
+    "cooling_return",
+    "brine",
+    "ambient",
+    "electrical",
+    "ventilation_supply",
+    "ventilation_extract",
+    "gas",
+    "water",
+    "steam",
+    "condensate",
+    "none"
+  ],
+  "directions": [
+    "input",
+    "output",
+    "bidirectional"
+  ],
+  "semantic_tags": [
+    "measurement",
+    "setpoint",
+    "status",
+    "command",
+    "alarm",
+    "counter",
+    "diagnostic",
+    "maintenance"
+  ],
+  "levels": [
+    "site",
+    "building",
+    "floor",
+    "system",
+    "subsystem",
+    "equipment",
+    "datapoint"
+  ],
+  "bounds": {
+    "max_depth": 32,
+    "max_nodes": 20000,
+    "max_children": 2048
+  }
+}

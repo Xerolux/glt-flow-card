@@ -10,7 +10,7 @@ from typing import Any
 
 from .project_contract import digest_canonical_json, evaluate_project_contract
 
-CURRENT_PROJECT_SCHEMA_VERSION = 2
+CURRENT_PROJECT_SCHEMA_VERSION = 3
 
 
 def _clone_canonical(value: Any) -> Any:
@@ -44,9 +44,25 @@ def _step_one_to_two(source: Mapping[str, Any]) -> dict[str, Any]:
     return _clone_canonical(candidate)
 
 
+def _step_two_to_three(source: Mapping[str, Any]) -> dict[str, Any]:
+    candidate = _clone_canonical(source)
+    candidate["schema_version"] = 3
+    # Schema 2's `semantic_model` was an unvalidated open object. Schema 3 gives
+    # it a validated shape; anything already there is preserved, and an empty
+    # node list is added only where none existed. Nothing is dropped, because a
+    # migration that discards content an engineer authored is not a migration.
+    existing = candidate.get("semantic_model")
+    model = dict(existing) if isinstance(existing, Mapping) else {}
+    if not isinstance(model.get("nodes"), list):
+        model["nodes"] = []
+    candidate["semantic_model"] = model
+    return _clone_canonical(candidate)
+
+
 PROJECT_MIGRATIONS: dict[int, dict[str, int | Callable[[Mapping[str, Any]], dict[str, Any]]]] = {
     0: {"from": 0, "to": 1, "migrate": _step_zero_to_one},
     1: {"from": 1, "to": 2, "migrate": _step_one_to_two},
+    2: {"from": 2, "to": 3, "migrate": _step_two_to_three},
 }
 
 

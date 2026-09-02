@@ -371,7 +371,7 @@ test("core compatibility APIs use safe async bundles with opaque assets", async 
   };
   const archive = await makeProjectBundle(validProject([asset]), [asset]);
   const restored = await readProjectBundle(archive, { includeAssets: true });
-  assert.equal(restored.project.schema_version, 2);
+  assert.equal(restored.project.schema_version, 3);
   assert.deepEqual(restored.assets[0].bytes, asset.bytes);
 });
 

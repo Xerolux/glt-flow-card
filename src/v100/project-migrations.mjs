@@ -4,7 +4,7 @@ import {
   evaluateProjectContract,
 } from "./project-contract.mjs";
 
-export const CURRENT_PROJECT_SCHEMA_VERSION = 2;
+export const CURRENT_PROJECT_SCHEMA_VERSION = 3;
 
 const cloneCanonical = (value) => JSON.parse(digestCanonicalJson(value).canonical);
 
@@ -41,9 +41,26 @@ function stepOneToTwo(source) {
   return cloneCanonical(candidate);
 }
 
+function stepTwoToThree(source) {
+  const candidate = cloneCanonical(source);
+  candidate.schema_version = 3;
+  // Schema 2's `semantic_model` was an unvalidated open object. Schema 3 gives
+  // it a validated shape; anything already there is preserved, and an empty
+  // node list is added only where none existed. Nothing is dropped, because a
+  // migration that discards content an engineer authored is not a migration.
+  const existing = candidate.semantic_model;
+  const model = existing && typeof existing === "object" && !Array.isArray(existing)
+    ? { ...existing }
+    : {};
+  if (!Array.isArray(model.nodes)) model.nodes = [];
+  candidate.semantic_model = model;
+  return cloneCanonical(candidate);
+}
+
 export const PROJECT_MIGRATIONS = new Map([
   [0, { from: 0, to: 1, migrate: stepZeroToOne }],
   [1, { from: 1, to: 2, migrate: stepOneToTwo }],
+  [2, { from: 2, to: 3, migrate: stepTwoToThree }],
 ]);
 
 function contractFailure(prefix, evidence) {

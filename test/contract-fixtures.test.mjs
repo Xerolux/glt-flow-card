@@ -14,6 +14,7 @@ const PROJECT_SCHEMA_PATHS = [
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",
+  "schemas/project/3.schema.json",
 ];
 const SCHEMA_PATHS = [
   ...PROJECT_SCHEMA_PATHS,
@@ -22,6 +23,7 @@ const SCHEMA_PATHS = [
 const CONTRACT_PATHS = [
   ...SCHEMA_PATHS,
   "schemas/limits.json",
+  "schemas/vocabularies.json",
   "schemas/diff-policy.json",
 ];
 const SCHEMA_ID_PREFIX = "https://schemas.glt-flow-card.invalid/";
@@ -80,7 +82,7 @@ test("schema metadata uses Draft 2020-12 stable IDs and closes repository refs",
   assert.ok(validators.every((validator) => typeof validator === "function"), "all project schemas compile locally");
 });
 
-test("schemas describe raw v0, v1, and v2 documents before normalization", async () => {
+test("schemas describe raw v0 through v3 documents before normalization", async () => {
   const [validateV0, validateV1, validateV2] = await compiledProjectValidators();
   const legacy = {
     type: "custom:glt-flow-card",

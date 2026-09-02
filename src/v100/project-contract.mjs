@@ -4,9 +4,10 @@ import {
   project0,
   project1,
   project2,
+  project3,
 } from "./generated/project-validators.mjs";
 
-const PROJECT_VALIDATORS = [project0, project1, project2];
+const PROJECT_VALIDATORS = [project0, project1, project2, project3];
 const ID_COLLECTIONS = [
   "alarms",
   "assets",

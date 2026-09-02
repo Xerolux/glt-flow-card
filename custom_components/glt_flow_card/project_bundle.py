@@ -31,7 +31,11 @@ _MAX_COMPRESSION_RATIO = 100
 _MAX_JSON_BYTES = 5_242_880
 _MAX_PATH_CHARS = 512
 _MANIFEST_VALIDATOR = Draft202012Validator(
-    project_contract._ALL_SCHEMAS[3], registry=project_contract._REGISTRY
+    # The bundle manifest is the last registered schema, whatever the current
+    # project schema version is. An index here silently became project schema 3
+    # the moment a version was added, which validated bundle manifests against
+    # the project contract.
+    project_contract._ALL_SCHEMAS[-1], registry=project_contract._REGISTRY
 )
 
 

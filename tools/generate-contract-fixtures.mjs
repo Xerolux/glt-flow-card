@@ -10,7 +10,7 @@ const ROOT = new URL("../", import.meta.url);
 const LIMITS_URL = new URL("schemas/limits.json", ROOT);
 const DIFF_POLICY_URL = new URL("schemas/diff-policy.json", ROOT);
 const EXAMPLE_URL = new URL("examples/idm-neo2030.yaml", ROOT);
-const SCHEMA_URLS = [0, 1, 2].map((version) => new URL(`schemas/project/${version}.schema.json`, ROOT));
+const SCHEMA_URLS = [0, 1, 2, 3].map((version) => new URL(`schemas/project/${version}.schema.json`, ROOT));
 const BUNDLE_SCHEMA_URL = new URL("schemas/bundle-manifest.schema.json", ROOT);
 
 const STABLE_ERROR_CODES = [
@@ -78,6 +78,15 @@ function baseV2(overrides = {}) {
     datapoints: [],
     assets: [],
     profiles: [],
+    ...overrides,
+  };
+}
+
+function baseV3(overrides = {}) {
+  return {
+    ...baseV2(),
+    schema_version: 3,
+    semantic_model: { nodes: [] },
     ...overrides,
   };
 }
@@ -248,7 +257,51 @@ export async function generateContractFixtures({ outputDir }) {
     id: "malformed-future-version",
     class: "malformed",
     expected: expected("reject", "version", "/schema_version", "contract.schema_version"),
-  }, { ...baseV2(), schema_version: 3 });
+  }, { ...baseV3(), schema_version: 4 });
+  await addJson({
+    id: "valid-semantic-hierarchy",
+    class: "valid",
+    expected: expected("accept", "schema", "/"),
+  }, baseV3({
+    semantic_model: {
+      nodes: [
+        { id: "site-a", level: "site", parent: null, name: "Site A" },
+        { id: "sys-heat", level: "system", parent: "site-a", name: "Heating" },
+        { id: "eq-hp", level: "equipment", parent: "sys-heat", name: "Heat pump" },
+        { id: "dp-flow", level: "datapoint", parent: "eq-hp", name: "Flow",
+          unit: "degC", medium: "heating_flow", direction: "input",
+          semantic_tags: ["measurement"] },
+      ],
+    },
+  }));
+  await addJson({
+    id: "malformed-semantic-unknown-unit",
+    class: "malformed",
+    expected: expected("reject", "schema", "/semantic_model/nodes/0/unit", "contract.type"),
+  }, baseV3({
+    semantic_model: {
+      nodes: [{ id: "dp-x", level: "datapoint", parent: null, name: "X", unit: "furlongs" }],
+    },
+  }));
+  await addJson({
+    id: "malformed-semantic-unknown-level",
+    class: "malformed",
+    expected: expected("reject", "schema", "/semantic_model/nodes/0/level", "contract.type"),
+  }, baseV3({
+    semantic_model: { nodes: [{ id: "n-x", level: "galaxy", parent: null, name: "X" }] },
+  }));
+  await addJson({
+    id: "malformed-profile-names-an-effect",
+    class: "malformed",
+    expected: expected("reject", "schema", "/profiles/0/controls/0", "contract.type"),
+  }, baseV3({
+    profiles: [{
+      id: "p-1", equipment_type: "pump", version: "1.0.0",
+      // A profile control that names a service is the caller-authored control
+      // path Phase 2 removed; the contract must refuse it.
+      controls: [{ id: "start", domain: "switch", service: "turn_on" }],
+    }],
+  }));
   await addJson({
     id: "raw-trap-missing-type",
     class: "raw_normalization_trap",

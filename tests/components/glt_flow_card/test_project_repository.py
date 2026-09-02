@@ -101,7 +101,7 @@ async def test_split_store_identities_and_deep_copy_reads() -> None:
         "id": "plant-a",
         "revision": 1,
         "digest": "a" * 64,
-        "config": {"schema_version": 2, "project": {"id": "plant-a"}},
+        "config": {"schema_version": 3, "semantic_model": {"nodes": []}, "project": {"id": "plant-a"}},
     })
     returned = repository.get_head("plant-a")
     assert returned is not None
@@ -121,7 +121,7 @@ async def test_legacy_import_is_verified_once_and_retains_untouched_backup() -> 
     imported = repository.get_head("legacy-plant")
     assert imported is not None
     assert imported["revision"] == 4
-    assert imported["config"]["schema_version"] == 2
+    assert imported["config"]["schema_version"] == 3
     assert imported["config"]["project"]["id"] == "legacy-plant"
     assert imported["digest"] == digest_canonical_json(imported["config"])["digest"]
     assert "versions" not in imported
@@ -191,7 +191,7 @@ async def test_snapshots_are_immutable_and_metadata_stores_are_bounded_copies() 
         "project_id": "plant-a",
         "revision": 1,
         "digest": "b" * 64,
-        "config": {"schema_version": 2, "project": {"id": "plant-a"}},
+        "config": {"schema_version": 3, "semantic_model": {"nodes": []}, "project": {"id": "plant-a"}},
     }
     await repository.put_snapshot(snapshot)
     await repository.put_snapshot(deepcopy(snapshot))

@@ -14,11 +14,12 @@
   "policies": {
     "limits_sha256": "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619",
     "diff_policy_sha256": "6ba0aaaa2460d7b9e6d765a2842cad2eefb6899f681dd1fb487df8539cafce9f",
-    "bundle_schema_sha256": "5fffd0f5a8932dd27af3c1a3dd2123436842faae62439335d5701c11f6780611",
+    "bundle_schema_sha256": "aa21d0740533070cb9202d4d9ac4f7b8f7c5fbec551ee4db8be08c5e44462b7a",
     "project_schema_sha256": {
       "0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
       "1": "0e3e3ba8b547331ce254d00c2cbf91efa85e97dd2a10b313fb47ac4eb95eed37",
-      "2": "ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7"
+      "2": "ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7",
+      "3": "4ffb7214e5e1e041a38416b3293dba476aabc53d1c38ccbeefffe4caf69c4f78"
     }
   },
   "provenance": [
@@ -273,14 +274,69 @@
       "id": "malformed-future-version",
       "class": "malformed",
       "file": "bodies/malformed-future-version.json",
-      "bytes": 327,
-      "sha256": "e894d105bee91964b2a8c2b20a446b8e8b954dd975e3aeb8f9421f6675749fb7",
+      "bytes": 370,
+      "sha256": "f1677e15515b3c53a493292a6a28cf32de14c0c8c4c4ad2bc06c18010fc1ca68",
       "evidence_scope": "correctness_only",
       "expected": {
         "outcome": "reject",
         "stage": "version",
         "code": "contract.schema_version",
         "path": "/schema_version"
+      }
+    },
+    {
+      "id": "valid-semantic-hierarchy",
+      "class": "valid",
+      "file": "bodies/valid-semantic-hierarchy.json",
+      "bytes": 1013,
+      "sha256": "59620c7088019c94f2786c3fa7a3ed058860d454b2ab3d0646ca462cbe2b2713",
+      "evidence_scope": "correctness_only",
+      "expected": {
+        "outcome": "accept",
+        "stage": "schema",
+        "path": "/"
+      }
+    },
+    {
+      "id": "malformed-semantic-unknown-unit",
+      "class": "malformed",
+      "file": "bodies/malformed-semantic-unknown-unit.json",
+      "bytes": 515,
+      "sha256": "e07d9e6617db1d4f2f4cd66ceba83f9b105b204bbcdf8d885057e13a84a0e7c2",
+      "evidence_scope": "correctness_only",
+      "expected": {
+        "outcome": "reject",
+        "stage": "schema",
+        "code": "contract.type",
+        "path": "/semantic_model/nodes/0/unit"
+      }
+    },
+    {
+      "id": "malformed-semantic-unknown-level",
+      "class": "malformed",
+      "file": "bodies/malformed-semantic-unknown-level.json",
+      "bytes": 483,
+      "sha256": "59a243b8a76a233d5851fb0598573137dfe2f4df53174da61afcd1fd8e4f687a",
+      "evidence_scope": "correctness_only",
+      "expected": {
+        "outcome": "reject",
+        "stage": "schema",
+        "code": "contract.type",
+        "path": "/semantic_model/nodes/0/level"
+      }
+    },
+    {
+      "id": "malformed-profile-names-an-effect",
+      "class": "malformed",
+      "file": "bodies/malformed-profile-names-an-effect.json",
+      "bytes": 596,
+      "sha256": "f8fada1fd01033fce3a2b7bf6cb2f2deb72f32e07eaa2bd258d375fd7a1bee8b",
+      "evidence_scope": "correctness_only",
+      "expected": {
+        "outcome": "reject",
+        "stage": "schema",
+        "code": "contract.type",
+        "path": "/profiles/0/controls/0"
       }
     },
     {
