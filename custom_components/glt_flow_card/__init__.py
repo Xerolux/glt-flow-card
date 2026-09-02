@@ -21,7 +21,10 @@ from homeassistant.components import websocket_api
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Context, HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.event import async_track_time_change
+from homeassistant.helpers.event import (
+    async_track_state_change_event,
+    async_track_time_change,
+)
 from homeassistant.helpers.storage import Store
 
 from uuid import uuid4
@@ -192,6 +195,10 @@ class GltStore:
         #: and that counts as inside the startup grace: the guard must be closed
         #: before the event arrives, not opened by its absence.
         self._started_at: datetime | None = None
+        #: The current entity-filtered state subscription, replaced whenever the
+        #: index changes. Held separately from `_unsubs` because it is torn down
+        #: and rebuilt during normal operation, not only at unload.
+        self._alarm_unsub: Any = None
         self._unsubs: list[Any] = []
         self.project_repository = ProjectRepository(
             hass,
@@ -253,6 +260,10 @@ class GltStore:
 
     async def async_close(self) -> None:
         """Release every runtime resource owned by this manager."""
+        if self._alarm_unsub is not None:
+            self._alarm_unsub()
+            self._alarm_unsub = None
+
         unsubs, self._unsubs = self._unsubs, []
         for unsubscribe in reversed(unsubs):
             unsubscribe()
@@ -300,6 +311,10 @@ class GltStore:
             lease=guard,
         )
         self.data["projects"][entry["id"]] = deepcopy(entry)
+        # `project_saved`, `alarm_added`, `alarm_removed`, `ids_remapped` and
+        # `migrated` all arrive through this one write, so one call covers five
+        # of the declared mutation paths.
+        self.async_refresh_alarm_subscription()
         return entry
 
     async def delete_project(
@@ -310,6 +325,7 @@ class GltStore:
         existed = await self.project_repository.delete_head(project_id)
         self.data["projects"].pop(project_id, None)
         self.data["locks"].pop(project_id, None)
+        self.async_refresh_alarm_subscription()
         if existed:
             await self.async_save()
         return existed
@@ -499,6 +515,33 @@ class GltStore:
             if resp.status >= 300:
                 raise RuntimeError(f"remote service failed: HTTP {resp.status}")
             return await resp.json()
+
+    def alarm_index(self) -> dict[str, list[str]]:
+        """Return the current entity to alarm index, rebuilt from one place."""
+        return alarm_engine.rebuild_alarm_index(self.data["projects"])
+
+    @callback
+    def async_refresh_alarm_subscription(self) -> None:
+        """Re-subscribe to exactly the entities that carry an alarm.
+
+        Called from every path in `alarm_engine.INDEX_MUTATION_PATHS`. The
+        subscription *follows* the index rather than being set up once: a
+        newly-alarmed entity that nothing re-subscribed to is an alarm that
+        never fires, which is a worse failure than the full scan this replaces.
+        """
+        if self._alarm_unsub is not None:
+            self._alarm_unsub()
+            self._alarm_unsub = None
+        entities = alarm_engine.watched_entities(self.data["projects"])
+        if not entities:
+            return
+
+        async def _listener(event) -> None:
+            await self.process_state_change(event)
+
+        self._alarm_unsub = async_track_state_change_event(
+            self.hass, entities, _listener,
+        )
 
     async def async_mark_started(self) -> None:
         """Open the startup grace period and re-arm the delays that survived.
@@ -2163,17 +2206,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if isinstance(remote, list) and remote:
             manager.configure_remote_sites(remote)
 
-        async def state_listener(event):
-            await manager.process_state_change(event)
-
         async def on_started(_event) -> None:
             await manager.async_mark_started()
 
-        manager._unsubs.extend(
-            [
-                hass.bus.async_listen("state_changed", state_listener),
-                async_track_time_change(hass, manager.run_schedules, second=0),
-            ]
+        # D3, closed. This was `hass.bus.async_listen("state_changed", ...)`
+        # with no entity filter, so every state change in the whole instance
+        # reached a loop over every project and every alarm. The subscription
+        # now follows the index and Home Assistant does the filtering.
+        manager.async_refresh_alarm_subscription()
+        manager._unsubs.append(
+            async_track_time_change(hass, manager.run_schedules, second=0)
         )
         # A reload of the entry inside an already-running Home Assistant never
         # sees `homeassistant_started` again, so the grace would never lift and

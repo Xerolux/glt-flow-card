@@ -271,6 +271,10 @@ async def test_a_suppressed_alarm_neither_processes_nor_notifies(
              "priority": "critical",
              "notification": {"service": "glt_fake_notify.send"}}
     manager.data["projects"]["p"] = {"id": "p", "config": {"alarms": [alarm], "schedules": []}}
+    # Seeding `manager.data` directly bypasses `save_project`, which is what
+    # refreshes the entity-filtered subscription in production. The test has to
+    # maintain the same invariant or it watches nothing.
+    manager.async_refresh_alarm_subscription()
     manager.data["alarm_state"]["p:alm"] = {
         "project_id": "p", "alarm_id": "alm", "active": False,
         "shelved_until": (datetime.now(tz=NOW.tzinfo) + _timedelta(days=1)).isoformat(),

@@ -452,3 +452,77 @@ def pending_from_state(
             "anchor_age_seconds": max(0.0, (now - parsed).total_seconds()),
         })
     return rearm_pending_delays(pending)
+
+
+# ---------------------------------------------------------------------------
+# The entity to alarm index
+# ---------------------------------------------------------------------------
+
+#: Every path that changes which entities carry an alarm.
+#:
+#: Declared, so a new path cannot forget silently. An index is a cache, and a
+#: cache that misses a rebuild is a *worse* defect than the scan it replaces:
+#: the scan was slow, the stale cache is quietly wrong.
+INDEX_MUTATION_PATHS = (
+    "project_saved",
+    "project_deleted",
+    "project_imported",
+    "alarm_added",
+    "alarm_removed",
+    "ids_remapped",
+    "migrated",
+)
+
+
+def _alarm_entity(alarm: dict[str, Any]) -> str | None:
+    """Return the entity id an alarm watches, or None.
+
+    The accepted shapes mirror the manager's `_entity_id` exactly: a bare
+    string, or a mapping keyed `entity` or `entity_id`. Not `id` -- an earlier
+    draft accepted that and the manager does not, which would have indexed an
+    alarm under an entity the scan then failed to match, giving an alarm that is
+    watched and never evaluated. `test_alarm_index` asserts the two agree on
+    every shape.
+    """
+    entity = alarm.get("entity")
+    if isinstance(entity, dict):
+        entity = entity.get("entity") or entity.get("entity_id")
+    if not isinstance(entity, str):
+        return None
+    entity = entity.strip()
+    return entity or None
+
+
+def rebuild_alarm_index(projects: dict[str, Any]) -> dict[str, list[str]]:
+    """Return entity id -> the alarm keys watching it.
+
+    **The only place this index is constructed.** Every mutation path calls
+    this one function, and `test_alarm_index` compares the result against an
+    independent full rescan written in the test -- never against a second call
+    to this function, which would prove determinism rather than correctness.
+
+    Before this, the manager subscribed to the bare `state_changed` bus event
+    with no entity filter and then iterated every project x every alarm,
+    filtering afterwards. The cost was O(state changes x projects x alarms) for
+    every state change in the whole Home Assistant instance, not just this
+    card's.
+    """
+    index: dict[str, list[str]] = {}
+    for project_id, project in (projects or {}).items():
+        for alarm in ((project.get("config") or {}).get("alarms") or []):
+            if not isinstance(alarm, dict):
+                continue
+            entity = _alarm_entity(alarm)
+            if entity is None:
+                continue
+            index.setdefault(entity, []).append(f"{project_id}:{alarm.get('id')}")
+    return {entity: sorted(keys) for entity, keys in index.items()}
+
+
+def watched_entities(projects: dict[str, Any]) -> list[str]:
+    """Return the entity ids worth subscribing to, sorted.
+
+    The subscription follows the index, so Home Assistant does the filtering and
+    a state change on an entity with no alarm reaches no alarm evaluation at all.
+    """
+    return sorted(rebuild_alarm_index(projects))

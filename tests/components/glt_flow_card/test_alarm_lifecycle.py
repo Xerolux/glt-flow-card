@@ -67,6 +67,9 @@ async def _seed(hass: HomeAssistant, config_entry: MockConfigEntry, alarms: list
         "id": PROJECT_ID,
         "config": {"alarms": alarms, "schedules": []},
     }
+    # Seeding `manager.data` directly bypasses `save_project`, which is what
+    # refreshes the entity-filtered subscription in production.
+    manager.async_refresh_alarm_subscription()
     return manager
 
 

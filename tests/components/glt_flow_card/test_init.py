@@ -15,9 +15,19 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from .conftest import LifecycleEffects
 
 
+#: One listener at load, not two.
+#:
+#: Phase 6 replaced the bare `state_changed` bus listener with an
+#: entity-filtered `async_track_state_change_event` that follows the alarm
+#: index. This fixture configures no projects, so there are no alarmed entities
+#: and there is nothing to subscribe to -- previously the integration listened
+#: to *every* state change in the instance even with zero alarms configured.
+#: `test_the_alarm_subscription_is_tracked_and_released` covers the case where
+#: entities do exist, so the ledger still proves the new subscription is
+#: released rather than merely absent.
 EXPECTED_LOADED = {
     "commands": 45,
-    "listeners": 2,
+    "listeners": 1,
     "managers": 1,
     "stores": 1,
     "tasks": 0,
@@ -301,3 +311,39 @@ async def test_lifecycle_ledger_accounts_for_every_phase2_resource(
 
     lifecycle_effects.reset()
     assert lifecycle_effects.service_attempts == []
+
+
+async def test_the_alarm_subscription_is_tracked_and_released(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    lifecycle_effects: LifecycleEffects,
+) -> None:
+    """An installation with alarms holds one more listener, and gives it back.
+
+    The count in `EXPECTED_LOADED` is zero-alarm by construction, so on its own
+    it would pass just as well against a subscription that was never created.
+    This is the other half: with an alarmed entity present the ledger sees the
+    subscription, and after unload it sees nothing.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager
+
+    baseline = lifecycle_effects.snapshot()["listeners"]
+    manager = _manager(hass)
+    manager.data["projects"]["plant-a"] = {
+        "id": "plant-a",
+        "config": {"alarms": [{"id": "alm", "entity": "binary_sensor.x",
+                               "active_states": ["on"]}], "schedules": []},
+    }
+    manager.async_refresh_alarm_subscription()
+    assert lifecycle_effects.snapshot()["listeners"] == baseline + 1
+
+    # Re-subscribing replaces rather than accumulates: a refresh per project
+    # save would otherwise leak one listener each time.
+    manager.async_refresh_alarm_subscription()
+    assert lifecycle_effects.snapshot()["listeners"] == baseline + 1
+
+    assert await hass.config_entries.async_unload(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert lifecycle_effects.snapshot()["listeners"] == 0

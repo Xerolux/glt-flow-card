@@ -199,6 +199,7 @@ def lifecycle_effects(hass: HomeAssistant) -> Generator[LifecycleEffects]:
     original_register = integration.websocket_api.async_register_command
     original_bus_listen = hass.bus.async_listen
     original_track_time = integration.async_track_time_change
+    original_track_states = integration.async_track_state_change_event
 
     def register_command(test_hass: HomeAssistant, command: Callable[..., Any]) -> None:
         command_type = str(
@@ -218,6 +219,22 @@ def lifecycle_effects(hass: HomeAssistant) -> Generator[LifecycleEffects]:
         unsubscribe = original_track_time(*args, **kwargs)
         return effects.track_unsubscribe("schedule_tick", unsubscribe)
 
+    def track_states(*args: Any, **kwargs: Any):
+        """Pass the entity-filtered alarm subscription through, uncounted.
+
+        Phase 6 replaced the bare `state_changed` bus listener with
+        `async_track_state_change_event` so Home Assistant does the filtering.
+        That helper registers a shared `state_changed` bus listener internally,
+        which `bus_listen` above already counts and which the returned
+        unsubscribe releases -- so counting here as well would report one
+        subscription as two.
+
+        The wrapper is kept rather than dropped because it is the seam that
+        proves the helper is reached at all, and because `bus_listen` still
+        catches a bare listener if one is ever reintroduced.
+        """
+        return original_track_states(*args, **kwargs)
+
     async def reject_service(domain: str, service: str, data: dict[str, Any] | None = None, **kwargs: Any) -> None:
         attempt = {"domain": domain, "service": service, "data": deepcopy(data or {})}
         effects.service_attempts.append(attempt)
@@ -231,6 +248,7 @@ def lifecycle_effects(hass: HomeAssistant) -> Generator[LifecycleEffects]:
         patch.object(integration.websocket_api, "async_register_command", side_effect=register_command),
         patch.object(type(hass.bus), "async_listen", side_effect=bus_listen),
         patch.object(integration, "async_track_time_change", side_effect=track_time),
+        patch.object(integration, "async_track_state_change_event", side_effect=track_states),
         patch.object(type(hass.services), "async_call", side_effect=reject_service),
         patch.object(integration, "async_get_clientsession", side_effect=reject_session),
     ):
