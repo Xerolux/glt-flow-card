@@ -259,8 +259,28 @@ Plans:
   5. Supported HA-lane integration tests and exact-artifact browser tests cover bounded queries/exports, date/time/DST, German/English formatting, keyboard-accessible chart alternatives, print layout, schedule/restart failure, and representative history volumes.
 
 **Known defects closed**: KPI-snapshot-only reports, omission of alarm and maintenance content, in-memory utility behavior presented as a historian, missing-as-zero analytics, unbounded exports, and Recorder API behavior untested against Home Assistant.
-**Research flag**: Pin Recorder history/statistics contracts across supported HA lanes and define valid energy/report calculations, periods, and output limits.
-**Plans**: TBD
+**Research flag**: RESOLVED 2026-09-02 — see `07-RESEARCH.md`. HA 2026.2.3 already resolves `day`, `week`, `month` and `year` on local-midnight boundaries in the configured timezone (measured: 23- and 25-hour days, 743- and 745-hour months for Europe/Berlin), `change` is reset-aware over the Recorder's reset-corrected running sum, and `year` is reachable only through `recorder/statistic_during_period`'s calendar spec. Three traps recorded with owners: a window starting before a statistic exists reports the whole accumulated total as the first period's consumption; gaps are omitted from results rather than emitted; and `mean_type` CIRCULAR exists. Nothing in the Recorder API bounds a raw query, so bounds are ours and belong server-side.
+Plans:
+- [ ] 07-01-PLAN.md — Stand up the Phase-7 gate, the query-dimension effect ledger and the Recorder fixture corpus.
+- [ ] 07-02-PLAN.md — Close the measured-value shape and the period vocabulary in both runtimes.
+- [ ] 07-03-PLAN.md — Introduce schema 6 and the sequential 5-6 migration.
+- [ ] 07-04-PLAN.md — Specify the history route, bounds, coverage and replay RED contracts.
+- [ ] 07-05-PLAN.md — Specify the period, energy, report and rendering RED contracts.
+- [ ] 07-06-PLAN.md — Resolve named periods on local-calendar boundaries.
+- [ ] 07-07-PLAN.md — Prove both runtimes resolve periods identically.
+- [ ] 07-08-PLAN.md — Give history its own routes, authorization, filtering and audit.
+- [ ] 07-09-PLAN.md — Bound every query dimension and refuse past the bound.
+- [ ] 07-10-PLAN.md — Carry coverage and gaps with every series.
+- [ ] 07-11-PLAN.md — Make replay read the record, not the present.
+- [ ] 07-12-PLAN.md — Difference counters and integrate rates over resolved periods.
+- [ ] 07-13-PLAN.md — Validate units and state exclusions before arithmetic.
+- [ ] 07-14-PLAN.md — Record what a report run was computed from.
+- [ ] 07-15-PLAN.md — Execute report schedules through the Phase-6 runner.
+- [ ] 07-16-PLAN.md — Derive screen, CSV and print from one model.
+- [ ] 07-17-PLAN.md — Retire the six browser evaluators reachable and inert.
+- [ ] 07-18-PLAN.md — Ship the trend and report surfaces.
+- [ ] 07-19-PLAN.md — Prove every retired value is reached, not merely reachable.
+- [ ] 07-20-PLAN.md — Build out the Phase-7 gate and close the phase honestly.
 **UI hint**: yes
 
 ### Phase 8: Safe Simulation, Commissioning & Assets
