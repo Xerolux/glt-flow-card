@@ -154,3 +154,132 @@ test("[expected-red:phase5-designer] every command inverts exactly", async () =>
   }
   assert.deepEqual(gaps, [], "transactional designer commands are unavailable");
 });
+
+// -- Beyond the sentinel ----------------------------------------------------
+// The sentinel runs generated sequences, and a generated sequence proves
+// nothing about a kind it happened not to reach. These pin every kind
+// individually, and make the undo bound a thing that runs rather than a number
+// that is exported.
+
+const designer = await import(MODULE_URL.href);
+
+/** Rich enough that no kind has to be skipped for want of material. */
+function richState() {
+  return {
+    equipment: [
+      { id: "a", x: 0, y: 0, width: 100, height: 60, layer: "l1", order: 0 },
+      { id: "b", x: 200, y: 0, width: 100, height: 60, layer: "l1", order: 1 },
+      { id: "c", x: 500, y: 0, width: 100, height: 60, layer: "l2", order: 2 },
+    ],
+    paths: [{ id: "p1", from_equipment: "a", from_port: "p-out",
+      to_equipment: "b", to_port: "p-in" }],
+    layers: [{ id: "l1", visible: true, locked: false },
+      { id: "l2", visible: false, locked: true }],
+    groups: [{ id: "g1", members: ["a", "b"] }],
+  };
+}
+
+test("every command kind is exercised, and every one inverts exactly", () => {
+  const unreachable = [];
+  for (const kind of designer.COMMAND_KINDS) {
+    const state = richState();
+    const before = JSON.stringify(state);
+    const command = designer.sampleCommand(kind, state);
+    if (!command) {
+      unreachable.push(kind);
+      continue;
+    }
+    const after = designer.applyCommand(state, command);
+    assert.notEqual(JSON.stringify(after), before, `${kind} changed nothing`);
+    assert.equal(JSON.stringify(state), before, `${kind} mutated the state it was given`);
+    assert.equal(JSON.stringify(designer.invertCommand(after, command)), before,
+      `${kind} did not invert`);
+  }
+  assert.deepEqual(unreachable, [], "a command kind could not be sampled from a full state");
+});
+
+test("a command carries both ends, so undo does not have to reconstruct one", () => {
+  // The point of the shape: after the move, nothing in the state remembers
+  // where the object was, and the command still does.
+  const state = richState();
+  const command = designer.sampleCommand("move", state);
+  assert.deepEqual(command.payload.from, { x: 0, y: 0 });
+  const moved = designer.applyCommand(state, command);
+  assert.deepEqual(designer.invertCommand(moved, command).equipment[0],
+    { id: "a", x: 0, y: 0, width: 100, height: 60, layer: "l1", order: 0 });
+});
+
+test("a delete restores at its old index, not at the end", () => {
+  const state = richState();
+  // `c` is the only equipment no path or group refers to.
+  const command = designer.sampleCommand("delete", state);
+  assert.equal(command.payload.equipment.id, "c");
+  const reordered = { ...state, equipment: [state.equipment[2], state.equipment[0], state.equipment[1]] };
+  const removed = designer.applyCommand(reordered, { ...command, payload: { ...command.payload, index: 0 } });
+  assert.deepEqual(removed.equipment.map((entry) => entry.id), ["a", "b"]);
+  const restored = designer.invertCommand(removed, { ...command, payload: { ...command.payload, index: 0 } });
+  assert.deepEqual(restored.equipment.map((entry) => entry.id), ["c", "a", "b"]);
+});
+
+test("a rejected command changes nothing, and says which object it could not find", () => {
+  const state = richState();
+  const snapshot = JSON.stringify(state);
+  assert.throws(
+    () => designer.applyCommand(state, { kind: "move", payload: { id: "nope", from: {}, to: {} } }),
+    /no such equipment: nope/,
+  );
+  assert.throws(
+    () => designer.applyCommand(state, { kind: "disconnect", payload: { index: 0, path: { id: "nope" } } }),
+    /no such path: nope/,
+  );
+  assert.equal(JSON.stringify(state), snapshot);
+});
+
+test("an unknown kind is an error at every entry point, never a no-op", () => {
+  for (const call of [
+    () => designer.applyCommand(richState(), { kind: "explode", payload: {} }),
+    () => designer.invertCommand(richState(), { kind: "explode", payload: {} }),
+    () => designer.sampleCommand("explode", richState()),
+  ]) {
+    assert.throws(call, /unknown command kind: explode/);
+  }
+  assert.throws(
+    () => designer.applyCommand(richState(), { kind: "move" }),
+    /the move command carries no payload/,
+  );
+});
+
+test("the undo bound is enforced by the history, not only exported", () => {
+  const history = designer.createHistory(3);
+  let state = richState();
+  for (let index = 0; index < 10; index += 1) {
+    state = history.push(state, designer.sampleCommand("add", state));
+  }
+  assert.equal(history.depth, 3, "history grew past its bound");
+  assert.equal(state.equipment.length, 13);
+
+  // Forgetting the beginning, not refusing the newest: an editor that stops
+  // accepting edits is a worse answer to "you have edited a lot".
+  for (let index = 0; index < 3; index += 1) state = history.undo(state);
+  assert.equal(state.equipment.length, 10);
+  assert.equal(history.undo(state), state, "undo past the bound invented a step");
+
+  assert.throws(() => designer.createHistory(0), /positive bound/);
+  assert.ok(designer.UNDO_DEPTH_LIMIT >= 1);
+});
+
+test("redo replays exactly what undo took back, until a new edit lands", () => {
+  const history = designer.createHistory();
+  let state = richState();
+  const before = JSON.stringify(state);
+  state = history.push(state, designer.sampleCommand("move", state));
+  const moved = JSON.stringify(state);
+  state = history.undo(state);
+  assert.equal(JSON.stringify(state), before);
+  state = history.redo(state);
+  assert.equal(JSON.stringify(state), moved);
+
+  state = history.undo(state);
+  state = history.push(state, designer.sampleCommand("resize", state));
+  assert.equal(history.redoDepth, 0, "a new edit left a redo branch behind");
+});
