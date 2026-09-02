@@ -52,6 +52,12 @@ const ALLOWED = new Map(Object.entries({
   "image/svg+xml": "a MIME type passed to a Blob constructor",
   "font-family": "a CSS property name",
   "box-sizing": "a CSS property name",
+  "accent coil": "an SVG class name on a symbol path, set by the `pa` drawing helper",
+  "accent rotor": "an SVG class name on a symbol path, set by the `pa` drawing helper",
+  "alarm txt": "an SVG class name pair on a symbol's alarm text node",
+  "use strict": "the ECMAScript strict-mode directive, emitted by the bundler",
+  "false schema": "an ajv diagnostic fragment reaching this region through a generated validator",
+  "not active": "a quoted phrase inside a source comment the bundler preserved",
 }));
 
 /**
