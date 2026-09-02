@@ -142,7 +142,7 @@ Plans:
   5. The exact generated card completes the runtime workflow by keyboard and assistive labels in German and English at mobile, tablet, widescreen, and secure kiosk/leitstand layouts with visible focus, non-color state cues, and no direct-service security fallback.
 
 **Known defects closed**: Browser-invented permissions/state, optimistic service success, direct privileged fallbacks, unauthorized aggregate leakage, and prototype-load behavior that token tests never execute.
-**Plans**: TBD
+**Plans**: 17 plans across 13 dependency-ordered waves
 **UI hint**: yes
 
 ### Phase 5: CAD Engineering & Extension Platform
