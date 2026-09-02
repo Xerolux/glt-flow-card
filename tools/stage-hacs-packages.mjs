@@ -27,6 +27,7 @@ const COMPONENT_FILES = [
   "build-manifest.json",
   "config_flow.py",
   "configured_controls.py",
+  "equipment_profiles.py",
   "const.py",
   "diagnostics.py",
   "manifest.json",
