@@ -469,14 +469,23 @@ class PolicyCoordinator:
             granted |= HA_ADMIN_CAPABILITIES
         return frozenset(granted)
 
-    def visible_projects(self, connection: Any, project_ids: list[str]) -> list[str]:
-        """Filter a collection at the source, before anything is serialized."""
+    def visible_projects(
+        self, connection: Any, project_ids: list[str], capability: str = "project.read",
+    ) -> list[str]:
+        """Filter a collection at the source, before anything is serialized.
+
+        The capability is a parameter because a filtered route filters by *its
+        own* capability, not by a general one. Alarm state is readable by
+        `alarm.read`; using `project.read` here would happen to agree today,
+        because every role that holds one holds the other, and would stop
+        agreeing the first time a role is added that does not.
+        """
         actor = actor_from_connection(connection)
         visible: list[str] = []
         for project_id in project_ids:
             role, _ = self._role_for(actor, project_id)
             capabilities = capabilities_for(role, is_ha_admin=actor.is_ha_admin)
-            if "project.read" in capabilities:
+            if capability in capabilities:
                 visible.append(project_id)
         return visible
 

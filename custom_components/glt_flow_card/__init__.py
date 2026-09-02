@@ -1562,13 +1562,52 @@ async def ws_control_execute(hass, connection, msg):
         connection.send_error(msg["id"], "service_failed", str(err))
 
 
-@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/alarms/list", vol.Optional("project_id"): str, vol.Optional("limit", default=500): int})
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/alarms/list",
+    # Optional with a default, so the generic policy prober reaches a
+    # decision rather than a schema rejection; the guard resolves the
+    # project from it and the handler reads it back off the decision.
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("limit", default=500): int,
+})
 @websocket_api.async_response
 async def ws_alarms_list(hass, connection, msg):
-    pid = msg.get("project_id")
-    states = [deepcopy(x) for x in _manager(hass).data["alarm_state"].values() if not pid or x.get("project_id") == pid]
-    hist = [deepcopy(x) for x in _manager(hass).data["alarm_history"] if not pid or x.get("project_id") == pid][:msg["limit"]]
-    connection.send_result(msg["id"], {"states":states,"history":hist})
+    """Return alarm state and history for the one project this request names.
+
+    The route is declared `enumeration="filter"`, which means the policy guard
+    deliberately does *not* deny an unauthorized caller -- refusing would itself
+    tell them that rows exist. Filtering is therefore the handler's job, and
+    this handler did not do it: it returned the named project's complete alarm
+    state and history to anyone who could name the id.
+
+    The project comes from the decision rather than from the message, so the
+    rows returned are the rows for the project policy actually resolved.
+
+    Rows are filtered before the limit is applied. Slicing first would let
+    another project's rows consume the caller's page, turning the limit into a
+    count oracle for a project they cannot open.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    manager = _manager(hass)
+    project_id = decision.project_id
+    permitted = runtime.policy.visible_projects(connection, [project_id], "alarm.read")
+    if not permitted:
+        # The same answer a project with no alarms gives. An unassigned caller
+        # learns nothing about whether the project exists, or whether it is
+        # quiet.
+        connection.send_result(msg["id"], {"states": [], "history": []})
+        return
+
+    states = [
+        deepcopy(row) for row in manager.data["alarm_state"].values()
+        if row.get("project_id") == project_id
+    ]
+    history = [
+        deepcopy(row) for row in manager.data["alarm_history"]
+        if row.get("project_id") == project_id
+    ][: msg["limit"]]
+    connection.send_result(msg["id"], {"states": states, "history": history})
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/alarms/ack", vol.Required("project_id"): str, vol.Required("alarm_id"): str, vol.Optional("comment", default=""): str})
