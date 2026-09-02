@@ -77,6 +77,11 @@ from .project_transactions import (
     TransactionConflict,
 )
 
+#: How long a browser may treat one capability snapshot as fresh. The client
+#: refreshes at half of this; at the end of it, shared mode goes read-only
+#: whether or not a refresh has been attempted.
+CAPABILITY_SNAPSHOT_SECONDS = 300
+
 
 def _utc() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -1183,6 +1188,36 @@ async def ws_leases_status(hass, connection, msg):
     connection.send_result(msg["id"], registry.held_state(context["project_id"]))
 
 
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/capabilities/get",
+    vol.Required("project_id"): str,
+})
+@websocket_api.async_response
+async def ws_capabilities_get(hass, connection, msg):
+    """Return the caller's own authority for one project.
+
+    This is the snapshot the browser uses to decide what to *show*. It is
+    deliberately about the asking user only: it names no other member, no other
+    session and no hidden project, and every route the user then calls is
+    authorized again on its own. The sequence lets a client detect that it has
+    missed an event and refresh instead of trusting what it already holds.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    project = _manager(hass).project(decision.project_id)
+    connection.send_result(msg["id"], {
+        "project_id": decision.project_id,
+        "role": decision.role,
+        "capabilities": sorted(decision.capabilities),
+        "policy_version": decision.policy_version,
+        "access_revision": decision.access_revision,
+        "generation": runtime.generation,
+        "sequence": runtime.subscriptions.sequence(),
+        "revision": (project or {}).get("revision"),
+        "expires_in": CAPABILITY_SNAPSHOT_SECONDS,
+    })
+
+
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/templates/list"})
 @websocket_api.async_response
 async def ws_templates_list(hass, connection, msg):
@@ -1361,6 +1396,7 @@ _COMMAND_HANDLERS = (
     ws_evidence_list, ws_telemetry_list, ws_telemetry_add,
     ws_projects_lock, ws_projects_unlock,
     ws_leases_acquire, ws_leases_renew, ws_leases_release, ws_leases_status,
+    ws_capabilities_get,
     ws_templates_list, ws_templates_save,
     ws_templates_delete, ws_control_execute, ws_alarms_list, ws_alarms_ack,
     ws_alarms_shelve, ws_work_orders_list, ws_work_orders_save, ws_reports_run,

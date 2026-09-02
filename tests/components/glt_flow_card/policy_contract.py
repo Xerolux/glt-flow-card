@@ -206,6 +206,8 @@ COMMAND_POLICY_CONTRACT: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/leases/release", "lease.engineering",
            any_of=("lease.engineering", "lease.administration")),
     _route("glt_flow_card/leases/status", "project.read"),
+    # -- capability snapshot ----------------------------------------------
+    _route("glt_flow_card/capabilities/get", "project.read"),
     # -- templates --------------------------------------------------------
     _route("glt_flow_card/templates/list", "template.read", scope="component",
            enumeration="filter"),

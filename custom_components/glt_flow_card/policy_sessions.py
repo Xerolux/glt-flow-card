@@ -65,6 +65,15 @@ class SubscriptionRegistry:
         self._sequence += 1
         return self._sequence
 
+    def sequence(self) -> int:
+        """Return the sequence a capability snapshot is consistent with.
+
+        A client that later receives an event numbered more than one beyond
+        this has missed something and must refresh rather than trust what it
+        already holds.
+        """
+        return self._sequence
+
     async def async_subscribe(
         self,
         *,

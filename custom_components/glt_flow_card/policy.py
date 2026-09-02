@@ -230,6 +230,11 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/leases/release", "lease.engineering", rate_class="lease",
            any_of=("lease.engineering", "lease.administration")),
     _route("glt_flow_card/leases/status", "project.read"),
+    # -- capability snapshot ----------------------------------------------
+    # The browser needs one read-only route that answers "what may I do here,
+    # right now". It carries `project.read`, so an unassigned caller receives
+    # the same opaque denial a hidden project gives and learns nothing.
+    _route("glt_flow_card/capabilities/get", "project.read"),
     # -- templates --------------------------------------------------------
     _route("glt_flow_card/templates/list", "template.read", scope="component",
            enumeration="filter"),
