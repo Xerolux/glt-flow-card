@@ -50057,8 +50057,8 @@
   function rotateRight(value, amount) {
     return value >>> amount | value << 32 - amount;
   }
-  function sha256Hex(text2) {
-    const source = textEncoder.encode(text2);
+  function sha256Hex(text3) {
+    const source = textEncoder.encode(text3);
     const paddedLength = Math.ceil((source.length + 9) / 64) * 64;
     const bytes = new Uint8Array(paddedLength);
     bytes.set(source);
@@ -59480,11 +59480,11 @@
     return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   }
   function canonicalDocument(bytes, path) {
-    let text2;
+    let text3;
     let document2;
     try {
-      text2 = decoder.decode(bytes);
-      document2 = JSON.parse(text2);
+      text3 = decoder.decode(bytes);
+      document2 = JSON.parse(text3);
     } catch {
       failure("bundle.manifest_mismatch", path, { reason: "invalid_json" });
     }
@@ -59494,7 +59494,7 @@
     } catch {
       failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
     }
-    if (text2 !== canonical) failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
+    if (text3 !== canonical) failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
     return { document: document2, canonical };
   }
   function manifestErrorPath(error) {
@@ -61189,7 +61189,7 @@
         return dispatch({ type: "candidate/discarded" });
       },
       /** Load one evidence page through the server's opaque cursor. */
-      async evidencePage({ cursor = null, append: append3 = false } = {}) {
+      async evidencePage({ cursor = null, append: append4 = false } = {}) {
         try {
           const page = await call("glt_flow_card/evidence/list", cursor ? { cursor } : {});
           return dispatch({
@@ -61197,13 +61197,13 @@
             rows: page?.rows ?? [],
             cursor: page?.cursor ?? null,
             hasMore: Boolean(page?.has_more),
-            append: append3
+            append: append4
           });
         } catch (error) {
           return dispatch({ type: "evidence/page-failed", code: error?.code });
         }
       },
-      async telemetryPage({ cursor = null, append: append3 = false } = {}) {
+      async telemetryPage({ cursor = null, append: append4 = false } = {}) {
         try {
           const page = await call("glt_flow_card/telemetry/list", cursor ? { cursor } : {});
           return dispatch({
@@ -61211,7 +61211,7 @@
             rows: page?.rows ?? [],
             cursor: page?.cursor ?? null,
             hasMore: Boolean(page?.has_more),
-            append: append3
+            append: append4
           });
         } catch (error) {
           return dispatch({ type: "telemetry/page-failed", code: error?.code });
@@ -62268,10 +62268,10 @@
     const locale = projectSafetyLocale(editor._hass || editor._glt4Hass, document.documentElement.lang);
     return projectSafetyCopy(locale, key, values);
   }
-  function element(name, className, text2) {
+  function element(name, className, text3) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text2 !== void 0) node.textContent = String(text2);
+    if (text3 !== void 0) node.textContent = String(text3);
     return node;
   }
   function button(label, className = "glt-safe-btn") {
@@ -62285,11 +62285,11 @@
     if (detail) node.append(element("div", "glt-safe-help", detail));
     return node;
   }
-  function status(kind, text2) {
+  function status(kind, text3) {
     const node = element("div", `glt-safe-status ${kind}`);
     node.setAttribute("role", "status");
     node.setAttribute("aria-live", "polite");
-    node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text2));
+    node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text3));
     return node;
   }
   var COMPANION_STATE = {
@@ -62311,12 +62311,12 @@
     "lease_lost",
     "companion_disconnected"
   ]);
-  function chip(glyph, text2, state) {
+  function chip(glyph, text3, state) {
     const node = element("span", "glt-safe-chip");
     node.dataset.state = state;
     const icon = element("span", "", glyph);
     icon.setAttribute("aria-hidden", "true");
-    node.append(icon, element("span", "", text2));
+    node.append(icon, element("span", "", text3));
     return node;
   }
   function leaseChipState(state, affordances) {
@@ -62405,10 +62405,10 @@
       const announcement = state.announcement;
       if (!announcement || announcement.code === this._announced) return;
       this._announced = announcement.code;
-      const text2 = t("announcements")[announcement.code] || t("readOnlyReasons")[announcement.code] || t("errorCodes")[announcement.code] || "";
-      if (!text2) return;
+      const text3 = t("announcements")[announcement.code] || t("readOnlyReasons")[announcement.code] || t("errorCodes")[announcement.code] || "";
+      if (!text3) return;
       const assertive = announcement.level === "assertive";
-      (assertive ? this._assertive : this._polite).textContent = text2;
+      (assertive ? this._assertive : this._polite).textContent = text3;
       (assertive ? this._polite : this._assertive).textContent = "";
     }
   };
@@ -63748,10 +63748,10 @@
   .glt-sem-weak{font-style:italic}
   @media(forced-colors:active){.glt-sem-badge{border:1px solid CanvasText}}
 `;
-  function element2(name, className, text2) {
+  function element2(name, className, text3) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text2 !== void 0) node.textContent = String(text2);
+    if (text3 !== void 0) node.textContent = String(text3);
     return node;
   }
   var GltSemanticElement = class extends HTMLElement {
@@ -64114,10 +64114,10 @@
     const table2 = COPY2[language] ?? COPY2.en;
     return table2[key] ?? COPY2.en[key] ?? key;
   }
-  function element3(name, className, text2) {
+  function element3(name, className, text3) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text2 !== void 0) node.textContent = String(text2);
+    if (text3 !== void 0) node.textContent = String(text3);
     return node;
   }
   var GltOperationsElement = class extends HTMLElement {
@@ -64578,10 +64578,10 @@
     return document.importNode(root, true);
   }
   var PUBLISHED = symbolCatalogStats();
-  function element4(name, className, text2) {
+  function element4(name, className, text3) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text2 !== void 0) node.textContent = String(text2);
+    if (text3 !== void 0) node.textContent = String(text3);
     return node;
   }
   var GltCatalogElement = class extends HTMLElement {
@@ -64680,8 +64680,8 @@
         const all = element4("option", null, textFor2(language, "filter_all"));
         all.value = "";
         select.append(all);
-        for (const [value, text2] of options) {
-          const option2 = element4("option", null, text2);
+        for (const [value, text3] of options) {
+          const option2 = element4("option", null, text3);
           option2.value = value;
           if (active[name] === value) option2.selected = true;
           select.append(option2);
@@ -65671,10 +65671,10 @@
     const table2 = COPY4[language] ?? COPY4.en;
     return table2[key] ?? COPY4.en[key] ?? key;
   }
-  function element5(name, className, text2) {
+  function element5(name, className, text3) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text2 !== void 0) node.textContent = String(text2);
+    if (text3 !== void 0) node.textContent = String(text3);
     return node;
   }
   var GltDesignerElement = class extends HTMLElement {
@@ -66338,10 +66338,10 @@
     const table2 = COPY5[language] || COPY5.en;
     return table2[key] ?? COPY5.en[key] ?? key;
   }
-  function element6(tag, className, text2) {
+  function element6(tag, className, text3) {
     const node = document.createElement(tag);
     if (className) node.className = className;
-    if (text2 !== void 0 && text2 !== null) node.textContent = String(text2);
+    if (text3 !== void 0 && text3 !== null) node.textContent = String(text3);
     return node;
   }
   function priorityOf(row) {
@@ -66809,9 +66809,9 @@
   function labelFor(group, member, language = "de") {
     const wording = LABELS2[group]?.[member];
     if (!wording) throw new Error(`no wording for ${group} "${member}"`);
-    const text2 = wording[language] ?? wording.en;
-    if (!text2) throw new Error(`no ${language} wording for ${group} "${member}"`);
-    return text2;
+    const text3 = wording[language] ?? wording.en;
+    if (!text3) throw new Error(`no ${language} wording for ${group} "${member}"`);
+    return text3;
   }
 
   // src/v100/project-trends.js
@@ -67072,6 +67072,245 @@
     ["glt-flow-card-report-designer", ReportDesigner]
   ];
   for (const [name, constructor] of ELEMENTS) {
+    if (!customElements.get(name)) customElements.define(name, constructor);
+  }
+
+  // src/v100/project-assets.js
+  var LANGUAGES3 = ["de", "en"];
+  var TEXT2 = {
+    simulated: { de: "simuliert", en: "simulated" },
+    simulatedShape: { de: "◈", en: "◈" },
+    measured: { de: "gemessen", en: "measured" },
+    sessionActive: {
+      de: (who, until) => `Simulation aktiv — gestartet von ${who}, endet ${until}. Die Anlage wird nicht bedient.`,
+      en: (who, until) => `Simulation active — started by ${who}, ends ${until}. The plant is not being operated.`
+    },
+    sessionExpired: {
+      de: "Die Simulation ist abgelaufen. Die Anlage wird wieder bedient.",
+      en: "The simulation has expired. The plant is being operated again."
+    },
+    refusedSimulating: {
+      de: "Nicht ausgeführt: eine Simulation läuft.",
+      en: "Not performed: a simulation is running."
+    },
+    refusedUnknown: {
+      de: "Nicht ausgeführt: der Simulationszustand war nicht feststellbar. Bitte erneut versuchen.",
+      en: "Not performed: the simulation state could not be determined. Please try again."
+    },
+    diagnosis: {
+      de: {
+        present: "vorhanden",
+        registered_not_loaded: "registriert, aber nicht geladen",
+        unregistered: "ohne Registry-Eintrag",
+        missing: "fehlt",
+        wrong_unit: "falsche Einheit",
+        wrong_device_class: "falsche Geräteklasse",
+        duplicate_binding: "doppelte Zuordnung",
+        stale: "veraltet",
+        service_missing: "Dienst fehlt"
+      },
+      en: {
+        present: "present",
+        registered_not_loaded: "registered but not loaded",
+        unregistered: "no registry entry",
+        missing: "missing",
+        wrong_unit: "wrong unit",
+        wrong_device_class: "wrong device class",
+        duplicate_binding: "duplicate binding",
+        stale: "stale",
+        service_missing: "service missing"
+      }
+    },
+    readOnly: {
+      de: "Diese Ansicht ändert nichts. Alle Hinweise sind Verweise, keine Aktionen.",
+      en: "This view changes nothing. Every remediation is a link, not an action."
+    },
+    attachmentLimits: {
+      de: (count, megabytes) => `Höchstens ${count} Anhänge, je bis ${megabytes} MB.`,
+      en: (count, megabytes) => `At most ${count} attachments, each up to ${megabytes} MB.`
+    },
+    noEntries: { de: "Keine Einträge.", en: "No entries." }
+  };
+  for (const key of Object.keys(TEXT2)) {
+    for (const language of LANGUAGES3) {
+      if (TEXT2[key][language] === void 0) {
+        throw new Error(`asset surfaces: "${key}" has no ${language} wording`);
+      }
+    }
+  }
+  function text2(key, language, ...args) {
+    const entry = TEXT2[key]?.[language] ?? TEXT2[key]?.en;
+    return typeof entry === "function" ? entry(...args) : entry;
+  }
+  function append3(parent, tag, value, attributes = {}) {
+    const node = document.createElement(tag);
+    for (const [name, attribute] of Object.entries(attributes)) {
+      if (attribute !== null && attribute !== void 0) node.setAttribute(name, String(attribute));
+    }
+    if (value !== null && value !== void 0) node.textContent = String(value);
+    parent.append(node);
+    return node;
+  }
+  var SimulationBanner = class extends HTMLElement {
+    set props({ session = null, expired = false, language = "de" }) {
+      this.replaceChildren();
+      if (expired) {
+        this.setAttribute("data-simulation", "expired");
+        append3(this, "span", text2("sessionExpired", language), { "data-banner-text": "" });
+        return;
+      }
+      if (!session) {
+        this.removeAttribute("data-simulation");
+        return;
+      }
+      this.setAttribute("data-simulation", "active");
+      append3(this, "span", TEXT2.simulatedShape[language], { "data-simulation-shape": "" });
+      append3(
+        this,
+        "span",
+        text2("sessionActive", language, session.actor_name || session.actor_user_id, session.expires_at),
+        { "data-banner-text": "" }
+      );
+    }
+  };
+  var ProvidedValue = class extends HTMLElement {
+    set props({ value, unit = "", provider = "measured", language = "de" }) {
+      this.replaceChildren();
+      const simulated = provider === "simulated";
+      this.setAttribute("data-provider", provider);
+      append3(this, "span", value === null || value === void 0 ? "—" : value, { "data-value": "" });
+      if (unit) append3(this, "span", unit, { "data-unit": "" });
+      if (simulated) {
+        append3(this, "span", TEXT2.simulatedShape[language], { "data-provider-shape": "" });
+      }
+      append3(this, "span", text2(simulated ? "simulated" : "measured", language), {
+        "data-provider-text": ""
+      });
+    }
+  };
+  var ScenarioTable = class extends HTMLElement {
+    set props({ trace = [], language = "de" }) {
+      this.replaceChildren();
+      const table2 = append3(this, "table", null, { "data-scenario": "" });
+      const head = append3(table2, "thead");
+      const headRow = append3(head, "tr");
+      for (const label of ["Tick", "Slot", language === "de" ? "Wert" : "Value", ""]) {
+        append3(headRow, "th", label, { scope: "col" });
+      }
+      const body = append3(table2, "tbody");
+      for (const entry of trace) {
+        const row = append3(body, "tr", null, { "data-tick": entry.tick });
+        append3(row, "td", entry.tick);
+        append3(row, "td", entry.slot);
+        append3(row, "td", entry.value);
+        const marker = append3(row, "td", null, { "data-provider": entry.provider ?? "simulated" });
+        append3(marker, "span", TEXT2.simulatedShape[language], { "data-provider-shape": "" });
+        append3(marker, "span", text2("simulated", language), { "data-provider-text": "" });
+      }
+    }
+  };
+  var CommissioningTable = class extends HTMLElement {
+    set props({ findings = [], summary = null, language = "de" }) {
+      this.replaceChildren();
+      append3(this, "p", text2("readOnly", language), { "data-read-only": "" });
+      if (summary) {
+        const counts = append3(this, "ul", null, { "data-summary": "" });
+        for (const [code, count] of Object.entries(summary.counts ?? {})) {
+          if (!count) continue;
+          append3(counts, "li", `${text2("diagnosis", language)[code] ?? code}: ${count}`, {
+            "data-count": code
+          });
+        }
+      }
+      const table2 = append3(this, "table", null, { "data-commissioning": "" });
+      const headRow = append3(append3(table2, "thead"), "tr");
+      for (const label of ["Referenz", "Deklariert in", "Diagnose", "Nachweis", "Hinweis"]) {
+        append3(headRow, "th", label, { scope: "col" });
+      }
+      const body = append3(table2, "tbody");
+      for (const finding of findings) {
+        const row = append3(body, "tr", null, { "data-diagnosis": finding.code });
+        append3(row, "td", finding.reference, { "data-reference": "" });
+        append3(row, "td", finding.site ?? finding.evidence?.site ?? "", { "data-site": "" });
+        append3(row, "td", text2("diagnosis", language)[finding.code] ?? finding.code, {
+          "data-diagnosis-text": ""
+        });
+        append3(row, "td", finding.evidence?.platform ?? "", { "data-evidence": "" });
+        append3(row, "td", finding.remediation ?? "", { "data-remediation": "" });
+      }
+    }
+  };
+  var WorkOrderHistory = class extends HTMLElement {
+    set props({ order = null, language = "de" }) {
+      this.replaceChildren();
+      const entries = order?.entries ?? [];
+      if (!entries.length) {
+        append3(this, "p", text2("noEntries", language), { "data-empty": "" });
+        return;
+      }
+      this.setAttribute("data-status", entries[entries.length - 1].status);
+      const list = append3(this, "ol", null, { "data-entries": "" });
+      for (const entry of entries) {
+        const item = append3(list, "li", null, {
+          "data-entry": entry.id,
+          "data-entry-status": entry.status,
+          ...entry.corrects ? { "data-corrects": entry.corrects } : {}
+        });
+        append3(item, "span", entry.status, { "data-entry-status-text": "" });
+        append3(item, "span", entry.at, { "data-at": "" });
+        append3(item, "span", entry.actor_user_id, { "data-actor": "" });
+        if (entry.note) append3(item, "span", entry.note, { "data-note": "" });
+        if (entry.reason) append3(item, "span", entry.reason, { "data-reason": "" });
+      }
+    }
+  };
+  var WorkOrderForm = class extends HTMLElement {
+    set props({ limits = null, language = "de" }) {
+      this.replaceChildren();
+      const form = append3(this, "form", null, { "data-work-order-form": "" });
+      for (const [field, label] of [
+        ["title", language === "de" ? "Aufgabe" : "Task"],
+        ["asset", language === "de" ? "Anlagenobjekt" : "Asset"],
+        ["note", language === "de" ? "Notiz" : "Note"],
+        ["reason", language === "de" ? "Begründung" : "Reason"]
+      ]) {
+        const wrapper = append3(form, "p");
+        const id = `glt-wo-${field}`;
+        append3(wrapper, "label", label, { for: id });
+        append3(wrapper, "input", null, { "data-field": field, id, name: field, type: "text" });
+      }
+      if (limits) {
+        append3(form, "p", text2(
+          "attachmentLimits",
+          language,
+          limits.max_attachments,
+          Math.round(limits.max_bytes / (1024 * 1024))
+        ), { "data-attachment-limits": "" });
+      }
+    }
+  };
+  var DispatchRefusal = class extends HTMLElement {
+    set props({ reason = "simulation_active", language = "de" }) {
+      this.replaceChildren();
+      this.setAttribute("data-refusal", reason);
+      append3(
+        this,
+        "span",
+        text2(reason === "simulation_state_unavailable" ? "refusedUnknown" : "refusedSimulating", language),
+        { "data-refusal-text": "" }
+      );
+    }
+  };
+  var ELEMENTS2 = [
+    ["glt-flow-card-simulation-banner", SimulationBanner],
+    ["glt-flow-card-provided-value", ProvidedValue],
+    ["glt-flow-card-scenario-table", ScenarioTable],
+    ["glt-flow-card-commissioning-table", CommissioningTable],
+    ["glt-flow-card-work-order-history", WorkOrderHistory],
+    ["glt-flow-card-work-order-form", WorkOrderForm],
+    ["glt-flow-card-dispatch-refusal", DispatchRefusal]
+  ];
+  for (const [name, constructor] of ELEMENTS2) {
     if (!customElements.get(name)) customElements.define(name, constructor);
   }
 
