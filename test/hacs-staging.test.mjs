@@ -55,6 +55,7 @@ const COMPONENT_FILES = [
   "schemas/project/2.schema.json",
   "schemas/project/3.schema.json",
   "schemas/project/4.schema.json",
+  "schemas/project/5.schema.json",
   "strings.json",
   "translations/de.json",
   "translations/en.json",

@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { Uint8ArrayReader, ZipReader } from "@zip.js/zip.js/index-native.js";
 import { pythonArgs, resolvePython } from "../tools/python-launcher.mjs";
+import { CURRENT_PROJECT_SCHEMA_VERSION } from "../src/v100/project-migrations.mjs";
 
 import { makeProjectBundle, readProjectBundle } from "../src/v100/core.mjs";
 import { canonicalizeJson } from "../src/v100/project-contract.mjs";
@@ -371,7 +372,7 @@ test("core compatibility APIs use safe async bundles with opaque assets", async 
   };
   const archive = await makeProjectBundle(validProject([asset]), [asset]);
   const restored = await readProjectBundle(archive, { includeAssets: true });
-  assert.equal(restored.project.schema_version, 4);
+  assert.equal(restored.project.schema_version, CURRENT_PROJECT_SCHEMA_VERSION);
   assert.deepEqual(restored.assets[0].bytes, asset.bytes);
 });
 

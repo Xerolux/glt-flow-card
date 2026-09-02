@@ -8,9 +8,10 @@ import unicodedata
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from .alarm_vocabulary import migrate_severity
 from .project_contract import digest_canonical_json, evaluate_project_contract
 
-CURRENT_PROJECT_SCHEMA_VERSION = 4
+CURRENT_PROJECT_SCHEMA_VERSION = 5
 
 
 def _clone_canonical(value: Any) -> Any:
@@ -104,11 +105,146 @@ def _step_three_to_four(source: Mapping[str, Any]) -> dict[str, Any]:
     return _clone_canonical(candidate)
 
 
+#: Fields schema 5 declares on an alarm. Anything else is quarantined.
+#:
+#: This list and ``schemas/project/5.schema.json`` must agree exactly, and
+#: ``test_project_migrations.py`` asserts it against the schema. They disagreed
+#: once during development -- ``state`` was declared and not listed -- and the
+#: symptom was a Phase-4 roll-up silently counting nothing, because the
+#: migration quarantined a field the schema was happy to keep.
+_ALARM_FIELDS = (
+    "active_states", "condition", "delay_seconds", "entity", "equipment_id",
+    "hysteresis", "id", "inactive_states", "label", "legacy", "links",
+    "maintenance", "name", "notification", "priority", "state",
+)
+
+#: Fields schema 5 declares on a schedule.
+_SCHEDULE_FIELDS = (
+    "binding", "data", "days", "enabled", "entity_id", "from", "id", "kind",
+    "legacy", "name", "service", "time", "to",
+)
+
+_TIME_PATTERN = re.compile(r"^([01][0-9]|2[0-3]):[0-5][0-9]$")
+
+#: Exported so a test can compare them against the schema they mirror.
+SCHEMA_MIRRORED_FIELDS = {"alarm": _ALARM_FIELDS, "schedule": _SCHEDULE_FIELDS}
+
+
+def _alarm_collections(candidate: dict[str, Any]) -> list[list[Any]]:
+    """Return every alarm collection in a candidate, wherever it lives.
+
+    There are two: the project's own and each profile's. The audit called the
+    second "equipment level"; it is actually on the profile, which is why this
+    walks rather than naming them.
+    """
+    collections: list[list[Any]] = []
+    if isinstance(candidate.get("alarms"), list):
+        collections.append(candidate["alarms"])
+    for profile in candidate.get("profiles") or []:
+        if isinstance(profile, dict) and isinstance(profile.get("alarms"), list):
+            collections.append(profile["alarms"])
+    return collections
+
+
+def _quarantine(target: dict[str, Any], key: str, value: Any, reported: list[str]) -> None:
+    """Move one rejected value into ``legacy``, recording what it was called."""
+    legacy = target.get("legacy")
+    if not isinstance(legacy, dict):
+        legacy = {}
+        target["legacy"] = legacy
+    legacy[key] = value
+    reported.append(key)
+
+
+def _migrate_alarm(alarm: Any, reported: list[str]) -> None:
+    if not isinstance(alarm, dict):
+        return
+    undeclared = [key for key in list(alarm) if key not in _ALARM_FIELDS]
+    for key in undeclared:
+        _quarantine(alarm, key, alarm[key], reported)
+        del alarm[key]
+
+    legacy = alarm.get("legacy") if isinstance(alarm.get("legacy"), dict) else {}
+    stored = legacy.get("severity", alarm.get("priority"))
+    if stored is not None or "priority" in alarm:
+        alarm["priority"] = migrate_severity(stored)["priority"]
+
+    for key, coerce in (("delay_seconds", int), ("hysteresis", float)):
+        if key not in alarm:
+            continue
+        raw = alarm[key]
+        try:
+            numeric = float(raw)
+        except (TypeError, ValueError):
+            numeric = float("nan")
+        if numeric != numeric or numeric < 0:  # NaN or negative
+            # Quarantined, never coerced. Coercing "soon" to 0 would turn a
+            # visible misconfiguration into an alarm that fires instantly and
+            # looks correct.
+            _quarantine(alarm, key, raw, reported)
+            del alarm[key]
+        else:
+            alarm[key] = coerce(numeric)
+
+
+def _migrate_schedule(schedule: Any, reported: list[str]) -> None:
+    if not isinstance(schedule, dict):
+        return
+    undeclared = [key for key in list(schedule) if key not in _SCHEDULE_FIELDS]
+    for key in undeclared:
+        _quarantine(schedule, key, schedule[key], reported)
+        del schedule[key]
+
+    # Schema 4 declared no `kind`, and every stored schedule is an instant: the
+    # runner compares one `HH:MM` and calls a service. Declaring it is not a
+    # guess, it is writing down what the only implementation does.
+    schedule.setdefault("kind", "instant")
+
+    for key in ("time", "from", "to"):
+        if key not in schedule:
+            continue
+        value = schedule[key]
+        if not isinstance(value, str) or not _TIME_PATTERN.match(value):
+            _quarantine(schedule, key, value, reported)
+            del schedule[key]
+    days = schedule.get("days")
+    if isinstance(days, list):
+        valid = [d for d in days if isinstance(d, int) and not isinstance(d, bool) and 0 <= d <= 6]
+        if len(valid) != len(days):
+            _quarantine(schedule, "days", days, reported)
+            schedule["days"] = valid
+
+
+def _step_four_to_five(source: Mapping[str, Any]) -> dict[str, Any]:
+    candidate = _clone_canonical(source)
+    candidate["schema_version"] = 5
+    # Schema 4 left every field the alarm engine and the schedule runner read
+    # undeclared, so `delay_seconds: "soon"` and `time: "tea"` were both
+    # schema-valid and failed at the moment the effect was supposed to happen.
+    #
+    # The rule here is quarantine, not deletion. A rejected value moves into
+    # `legacy` and is reported: a site's misconfiguration is still its data, and
+    # the receipt is where it learns. That differs deliberately from the 3-to-4
+    # port rule, which dropped unknown keys -- a port carrying an unknown key
+    # was a schema-2-era accident, while `delay_seconds: "soon"` is something a
+    # person typed on purpose.
+    reported: list[str] = []
+    for collection in _alarm_collections(candidate):
+        for alarm in collection:
+            _migrate_alarm(alarm, reported)
+    for schedule in candidate.get("schedules") or []:
+        _migrate_schedule(schedule, reported)
+    if "timezone" in candidate and not isinstance(candidate["timezone"], str):
+        del candidate["timezone"]
+    return _clone_canonical(candidate)
+
+
 PROJECT_MIGRATIONS: dict[int, dict[str, int | Callable[[Mapping[str, Any]], dict[str, Any]]]] = {
     0: {"from": 0, "to": 1, "migrate": _step_zero_to_one},
     1: {"from": 1, "to": 2, "migrate": _step_one_to_two},
     2: {"from": 2, "to": 3, "migrate": _step_two_to_three},
     3: {"from": 3, "to": 4, "migrate": _step_three_to_four},
+    4: {"from": 4, "to": 5, "migrate": _step_four_to_five},
 }
 
 

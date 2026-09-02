@@ -19,6 +19,7 @@ const PROJECT_SCHEMA_PATHS = [
   "schemas/project/2.schema.json",
   "schemas/project/3.schema.json",
   "schemas/project/4.schema.json",
+  "schemas/project/5.schema.json",
 ];
 const SCHEMA_PATHS = [
   ...PROJECT_SCHEMA_PATHS,

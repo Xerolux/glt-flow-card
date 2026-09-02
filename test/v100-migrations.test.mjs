@@ -6,6 +6,7 @@ import { load as loadYaml } from "js-yaml";
 
 import {
   CURRENT_PROJECT_SCHEMA_VERSION,
+  SCHEMA_MIRRORED_FIELDS,
   migrateProjectDocument,
 } from "../src/v100/project-migrations.mjs";
 import { ensureV1, migrateProject } from "../src/v100/core.mjs";
@@ -32,22 +33,22 @@ const versionTwoProject = () => ({
 
 const currentProject = () => ({
   ...versionTwoProject(),
-  schema_version: 4,
+  schema_version: CURRENT_PROJECT_SCHEMA_VERSION,
   contributions: [],
   semantic_model: { nodes: [] },
 });
 
-test("migration executes exact 0→1→2→3→4 copy-on-write steps with receipted evidence", () => {
+test("migration executes exact 0→1→2→3→4→5 copy-on-write steps with receipted evidence", () => {
   const source = legacyProject();
   const before = JSON.stringify(source);
   const result = migrateProjectDocument(source, { dryRun: true });
 
-  assert.equal(CURRENT_PROJECT_SCHEMA_VERSION, 4);
+  assert.equal(CURRENT_PROJECT_SCHEMA_VERSION, 5);
   assert.equal(JSON.stringify(source), before);
   assert.notStrictEqual(result.candidate, source);
-  assert.deepEqual(result.receipt.steps.map(({ from, to }) => [from, to]), [[0, 1], [1, 2], [2, 3], [3, 4]]);
+  assert.deepEqual(result.receipt.steps.map(({ from, to }) => [from, to]), [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]);
   assert.equal(result.receipt.source_schema_version, 0);
-  assert.equal(result.receipt.candidate_schema_version, 4);
+  assert.equal(result.receipt.candidate_schema_version, CURRENT_PROJECT_SCHEMA_VERSION);
   assert.match(result.receipt.source_digest, /^[a-f0-9]{64}$/);
   assert.match(result.receipt.candidate_digest, /^[a-f0-9]{64}$/);
   assert.deepEqual(result.receipt.warnings, []);
@@ -65,7 +66,7 @@ test("dry-run and apply modes are pure and return identical candidate and receip
   const apply = migrateProjectDocument(source, { dryRun: false });
 
   assert.deepEqual(apply, dryRun);
-  assert.deepEqual(dryRun.receipt.steps.map(({ from, to }) => [from, to]), [[1, 2], [2, 3], [3, 4]]);
+  assert.deepEqual(dryRun.receipt.steps.map(({ from, to }) => [from, to]), [[1, 2], [2, 3], [3, 4], [4, 5]]);
   assert.equal(source.schema_version, 1);
   assert.equal("project" in source, false);
 });
@@ -77,9 +78,12 @@ test("current projects are idempotent and future or invalid inputs fail closed",
   assert.deepEqual(result.candidate, current);
   assert.deepEqual(result.receipt.steps, []);
   assert.equal(result.receipt.source_digest, result.receipt.candidate_digest);
+  // One past the current version, derived, so this keeps testing the future
+  // boundary instead of testing a version that has since shipped.
+  const future = CURRENT_PROJECT_SCHEMA_VERSION + 1;
   assert.throws(
-    () => migrateProjectDocument({ ...current, schema_version: 5 }),
-    /unsupported project schema version 5/i,
+    () => migrateProjectDocument({ ...current, schema_version: future }),
+    new RegExp(`unsupported project schema version ${future}`, "i"),
   );
   assert.throws(
     () => migrateProjectDocument({ schema_version: 1, title: "missing card type" }),
@@ -115,7 +119,7 @@ test("public migration shape stays compatible while exposing hardened evidence",
   assert.equal(result.to, 1);
   assert.equal(result.changed, true);
   assert.equal(result.config.schema_version, 1);
-  assert.equal(result.candidate.schema_version, 4);
+  assert.equal(result.candidate.schema_version, CURRENT_PROJECT_SCHEMA_VERSION);
   assert.equal(result.receipt.source_digest, migrateProjectDocument(source).receipt.source_digest);
   assert.throws(
     () => migrateProject({ schema_version: 1, title: "silently repairable before hardening" }),
@@ -137,5 +141,20 @@ test("existing YAML examples retain identities and references through ensureV1",
     assert.equal(JSON.stringify(raw), before, `${name} source mutated`);
     assert.deepEqual(normalized.equipment.map(({ id }) => id), (raw.equipment || []).map(({ id }) => id), name);
     assert.deepEqual(normalized.paths.map(({ id }) => id), (raw.paths || []).map(({ id }) => id), name);
+  }
+});
+
+test("the migration's field lists and schema 5 declare the same fields", () => {
+  // Two lists that must agree. They disagreed once during development --
+  // `state` was declared in the schema and missing from the migration's list --
+  // and the symptom was not a validation error but a Phase-4 roll-up counting
+  // nothing, because the migration quarantined a field the schema kept. A
+  // mismatch is silent by nature, so it is asserted rather than reviewed.
+  const schema = JSON.parse(readFileSync(
+    new URL("../schemas/project/5.schema.json", import.meta.url), "utf8",
+  ));
+  for (const [shape, fields] of Object.entries(SCHEMA_MIRRORED_FIELDS)) {
+    const declared = Object.keys(schema.$defs[shape].properties).sort();
+    assert.deepEqual([...fields].sort(), declared, shape);
   }
 });

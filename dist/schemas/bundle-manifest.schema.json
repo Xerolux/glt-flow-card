@@ -22,7 +22,7 @@
         "schema_version": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 4
+          "maximum": 5
         },
         "sha256": {
           "type": "string",

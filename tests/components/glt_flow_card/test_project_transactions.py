@@ -8,6 +8,9 @@ from typing import Any
 import pytest
 
 from custom_components.glt_flow_card.project_contract import digest_canonical_json
+from custom_components.glt_flow_card.project_migrations import (
+    CURRENT_PROJECT_SCHEMA_VERSION,
+)
 from custom_components.glt_flow_card.project_repository import ProjectRepository
 from custom_components.glt_flow_card.project_transactions import (
     ProjectTransactionCoordinator,
@@ -25,7 +28,12 @@ pytestmark = [
 def project(project_id: str = "plant-a", **overrides: Any) -> dict[str, Any]:
     value = {
         "type": "custom:glt-flow-card",
-        "schema_version": 4,
+        # The *current* version, so the coordinator runs no migration and the
+        # digest assertions keep testing what they were written to test: that a
+        # preview's candidate digest is the digest of what the caller submitted.
+        # Pinning a superseded version here would turn those into assertions
+        # about the migration instead.
+        "schema_version": CURRENT_PROJECT_SCHEMA_VERSION,
         "contributions": [],
         "semantic_model": {"nodes": []},
         "project": {"id": project_id, "name": "Plant A", "revision": 0},
@@ -112,7 +120,7 @@ async def test_preview_and_selection_are_user_revision_and_server_bound() -> Non
     assert preview["base_revision"] == 1
     assert preview["base_digest"] == initial["digest"]
     assert preview["candidate_digest"] == digest_canonical_json(original)["digest"]
-    assert preview["migration_receipt"]["candidate_schema_version"] == 4
+    assert preview["migration_receipt"]["candidate_schema_version"] == CURRENT_PROJECT_SCHEMA_VERSION
     assert {operation["category"] for operation in preview["operations"]} >= {"add", "move"}
     path_closure = preview["closures"]["add:/paths/path-2"]
     assert path_closure["selected"] == [
@@ -567,7 +575,7 @@ async def test_first_apply_synthesizes_verified_empty_rollback_snapshot() -> Non
     assert rollback_snapshot["revision"] == 0
     assert rollback_snapshot["config"] == {
         "type": "custom:glt-flow-card",
-        "schema_version": 4,
+        "schema_version": CURRENT_PROJECT_SCHEMA_VERSION,
         "contributions": [],
         "semantic_model": {"nodes": []},
         "project": {"id": "plant-a", "name": "Plant A", "revision": 0},
@@ -581,7 +589,7 @@ async def test_first_apply_synthesizes_verified_empty_rollback_snapshot() -> Non
     )
     assert rolled_back["config"] == {
         "type": "custom:glt-flow-card",
-        "schema_version": 4,
+        "schema_version": CURRENT_PROJECT_SCHEMA_VERSION,
         "contributions": [],
         "semantic_model": {"nodes": []},
         "project": {"id": "plant-a", "name": "Plant A", "revision": 2},

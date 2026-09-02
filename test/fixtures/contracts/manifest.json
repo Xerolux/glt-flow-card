@@ -14,13 +14,14 @@
   "policies": {
     "limits_sha256": "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619",
     "diff_policy_sha256": "6ba0aaaa2460d7b9e6d765a2842cad2eefb6899f681dd1fb487df8539cafce9f",
-    "bundle_schema_sha256": "fd4f01308db26a308d10b85d5e8c578ae6256bcaa48b0e72d80631b0f7852312",
+    "bundle_schema_sha256": "14494b45c2f4f2bb5605f87faccf155031a9a000ee7ec74712611246bedcb1b8",
     "project_schema_sha256": {
       "0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
       "1": "0e3e3ba8b547331ce254d00c2cbf91efa85e97dd2a10b313fb47ac4eb95eed37",
       "2": "ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7",
       "3": "4ffb7214e5e1e041a38416b3293dba476aabc53d1c38ccbeefffe4caf69c4f78",
-      "4": "80f355c82d67c8db2c7ae187aadbc59da49eff2314a3d843041766f062269769"
+      "4": "80f355c82d67c8db2c7ae187aadbc59da49eff2314a3d843041766f062269769",
+      "5": "ff8310cbde374c7445438f9f0bd72da0c4f1de2771ef4af1173c65046271c573"
     }
   },
   "provenance": [
@@ -276,7 +277,7 @@
       "class": "malformed",
       "file": "bodies/malformed-future-version.json",
       "bytes": 370,
-      "sha256": "b4d2a7b8f896426739376934c90492184c857524886a8b654090914ed75d3f19",
+      "sha256": "f4b6b8db824bf8ae53f8f01d1cb71fbe340f3dfcce942cca391e892db7116601",
       "evidence_scope": "correctness_only",
       "expected": {
         "outcome": "reject",

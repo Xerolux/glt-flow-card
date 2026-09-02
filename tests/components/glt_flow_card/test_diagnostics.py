@@ -11,6 +11,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.glt_flow_card.diagnostics import (
     async_get_config_entry_diagnostics,
 )
+from custom_components.glt_flow_card.project_migrations import (
+    CURRENT_PROJECT_SCHEMA_VERSION,
+)
 
 pytestmark = [
     pytest.mark.enable_socket,
@@ -85,7 +88,7 @@ async def test_diagnostics_use_explicit_metadata_allowlist(
     assert result["integration"] == {
         "domain": "glt_flow_card",
         "version": "1.0.0",
-        "project_schema_version": 4,
+        "project_schema_version": CURRENT_PROJECT_SCHEMA_VERSION,
         "loaded": True,
     }
     assert result["options"] == {

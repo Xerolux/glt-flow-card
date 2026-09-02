@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { SYMBOL_VARIANTS, COMPONENT_PROFILES } from "../src/v100/catalog.mjs";
+import { CURRENT_PROJECT_SCHEMA_VERSION } from "../src/v100/project-migrations.mjs";
 import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, diagnoseConfig, aggregateSeries, projectDiff, makeProjectBundle, readProjectBundle } from "../src/v100/core.mjs";
 
 test("Platform 1.0 exposes a professional symbol/profile catalog", () => {
@@ -65,6 +66,6 @@ test(".gltproject bundle migrates and round trips through the safe async API", a
   const bundle = await makeProjectBundle(cfg);
   assert.ok(bundle.length > 100);
   const restored = await readProjectBundle(bundle);
-  assert.equal(restored.schema_version, 4);
+  assert.equal(restored.schema_version, CURRENT_PROJECT_SCHEMA_VERSION);
   assert.equal(restored.equipment[0].id, "p1");
 });

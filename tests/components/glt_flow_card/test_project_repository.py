@@ -22,6 +22,9 @@ from custom_components.glt_flow_card.const import (
 )
 from custom_components.glt_flow_card.project_contract import digest_canonical_json
 from custom_components.glt_flow_card.project_repository import ProjectRepository
+from custom_components.glt_flow_card.project_migrations import (
+    CURRENT_PROJECT_SCHEMA_VERSION,
+)
 
 pytestmark = [
     pytest.mark.enable_socket,
@@ -121,7 +124,7 @@ async def test_legacy_import_is_verified_once_and_retains_untouched_backup() -> 
     imported = repository.get_head("legacy-plant")
     assert imported is not None
     assert imported["revision"] == 4
-    assert imported["config"]["schema_version"] == 4
+    assert imported["config"]["schema_version"] == CURRENT_PROJECT_SCHEMA_VERSION
     assert imported["config"]["project"]["id"] == "legacy-plant"
     assert imported["digest"] == digest_canonical_json(imported["config"])["digest"]
     assert "versions" not in imported

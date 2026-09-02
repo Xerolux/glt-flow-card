@@ -2,7 +2,7 @@
   "artifacts": [
     {
       "path": "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
-      "sha256": "fd4f01308db26a308d10b85d5e8c578ae6256bcaa48b0e72d80631b0f7852312",
+      "sha256": "14494b45c2f4f2bb5605f87faccf155031a9a000ee7ec74712611246bedcb1b8",
       "size": 2321
     },
     {
@@ -46,18 +46,23 @@
       "size": 20556
     },
     {
+      "path": "custom_components/glt_flow_card/schemas/project/5.schema.json",
+      "sha256": "ff8310cbde374c7445438f9f0bd72da0c4f1de2771ef4af1173c65046271c573",
+      "size": 26798
+    },
+    {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "207a5f1cdd406151056b9afff20314f2c4040cefe47c7a838964554f7305eedf",
-      "size": 1797945
+      "sha256": "32d6cd0b4d4033e18d5730cfb863340fbce746b7d7a6670a8a71da0f8351c197",
+      "size": 2126181
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "207a5f1cdd406151056b9afff20314f2c4040cefe47c7a838964554f7305eedf",
-      "size": 1797945
+      "sha256": "32d6cd0b4d4033e18d5730cfb863340fbce746b7d7a6670a8a71da0f8351c197",
+      "size": 2126181
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
-      "sha256": "fd4f01308db26a308d10b85d5e8c578ae6256bcaa48b0e72d80631b0f7852312",
+      "sha256": "14494b45c2f4f2bb5605f87faccf155031a9a000ee7ec74712611246bedcb1b8",
       "size": 2321
     },
     {
@@ -101,6 +106,11 @@
       "size": 20556
     },
     {
+      "path": "dist/schemas/project/5.schema.json",
+      "sha256": "ff8310cbde374c7445438f9f0bd72da0c4f1de2771ef4af1173c65046271c573",
+      "size": 26798
+    },
+    {
       "path": "docs/editor/app.js",
       "sha256": "523cb1e2aec259da18ea6ea8c770ae08b7fb63d118cc8defef1a664cdc020af2",
       "size": 32113
@@ -108,12 +118,12 @@
   ],
   "build": {
     "commit": "720627536d613aab3b32f6b0567a1bc2225756b7",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
   "schemas": {
-    "bundleManifest": "fd4f01308db26a308d10b85d5e8c578ae6256bcaa48b0e72d80631b0f7852312",
+    "bundleManifest": "14494b45c2f4f2bb5605f87faccf155031a9a000ee7ec74712611246bedcb1b8",
     "diffPolicy": "6ba0aaaa2460d7b9e6d765a2842cad2eefb6899f681dd1fb487df8539cafce9f",
     "limits": "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619",
     "project0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
@@ -121,6 +131,7 @@
     "project2": "ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7",
     "project3": "4ffb7214e5e1e041a38416b3293dba476aabc53d1c38ccbeefffe4caf69c4f78",
     "project4": "80f355c82d67c8db2c7ae187aadbc59da49eff2314a3d843041766f062269769",
+    "project5": "ff8310cbde374c7445438f9f0bd72da0c4f1de2771ef4af1173c65046271c573",
     "vocabularies": "abd346b1cbc7a5b581f2e6a3651767d69fbb3d16f0248c20556434e8584ede94"
   },
   "sources": [
@@ -141,7 +152,7 @@
     },
     {
       "path": "schemas/bundle-manifest.schema.json",
-      "sha256": "fd4f01308db26a308d10b85d5e8c578ae6256bcaa48b0e72d80631b0f7852312",
+      "sha256": "14494b45c2f4f2bb5605f87faccf155031a9a000ee7ec74712611246bedcb1b8",
       "size": 2321
     },
     {
@@ -291,8 +302,8 @@
     },
     {
       "path": "src/v100/project-migrations.mjs",
-      "sha256": "23de4b60832577f97a180f8af0674deb2318655f27298fac57fcab3f5e1411c9",
-      "size": 6786
+      "sha256": "5a2647ddc01837967e39dcbeee6c8a4700aa5795e96b1170816dc133828f32d0",
+      "size": 12730
     },
     {
       "path": "src/v100/project-operations.js",
@@ -351,8 +362,8 @@
     },
     {
       "path": "tools/generate-project-validators.mjs",
-      "sha256": "f89320cabd082a04f95a10cde928c013e32b53c761974da6bee00f9c8ee7b797",
-      "size": 3857
+      "sha256": "cb25fa676e446ba71020735dbe9ed086b9ae3335fe939beecac8c506d3638892",
+      "size": 3906
     }
   ],
   "tools": {
@@ -361,8 +372,8 @@
     "node": "22"
   },
   "validator": {
-    "sha256": "4559c9f24435822f5061d87d87d804303ca4b0f9ca02c72dfd40010bb7e403ab",
-    "size": 612724
+    "sha256": "fcf36ee8a6d261fefe26283f92007237f449a6c397f21fd7b0ee4ee417815e7c",
+    "size": 871336
   },
   "versions": {
     "card": "1.0.0",
@@ -373,7 +384,8 @@
       1,
       2,
       3,
-      4
+      4,
+      5
     ]
   }
 }

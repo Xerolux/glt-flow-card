@@ -19,6 +19,9 @@ from custom_components.glt_flow_card.ports import (
     resolve_endpoint,
 )
 from custom_components.glt_flow_card.project_migrations import migrate_project_document
+from custom_components.glt_flow_card.project_migrations import (
+    CURRENT_PROJECT_SCHEMA_VERSION,
+)
 
 from . import cad_factory
 
@@ -133,7 +136,7 @@ def test_a_migration_carries_the_endpoints_through() -> None:
     down["schema_version"] = 3
     down.pop("contributions", None)
     restored = migrate_project_document(down, dry_run=True)["candidate"]
-    assert restored["schema_version"] == 4
+    assert restored["schema_version"] == CURRENT_PROJECT_SCHEMA_VERSION
     for original, carried in zip(project["paths"], restored["paths"], strict=True):
         assert (carried["from_equipment"], carried["from_port"]) == (
             original["from_equipment"], original["from_port"]
