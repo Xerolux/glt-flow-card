@@ -23,6 +23,7 @@
  * should not.
  */
 
+import { defineElement } from "./element-registry.mjs";
 import { hasWording, template as catalogTemplate, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
 import "./catalog-en.mjs";
@@ -551,6 +552,9 @@ class GltMinimap extends GltDesignerElement {
     map.tabIndex = 0;
     map.dataset.minimap = "1";
     map.setAttribute("role", "group");
+    // The box is focusable, so it needs a name of its own: the region's label
+    // does not carry to a descendant a keyboard user lands on directly.
+    map.setAttribute("aria-label", textFor(language, "minimap_label"));
     map.append(element("p", "glt-des-meta",
       `${textFor(language, "viewport")}: ${viewport.x},${viewport.y}`));
     const list = element("ul", "glt-des-list");
@@ -678,5 +682,5 @@ for (const [name, constructor] of [
   ["glt-flow-card-minimap", GltMinimap],
   ["glt-flow-card-extension-manager", GltExtensionManager],
 ]) {
-  if (!customElements.get(name)) customElements.define(name, constructor);
+  defineElement(name, constructor);
 }

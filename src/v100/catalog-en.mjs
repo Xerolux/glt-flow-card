@@ -463,10 +463,15 @@ export const ENTRIES = Object.freeze({
   "trends.gap_one": "gap",
   "trends.gap_other": "gaps",
   "trends.gap_row": "No data from {start} to {end}",
+  "trends.instant_column": "Instant",
   "trends.no_data": "No data",
+  "trends.report_name": "Report name",
+  "trends.report_period": "Period",
+  "trends.report_schedule": "Schedule",
   "trends.span_day23": "This day has 23 hours — the clock change falls inside it.",
   "trends.span_day25": "This day has 25 hours — the clock change falls inside it.",
   "trends.span_month": "This month has {hours} hours — the clock change falls inside it.",
+  "trends.table_label": "Reading table",
   "trends.unreadable": "Unreadable",
 });
 

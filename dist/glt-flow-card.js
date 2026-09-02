@@ -6236,10 +6236,15 @@
     "trends.gap_one": "Lücke",
     "trends.gap_other": "Lücken",
     "trends.gap_row": "Keine Daten von {start} bis {end}",
+    "trends.instant_column": "Zeitpunkt",
     "trends.no_data": "Keine Daten",
+    "trends.report_name": "Berichtsname",
+    "trends.report_period": "Zeitraum",
+    "trends.report_schedule": "Zeitplan",
     "trends.span_day23": "Dieser Tag hat 23 Stunden — die Zeitumstellung fällt hinein.",
     "trends.span_day25": "Dieser Tag hat 25 Stunden — die Zeitumstellung fällt hinein.",
     "trends.span_month": "Dieser Monat hat {hours} Stunden — die Zeitumstellung fällt hinein.",
+    "trends.table_label": "Messwerttabelle",
     "trends.unreadable": "Nicht lesbar"
   });
   registerCatalog("de", ENTRIES);
@@ -6697,10 +6702,15 @@
     "trends.gap_one": "gap",
     "trends.gap_other": "gaps",
     "trends.gap_row": "No data from {start} to {end}",
+    "trends.instant_column": "Instant",
     "trends.no_data": "No data",
+    "trends.report_name": "Report name",
+    "trends.report_period": "Period",
+    "trends.report_schedule": "Schedule",
     "trends.span_day23": "This day has 23 hours — the clock change falls inside it.",
     "trends.span_day25": "This day has 25 hours — the clock change falls inside it.",
     "trends.span_month": "This month has {hours} hours — the clock change falls inside it.",
+    "trends.table_label": "Reading table",
     "trends.unreadable": "Unreadable"
   });
   registerCatalog("en", ENTRIES2);
@@ -61860,6 +61870,23 @@
     console.info(`GLT Flow Card Engineering Platform 1.0 enabled · ${symbolCatalogStats().variants} symbol variants · ${COMPONENT_PROFILES.length} parametric profiles`);
   })();
 
+  // src/v100/element-registry.mjs
+  var DEFINED = [];
+  function defineElement(name, constructor) {
+    if (customElements.get(name)) return false;
+    customElements.define(name, constructor);
+    DEFINED.push(name);
+    publish();
+    return true;
+  }
+  function definedElements() {
+    return [...DEFINED].sort();
+  }
+  function publish() {
+    if (typeof window === "undefined") return;
+    window.__gltRegisteredElements = definedElements();
+  }
+
   // src/v100/project-authority.mjs
   var SUPPORTED_POLICY_VERSION = 1;
   var ROLES = Object.freeze(["viewer", "operator", "engineer", "admin"]);
@@ -63517,10 +63544,10 @@
     }
   };
   if (!customElements.get("glt-flow-card-authority-bar")) {
-    customElements.define("glt-flow-card-authority-bar", GltAuthorityBar);
+    defineElement("glt-flow-card-authority-bar", GltAuthorityBar);
   }
   if (!customElements.get("glt-flow-card-project-authority")) {
-    customElements.define("glt-flow-card-project-authority", GltProjectAuthority);
+    defineElement("glt-flow-card-project-authority", GltProjectAuthority);
   }
   var GltEvidenceView = class extends GltSurfaceElement {
     _row(kind, row) {
@@ -63592,16 +63619,16 @@
     }
   };
   if (!customElements.get("glt-flow-card-evidence-view")) {
-    customElements.define("glt-flow-card-evidence-view", GltEvidenceView);
+    defineElement("glt-flow-card-evidence-view", GltEvidenceView);
   }
   if (!customElements.get("glt-flow-card-lease-control")) {
-    customElements.define("glt-flow-card-lease-control", GltLeaseControl);
+    defineElement("glt-flow-card-lease-control", GltLeaseControl);
   }
   if (!customElements.get("glt-flow-card-conflict-recovery")) {
-    customElements.define("glt-flow-card-conflict-recovery", GltConflictRecovery);
+    defineElement("glt-flow-card-conflict-recovery", GltConflictRecovery);
   }
   if (!customElements.get("glt-flow-card-control-confirm")) {
-    customElements.define("glt-flow-card-control-confirm", GltControlConfirm);
+    defineElement("glt-flow-card-control-confirm", GltControlConfirm);
   }
   function projectAuthority(editor, type, payload) {
     if (!editor._hass?.callWS) return Promise.reject(Object.assign(new Error("Companion unavailable"), { code: "unavailable" }));
@@ -64767,7 +64794,7 @@
     ["glt-flow-card-mapping-review", GltMappingReview],
     ["glt-flow-card-state-badge", GltStateBadge]
   ]) {
-    if (!customElements.get(name)) customElements.define(name, constructor);
+    defineElement(name, constructor);
   }
 
   // src/v100/command-outcome.mjs
@@ -65211,7 +65238,7 @@
     ["glt-flow-card-outcome-strip", GltOutcomeStrip],
     ["glt-flow-card-view-staleness", GltViewStaleness]
   ]) {
-    if (!customElements.get(name)) customElements.define(name, constructor);
+    defineElement(name, constructor);
   }
 
   // src/v100/ports.mjs
@@ -65609,7 +65636,7 @@
     ["glt-flow-card-symbol-browser", GltSymbolBrowser],
     ["glt-flow-card-port-inspector", GltPortInspector]
   ]) {
-    if (!customElements.get(name)) customElements.define(name, constructor);
+    defineElement(name, constructor);
   }
 
   // src/v100/designer-commands.mjs
@@ -66813,6 +66840,7 @@
       map.tabIndex = 0;
       map.dataset.minimap = "1";
       map.setAttribute("role", "group");
+      map.setAttribute("aria-label", textFor3(language, "minimap_label"));
       map.append(element5(
         "p",
         "glt-des-meta",
@@ -66933,7 +66961,7 @@
     ["glt-flow-card-minimap", GltMinimap],
     ["glt-flow-card-extension-manager", GltExtensionManager]
   ]) {
-    if (!customElements.get(name)) customElements.define(name, constructor);
+    defineElement(name, constructor);
   }
 
   // src/v100/schedule-time.mjs
@@ -67448,7 +67476,7 @@
     ["glt-flow-card-schedule-editor", GltScheduleEditor],
     ["glt-flow-card-schedule-preview", GltSchedulePreview]
   ]) {
-    if (!customElements.get(name)) customElements.define(name, constructor);
+    defineElement(name, constructor);
   }
 
   // src/v100/period-vocabulary.mjs
@@ -67554,6 +67582,11 @@
   var LANGUAGES2 = ["de", "en"];
   var KEYS6 = Object.freeze({
     "coverage": "trends.coverage",
+    "instantColumn": "trends.instant_column",
+    "report_name": "trends.report_name",
+    "report_period": "trends.report_period",
+    "report_schedule": "trends.report_schedule",
+    "tableLabel": "trends.table_label",
     "coverageGaps": "trends.coverage_gaps",
     "gapOne": "trends.gap_one",
     "gapOther": "trends.gap_other",
@@ -67675,11 +67708,13 @@
     set props({ series = [], gaps = [], language = "de" }) {
       this.replaceChildren();
       this.setAttribute("tabindex", "0");
+      this.setAttribute("aria-label", text2("tableLabel", language));
+      this.setAttribute("role", "group");
       const table2 = document.createElement("table");
       this.append(table2);
       const head = document.createElement("tr");
       table2.append(head);
-      append2(head, "th", language === "de" ? "Zeitpunkt" : "Instant");
+      append2(head, "th", text2("instantColumn", language), { scope: "col" });
       for (const entry of series) append2(head, "th", entry.label ?? "");
       const instants = [...new Set(series.flatMap((entry) => (entry.points ?? []).map((point) => point.at)))].sort();
       for (const instant of instants) {
@@ -67764,13 +67799,16 @@
       form.setAttribute("data-report-form", "");
       this.append(form);
       for (const [name, type] of [["name", "text"], ["period", "text"], ["schedule", "text"]]) {
-        const field = append2(form, "input", null, {
+        const row = append2(form, "p");
+        const id = `glt-report-${name}`;
+        append2(row, "label", text2(`report_${name}`, language), { for: id });
+        append2(row, "input", null, {
           "data-field": name,
+          id,
           name,
           required: name === "name" ? "" : null,
           type
         });
-        void field;
       }
       for (const definition of definitions) {
         const row = document.createElement("div");
@@ -67805,7 +67843,7 @@
     ["glt-flow-card-report-designer", ReportDesigner]
   ];
   for (const [name, constructor] of ELEMENTS) {
-    if (!customElements.get(name)) customElements.define(name, constructor);
+    defineElement(name, constructor);
   }
 
   // src/v100/project-assets.js
@@ -67860,6 +67898,8 @@
   var SimulationBanner = class extends HTMLElement {
     set props({ session = null, expired = false, language = "de" }) {
       this.replaceChildren();
+      this.setAttribute("aria-live", "polite");
+      this.setAttribute("role", "status");
       if (expired) {
         this.setAttribute("data-simulation", "expired");
         append3(this, "span", text3("sessionExpired", language), { "data-banner-text": "" });
@@ -67870,7 +67910,7 @@
         return;
       }
       this.setAttribute("data-simulation", "active");
-      append3(this, "span", text3("simulatedShape", language), { "data-simulation-shape": "" });
+      append3(this, "span", text3("simulatedShape", language), { "aria-hidden": "true", "data-simulation-shape": "" });
       append3(
         this,
         "span",
@@ -67887,10 +67927,15 @@
       this.replaceChildren();
       const simulated = provider === "simulated";
       this.setAttribute("data-provider", provider);
+      this.setAttribute("role", "group");
+      this.setAttribute(
+        "aria-label",
+        `${value === null || value === void 0 ? "—" : value}${unit ? ` ${unit}` : ""}, ${text3(simulated ? "simulated" : "measured", language)}`
+      );
       append3(this, "span", value === null || value === void 0 ? "—" : value, { "data-value": "" });
       if (unit) append3(this, "span", unit, { "data-unit": "" });
       if (simulated) {
-        append3(this, "span", text3("simulatedShape", language), { "data-provider-shape": "" });
+        append3(this, "span", text3("simulatedShape", language), { "aria-hidden": "true", "data-provider-shape": "" });
       }
       append3(this, "span", text3(simulated ? "simulated" : "measured", language), {
         "data-provider-text": ""
@@ -67913,7 +67958,7 @@
         append3(row, "td", entry.slot);
         append3(row, "td", entry.value);
         const marker = append3(row, "td", null, { "data-provider": entry.provider ?? "simulated" });
-        append3(marker, "span", text3("simulatedShape", language), { "data-provider-shape": "" });
+        append3(marker, "span", text3("simulatedShape", language), { "aria-hidden": "true", "data-provider-shape": "" });
         append3(marker, "span", text3("simulated", language), { "data-provider-text": "" });
       }
     }
@@ -67999,7 +68044,9 @@
   var DispatchRefusal = class extends HTMLElement {
     set props({ reason = "simulation_active", language = "de" }) {
       this.replaceChildren();
+      this.setAttribute("aria-live", "assertive");
       this.setAttribute("data-refusal", reason);
+      this.setAttribute("role", "alert");
       append3(
         this,
         "span",
@@ -68018,7 +68065,7 @@
     ["glt-flow-card-dispatch-refusal", DispatchRefusal]
   ];
   for (const [name, constructor] of ELEMENTS2) {
-    if (!customElements.get(name)) customElements.define(name, constructor);
+    defineElement(name, constructor);
   }
 
   // src/v100/project-sites.js
@@ -68074,8 +68121,10 @@
       const [wordKey, shapeKey] = STATE_KEYS[state];
       this.setAttribute("data-site", site.site_id ?? "");
       this.setAttribute("data-site-state", state);
+      this.setAttribute("role", "group");
+      this.setAttribute("aria-label", `${site.site_id ?? ""}: ${text4(wordKey, language)}`);
       append4(this, "span", site.site_id, { "data-site-name": "" });
-      append4(this, "span", text4(shapeKey, language), { "data-site-shape": "" });
+      append4(this, "span", text4(shapeKey, language), { "aria-hidden": "true", "data-site-shape": "" });
       append4(this, "span", text4(wordKey, language), { "data-site-state-text": "" });
       if (Number.isFinite(site.age_seconds)) {
         append4(this, "span", text4("age", language, { seconds: Math.round(site.age_seconds) }), {
@@ -68094,19 +68143,29 @@
       const answered = rollup.answered_sites ?? [];
       const absent = rollup.absent_sites ?? [];
       this.setAttribute("data-complete", String(Boolean(rollup.complete)));
+      this.setAttribute("role", "group");
+      const listId = `glt-missing-${(rollup.label ?? "rollup").replace(/[^a-z0-9]+/giu, "-").toLowerCase()}`;
       append4(this, "span", rollup.label ?? "", { "data-rollup-label": "" });
       append4(this, "span", rollup.total ?? text4("noValue", language), { "data-rollup-total": "" });
       append4(this, "span", text4("completeness", language, { answered: answered.length, total: rollup.total_sites ?? 0 }), {
         "data-completeness": ""
       });
       if (absent.length > 0) {
-        append4(this, "span", text4("missingSites", language), { "data-missing-label": "" });
-        const list = append4(this, "ul", null, { "data-missing": "" });
+        const label = append4(this, "span", text4("missingSites", language), {
+          "data-missing-label": "",
+          id: `${listId}-label`
+        });
+        const list = append4(this, "ul", null, {
+          "aria-labelledby": label.id,
+          "data-missing": "",
+          id: listId,
+          role: "list"
+        });
         for (const entry of absent) {
-          const item = append4(list, "li", null, { "data-missing-site": entry.site_id });
+          const item = append4(list, "li", null, { "data-missing-site": entry.site_id, role: "listitem" });
           append4(item, "span", entry.site_id, { "data-site-name": "" });
           const state = STATE_KEYS[entry.state] ? entry.state : "unreachable";
-          append4(item, "span", text4(STATE_KEYS[state][1], language), { "data-site-shape": "" });
+          append4(item, "span", text4(STATE_KEYS[state][1], language), { "aria-hidden": "true", "data-site-shape": "" });
           append4(item, "span", text4(STATE_KEYS[state][0], language), { "data-site-state-text": "" });
         }
       }
@@ -68131,6 +68190,7 @@
       this.setAttribute("data-outcome", outcome);
       if (reason) this.setAttribute("data-reason", reason);
       if (outcome === "effect_unknown") {
+        this.setAttribute("aria-live", "assertive");
         append4(this, "span", text4("effectUnknown", language), { "data-effect-unknown": "" });
         return;
       }
@@ -68144,7 +68204,7 @@
     ["glt-flow-card-remote-outcome", RemoteOutcome]
   ];
   for (const [name, constructor] of ELEMENTS3) {
-    if (!customElements.get(name)) customElements.define(name, constructor);
+    defineElement(name, constructor);
   }
 
   // src/v100/v1-addons.js

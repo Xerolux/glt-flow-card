@@ -33,6 +33,7 @@
  * text content and never interpolated into markup.
  */
 
+import { defineElement } from "./element-registry.mjs";
 import { hasWording, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
 import "./catalog-en.mjs";
@@ -54,6 +55,11 @@ const LANGUAGES = ["de", "en"];
  */
 const KEYS = Object.freeze({
   "coverage": "trends.coverage",
+  "instantColumn": "trends.instant_column",
+  "report_name": "trends.report_name",
+  "report_period": "trends.report_period",
+  "report_schedule": "trends.report_schedule",
+  "tableLabel": "trends.table_label",
   "coverageGaps": "trends.coverage_gaps",
   "gapOne": "trends.gap_one",
   "gapOther": "trends.gap_other",
@@ -248,11 +254,16 @@ class TrendTable extends HTMLElement {
   set props({ series = [], gaps = [], language = "de" }) {
     this.replaceChildren();
     this.setAttribute("tabindex", "0");
+    // Focusable, so named. This table *is* the accessible form of the chart —
+    // Phase 7 built it for exactly that reason — and an unnamed focus stop is a
+    // reader arriving somewhere with no idea what they have reached.
+    this.setAttribute("aria-label", text("tableLabel", language));
+    this.setAttribute("role", "group");
     const table = document.createElement("table");
     this.append(table);
     const head = document.createElement("tr");
     table.append(head);
-    append(head, "th", language === "de" ? "Zeitpunkt" : "Instant");
+    append(head, "th", text("instantColumn", language), { scope: "col" });
     for (const entry of series) append(head, "th", entry.label ?? "");
 
     const instants = [...new Set(series.flatMap((entry) =>
@@ -362,13 +373,21 @@ class ReportDesigner extends HTMLElement {
     form.setAttribute("data-report-form", "");
     this.append(form);
     for (const [name, type] of [["name", "text"], ["period", "text"], ["schedule", "text"]]) {
-      const field = append(form, "input", null, {
+      // Each field carries a real `<label for>`. It had none: a screen reader
+      // announced three "edit text" stops with nothing to tell them apart, and
+      // a placeholder would not have fixed that — it disappears the moment
+      // someone types, which is exactly when they need to know which field
+      // they are in.
+      const row = append(form, "p");
+      const id = `glt-report-${name}`;
+      append(row, "label", text(`report_${name}`, language), { for: id });
+      append(row, "input", null, {
         "data-field": name,
+        id,
         name,
         required: name === "name" ? "" : null,
         type,
       });
-      void field;
     }
 
     for (const definition of definitions) {
@@ -409,7 +428,7 @@ const ELEMENTS = [
 ];
 
 for (const [name, constructor] of ELEMENTS) {
-  if (!customElements.get(name)) customElements.define(name, constructor);
+  defineElement(name, constructor);
 }
 
 export { ELEMENTS };

@@ -7,6 +7,7 @@
  * well as a colour. A surface that cannot explain itself has to be trusted, and
  * removing blind trust is the whole point of the phase.
  */
+import { defineElement } from "./element-registry.mjs";
 import { SEMANTIC_LEVELS, semanticPath } from "./semantic-model.mjs";
 import { stateProjection } from "./equipment-state.mjs";
 
@@ -201,5 +202,5 @@ for (const [name, constructor] of [
   ["glt-flow-card-mapping-review", GltMappingReview],
   ["glt-flow-card-state-badge", GltStateBadge],
 ]) {
-  if (!customElements.get(name)) customElements.define(name, constructor);
+  defineElement(name, constructor);
 }

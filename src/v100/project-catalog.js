@@ -13,6 +13,7 @@
  * silent no-op, is the version of this feature that does not work.
  */
 
+import { defineElement } from "./element-registry.mjs";
 import { hasWording, template as catalogTemplate, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
 import "./catalog-en.mjs";
@@ -404,5 +405,5 @@ for (const [name, constructor] of [
   ["glt-flow-card-symbol-browser", GltSymbolBrowser],
   ["glt-flow-card-port-inspector", GltPortInspector],
 ]) {
-  if (!customElements.get(name)) customElements.define(name, constructor);
+  defineElement(name, constructor);
 }

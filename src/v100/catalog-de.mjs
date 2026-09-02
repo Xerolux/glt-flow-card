@@ -463,10 +463,15 @@ export const ENTRIES = Object.freeze({
   "trends.gap_one": "Lücke",
   "trends.gap_other": "Lücken",
   "trends.gap_row": "Keine Daten von {start} bis {end}",
+  "trends.instant_column": "Zeitpunkt",
   "trends.no_data": "Keine Daten",
+  "trends.report_name": "Berichtsname",
+  "trends.report_period": "Zeitraum",
+  "trends.report_schedule": "Zeitplan",
   "trends.span_day23": "Dieser Tag hat 23 Stunden — die Zeitumstellung fällt hinein.",
   "trends.span_day25": "Dieser Tag hat 25 Stunden — die Zeitumstellung fällt hinein.",
   "trends.span_month": "Dieser Monat hat {hours} Stunden — die Zeitumstellung fällt hinein.",
+  "trends.table_label": "Messwerttabelle",
   "trends.unreadable": "Nicht lesbar",
 });
 

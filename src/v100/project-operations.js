@@ -11,6 +11,7 @@
  * because a hidden staleness indicator is indistinguishable from a fresh view.
  */
 
+import { defineElement } from "./element-registry.mjs";
 import { hasWording, template as catalogTemplate, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
 import "./catalog-en.mjs";
@@ -407,5 +408,5 @@ for (const [name, constructor] of [
   ["glt-flow-card-outcome-strip", GltOutcomeStrip],
   ["glt-flow-card-view-staleness", GltViewStaleness],
 ]) {
-  if (!customElements.get(name)) customElements.define(name, constructor);
+  defineElement(name, constructor);
 }

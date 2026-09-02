@@ -28,6 +28,7 @@
  * markup.
  */
 
+import { defineElement } from "./element-registry.mjs";
 import { hasWording, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
 import "./catalog-en.mjs";
@@ -120,8 +121,18 @@ class SiteHealthBadge extends HTMLElement {
     this.setAttribute("data-site", site.site_id ?? "");
     this.setAttribute("data-site-state", state);
 
+    // A screen reader announcing five loose spans reads five fragments and no
+    // relationship. The badge is one named group, and its name says which site
+    // and how it is — the sentence a sighted reader assembles from the shape
+    // and the word standing next to each other.
+    this.setAttribute("role", "group");
+    this.setAttribute("aria-label", `${site.site_id ?? ""}: ${text(wordKey, language)}`);
+
     append(this, "span", site.site_id, { "data-site-name": "" });
-    append(this, "span", text(shapeKey, language), { "data-site-shape": "" });
+    // The glyph repeats what the word says, so announcing both reads the state
+    // twice. It stays visible — that is the colour-independence rule — and is
+    // hidden from the accessibility tree.
+    append(this, "span", text(shapeKey, language), { "aria-hidden": "true", "data-site-shape": "" });
     append(this, "span", text(wordKey, language), { "data-site-state-text": "" });
 
     if (Number.isFinite(site.age_seconds)) {
@@ -151,6 +162,8 @@ class PortfolioRollup extends HTMLElement {
     const answered = rollup.answered_sites ?? [];
     const absent = rollup.absent_sites ?? [];
     this.setAttribute("data-complete", String(Boolean(rollup.complete)));
+    this.setAttribute("role", "group");
+    const listId = `glt-missing-${(rollup.label ?? "rollup").replace(/[^a-z0-9]+/giu, "-").toLowerCase()}`;
 
     append(this, "span", rollup.label ?? "", { "data-rollup-label": "" });
     append(this, "span", rollup.total ?? text("noValue", language), { "data-rollup-total": "" });
@@ -162,13 +175,19 @@ class PortfolioRollup extends HTMLElement {
     });
 
     if (absent.length > 0) {
-      append(this, "span", text("missingSites", language), { "data-missing-label": "" });
-      const list = append(this, "ul", null, { "data-missing": "" });
+      const label = append(this, "span", text("missingSites", language), {
+        "data-missing-label": "", id: `${listId}-label`,
+      });
+      // Announced as a list of n, so a reader learns how many sites are missing
+      // without counting the items themselves.
+      const list = append(this, "ul", null, {
+        "aria-labelledby": label.id, "data-missing": "", id: listId, role: "list",
+      });
       for (const entry of absent) {
-        const item = append(list, "li", null, { "data-missing-site": entry.site_id });
+        const item = append(list, "li", null, { "data-missing-site": entry.site_id, role: "listitem" });
         append(item, "span", entry.site_id, { "data-site-name": "" });
         const state = STATE_KEYS[entry.state] ? entry.state : "unreachable";
-        append(item, "span", text(STATE_KEYS[state][1], language), { "data-site-shape": "" });
+        append(item, "span", text(STATE_KEYS[state][1], language), { "aria-hidden": "true", "data-site-shape": "" });
         append(item, "span", text(STATE_KEYS[state][0], language), { "data-site-state-text": "" });
       }
     }
@@ -210,6 +229,10 @@ class RemoteOutcome extends HTMLElement {
     this.setAttribute("data-outcome", outcome);
     if (reason) this.setAttribute("data-reason", reason);
     if (outcome === "effect_unknown") {
+      // Assertive, not polite. An operator must not learn from the next screen
+      // refresh that a command's effect is unknown — by then they may have sent
+      // it again, which is the thing this surface exists to prevent.
+      this.setAttribute("aria-live", "assertive");
       append(this, "span", text("effectUnknown", language), { "data-effect-unknown": "" });
       // Deliberately no retry control here. Asserted by the spec, because the
       // tempting addition is exactly the dangerous one.
@@ -227,5 +250,5 @@ const ELEMENTS = [
 ];
 
 for (const [name, constructor] of ELEMENTS) {
-  if (!customElements.get(name)) customElements.define(name, constructor);
+  defineElement(name, constructor);
 }

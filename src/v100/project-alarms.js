@@ -27,6 +27,7 @@
  * writes it and another reads it.
  */
 
+import { defineElement } from "./element-registry.mjs";
 import { hasWording, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
 import "./catalog-en.mjs";
@@ -585,5 +586,5 @@ for (const [name, constructor] of [
   ["glt-flow-card-schedule-editor", GltScheduleEditor],
   ["glt-flow-card-schedule-preview", GltSchedulePreview],
 ]) {
-  if (!customElements.get(name)) customElements.define(name, constructor);
+  defineElement(name, constructor);
 }

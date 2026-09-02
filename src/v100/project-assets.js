@@ -30,6 +30,7 @@
  * text content and never interpolated into markup.
  */
 
+import { defineElement } from "./element-registry.mjs";
 import { hasWording, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
 import "./catalog-en.mjs";
@@ -128,6 +129,11 @@ function append(parent, tag, value, attributes = {}) {
 class SimulationBanner extends HTMLElement {
   set props({ session = null, expired = false, language = "de" }) {
     this.replaceChildren();
+    // A status region: a rehearsal starting or expiring is something a person
+    // needs told, not something they must notice. Polite, because it is context
+    // rather than a command outcome — assertive is reserved for those.
+    this.setAttribute("aria-live", "polite");
+    this.setAttribute("role", "status");
     if (expired) {
       this.setAttribute("data-simulation", "expired");
       append(this, "span", text("sessionExpired", language), { "data-banner-text": "" });
@@ -138,7 +144,7 @@ class SimulationBanner extends HTMLElement {
       return;
     }
     this.setAttribute("data-simulation", "active");
-    append(this, "span", text("simulatedShape", language), { "data-simulation-shape": "" });
+    append(this, "span", text("simulatedShape", language), { "aria-hidden": "true", "data-simulation-shape": "" });
     append(
       this, "span",
       text("sessionActive", language, {
@@ -165,10 +171,19 @@ class ProvidedValue extends HTMLElement {
     this.replaceChildren();
     const simulated = provider === "simulated";
     this.setAttribute("data-provider", provider);
+    // Value, unit and provenance are one reading, not three fragments. The
+    // provenance is inside the name because a simulated value read as a
+    // measurement is this phase's whole safety concern.
+    this.setAttribute("role", "group");
+    this.setAttribute(
+      "aria-label",
+      `${value === null || value === undefined ? "—" : value}${unit ? ` ${unit}` : ""}`
+      + `, ${text(simulated ? "simulated" : "measured", language)}`,
+    );
     append(this, "span", value === null || value === undefined ? "—" : value, { "data-value": "" });
     if (unit) append(this, "span", unit, { "data-unit": "" });
     if (simulated) {
-      append(this, "span", text("simulatedShape", language), { "data-provider-shape": "" });
+      append(this, "span", text("simulatedShape", language), { "aria-hidden": "true", "data-provider-shape": "" });
     }
     append(this, "span", text(simulated ? "simulated" : "measured", language), {
       "data-provider-text": "",
@@ -200,7 +215,7 @@ class ScenarioTable extends HTMLElement {
       append(row, "td", entry.slot);
       append(row, "td", entry.value);
       const marker = append(row, "td", null, { "data-provider": entry.provider ?? "simulated" });
-      append(marker, "span", text("simulatedShape", language), { "data-provider-shape": "" });
+      append(marker, "span", text("simulatedShape", language), { "aria-hidden": "true", "data-provider-shape": "" });
       append(marker, "span", text("simulated", language), { "data-provider-text": "" });
     }
   }
@@ -329,7 +344,11 @@ class WorkOrderForm extends HTMLElement {
 class DispatchRefusal extends HTMLElement {
   set props({ reason = "simulation_active", language = "de" }) {
     this.replaceChildren();
+    // A refusal is the answer to something the operator just did, so it is
+    // announced rather than waiting to be found.
+    this.setAttribute("aria-live", "assertive");
     this.setAttribute("data-refusal", reason);
+    this.setAttribute("role", "alert");
     append(
       this, "span",
       text(reason === "simulation_state_unavailable" ? "refusedUnknown" : "refusedSimulating", language),
@@ -349,5 +368,5 @@ const ELEMENTS = [
 ];
 
 for (const [name, constructor] of ELEMENTS) {
-  if (!customElements.get(name)) customElements.define(name, constructor);
+  defineElement(name, constructor);
 }

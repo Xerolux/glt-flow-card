@@ -1,3 +1,4 @@
+import { defineElement } from "./element-registry.mjs";
 import { evaluateProjectContract } from "./project-contract.mjs";
 import { readProjectBundleArchive } from "./project-bundle.mjs";
 import {
@@ -526,10 +527,10 @@ class GltControlConfirm extends GltSurfaceElement {
 }
 
 if (!customElements.get("glt-flow-card-authority-bar")) {
-  customElements.define("glt-flow-card-authority-bar", GltAuthorityBar);
+  defineElement("glt-flow-card-authority-bar", GltAuthorityBar);
 }
 if (!customElements.get("glt-flow-card-project-authority")) {
-  customElements.define("glt-flow-card-project-authority", GltProjectAuthority);
+  defineElement("glt-flow-card-project-authority", GltProjectAuthority);
 }
 /**
  * One evidence stream, with its own heading, query, pagination and export.
@@ -615,16 +616,16 @@ class GltEvidenceView extends GltSurfaceElement {
 }
 
 if (!customElements.get("glt-flow-card-evidence-view")) {
-  customElements.define("glt-flow-card-evidence-view", GltEvidenceView);
+  defineElement("glt-flow-card-evidence-view", GltEvidenceView);
 }
 if (!customElements.get("glt-flow-card-lease-control")) {
-  customElements.define("glt-flow-card-lease-control", GltLeaseControl);
+  defineElement("glt-flow-card-lease-control", GltLeaseControl);
 }
 if (!customElements.get("glt-flow-card-conflict-recovery")) {
-  customElements.define("glt-flow-card-conflict-recovery", GltConflictRecovery);
+  defineElement("glt-flow-card-conflict-recovery", GltConflictRecovery);
 }
 if (!customElements.get("glt-flow-card-control-confirm")) {
-  customElements.define("glt-flow-card-control-confirm", GltControlConfirm);
+  defineElement("glt-flow-card-control-confirm", GltControlConfirm);
 }
 
 function projectAuthority(editor, type, payload) {

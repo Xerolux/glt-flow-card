@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "7ac72f156c3d13d0524cb90b190844784df31a110b2d79adc5ab5ef9065e93bc",
-      "size": 3059801
+      "sha256": "afcc8cd028bbd34b3eb5a8cf9d050bfe6d2ee58fded4b0c89fb7a28617970797",
+      "size": 3061933
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "7ac72f156c3d13d0524cb90b190844784df31a110b2d79adc5ab5ef9065e93bc",
-      "size": 3059801
+      "sha256": "afcc8cd028bbd34b3eb5a8cf9d050bfe6d2ee58fded4b0c89fb7a28617970797",
+      "size": 3061933
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -138,7 +138,7 @@
   ],
   "build": {
     "commit": "812e6d160e4f376f3922e9c04536c41f7cb3844f",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -219,13 +219,13 @@
     },
     {
       "path": "src/v100/catalog-de.mjs",
-      "sha256": "22fac767efb08d8216c5cc6dbc9bda842e50a29ddd2336b6b62192104bb34efa",
-      "size": 29803
+      "sha256": "3588399415f70ae8c9fa1302bbb7007deab5d1fe15868c4f82185cfda1339fff",
+      "size": 30004
     },
     {
       "path": "src/v100/catalog-en.mjs",
-      "sha256": "113862814d14bc29b2a6ce94407ece6578c2b17f0e033c5dcc0d61584a9cdefc",
-      "size": 26915
+      "sha256": "a978ab906fd60279508b2ac14e503979f85792da0d3513639e4b2656dd8d8687",
+      "size": 27109
     },
     {
       "path": "src/v100/catalog-lookup.mjs",
@@ -271,6 +271,11 @@
       "path": "src/v100/dispatch-vocabulary.mjs",
       "sha256": "a58374f4ce4caaac05b3b3d7f36ed502faded7060e74f450210fea818f4fb486",
       "size": 6349
+    },
+    {
+      "path": "src/v100/element-registry.mjs",
+      "sha256": "482c287d1e3d78bbcc076ba706f1c2423ebb7d8ef1d1bde0c6c68e41fe57e741",
+      "size": 1877
     },
     {
       "path": "src/v100/entity-mapping.mjs",
@@ -334,13 +339,13 @@
     },
     {
       "path": "src/v100/project-alarms.js",
-      "sha256": "a55897cd17e628010a7c49affddd9787b17df23f2119e3137297e61e02183f8b",
-      "size": 23649
+      "sha256": "21edfbd592dbeb98d4d8dbb6d46373ef6b2ecfff4f425195558b57c52a672bb8",
+      "size": 23666
     },
     {
       "path": "src/v100/project-assets.js",
-      "sha256": "cb2c8c0b44b170259b60e46a899d5129f2ea86d486a9a400d6c612edbd179973",
-      "size": 14512
+      "sha256": "4c315064378ef4688cf0c595b1224f88f5377fd8c5cc6545fb6c806438559911",
+      "size": 15589
     },
     {
       "path": "src/v100/project-authority.mjs",
@@ -354,8 +359,8 @@
     },
     {
       "path": "src/v100/project-catalog.js",
-      "sha256": "e9e4c1af28cc7b548f016fcd75238993a54ee1581ea0b5dfbd5cba42f5035989",
-      "size": 17155
+      "sha256": "1d9a9e6bf4702faf79b3a6d2bb9b9199eecf86ed5f53a38c73aa3e321769f635",
+      "size": 17172
     },
     {
       "path": "src/v100/project-collaboration.mjs",
@@ -369,8 +374,8 @@
     },
     {
       "path": "src/v100/project-designer.js",
-      "sha256": "d696b0ffb8db5aa6e296a92cfcb6227364809696b20059ffd174cc4dcaa6bb4d",
-      "size": 28029
+      "sha256": "a473ba5513a721096e37672e4f26ff45511b103b8d3dd8d804c399b0c6c7914c",
+      "size": 28270
     },
     {
       "path": "src/v100/project-diff.mjs",
@@ -384,8 +389,8 @@
     },
     {
       "path": "src/v100/project-operations.js",
-      "sha256": "967bdcb7027e5f969ebac384bb05988cfdb30030c7f3860e4bea9a89d7ee0be5",
-      "size": 17359
+      "sha256": "fc2ab784aaa460161b015f643c9ae4d4b3f976778169245b68f0d0f1264b284b",
+      "size": 17376
     },
     {
       "path": "src/v100/project-safety-i18n.mjs",
@@ -394,23 +399,23 @@
     },
     {
       "path": "src/v100/project-safety.js",
-      "sha256": "27a2547f7fbefd8dd45c6021e7ee42b3e3e52288fa3d0d20bcbfe643ea118f6f",
-      "size": 68371
+      "sha256": "bf46f145deb80572c5aea251bc6142c5bd1d0b34814f13f46d46152b7719829e",
+      "size": 68379
     },
     {
       "path": "src/v100/project-semantics.js",
-      "sha256": "6e392a1d3e50ca42305cfee5d2b3f9fad3ea55af789aec402940dce3be3a28c9",
-      "size": 8409
+      "sha256": "5322304adab3e7ba249347402717714f7fdeb0bcd91a5997c422a0122bd2c92c",
+      "size": 8426
     },
     {
       "path": "src/v100/project-sites.js",
-      "sha256": "f3d645032c305695e2014e84df4762785c80af11afb6cc6007a6961c2734ee8e",
-      "size": 9576
+      "sha256": "f03b05ca1eac258dce2c11097282e759f5ef2565b83726bad632e2a9a0ff737e",
+      "size": 10965
     },
     {
       "path": "src/v100/project-trends.js",
-      "sha256": "3aee01bb7222740ba1882fc20dd135e258255f318c2579e900e0998c4a4f9066",
-      "size": 16792
+      "sha256": "f1df81454a49bcb926700dae6c2a3e9edafbacb9ffc1a041c230fcc260c9ad2b",
+      "size": 17832
     },
     {
       "path": "src/v100/replay-truth.mjs",
