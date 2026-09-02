@@ -97,7 +97,7 @@
     }
   ],
   "build": {
-    "commit": "71a67f014e88512c04bd7374ad56501265b484d9",
+    "commit": "76bb1dcc9c9f3b23f9f1a47349c57bf663368ae7",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -174,6 +174,11 @@
       "size": 10677
     },
     {
+      "path": "src/v100/command-outcome.mjs",
+      "sha256": "9110da39a0c2cdb7915a93754f121517083e7f5abbe615264ec80680228a5213",
+      "size": 3310
+    },
+    {
       "path": "src/v100/configured-control.mjs",
       "sha256": "424f36d8e293b009b6bb6d72e5c3fd492cc4a592de2362c580b2eb6513a475e5",
       "size": 7898
@@ -204,9 +209,19 @@
       "size": 36721
     },
     {
+      "path": "src/v100/navigation.mjs",
+      "sha256": "438f1db725135300b28d5f2b5fbb5bc384af6522662568f5dc448bcd87b33848",
+      "size": 5712
+    },
+    {
       "path": "src/v100/online-extension.js",
       "sha256": "adea3c73539ce1b1969a6f5b7f26606385f35973a9f00e96f88aa506806a1cff",
       "size": 5962
+    },
+    {
+      "path": "src/v100/panel-model.mjs",
+      "sha256": "85138d601d98011ce316175e8a363ebaa392538fbd7ae074af749a592f90fa0f",
+      "size": 3070
     },
     {
       "path": "src/v100/project-authority.mjs",
@@ -262,6 +277,11 @@
       "path": "src/v100/v1-addons.js",
       "sha256": "407351ec2a3493826a352f6beb546d35fcabb084f67b4d0c4528bb577138ef2f",
       "size": 7917
+    },
+    {
+      "path": "src/v100/view-resync.mjs",
+      "sha256": "e80d9f61e8e617e9236fb18c1031be3dd8183cbefc2296d5398776675ccb3ec4",
+      "size": 4180
     },
     {
       "path": "tools/apply-v100.mjs",
