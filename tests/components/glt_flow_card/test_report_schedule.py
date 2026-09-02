@@ -17,8 +17,8 @@ import pytest
 
 from .phase7_red import emit_queries, missing, report
 
+# The expected_red marker was removed by plan 07-15: this file's sentinel passes.
 pytestmark = [
-    pytest.mark.expected_red,
     pytest.mark.enable_socket,
     pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
 ]
@@ -44,6 +44,14 @@ def test_expected_red_phase7_report_schedule(recorder_ledger, notification_ledge
 
     # Refused at save, not discovered at the moment it should have run. This is
     # Phase 6's rule for schedule times applied to the same class of field.
+    # An absent schedule is how a report says it runs on demand, and that is
+    # valid. An empty string is not absence: the shipped designer stores one
+    # when the operator leaves the prompt blank, the 5->6 migration quarantines
+    # it, and by the time one reaches the validator something has gone wrong.
+    on_demand = report_schedule.validate({"id": "r1"})
+    if on_demand.get("ok") is not True or on_demand.get("scheduled") is not False:
+        gaps.append("a report with no schedule was treated as broken rather than on-demand")
+
     for invalid in ("1 07:00", "tea", "", "Automatik"):
         outcome = report_schedule.validate({"schedule": invalid})
         if outcome.get("ok") is not False:

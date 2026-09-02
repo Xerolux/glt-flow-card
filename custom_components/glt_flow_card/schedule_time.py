@@ -48,6 +48,17 @@ DEFAULT_AMBIGUOUS_POLICY = "first"
 _TIME_PATTERN = re.compile(r"^([01][0-9]|2[0-3]):[0-5][0-9]$")
 
 
+def is_wall_time(value: Any) -> bool:
+    """Return whether a value is a wall-clock time this module can resolve.
+
+    Exported so a caller validates against the same pattern the resolver uses,
+    rather than writing a second regex that agrees today. Plan 07-15 needed this
+    for report schedules; duplicating the expression is how two validators start
+    disagreeing about ``24:00``.
+    """
+    return bool(_TIME_PATTERN.match(str(value)))
+
+
 def _parts(date: str, time: str) -> tuple[int, int, int, int, int]:
     year, month, day = (int(part) for part in str(date).split("-"))
     hour, minute = (int(part) for part in str(time).split(":"))
