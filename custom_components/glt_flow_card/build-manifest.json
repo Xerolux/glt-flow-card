@@ -2,7 +2,7 @@
   "artifacts": [
     {
       "path": "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
-      "sha256": "aa21d0740533070cb9202d4d9ac4f7b8f7c5fbec551ee4db8be08c5e44462b7a",
+      "sha256": "fd4f01308db26a308d10b85d5e8c578ae6256bcaa48b0e72d80631b0f7852312",
       "size": 2321
     },
     {
@@ -47,17 +47,17 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "55ca45bf21d19e5d704c845b1114159c711d19a9a23444afac2673395dd8d354",
+      "sha256": "1207862f4e150003d45d1fb8acdac65b06b0a5e36f1554b5047f02353acdfd78",
       "size": 1704030
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "55ca45bf21d19e5d704c845b1114159c711d19a9a23444afac2673395dd8d354",
+      "sha256": "1207862f4e150003d45d1fb8acdac65b06b0a5e36f1554b5047f02353acdfd78",
       "size": 1704030
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
-      "sha256": "aa21d0740533070cb9202d4d9ac4f7b8f7c5fbec551ee4db8be08c5e44462b7a",
+      "sha256": "fd4f01308db26a308d10b85d5e8c578ae6256bcaa48b0e72d80631b0f7852312",
       "size": 2321
     },
     {
@@ -107,13 +107,13 @@
     }
   ],
   "build": {
-    "commit": "452375faac4c39adf81ad84e6459e3c03ee7b49c",
-    "dirty": true
+    "commit": "98fbe48208bb0bc75ecbc57d32aecae264f3b578",
+    "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
   "schemas": {
-    "bundleManifest": "aa21d0740533070cb9202d4d9ac4f7b8f7c5fbec551ee4db8be08c5e44462b7a",
+    "bundleManifest": "fd4f01308db26a308d10b85d5e8c578ae6256bcaa48b0e72d80631b0f7852312",
     "diffPolicy": "6ba0aaaa2460d7b9e6d765a2842cad2eefb6899f681dd1fb487df8539cafce9f",
     "limits": "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619",
     "project0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
@@ -141,7 +141,7 @@
     },
     {
       "path": "schemas/bundle-manifest.schema.json",
-      "sha256": "aa21d0740533070cb9202d4d9ac4f7b8f7c5fbec551ee4db8be08c5e44462b7a",
+      "sha256": "fd4f01308db26a308d10b85d5e8c578ae6256bcaa48b0e72d80631b0f7852312",
       "size": 2321
     },
     {
@@ -321,7 +321,7 @@
     "node": "22"
   },
   "validator": {
-    "sha256": "1f5e5209f1e46d5071f0a48d1bd23dd696f95951c51d623a0bb519887c86609d",
+    "sha256": "4559c9f24435822f5061d87d87d804303ca4b0f9ca02c72dfd40010bb7e403ab",
     "size": 612724
   },
   "versions": {
