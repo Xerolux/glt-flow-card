@@ -68,7 +68,7 @@ The current `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` record Phase 1 as im
 | Phase | Name | Owned requirements | Current status | Next action |
 |---:|---|---|---|---|
 | 1 | Trusted Contract & Release Foundation | SCHEMA-01, DIFF-01, HACS-01 | ◆ 13/13 plans and 14/14 review fixes implemented; final verification open | Resume with one consolidated verification pass, not another review loop |
-| 2 | Authoritative Policy, Controls & Collaboration | SEC-01, COLLAB-01 | ◆ 13/17 plans implemented; all twelve Phase-2 sentinels report implemented | Execute plan 02-14 (migration and lifecycle), then 02-15 through 02-17 |
+| 2 | Authoritative Policy, Controls & Collaboration | SEC-01, COLLAB-01 | ◆ 17/17 plans implemented; T2-01..T2-15 verified, T2-16 needs a Docker-capable environment | Run `npm run test:phase2` where Docker and the provenance endpoints are reachable, then start the Phase-2 review pass |
 | 3 | Semantic Equipment & Provenance | OPS-01, SEM-01, MAP-01, PROF-01, PROTO-01 | ○ Not started | Start after Phase 2 verification |
 | 4 | Runtime Operations & Drill-Down | OPS-02, NAV-01 | ○ Not started | Start after Phase 3 verification |
 | 5 | CAD Engineering & Extension Platform | CAT-01, ENG-01, ENG-02, CAD-01, SDK-01 | ○ Not started | Start after Phase 4 verification |

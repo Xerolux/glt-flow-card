@@ -3,16 +3,16 @@
   "project": "GLT Flow Card",
   "milestone": "v1.1",
   "created_at": "2026-09-01T20:39:55.9074407+02:00",
-  "updated_at": "2026-09-02T06:10:00Z",
+  "updated_at": "2026-09-02T07:10:00Z",
   "status": "in_progress",
   "pause_reason": null,
   "current_position": {
     "phase": "02",
     "phase_name": "authoritative-policy-controls-collaboration",
-    "stage": "execution",
+    "stage": "phase-verification",
     "plans_created": 17,
     "tasks_planned": 61,
-    "plans_implemented": 13,
+    "plans_implemented": 17,
     "implementation_started": true,
     "resume_file": ".planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md"
   },
@@ -31,10 +31,14 @@
     "Plan 02-11: configured controls resolve from the verified head and dispatch at most once (T2-06, T2-07, T2-08).",
     "CI was red on main before this branch; both root causes are fixed - shallow checkouts fabricated the build manifest's provenance, and the parity gates had no Python dependencies. A third issue found on the branch: the Phase-2 modules were missing from the HACS packaging lists.",
     "Plan 02-12: the fail-closed browser authority reducer, the persistent authority state bar, the capability-aware Overview cards, the in-dialog access work surface and the separated trusted/untrusted evidence sections are GREEN (T2-13 core). The plan also added the missing glt_flow_card/capabilities/get route: the UI contract and the exact-dist fixture had assumed it since the RED wave, but no backend plan declared it.",
-    "Plan 02-13: the collaboration and configured-control state machines and their lease, conflict, control-confirmation and evidence surfaces are GREEN (T2-13, T2-14). Every one of the twelve Phase-2 sentinels now reports implemented; the phase gate is 12 implemented, 0 controlled RED, 0 broken."
+    "Plan 02-13: the collaboration and configured-control state machines and their lease, conflict, control-confirmation and evidence surfaces are GREEN (T2-13, T2-14). Every one of the twelve Phase-2 sentinels now reports implemented; the phase gate is 12 implemented, 0 controlled RED, 0 broken.",
+    "Plan 02-14: legacy authority retires conservatively on upgrade - the 30-3600s lock window is replaced by the 60-900s lease window with clamping rather than resetting, persisted locks are dropped rather than minted into leases, and legacy audit rows are kept labelled legacy_untrusted (T2-05, T2-15).",
+    "Plan 02-15: the HA lanes now fail on a collapsed run, on any skip and on any deselect, the pytest cache no longer poisons the bind-mounted workspace, and verify:release consumes the staged packages instead of ignoring them.",
+    "Plan 02-16: English and German READMEs and the Companion, YAML-project and installation wiki pages state the tested Phase-2 contract; three stale claims (Designer role, TTL locks) were corrected. The docs workflow validates sources and build determinism before either delivery job.",
+    "Plan 02-17: tools/verify-phase2.mjs binds SEC-01, COLLAB-01, five roadmap truths, all 17 plans, T2-01..T2-16 and resolved A1-A6 to current evidence, and proves its own command graph is acyclic with exactly one path to the T2-16 leaf. T2-01 through T2-15 are marked verified in the threat register and validation map; T2-16 stays planned because its owner needs a Docker engine this environment does not have."
   ],
   "remaining": [
-    "Execute Phase 2 plans 02-14 through 02-17: migration and lifecycle, packaging and HA lanes, DE/EN documentation, and the tools/verify-phase2.mjs phase gate.",
+    "Run the T2-16 owner (npm run test:phase2:release) and the full npm run test:phase2 where Docker and the package-provenance endpoints are reachable, then mark T2-16 verified.",
     "Complete Phase 2 code review, security audit, UI audit, drift checks, and independent goal verification.",
     "Complete Phases 3 through 10 and the final milestone/release verification.",
     "Close the still-open consolidated Phase 1 security, UI, drift, and goal verification."
@@ -47,12 +51,14 @@
     "Each RED test file carries exactly one product-completeness sentinel and reports every unmet guarantee as a gap list, so a controlled RED fails exactly once.",
     "No release is created at this checkpoint.",
     "Live Home Assistant, remote-site, physical-bus, and plant writes remain outside authorization.",
-    "The browser never derives a role-to-capability matrix of its own. Until the server returns one, RoleMatrixDisclosure renders its declared unavailable state: a client-side matrix would be exactly the browser-derived authority this phase exists to prevent."
+    "The browser never derives a role-to-capability matrix of its own. Until the server returns one, RoleMatrixDisclosure renders its declared unavailable state: a client-side matrix would be exactly the browser-derived authority this phase exists to prevent.",
+    "A threat row is marked verified only after its owner command has actually run and passed. T2-16 stays planned rather than being marked on the strength of its constituent parts passing separately."
   ],
   "blockers": [],
   "open_verification": [
     "Phase 1 consolidated security, UI, drift, and goal verification.",
-    "Phase 2 threats T2-15 and T2-16 remain planned; T2-01 through T2-14 pass their owner commands."
+    "Phase 2 threat T2-16: its owner installs the exact stage on two digest-pinned Home Assistant images and needs Docker; T2-01 through T2-15 pass their owner commands at this head.",
+    "The Phase-1 gate cannot complete in this environment either: its dependency-provenance step reaches package source metadata that the network policy answers with HTTP 403."
   ],
   "human_actions_required": [],
   "background_processes": [],
@@ -71,8 +77,8 @@
     "gate": "npm run test:phase2 reports every Phase-2 sentinel as controlled RED, implemented, or broken"
   },
   "resume": {
-    "first_action": "Read .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md; npm run test:phase2 now reports 12 implemented, 0 controlled RED, 0 broken.",
-    "next_gate": "Plan 02-14: migration and lifecycle.",
-    "after_gate": "Then 02-15 (packaging and HA lanes), 02-16 (DE/EN documentation) and 02-17 (tools/verify-phase2.mjs)."
+    "first_action": "Read .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md. All 17 Phase-2 plans are implemented and every sentinel reports implemented.",
+    "next_gate": "Run npm run test:phase2 in an environment with Docker and reachable package-provenance endpoints, then mark T2-16 verified in 02-THREATS.md and 02-VALIDATION.md.",
+    "after_gate": "Phase 2 code review, security audit, UI audit, drift checks and goal verification; then Phase 3."
   }
 }
