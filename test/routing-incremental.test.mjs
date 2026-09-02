@@ -106,3 +106,69 @@ test("[expected-red:phase5-routing-incremental] one move reroutes only its neigh
   }
   assert.deepEqual(gaps, [], "bounded incremental rerouting is unavailable");
 });
+
+// -- Beyond the sentinel ----------------------------------------------------
+// The sentinel proves one move stays under the bound. These prove *why* it
+// does — a route is computed against the obstacles near it, so a distant one
+// was never an input — and that the router refuses rather than guesses.
+
+const router = await import(MODULE_URL.href);
+
+test("relevance is a property of the scene, not a decision the router makes", () => {
+  // The bound holds because a distant obstacle is not an input to this route.
+  // If it were merely skipped, the incremental answer could differ from the
+  // full one, and every claim in this file would be about an optimisation
+  // rather than about the geometry.
+  const region = { left: 0, top: 0, right: 500, bottom: 100 };
+  const near = { id: "near", x: 200, y: 20, width: 60, height: 60 };
+  const far = { id: "far", x: 200, y: 4000, width: 60, height: 60 };
+  const chosen = router.relevantObstacles(region, [far, near], 20).map((box) => box.id);
+  assert.deepEqual(chosen, ["near"]);
+  // Order in, same answer out.
+  assert.deepEqual(
+    router.relevantObstacles(region, [near, far], 20).map((box) => box.id),
+    chosen,
+  );
+});
+
+test("relevance grows transitively, so a chain of obstacles is not cut in half", () => {
+  // A route squeezing past one obstacle may be pushed into the next. The second
+  // is relevant even though it never touched the direct region.
+  const region = { left: 0, top: 0, right: 300, bottom: 40 };
+  const first = { id: "a", x: 100, y: 10, width: 60, height: 200 };
+  const second = { id: "b", x: 100, y: 220, width: 60, height: 60 };
+  assert.deepEqual(
+    router.relevantObstacles(region, [first, second], 20).map((box) => box.id),
+    ["a", "b"],
+  );
+});
+
+test("a move recomputes the routes it reached and reports exactly those", () => {
+  const scene = bigScene();
+  const instance = router.createRouter(scene);
+  instance.routeAll();
+  const moved = instance.moveObstacle("o5", { x: 420, y: 5 * 200 + 20 });
+  assert.deepEqual(moved.recomputed, ["r5"]);
+});
+
+test("a move away from a route is as much a change as a move towards one", () => {
+  // Recomputing only the destination leaves a stale detour around nothing.
+  const instance = router.createRouter(bigScene());
+  instance.routeAll();
+  const away = instance.moveObstacle("o3", { x: 400, y: 3 * 200 - 400 });
+  assert.ok(away.recomputed.includes("r3"),
+    "the route the obstacle left was not recomputed");
+});
+
+test("moving an obstacle that is not in the scene is an error, not a no-op", () => {
+  const instance = router.createRouter(bigScene());
+  instance.routeAll();
+  assert.throws(() => instance.moveObstacle("nope", { x: 0, y: 0 }), /no such obstacle: nope/);
+});
+
+test("the router hands back copies, so a caller cannot edit the scene behind it", () => {
+  const instance = router.createRouter(bigScene());
+  const obstacles = instance.obstacles;
+  obstacles[0].x = -9999;
+  assert.notEqual(instance.obstacles[0].x, -9999);
+});

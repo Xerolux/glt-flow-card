@@ -44,6 +44,7 @@ to fix.
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 #: The project id the CAD fixtures live under.
@@ -421,3 +422,73 @@ def cad_project(project_id: str = CAD_PROJECT_ID) -> dict[str, Any]:
         "paths": paths(),
         "datapoints": [],
     }
+
+
+#: The clearance and spacing the CAD scenes are routed with.
+ROUTING_OPTIONS: dict[str, int] = {"clearance": 20, "spacing": 12}
+
+
+def routing_scenes() -> list[dict[str, Any]]:
+    """The corpus, in the shape a router consumes.
+
+    The geometry is authored once, here, and the JavaScript router reads it from
+    a generated fixture rather than from a second copy written out by hand. Two
+    hand-written copies of an adversarial corpus are two corpora, and the one
+    that stops being adversarial is the one nobody is looking at.
+
+    ``naive_blocked`` records what the elbow-through-the-midpoint router runs
+    into, so the JavaScript side can assert it routes correctly *exactly* the
+    fixtures that defeat the naive one, rather than asserting it routes
+    something.
+    """
+    scenes = []
+    for path in _PATHS:
+        source_entry = _BY_ID[path["from_equipment"]]
+        target_entry = _BY_ID[path["to_equipment"]]
+        source_port = next(
+            port for port in ports_of(path["from_equipment"]) if port["id"] == path["from_port"]
+        )
+        target_port = next(
+            port for port in ports_of(path["to_equipment"]) if port["id"] == path["to_port"]
+        )
+        obstacles = [
+            {"id": entry["id"], "x": entry["box"][0], "y": entry["box"][1],
+             "width": entry["box"][2], "height": entry["box"][3]}
+            for entry in _EQUIPMENT
+            if entry["id"] not in (path["from_equipment"], path["to_equipment"])
+        ]
+        scenes.append({
+            "id": path["id"],
+            "source": {
+                "x": source_entry["box"][0], "y": source_entry["box"][1],
+                "width": source_entry["box"][2], "height": source_entry["box"][3],
+                "side": source_port["side"],
+            },
+            "target": {
+                "x": target_entry["box"][0], "y": target_entry["box"][1],
+                "width": target_entry["box"][2], "height": target_entry["box"][3],
+                "side": target_port["side"],
+            },
+            "obstacles": obstacles,
+            # A route's own equipment is not an obstacle to it, so a network
+            # routed from one shared obstacle list needs to be told which two
+            # to ignore per route.
+            "exclude": [path["from_equipment"], path["to_equipment"]],
+            "naive_blocked": list(blocked_naively(path)),
+        })
+    return scenes
+
+
+def routing_scene_document() -> str:
+    """The committed fixture's exact bytes."""
+    return json.dumps({
+        "format": "glt-flow-card-cad-scenes",
+        "report_version": 1,
+        "options": ROUTING_OPTIONS,
+        "obstacles": [
+            {"id": entry["id"], "x": entry["box"][0], "y": entry["box"][1],
+             "width": entry["box"][2], "height": entry["box"][3]}
+            for entry in _EQUIPMENT
+        ],
+        "scenes": routing_scenes(),
+    }, indent=2, ensure_ascii=False) + "\n"

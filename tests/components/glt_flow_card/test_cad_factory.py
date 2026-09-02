@@ -9,6 +9,8 @@ shortened -- and the routing suite would keep passing while proving less.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from custom_components.glt_flow_card.project_contract import evaluate_project_contract
@@ -121,3 +123,25 @@ def test_a_shared_profile_means_a_port_id_is_not_an_identity() -> None:
         if any(port["id"] == "p-out" for port in cad_factory.ports_of(equipment_id))
     ]
     assert len(holders) > 1, "the corpus stopped testing endpoint identity"
+
+
+def test_the_committed_routing_scenes_are_what_the_corpus_produces() -> None:
+    """The JavaScript router reads this file; a stale one would prove nothing."""
+    committed = (
+        Path(__file__).resolve().parent / "fixtures" / "cad-scenes.json"
+    ).read_text(encoding="utf-8")
+    assert committed == cad_factory.routing_scene_document(), (
+        "stale cad-scenes.json; regenerate it from cad_factory.routing_scene_document()"
+    )
+
+
+def test_the_scenes_carry_the_geometry_a_router_needs() -> None:
+    scenes = cad_factory.routing_scenes()
+    assert [scene["id"] for scene in scenes] == [path["id"] for path in cad_factory.paths()]
+    for scene in scenes:
+        for end in ("source", "target"):
+            assert scene[end]["side"] in {"left", "right", "top", "bottom"}
+            assert scene[end]["width"] > 0 and scene[end]["height"] > 0
+        # A route's own endpoints are not obstacles to itself.
+        assert len(scene["obstacles"]) == len(cad_factory.equipment_ids()) - 2
+    assert sum(1 for scene in scenes if scene["naive_blocked"]) >= 3

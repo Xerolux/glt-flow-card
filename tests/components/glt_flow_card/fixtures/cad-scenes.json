@@ -1,0 +1,2231 @@
+{
+  "format": "glt-flow-card-cad-scenes",
+  "report_version": 1,
+  "options": {
+    "clearance": 20,
+    "spacing": 12
+  },
+  "obstacles": [
+    {
+      "id": "eq-source-a",
+      "x": 0,
+      "y": 0,
+      "width": 100,
+      "height": 80
+    },
+    {
+      "id": "eq-barrier",
+      "x": 200,
+      "y": -40,
+      "width": 140,
+      "height": 160
+    },
+    {
+      "id": "eq-sink-a",
+      "x": 440,
+      "y": 0,
+      "width": 100,
+      "height": 80
+    },
+    {
+      "id": "eq-wall-upper",
+      "x": 220,
+      "y": 180,
+      "width": 240,
+      "height": 60
+    },
+    {
+      "id": "eq-wall-lower",
+      "x": 220,
+      "y": 300,
+      "width": 240,
+      "height": 60
+    },
+    {
+      "id": "eq-source-b",
+      "x": 0,
+      "y": 230,
+      "width": 100,
+      "height": 60
+    },
+    {
+      "id": "eq-sink-b",
+      "x": 560,
+      "y": 230,
+      "width": 100,
+      "height": 60
+    },
+    {
+      "id": "eq-source-c",
+      "x": 0,
+      "y": 400,
+      "width": 100,
+      "height": 60
+    },
+    {
+      "id": "eq-sink-c",
+      "x": 560,
+      "y": 120,
+      "width": 100,
+      "height": 60
+    },
+    {
+      "id": "eq-cross-lid",
+      "x": 780,
+      "y": -80,
+      "width": 220,
+      "height": 60
+    },
+    {
+      "id": "eq-cross-floor",
+      "x": 780,
+      "y": 280,
+      "width": 220,
+      "height": 60
+    },
+    {
+      "id": "eq-cross-core",
+      "x": 860,
+      "y": 80,
+      "width": 60,
+      "height": 100
+    },
+    {
+      "id": "eq-cross-nw",
+      "x": 700,
+      "y": 0,
+      "width": 80,
+      "height": 60
+    },
+    {
+      "id": "eq-cross-sw",
+      "x": 700,
+      "y": 200,
+      "width": 80,
+      "height": 60
+    },
+    {
+      "id": "eq-cross-ne",
+      "x": 1000,
+      "y": 0,
+      "width": 80,
+      "height": 60
+    },
+    {
+      "id": "eq-cross-se",
+      "x": 1000,
+      "y": 200,
+      "width": 80,
+      "height": 60
+    },
+    {
+      "id": "eq-branch-1",
+      "x": 380,
+      "y": 440,
+      "width": 80,
+      "height": 60
+    },
+    {
+      "id": "eq-branch-2",
+      "x": 380,
+      "y": 530,
+      "width": 80,
+      "height": 60
+    },
+    {
+      "id": "eq-branch-3",
+      "x": 380,
+      "y": 620,
+      "width": 80,
+      "height": 60
+    },
+    {
+      "id": "eq-manifold",
+      "x": 700,
+      "y": 500,
+      "width": 160,
+      "height": 80
+    },
+    {
+      "id": "eq-controller",
+      "x": 1200,
+      "y": 440,
+      "width": 120,
+      "height": 80
+    },
+    {
+      "id": "eq-switchgear",
+      "x": 1200,
+      "y": 600,
+      "width": 120,
+      "height": 80
+    },
+    {
+      "id": "eq-panel",
+      "x": 1450,
+      "y": 600,
+      "width": 120,
+      "height": 80
+    },
+    {
+      "id": "eq-chiller",
+      "x": 1200,
+      "y": 0,
+      "width": 120,
+      "height": 80
+    },
+    {
+      "id": "eq-radiator",
+      "x": 1450,
+      "y": 0,
+      "width": 120,
+      "height": 80
+    }
+  ],
+  "scenes": [
+    {
+      "id": "path-obstructed",
+      "source": {
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 80,
+        "side": "right"
+      },
+      "target": {
+        "x": 440,
+        "y": 0,
+        "width": 100,
+        "height": 80,
+        "side": "left"
+      },
+      "obstacles": [
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-b",
+          "x": 0,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-b",
+          "x": 560,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-source-c",
+          "x": 0,
+          "y": 400,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-c",
+          "x": 560,
+          "y": 120,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-nw",
+          "x": 700,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-sw",
+          "x": 700,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-ne",
+          "x": 1000,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-se",
+          "x": 1000,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-1",
+          "x": 380,
+          "y": 440,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-2",
+          "x": 380,
+          "y": 530,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-3",
+          "x": 380,
+          "y": 620,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-manifold",
+          "x": 700,
+          "y": 500,
+          "width": 160,
+          "height": 80
+        },
+        {
+          "id": "eq-controller",
+          "x": 1200,
+          "y": 440,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-switchgear",
+          "x": 1200,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-panel",
+          "x": 1450,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-chiller",
+          "x": 1200,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-radiator",
+          "x": 1450,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-source-a",
+        "eq-sink-a"
+      ],
+      "naive_blocked": [
+        "eq-barrier"
+      ]
+    },
+    {
+      "id": "path-corridor-north",
+      "source": {
+        "x": 0,
+        "y": 230,
+        "width": 100,
+        "height": 60,
+        "side": "right"
+      },
+      "target": {
+        "x": 560,
+        "y": 230,
+        "width": 100,
+        "height": 60,
+        "side": "left"
+      },
+      "obstacles": [
+        {
+          "id": "eq-source-a",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-sink-a",
+          "x": 440,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-c",
+          "x": 0,
+          "y": 400,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-c",
+          "x": 560,
+          "y": 120,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-nw",
+          "x": 700,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-sw",
+          "x": 700,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-ne",
+          "x": 1000,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-se",
+          "x": 1000,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-1",
+          "x": 380,
+          "y": 440,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-2",
+          "x": 380,
+          "y": 530,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-3",
+          "x": 380,
+          "y": 620,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-manifold",
+          "x": 700,
+          "y": 500,
+          "width": 160,
+          "height": 80
+        },
+        {
+          "id": "eq-controller",
+          "x": 1200,
+          "y": 440,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-switchgear",
+          "x": 1200,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-panel",
+          "x": 1450,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-chiller",
+          "x": 1200,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-radiator",
+          "x": 1450,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-source-b",
+        "eq-sink-b"
+      ],
+      "naive_blocked": []
+    },
+    {
+      "id": "path-corridor-south",
+      "source": {
+        "x": 0,
+        "y": 400,
+        "width": 100,
+        "height": 60,
+        "side": "right"
+      },
+      "target": {
+        "x": 560,
+        "y": 120,
+        "width": 100,
+        "height": 60,
+        "side": "left"
+      },
+      "obstacles": [
+        {
+          "id": "eq-source-a",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-sink-a",
+          "x": 440,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-b",
+          "x": 0,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-b",
+          "x": 560,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-nw",
+          "x": 700,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-sw",
+          "x": 700,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-ne",
+          "x": 1000,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-se",
+          "x": 1000,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-1",
+          "x": 380,
+          "y": 440,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-2",
+          "x": 380,
+          "y": 530,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-3",
+          "x": 380,
+          "y": 620,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-manifold",
+          "x": 700,
+          "y": 500,
+          "width": 160,
+          "height": 80
+        },
+        {
+          "id": "eq-controller",
+          "x": 1200,
+          "y": 440,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-switchgear",
+          "x": 1200,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-panel",
+          "x": 1450,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-chiller",
+          "x": 1200,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-radiator",
+          "x": 1450,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-source-c",
+        "eq-sink-c"
+      ],
+      "naive_blocked": [
+        "eq-wall-lower",
+        "eq-wall-upper"
+      ]
+    },
+    {
+      "id": "path-cross-descending",
+      "source": {
+        "x": 700,
+        "y": 0,
+        "width": 80,
+        "height": 60,
+        "side": "right"
+      },
+      "target": {
+        "x": 1000,
+        "y": 200,
+        "width": 80,
+        "height": 60,
+        "side": "left"
+      },
+      "obstacles": [
+        {
+          "id": "eq-source-a",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-sink-a",
+          "x": 440,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-b",
+          "x": 0,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-b",
+          "x": 560,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-source-c",
+          "x": 0,
+          "y": 400,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-c",
+          "x": 560,
+          "y": 120,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-sw",
+          "x": 700,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-ne",
+          "x": 1000,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-1",
+          "x": 380,
+          "y": 440,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-2",
+          "x": 380,
+          "y": 530,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-3",
+          "x": 380,
+          "y": 620,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-manifold",
+          "x": 700,
+          "y": 500,
+          "width": 160,
+          "height": 80
+        },
+        {
+          "id": "eq-controller",
+          "x": 1200,
+          "y": 440,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-switchgear",
+          "x": 1200,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-panel",
+          "x": 1450,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-chiller",
+          "x": 1200,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-radiator",
+          "x": 1450,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-cross-nw",
+        "eq-cross-se"
+      ],
+      "naive_blocked": [
+        "eq-cross-core"
+      ]
+    },
+    {
+      "id": "path-cross-ascending",
+      "source": {
+        "x": 700,
+        "y": 200,
+        "width": 80,
+        "height": 60,
+        "side": "right"
+      },
+      "target": {
+        "x": 1000,
+        "y": 0,
+        "width": 80,
+        "height": 60,
+        "side": "left"
+      },
+      "obstacles": [
+        {
+          "id": "eq-source-a",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-sink-a",
+          "x": 440,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-b",
+          "x": 0,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-b",
+          "x": 560,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-source-c",
+          "x": 0,
+          "y": 400,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-c",
+          "x": 560,
+          "y": 120,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-nw",
+          "x": 700,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-se",
+          "x": 1000,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-1",
+          "x": 380,
+          "y": 440,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-2",
+          "x": 380,
+          "y": 530,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-3",
+          "x": 380,
+          "y": 620,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-manifold",
+          "x": 700,
+          "y": 500,
+          "width": 160,
+          "height": 80
+        },
+        {
+          "id": "eq-controller",
+          "x": 1200,
+          "y": 440,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-switchgear",
+          "x": 1200,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-panel",
+          "x": 1450,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-chiller",
+          "x": 1200,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-radiator",
+          "x": 1450,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-cross-sw",
+        "eq-cross-ne"
+      ],
+      "naive_blocked": [
+        "eq-cross-core"
+      ]
+    },
+    {
+      "id": "path-junction-1",
+      "source": {
+        "x": 380,
+        "y": 440,
+        "width": 80,
+        "height": 60,
+        "side": "right"
+      },
+      "target": {
+        "x": 700,
+        "y": 500,
+        "width": 160,
+        "height": 80,
+        "side": "left"
+      },
+      "obstacles": [
+        {
+          "id": "eq-source-a",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-sink-a",
+          "x": 440,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-b",
+          "x": 0,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-b",
+          "x": 560,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-source-c",
+          "x": 0,
+          "y": 400,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-c",
+          "x": 560,
+          "y": 120,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-nw",
+          "x": 700,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-sw",
+          "x": 700,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-ne",
+          "x": 1000,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-se",
+          "x": 1000,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-2",
+          "x": 380,
+          "y": 530,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-3",
+          "x": 380,
+          "y": 620,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-controller",
+          "x": 1200,
+          "y": 440,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-switchgear",
+          "x": 1200,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-panel",
+          "x": 1450,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-chiller",
+          "x": 1200,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-radiator",
+          "x": 1450,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-branch-1",
+        "eq-manifold"
+      ],
+      "naive_blocked": []
+    },
+    {
+      "id": "path-junction-2",
+      "source": {
+        "x": 380,
+        "y": 530,
+        "width": 80,
+        "height": 60,
+        "side": "right"
+      },
+      "target": {
+        "x": 700,
+        "y": 500,
+        "width": 160,
+        "height": 80,
+        "side": "left"
+      },
+      "obstacles": [
+        {
+          "id": "eq-source-a",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-sink-a",
+          "x": 440,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-b",
+          "x": 0,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-b",
+          "x": 560,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-source-c",
+          "x": 0,
+          "y": 400,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-c",
+          "x": 560,
+          "y": 120,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-nw",
+          "x": 700,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-sw",
+          "x": 700,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-ne",
+          "x": 1000,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-se",
+          "x": 1000,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-1",
+          "x": 380,
+          "y": 440,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-3",
+          "x": 380,
+          "y": 620,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-controller",
+          "x": 1200,
+          "y": 440,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-switchgear",
+          "x": 1200,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-panel",
+          "x": 1450,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-chiller",
+          "x": 1200,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-radiator",
+          "x": 1450,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-branch-2",
+        "eq-manifold"
+      ],
+      "naive_blocked": []
+    },
+    {
+      "id": "path-junction-3",
+      "source": {
+        "x": 380,
+        "y": 620,
+        "width": 80,
+        "height": 60,
+        "side": "right"
+      },
+      "target": {
+        "x": 700,
+        "y": 500,
+        "width": 160,
+        "height": 80,
+        "side": "left"
+      },
+      "obstacles": [
+        {
+          "id": "eq-source-a",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-sink-a",
+          "x": 440,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-b",
+          "x": 0,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-b",
+          "x": 560,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-source-c",
+          "x": 0,
+          "y": 400,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-c",
+          "x": 560,
+          "y": 120,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-nw",
+          "x": 700,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-sw",
+          "x": 700,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-ne",
+          "x": 1000,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-se",
+          "x": 1000,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-1",
+          "x": 380,
+          "y": 440,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-2",
+          "x": 380,
+          "y": 530,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-controller",
+          "x": 1200,
+          "y": 440,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-switchgear",
+          "x": 1200,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-panel",
+          "x": 1450,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-chiller",
+          "x": 1200,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-radiator",
+          "x": 1450,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-branch-3",
+        "eq-manifold"
+      ],
+      "naive_blocked": []
+    },
+    {
+      "id": "path-power",
+      "source": {
+        "x": 1200,
+        "y": 600,
+        "width": 120,
+        "height": 80,
+        "side": "bottom"
+      },
+      "target": {
+        "x": 1450,
+        "y": 600,
+        "width": 120,
+        "height": 80,
+        "side": "left"
+      },
+      "obstacles": [
+        {
+          "id": "eq-source-a",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-sink-a",
+          "x": 440,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-b",
+          "x": 0,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-b",
+          "x": 560,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-source-c",
+          "x": 0,
+          "y": 400,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-c",
+          "x": 560,
+          "y": 120,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-nw",
+          "x": 700,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-sw",
+          "x": 700,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-ne",
+          "x": 1000,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-se",
+          "x": 1000,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-1",
+          "x": 380,
+          "y": 440,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-2",
+          "x": 380,
+          "y": 530,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-3",
+          "x": 380,
+          "y": 620,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-manifold",
+          "x": 700,
+          "y": 500,
+          "width": 160,
+          "height": 80
+        },
+        {
+          "id": "eq-controller",
+          "x": 1200,
+          "y": 440,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-chiller",
+          "x": 1200,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-radiator",
+          "x": 1450,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-switchgear",
+        "eq-panel"
+      ],
+      "naive_blocked": []
+    },
+    {
+      "id": "path-signal",
+      "source": {
+        "x": 1200,
+        "y": 440,
+        "width": 120,
+        "height": 80,
+        "side": "right"
+      },
+      "target": {
+        "x": 1450,
+        "y": 600,
+        "width": 120,
+        "height": 80,
+        "side": "top"
+      },
+      "obstacles": [
+        {
+          "id": "eq-source-a",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-sink-a",
+          "x": 440,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-b",
+          "x": 0,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-b",
+          "x": 560,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-source-c",
+          "x": 0,
+          "y": 400,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-c",
+          "x": 560,
+          "y": 120,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-nw",
+          "x": 700,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-sw",
+          "x": 700,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-ne",
+          "x": 1000,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-se",
+          "x": 1000,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-1",
+          "x": 380,
+          "y": 440,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-2",
+          "x": 380,
+          "y": 530,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-3",
+          "x": 380,
+          "y": 620,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-manifold",
+          "x": 700,
+          "y": 500,
+          "width": 160,
+          "height": 80
+        },
+        {
+          "id": "eq-switchgear",
+          "x": 1200,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-chiller",
+          "x": 1200,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-radiator",
+          "x": 1450,
+          "y": 0,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-controller",
+        "eq-panel"
+      ],
+      "naive_blocked": []
+    },
+    {
+      "id": "path-incompatible",
+      "source": {
+        "x": 1200,
+        "y": 0,
+        "width": 120,
+        "height": 80,
+        "side": "right"
+      },
+      "target": {
+        "x": 1450,
+        "y": 0,
+        "width": 120,
+        "height": 80,
+        "side": "left"
+      },
+      "obstacles": [
+        {
+          "id": "eq-source-a",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-barrier",
+          "x": 200,
+          "y": -40,
+          "width": 140,
+          "height": 160
+        },
+        {
+          "id": "eq-sink-a",
+          "x": 440,
+          "y": 0,
+          "width": 100,
+          "height": 80
+        },
+        {
+          "id": "eq-wall-upper",
+          "x": 220,
+          "y": 180,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-wall-lower",
+          "x": 220,
+          "y": 300,
+          "width": 240,
+          "height": 60
+        },
+        {
+          "id": "eq-source-b",
+          "x": 0,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-b",
+          "x": 560,
+          "y": 230,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-source-c",
+          "x": 0,
+          "y": 400,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-sink-c",
+          "x": 560,
+          "y": 120,
+          "width": 100,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-lid",
+          "x": 780,
+          "y": -80,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-floor",
+          "x": 780,
+          "y": 280,
+          "width": 220,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-core",
+          "x": 860,
+          "y": 80,
+          "width": 60,
+          "height": 100
+        },
+        {
+          "id": "eq-cross-nw",
+          "x": 700,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-sw",
+          "x": 700,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-ne",
+          "x": 1000,
+          "y": 0,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-cross-se",
+          "x": 1000,
+          "y": 200,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-1",
+          "x": 380,
+          "y": 440,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-2",
+          "x": 380,
+          "y": 530,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-branch-3",
+          "x": 380,
+          "y": 620,
+          "width": 80,
+          "height": 60
+        },
+        {
+          "id": "eq-manifold",
+          "x": 700,
+          "y": 500,
+          "width": 160,
+          "height": 80
+        },
+        {
+          "id": "eq-controller",
+          "x": 1200,
+          "y": 440,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-switchgear",
+          "x": 1200,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        },
+        {
+          "id": "eq-panel",
+          "x": 1450,
+          "y": 600,
+          "width": 120,
+          "height": 80
+        }
+      ],
+      "exclude": [
+        "eq-chiller",
+        "eq-radiator"
+      ],
+      "naive_blocked": []
+    }
+  ]
+}

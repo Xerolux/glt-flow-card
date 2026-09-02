@@ -150,3 +150,133 @@ test("[expected-red:phase5-routing-geometry] geometry is correct and explicit", 
   }
   assert.deepEqual(gaps, [], "obstacle-aware routing geometry is unavailable");
 });
+
+// -- Beyond the sentinel ----------------------------------------------------
+// The sentinel uses four hand-built scenes. These run the router over the CAD
+// corpus, which was built to defeat an elbow-through-the-midpoint router — so
+// "routes correctly" is measured against geometry that was designed to be hard
+// rather than against geometry chosen after the fact.
+
+import { readFile } from "node:fs/promises";
+
+const routing = await import(MODULE_URL.href);
+
+const SCENES = JSON.parse(await readFile(
+  new URL("../tests/components/glt_flow_card/fixtures/cad-scenes.json", import.meta.url),
+  "utf8",
+));
+
+test("the corpus fixtures a midpoint router fails are all routed cleanly", () => {
+  const defeated = SCENES.scenes.filter((scene) => scene.naive_blocked.length > 0);
+  assert.ok(defeated.length >= 3, "the corpus stopped defeating the naive router");
+
+  for (const scene of SCENES.scenes) {
+    const routed = routing.routePath({
+      source: scene.source, target: scene.target,
+      obstacles: scene.obstacles, options: SCENES.options,
+    });
+    assert.equal(routed.routable, true, `${scene.id} was refused: ${routed.reason}`);
+    for (const obstacle of scene.obstacles) {
+      assert.ok(!crosses(routed.points, obstacle),
+        `${scene.id} runs through ${obstacle.id}`);
+    }
+  }
+});
+
+test("a route leaves and enters on the sides its ports declare", () => {
+  for (const scene of SCENES.scenes) {
+    const { points } = routing.routePath({
+      source: scene.source, target: scene.target,
+      obstacles: scene.obstacles, options: SCENES.options,
+    });
+    const outward = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] };
+    for (const [end, box] of [["from", scene.source], ["to", scene.target]]) {
+      const [near, far] = end === "from"
+        ? [points[0], points[1]]
+        : [points[points.length - 1], points[points.length - 2]];
+      const [dx, dy] = outward[box.side];
+      const step = [far[0] - near[0], far[1] - near[1]];
+      assert.ok(step[0] * dx >= 0 && step[1] * dy >= 0 && (step[0] * dx + step[1] * dy) > 0,
+        `${scene.id} did not leave ${box.side} on its ${end} end`);
+    }
+  }
+});
+
+test("the same scene routes to the same bytes, whatever order it arrives in", () => {
+  for (const scene of SCENES.scenes) {
+    const forward = routing.routePath({
+      source: scene.source, target: scene.target,
+      obstacles: scene.obstacles, options: SCENES.options,
+    });
+    const reversed = routing.routePath({
+      source: scene.source, target: scene.target,
+      obstacles: [...scene.obstacles].reverse(), options: SCENES.options,
+    });
+    assert.deepEqual(reversed, forward, `${scene.id} depended on obstacle order`);
+  }
+});
+
+test("the whole corpus routed as one network has no hidden runs", () => {
+  const network = routing.routeNetwork({
+    routes: SCENES.scenes.map((scene) => ({
+      id: scene.id, source: scene.source, target: scene.target, exclude: scene.exclude,
+    })),
+    // The whole plant room at once, with each route excluding only its own two
+    // endpoints. Routing the corpus one pair at a time would never discover
+    // that two routes were drawn on top of each other.
+    obstacles: SCENES.obstacles,
+    options: SCENES.options,
+  });
+  assert.deepEqual(network.failures, []);
+  assert.ok(Array.isArray(network.junctions));
+  assert.ok(Array.isArray(network.crossings));
+
+  // Two runs sharing the corridor between the riser blocks are separated:
+  // that is the fixture the spacing rule was written for.
+  const corridor = network.spacing_violations.filter((violation) => (
+    violation.routes.every((id) => id.startsWith("path-corridor"))
+  ));
+  assert.deepEqual(corridor, [], "the two corridor runs were drawn on top of each other");
+
+  // The one pair the separator cannot resolve is reported rather than drawn
+  // silently. Both diagonals have a port at y=30 and a port at y=230, so
+  // whichever turns first owns the near end of one row and the far end of the
+  // other; no single lane shift orders both, and resolving it needs a jog
+  // rather than an offset. Reporting it leaves the engineer a diagram they can
+  // act on; drawing one run inside the other would not.
+  for (const violation of network.spacing_violations) {
+    assert.deepEqual(violation.routes, ["path-cross-ascending", "path-cross-descending"]);
+    assert.equal(violation.required_spacing, SCENES.options.spacing);
+    assert.ok(violation.to > violation.from);
+  }
+});
+
+test("three routes into one header make a junction, and it does not move", () => {
+  const junctionScenes = SCENES.scenes.filter((scene) => scene.id.startsWith("path-junction"));
+  assert.equal(junctionScenes.length, 3);
+  const routes = junctionScenes.map((scene) => ({
+    id: scene.id, source: scene.source, target: scene.target,
+  }));
+  const before = routing.routeNetwork({ routes, obstacles: [], options: SCENES.options });
+  assert.ok(before.junctions.length > 0, "three routes into one port made no junction");
+
+  const unrelated = SCENES.scenes.find((scene) => scene.id === "path-power");
+  const after = routing.routeNetwork({
+    routes: [...routes, { id: "zz", source: unrelated.source, target: unrelated.target }],
+    obstacles: [], options: SCENES.options,
+  });
+  assert.deepEqual(after.junctions, before.junctions,
+    "an unrelated route moved an existing junction");
+});
+
+test("an unroutable pair says so, and names one of the declared reasons", () => {
+  const walled = routing.routePath({
+    source: { x: 0, y: 0, width: 100, height: 60, side: "right" },
+    target: { x: 600, y: 0, width: 100, height: 60, side: "left" },
+    obstacles: [{ id: "w", x: 200, y: -4000, width: 40, height: 8000 }],
+    options: { clearance: 20, maxDetour: 0.2 },
+  });
+  assert.equal(walled.routable, false);
+  assert.ok(routing.ROUTING_FAILURES.includes(walled.reason), walled.reason);
+  assert.deepEqual(walled.points, [], "a refusal still handed back a path");
+});
