@@ -33,7 +33,6 @@ const TEST_DIR = fileURLToPath(new URL("../test", import.meta.url));
  * fail, not weaker.
  */
 const PHASE_GATE_SUITES = new Set([
-  "schedule-dst-parity.test.mjs",  // released by plan 06-12
   "shipped-alarm-truth.test.mjs",  // released by plan 06-15
 ]);
 

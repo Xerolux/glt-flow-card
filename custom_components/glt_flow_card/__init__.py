@@ -29,7 +29,7 @@ from homeassistant.helpers.storage import Store
 
 from uuid import uuid4
 
-from . import alarm_engine, notifications
+from . import alarm_engine, notifications, schedule_time
 from .configured_controls import (
     ControlRateLimiter,
     ControlRejected,
@@ -187,7 +187,7 @@ class GltStore:
         self.data: dict[str, Any] = {
             "projects": {}, "templates": {}, "audit": [], "alarm_state": {},
             "alarm_history": [], "work_orders": {}, "report_history": [],
-            "locks": {}, "schedule_runs": {},
+            "locks": {}, "schedule_runs": {}, "schedule_history": [],
         }
         self.remote_sites: dict[str, dict[str, Any]] = {}
         self._alarm_tasks: dict[str, asyncio.Task] = {}
@@ -216,7 +216,7 @@ class GltStore:
         for key, default in {
             "projects": {}, "templates": {}, "audit": [], "alarm_state": {},
             "alarm_history": [], "work_orders": {}, "report_history": [],
-            "locks": {}, "schedule_runs": {},
+            "locks": {}, "schedule_runs": {}, "schedule_history": [],
         }.items():
             self.data.setdefault(key, default)
         self._migrate_legacy_authority()
@@ -777,38 +777,56 @@ class GltStore:
             if self._alarm_tasks.get(key) is asyncio.current_task():
                 self._alarm_tasks.pop(key, None)
 
+    def schedule_timezone(self, project: dict[str, Any]) -> str:
+        """Return the timezone a project's schedules resolve against.
+
+        The project may pin one; otherwise Home Assistant's. Pinning matters
+        because the preview and the runner must agree, and a browser in a
+        different zone from the plant is ordinary.
+        """
+        declared = (project.get("config") or {}).get("timezone")
+        if isinstance(declared, str) and declared:
+            return declared
+        return str(getattr(self.hass.config, "time_zone", None) or "UTC")
+
     async def run_schedules(self, now: datetime) -> None:
-        weekday = now.weekday()
-        key_minute = now.strftime("%Y-%m-%dT%H:%M")
+        """Execute the schedules whose resolved instant falls due in this tick.
+
+        Compares *instants*, not `now.strftime("%H:%M")` against a stored
+        string. That comparison skipped the lost hour outright -- the wall-clock
+        minute simply never arrived, so the equality never held and nothing
+        recorded that anything was missed -- and it was saved from double-firing
+        in the ambiguous hour only by a fold-blind dedupe key, which is to say by
+        the cache rather than by the logic.
+        """
+        moment = now.astimezone(timezone.utc)
         dirty = False
         for project_id, project in list(self.data["projects"].items()):
             config = project.get("config", {})
             allowed = _safe_domains(project)
+            zone = self.schedule_timezone(project)
             for sched in config.get("schedules", []):
-                if sched.get("enabled", True) is False:
+                if sched.get("kind") == "interval":
+                    # An operating period is a state, not an instant. Firing a
+                    # service at one would be converting between the two models,
+                    # which the bindings deliberately refuse to do.
                     continue
-                if weekday not in sched.get("days", [0,1,2,3,4,5,6]):
-                    continue
-                if sched.get("time") != now.strftime("%H:%M"):
-                    continue
-                run_key = f"{project_id}:{sched.get('id')}:{key_minute}"
-                if self.data["schedule_runs"].get(run_key):
-                    continue
-                spec = str(sched.get("service") or "")
-                if "." not in spec:
-                    continue
-                domain, service = spec.split(".", 1)
-                if domain not in allowed:
-                    continue
-                data = deepcopy(sched.get("data") or {})
-                if sched.get("entity_id"):
-                    data.setdefault("entity_id", sched["entity_id"])
                 try:
-                    await self.hass.services.async_call(domain, service, data, blocking=False)
-                    self.data["schedule_runs"][run_key] = _utc()
-                    dirty = True
-                except Exception:
+                    due = schedule_time.due_instants(sched, now=moment, zone=zone)
+                except (ValueError, KeyError):
+                    # A malformed entry is a schema failure, not a runtime one.
+                    # Schema 5 quarantines these; an older stored entry is
+                    # skipped rather than allowed to stop every later schedule.
                     continue
+                for instant in due:
+                    key = schedule_time.run_key(project_id, str(sched.get("id")), instant)
+                    if self.data["schedule_runs"].get(key):
+                        continue
+                    outcome = await self._execute_schedule(
+                        project_id, sched, allowed, instant=instant,
+                    )
+                    self.data["schedule_runs"][key] = outcome["at"]
+                    dirty = True
         if dirty:
             # D8: this derived a date by splitting a composite key whose last
             # segment is the *minute*, so `"30" >= "2026-08-19"` held forever
@@ -819,6 +837,55 @@ class GltStore:
                 now=datetime.now(timezone.utc),
             )
             await self.async_save()
+
+    async def _execute_schedule(
+        self, project_id: str, sched: dict[str, Any], allowed: Any, *, instant: str,
+    ) -> dict[str, Any]:
+        """Run one schedule entry and record what happened.
+
+        D6's schedule half: the previous call was `blocking=False` inside
+        `except Exception: continue`, so a schedule that failed was
+        indistinguishable from one that ran, and neither wrote an audit row. A
+        plant that ran the wrong sequence has to be answerable from the audit.
+        """
+        record = {
+            "project_id": project_id,
+            "schedule_id": sched.get("id"),
+            "instant": instant,
+            "at": _utc(),
+            "service": sched.get("service"),
+            "outcome": "delivered",
+            "error": None,
+        }
+        spec = notifications.split_service(sched.get("service"))
+        if spec is None:
+            record.update(outcome="refused", error="no service configured")
+        else:
+            domain, service = spec
+            if domain not in allowed:
+                record.update(
+                    outcome="refused",
+                    error=f"{domain} is not an allowed service domain",
+                )
+            else:
+                data = deepcopy(sched.get("data") or {})
+                if sched.get("entity_id"):
+                    data.setdefault("entity_id", sched["entity_id"])
+                try:
+                    await asyncio.wait_for(
+                        self.hass.services.async_call(domain, service, data, blocking=True),
+                        timeout=self.alarm_settings()["notify_timeout_seconds"],
+                    )
+                except asyncio.TimeoutError:
+                    record.update(outcome="timeout", error="no result within the timeout")
+                except Exception as error:  # noqa: BLE001 - the outcome is the subject
+                    record.update(outcome="failed", error=str(error))
+        self.data["schedule_history"] = alarm_engine.append_history(
+            self.data.get("schedule_history") or [],
+            record,
+            bound=self.alarm_settings()["history_bound"],
+        )
+        return record
 
 
 #: Incremented on every runtime publication. Every ephemeral capability the

@@ -20,7 +20,7 @@ that leaves it on proves nothing.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -35,7 +35,6 @@ from .phase6_red import emit_effects, report
 pytestmark = [
     pytest.mark.enable_socket,
     pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
-    pytest.mark.expected_red,
 ]
 
 RED_MARKER = (
@@ -149,3 +148,199 @@ async def test_expected_red_phase6_schedule_dst(
     emit_effects(EFFECT_PREFIX, lifecycle_effects, schedules=len(dst_schedules()))
 
     report(RED_MARKER, dst_gaps(), "schedules resolved to instants across DST are unavailable")
+
+
+# ---------------------------------------------------------------------------
+# The behaviour, now that it exists
+# ---------------------------------------------------------------------------
+
+
+def test_the_predicates_agree_with_home_assistants_own() -> None:
+    """HA's `_datetime_exists`/`_datetime_ambiguous` are the right semantics.
+
+    They are underscore-prefixed and free to vanish in a minor release, so they
+    are implemented rather than imported -- and this is the check that says when
+    they change.
+    """
+    from homeassistant.util import dt as ha_dt
+
+    from custom_components.glt_flow_card import schedule_time as st
+
+    zone = ZoneInfo(SITE_TIMEZONE)
+    hour, minute = (int(part) for part in TRANSITION_TIME.split(":"))
+    for date in (SPRING_FORWARD, FALL_BACK, "2027-06-15"):
+        year, month, day = (int(part) for part in date.split("-"))
+        moment = datetime(year, month, day, hour, minute, tzinfo=zone)
+        assert st.local_time_exists(date, TRANSITION_TIME, SITE_TIMEZONE) == (
+            ha_dt._datetime_exists(moment)
+        ), date
+        assert st.local_time_ambiguous(date, TRANSITION_TIME, SITE_TIMEZONE) == (
+            ha_dt._datetime_ambiguous(moment)
+        ), date
+
+
+def test_every_corpus_entry_reaches_its_declared_status() -> None:
+    from custom_components.glt_flow_card import schedule_time as st
+
+    for entry in dst_schedules():
+        if entry.get("kind") == "interval":
+            continue
+        resolution = st.resolve_entry(entry, entry["on_date"], SITE_TIMEZONE)
+        assert resolution["status"] == entry["expected_status"], entry["id"]
+
+
+def test_a_nonexistent_time_returns_a_status_not_silence() -> None:
+    """An empty list with status `normal` reads as "nothing scheduled".
+
+    That is exactly how the defect hid: the minute never arrived, the equality
+    never held, and nothing recorded that anything had been missed.
+    """
+    from custom_components.glt_flow_card import schedule_time as st
+
+    resolution = st.resolve_entry(
+        {"time": TRANSITION_TIME}, SPRING_FORWARD, SITE_TIMEZONE,
+    )
+    assert resolution["status"] == "nonexistent"
+    assert resolution["instants"] == []
+    assert resolution["policy"] == "skip"
+
+
+def test_the_nonexistent_policy_walks_the_wall_clock() -> None:
+    """`after` must land on 03:00, not an hour past it.
+
+    Shifting the UTC instant instead lands at 04:31 local, because that instant
+    is already on the far side of the gap.
+    """
+    from custom_components.glt_flow_card import schedule_time as st
+
+    zone = ZoneInfo(SITE_TIMEZONE)
+    after = st.resolve_entry(
+        {"time": TRANSITION_TIME}, SPRING_FORWARD, SITE_TIMEZONE, nonexistent="after",
+    )
+    before = st.resolve_entry(
+        {"time": TRANSITION_TIME}, SPRING_FORWARD, SITE_TIMEZONE, nonexistent="before",
+    )
+    local = lambda text: datetime.fromisoformat(  # noqa: E731
+        text.replace("Z", "+00:00")
+    ).astimezone(zone).strftime("%H:%M")
+    assert local(after["instants"][0]) == "03:00"
+    assert local(before["instants"][0]) == "01:59"
+
+
+def test_an_ambiguous_time_returns_both_candidates_and_the_configured_choice() -> None:
+    from custom_components.glt_flow_card import schedule_time as st
+
+    resolution = st.resolve_entry({"time": TRANSITION_TIME}, FALL_BACK, SITE_TIMEZONE)
+    assert resolution["status"] == "ambiguous"
+    assert len(resolution["candidates"]) == 2
+    assert len(resolution["instants"]) == 1
+    assert resolution["instants"][0] == resolution["candidates"][0]
+
+    both = st.resolve_entry(
+        {"time": TRANSITION_TIME}, FALL_BACK, SITE_TIMEZONE, ambiguous="both",
+    )
+    assert both["instants"] == both["candidates"]
+
+
+def test_the_two_fall_back_occurrences_have_different_run_keys() -> None:
+    """This is what moves correctness out of the dedupe cache.
+
+    The previous key collapsed them, and that collapse was the only thing
+    preventing a double fire -- so D8's prune fix would have reintroduced one.
+    """
+    from custom_components.glt_flow_card import schedule_time as st
+
+    resolution = st.resolve_entry(
+        {"time": TRANSITION_TIME}, FALL_BACK, SITE_TIMEZONE, ambiguous="both",
+    )
+    keys = {st.run_key("p", "s", instant) for instant in resolution["instants"]}
+    assert len(keys) == 2
+
+    # And the key the defect used, reproduced, collapsing them.
+    legacy = {
+        datetime.fromisoformat(i.replace("Z", "+00:00"))
+        .astimezone(ZoneInfo(SITE_TIMEZONE)).strftime("p:s:%Y-%m-%dT%H:%M")
+        for i in resolution["instants"]
+    }
+    assert len(legacy) == 1, "the reproduced legacy key no longer collapses them"
+
+
+def test_a_fall_back_entry_runs_once_with_the_dedupe_cache_disabled() -> None:
+    """The claim that matters, tested without the cache that was hiding it."""
+    from custom_components.glt_flow_card import schedule_time as st
+
+    zone = ZoneInfo(SITE_TIMEZONE)
+    entry = {"id": "s", "time": TRANSITION_TIME, "days": [0, 1, 2, 3, 4, 5, 6]}
+    year, month, day = (int(part) for part in FALL_BACK.split("-"))
+
+    # Walk every minute of the transition in real time, with no run cache at
+    # all, and count how often the entry comes due.
+    start = datetime(year, month, day, 0, 0, tzinfo=timezone.utc)
+    due: list[str] = []
+    for step in range(4 * 60):
+        moment = start + timedelta(minutes=step)
+        due.extend(st.due_instants(entry, now=moment, zone=SITE_TIMEZONE))
+    assert len(due) == 1, f"ran {len(due)} times across the ambiguous hour: {due}"
+    assert datetime.fromisoformat(due[0].replace("Z", "+00:00")).astimezone(
+        zone
+    ).strftime("%H:%M") == TRANSITION_TIME
+
+
+def test_a_spring_forward_entry_runs_zero_times_and_says_so() -> None:
+    from custom_components.glt_flow_card import schedule_time as st
+
+    entry = {"id": "s", "time": TRANSITION_TIME, "days": [0, 1, 2, 3, 4, 5, 6]}
+    year, month, day = (int(part) for part in SPRING_FORWARD.split("-"))
+    start = datetime(year, month, day, 0, 0, tzinfo=timezone.utc)
+    due: list[str] = []
+    for step in range(4 * 60):
+        due.extend(st.due_instants(entry, now=start + timedelta(minutes=step),
+                                   zone=SITE_TIMEZONE))
+    assert due == []
+    # And the resolution says why, which the old runner never did.
+    assert st.resolve_entry(entry, SPRING_FORWARD, SITE_TIMEZONE)["status"] == "nonexistent"
+
+
+def test_an_ordinary_day_runs_exactly_once() -> None:
+    """A resolver answering `nonexistent` to everything would pass the two
+    transition tests alone."""
+    from custom_components.glt_flow_card import schedule_time as st
+
+    entry = {"id": "s", "time": TRANSITION_TIME, "days": [0, 1, 2, 3, 4, 5, 6]}
+    start = datetime(2027, 6, 15, 0, 0, tzinfo=timezone.utc)
+    due: list[str] = []
+    for step in range(4 * 60):
+        due.extend(st.due_instants(entry, now=start + timedelta(minutes=step),
+                                   zone=SITE_TIMEZONE))
+    assert len(due) == 1
+
+
+def test_a_disabled_entry_and_a_wrong_weekday_never_come_due() -> None:
+    from custom_components.glt_flow_card import schedule_time as st
+
+    moment = datetime(2027, 6, 15, 0, 30, tzinfo=timezone.utc)  # 02:30 Berlin, a Tuesday
+    assert st.due_instants({"id": "s", "time": TRANSITION_TIME}, now=moment,
+                           zone=SITE_TIMEZONE)
+    assert st.due_instants({"id": "s", "time": TRANSITION_TIME, "enabled": False},
+                           now=moment, zone=SITE_TIMEZONE) == []
+    assert st.due_instants({"id": "s", "time": TRANSITION_TIME, "days": [6]},
+                           now=moment, zone=SITE_TIMEZONE) == []
+
+
+def test_a_malformed_time_is_refused_not_coerced() -> None:
+    from custom_components.glt_flow_card import schedule_time as st
+
+    for time in ("tea", "25:00", "2:30", "02:60"):
+        with pytest.raises(ValueError, match="not a wall-clock time"):
+            st.candidate_instants("2027-06-15", time, SITE_TIMEZONE)
+
+
+def test_an_undeclared_policy_raises_rather_than_choosing_one() -> None:
+    from custom_components.glt_flow_card import schedule_time as st
+
+    with pytest.raises(ValueError, match="unknown nonexistent policy"):
+        st.resolve_entry({"time": TRANSITION_TIME}, SPRING_FORWARD, SITE_TIMEZONE,
+                         nonexistent="guess")
+    with pytest.raises(ValueError, match="unknown ambiguous policy"):
+        st.resolve_entry({"time": TRANSITION_TIME}, FALL_BACK, SITE_TIMEZONE,
+                         ambiguous="either")
