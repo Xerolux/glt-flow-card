@@ -38,6 +38,24 @@ authority of its own. It does not build the CAD designer (Phase 5), alarm lifecy
   resolves those server-side from the verified head, and a panel that echoed them
   would hand the browser a target to call directly.
 
+### Authorization is per project, so restriction is per project
+- **Correction made during execution.** The first operations corpus hid
+  individual pieces of equipment inside one project, as though authorization
+  were per-object. It is not: `AccessService.async_assign(project_id, user_id,
+  role)` has no object granularity, so within a project membership is uniform.
+  Building per-object ACLs here would duplicate an authority Phase 2 owns.
+- The real boundary is the project, and the portfolio spans projects. The corpus
+  is therefore two projects — one every principal may open, one only the
+  engineer and admin may — and the enumeration threats bite there.
+- Within an authorized project, roles differ by **capability**, not visibility:
+  every member sees the same objects, and only a `control.execute` holder is
+  offered a control.
+- T4-04's count oracle moves with it, to where it actually bites: a portfolio
+  total computed across every project and *then* filtered for display announces
+  a fault in a project the caller is not a member of, even when the row itself
+  is hidden. The restricted project holds the corpus's only fault so that any
+  such total is visibly wrong.
+
 ### Navigation is a server-resolved address, not a client-side guess
 - A deep link names a node in the Phase-3 hierarchy. Resolving it is an
   authorization decision, so `glt_flow_card/navigation/resolve` answers it. An

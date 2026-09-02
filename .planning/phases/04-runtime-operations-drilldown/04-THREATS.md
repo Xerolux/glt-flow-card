@@ -32,9 +32,9 @@ or plant target.
 | ID | STRIDE | Abuse case / invariant | Owner plan | Blocking evidence | Status |
 |---|---|---|---|---|---|
 | T4-01 | Elevation | The browser composes a panel's control list from a profile plus a capability snapshot, offering a control the server would refuse. The control list must arrive already filtered; a forbidden control is absent, never present-and-disabled. | 04-05 | `py -3.13 -m pytest tests/components/glt_flow_card/test_panels.py -q -x` | planned |
-| T4-02 | Information disclosure | A panel model leaks a datapoint, provenance row, alarm or child node outside the caller's authorized scope, or leaks `domain`/`service`/`target` for a control. Filter before serialization; the panel carries no dispatch target at all. | 04-05 | `py -3.13 -m pytest tests/components/glt_flow_card/test_panels.py tests/components/glt_flow_card/test_panel_enumeration.py -q -x` | planned |
+| T4-02 | Information disclosure | A panel model leaks an object, alarm or child from a project the caller is not a member of, or leaks `domain`/`service`/`target` for a control. Filter before serialization; the panel carries no dispatch target at all. | 04-05 | `py -3.13 -m pytest tests/components/glt_flow_card/test_panels.py tests/components/glt_flow_card/test_panel_enumeration.py -q -x` | planned |
 | T4-03 | Elevation / Information disclosure | A deep link resolves for a principal who may not open it, or distinguishes "not permitted" from "does not exist". Every resolve re-authorizes from scratch and both answer `not_found_or_denied` byte-identically. | 04-07 | `py -3.13 -m pytest tests/components/glt_flow_card/test_navigation.py -q -x` | planned |
-| T4-04 | Information disclosure | An aggregate count, badge or roll-up over a subtree reveals that unauthorized objects exist there. Counts are computed over the authorized scope only, and an empty authorized scope is indistinguishable from an absent one. | 04-08 | `py -3.13 -m pytest tests/components/glt_flow_card/test_navigation_counts.py -q -x` | planned |
+| T4-04 | Information disclosure | A portfolio total computed across every project and then filtered for display reveals alarms in a project the caller cannot open; or a rendered zero distinguishes an empty authorized scope from an unauthorized one. Counts are computed after the project filter, and an authorized zero is reported as absent. | 04-08 | `py -3.13 -m pytest tests/components/glt_flow_card/test_navigation_counts.py -q -x` | planned |
 | T4-05 | Denial / Validation | A crafted address exhausts the server through depth, length, breadth or repetition; or an unbounded ancestry walk is triggered by a cyclic reference. Addresses are bounded before resolution and the Phase-3 depth bound is re-asserted here. | 04-07 | `py -3.13 -m pytest tests/components/glt_flow_card/test_navigation.py -q -x` | planned |
 | T4-06 | Tampering / Spoofing | A view keeps rendering after its authority changed, or replays a cached snapshot on browser Back instead of re-resolving. Back and forward re-resolve through the server; an authority change invalidates the view in the same render cycle. | 04-09 | `node --test test/navigation.test.mjs` | planned |
 | T4-07 | Repudiation / Safety | A command that only reached `accepted` or `dispatched` is presented as done. Only `readback_confirmed` may render as success; `timed_out`, `result_unknown` and `failed_after_dispatch` direct the user to current state and trusted audit, never to a retry button. | 04-11 | `node --test test/command-outcome.test.mjs` | planned |
@@ -47,6 +47,15 @@ or plant target.
 | T4-14 | Tampering / Supply chain | Authored source, generated card, Companion copy, HACS stage/ZIP, HA lanes, docs or release evidence diverge; or a test causes a service effect. Build once, compare exact bytes, install the exact stage, fail on any unintended effect. | 04-17 | `npm run test:phase4:release` | planned |
 
 ## Evidence Status
+
+**Boundary correction, recorded during execution.** T4-02, T4-03 and T4-04 were
+first written as though a caller could be excluded from individual objects
+inside a project. Phase 2's ACL assigns one fixed role per `(project, user)` and
+has no object granularity, so that threat model described an authority the
+product does not have. The rows above are restated at the real boundary — the
+project — and the corpus was rebuilt as two projects. This makes T4-02 and T4-03
+partly inherited from the Phase-2 policy boundary, which is the correct outcome:
+Phase 4 adds no authority of its own.
 
 Every row begins `planned`. This register is written before execution and no row may
 be marked `verified` from planning alone.

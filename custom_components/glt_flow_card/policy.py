@@ -235,6 +235,22 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     # right now". It carries `project.read`, so an unassigned caller receives
     # the same opaque denial a hidden project gives and learns nothing.
     _route("glt_flow_card/capabilities/get", "project.read"),
+    # -- object panels (04-05) --------------------------------------------
+    # The server composes the panel, including the control list, so the browser
+    # never derives authority of its own. Carries project.read, so an unassigned
+    # caller gets the same opaque denial a hidden project gives.
+    _route("glt_flow_card/panels/get", "project.read"),
+    # -- incremental views (04-06) ----------------------------------------
+    # A snapshot plus a sequenced event stream. Its own rate class: a snapshot
+    # is the most expensive read in the phase and every condition that triggers
+    # one is a condition the client controls.
+    _route("glt_flow_card/views/subscribe", "project.read", rate_class="snapshot"),
+    # -- navigation (04-07, 04-08) ----------------------------------------
+    _route("glt_flow_card/navigation/resolve", "project.read"),
+    # Component-scoped and filtered: the portfolio spans projects, and an
+    # unassigned caller sees an empty roll-up rather than a denial.
+    _route("glt_flow_card/navigation/portfolio", "project.list", scope="component",
+           enumeration="filter"),
     # -- provenance --------------------------------------------------------
     # A project-scoped read: an entity outside the named project is never
     # described, so this cannot become a registry search.

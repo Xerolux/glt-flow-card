@@ -50,6 +50,7 @@ from .policy import (
 from .policy_sessions import (
     CursorInvalid,
     EvidenceCursorRegistry,
+    SubscriptionDenied,
     SubscriptionRegistry,
 )
 from .trusted_evidence import (
@@ -59,7 +60,10 @@ from .trusted_evidence import (
     TrustedEvidenceStore,
 )
 from .project_access import AccessConflict, ProjectAccessRepository
+from .navigation import portfolio as roll_up_portfolio, resolve_address
+from .panels import addressable_objects, compose_panel
 from .provenance import ProvenanceService
+from .view_stream import SnapshotRefused, ViewStreamService
 from .policy import ROLES
 from .project_leases import (
     DEFAULT_TTL_SECONDS,
@@ -539,6 +543,7 @@ class CompanionRuntime:
     controls: ControlEvidenceRecorder | None = None
     control_rates: ControlRateLimiter | None = None
     provenance: ProvenanceService | None = None
+    views: ViewStreamService | None = None
     generation: int = 0
     available: bool = True
 
@@ -558,6 +563,10 @@ class CompanionRuntime:
             # A cached provenance record from a dead generation would claim a
             # dead entity is live, which is the one thing this data must never do.
             self.provenance.invalidate()
+        if self.views is not None:
+            # Snapshot budgets are per connection and per generation. A budget
+            # surviving an unload would let a pre-reload client keep spending.
+            self.views.clear()
 
     async def async_close(self) -> None:
         """Close the complete entry-owned runtime, tolerating repetition."""
@@ -1294,6 +1303,172 @@ async def ws_provenance_get(hass, connection, msg):
 
 
 @websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/navigation/resolve",
+    vol.Required("project_id"): str,
+    # Optional so the generic policy prober reaches a decision rather than a
+    # schema rejection; an empty address resolves to nothing, opaquely.
+    vol.Optional("address", default=""): str,
+})
+@websocket_api.async_response
+async def ws_navigation_resolve(hass, connection, msg):
+    """Resolve one deep link, re-authorizing from scratch every time.
+
+    A malformed address, an unknown node and a project the caller is not a
+    member of all answer identically. Anything else turns a shareable URL into
+    a way to probe a hierarchy one segment at a time.
+    """
+    decision = msg[DECISION_KEY]
+    project = _manager(hass).project(decision.project_id)
+    # An empty address is the generic policy prober's shape, not a probe of this
+    # project: it names nothing, so it answers successfully having resolved
+    # nothing. This mirrors panels/get and provenance/get.
+    if not msg["address"]:
+        connection.send_result(msg["id"], {
+            "project_id": decision.project_id,
+            "address": None, "node": None, "ancestry": [], "children": [],
+        })
+        return
+
+    resolved = (
+        resolve_address(project.get("config") or {}, msg["address"])
+        if project is not None
+        else None
+    )
+    if resolved is None:
+        connection.send_error(msg["id"], "not_found_or_denied", "not_found_or_denied")
+        return
+    connection.send_result(msg["id"], {"project_id": decision.project_id, **resolved})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/navigation/portfolio",
+})
+@websocket_api.async_response
+async def ws_navigation_portfolio(hass, connection, msg):
+    """Roll up every project this principal may open, and nothing else.
+
+    The totals are summed from the already-filtered set. Computing them across
+    every project and filtering the rows afterwards would announce a fault in a
+    project the caller cannot open -- the row would be hidden and the number
+    would not.
+
+    An unassigned principal receives an empty roll-up rather than a denial: a
+    denial would confirm that projects exist at all.
+    """
+    runtime = _runtime_for(hass)
+    heads = _manager(hass).projects()
+    visible = set(runtime.policy.visible_projects(
+        connection, [head["id"] for head in heads],
+    ))
+    permitted = [head for head in heads if head["id"] in visible]
+    connection.send_result(msg["id"], roll_up_portfolio(permitted))
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/views/subscribe",
+    vol.Required("project_id"): str,
+})
+@websocket_api.async_response
+async def ws_views_subscribe(hass, connection, msg):
+    """Return a snapshot with the sequence it was read at, then stream events.
+
+    The snapshot and its sequence come from one critical section. Anything else
+    loses an event emitted between the read and the stamp, and a lost event is
+    precisely the gap the client is supposed to notice.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    project = _manager(hass).project(decision.project_id)
+    if project is None:
+        connection.send_error(msg["id"], "not_found_or_denied", "not_found_or_denied")
+        return
+
+    config = project.get("config") or {}
+
+    def read() -> dict:
+        return {
+            "project_id": decision.project_id,
+            "objects": addressable_objects(config),
+            "revision": project.get("revision"),
+        }
+
+    try:
+        result = runtime.views.snapshot(id(connection), read)
+    except SnapshotRefused as refused:
+        connection.send_error(msg["id"], refused.code, refused.code)
+        return
+
+    try:
+        unsubscribe = await runtime.subscriptions.async_subscribe(
+            project_id=decision.project_id,
+            user_id=decision.actor.user_id,
+            session_id=decision.actor.session_id or "",
+            send=lambda event: connection.send_event(msg["id"], event),
+        )
+    except SubscriptionDenied:
+        connection.send_error(msg["id"], "rate_limited", "rate_limited")
+        return
+    connection.subscriptions[msg["id"]] = unsubscribe
+    connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/panels/get",
+    vol.Required("project_id"): str,
+    # Optional with a default so the generic policy prober can reach this
+    # handler and receive a policy decision rather than a schema rejection. An
+    # empty object id resolves to no panel, which is the same opaque denial an
+    # unknown id gets.
+    vol.Optional("object_id", default=""): str,
+})
+@websocket_api.async_response
+async def ws_panels_get(hass, connection, msg):
+    """Compose one profile-driven object panel, server-side.
+
+    The control list is filtered here, against this principal's *current*
+    capabilities, because the browser must not derive one: its capability
+    snapshot can be five minutes stale and would not see a revocation.
+
+    A missing object and an object the caller may not open answer identically.
+    Distinguishing them would turn this route into a way to enumerate a
+    project's contents one id at a time.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    project = _manager(hass).project(decision.project_id)
+    if project is None:
+        connection.send_error(msg["id"], "not_found_or_denied", "not_found_or_denied")
+        return
+
+    config = project.get("config") or {}
+    entity_ids = _project_entity_ids(config)
+    states = {
+        entity_id: getattr(hass.states.get(entity_id), "state", None)
+        for entity_id in entity_ids
+    }
+    # An empty object id is the generic policy prober's shape, not a probe of
+    # this project: it describes nothing, so it answers successfully with no
+    # panel. This mirrors provenance/get, where an empty entity list is a
+    # legitimate empty request rather than a denial.
+    if not msg["object_id"]:
+        connection.send_result(msg["id"], {
+            "project_id": decision.project_id, "object_id": None, "regions": [],
+        })
+        return
+
+    panel = compose_panel(
+        config,
+        msg["object_id"],
+        capabilities=decision.capabilities,
+        states=states,
+    )
+    if panel is None:
+        connection.send_error(msg["id"], "not_found_or_denied", "not_found_or_denied")
+        return
+    connection.send_result(msg["id"], {"project_id": decision.project_id, **panel})
+
+
+@websocket_api.websocket_command({
     vol.Required("type"): "glt_flow_card/capabilities/get",
     vol.Required("project_id"): str,
 })
@@ -1501,7 +1676,8 @@ _COMMAND_HANDLERS = (
     ws_evidence_list, ws_telemetry_list, ws_telemetry_add,
     ws_projects_lock, ws_projects_unlock,
     ws_leases_acquire, ws_leases_renew, ws_leases_release, ws_leases_status,
-    ws_capabilities_get, ws_provenance_get,
+    ws_capabilities_get, ws_provenance_get, ws_panels_get, ws_views_subscribe,
+    ws_navigation_resolve, ws_navigation_portfolio,
     ws_templates_list, ws_templates_save,
     ws_templates_delete, ws_control_execute, ws_alarms_list, ws_alarms_ack,
     ws_alarms_shelve, ws_work_orders_list, ws_work_orders_save, ws_reports_run,
@@ -1736,6 +1912,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         control_rates=ControlRateLimiter(),
         provenance=ProvenanceService(hass, generation=generation),
         generation=generation,
+    )
+    # The stream service reads the subscription registry's counter, so it is
+    # attached after the runtime exists rather than constructed inside it.
+    runtime.views = ViewStreamService(
+        sequence_of=runtime.subscriptions.sequence, generation=generation,
     )
     manager.project_transactions.set_mutation_guard(recheck_before_commit)
     data["runtimes"][entry.entry_id] = runtime

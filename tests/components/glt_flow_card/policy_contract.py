@@ -209,6 +209,12 @@ COMMAND_POLICY_CONTRACT: tuple[RoutePolicy, ...] = (
     # -- capability snapshot ----------------------------------------------
     _route("glt_flow_card/capabilities/get", "project.read"),
     _route("glt_flow_card/provenance/get", "project.read"),
+    # -- object panels (04-05) --------------------------------------------
+    _route("glt_flow_card/panels/get", "project.read"),
+    _route("glt_flow_card/views/subscribe", "project.read"),
+    _route("glt_flow_card/navigation/resolve", "project.read"),
+    _route("glt_flow_card/navigation/portfolio", "project.list", scope="component",
+           enumeration="filter"),
     # -- templates --------------------------------------------------------
     _route("glt_flow_card/templates/list", "template.read", scope="component",
            enumeration="filter"),

@@ -1,12 +1,17 @@
-"""A roll-up count never reveals an unauthorized subtree (T4-04, NAV-01).
+"""A roll-up count never reveals a project the caller cannot open (T4-04).
 
 A count feels like a number rather than a disclosure, which is exactly why it
-ships by accident. "Backup: 1 fault" tells a caller that a fault-bearing object
-exists under a subsystem every one of whose children they may not open.
+ships by accident. The portfolio spans projects, and Phase 2 assigns membership
+per project, so the dangerous shape is a total computed across every project and
+*then* filtered for display: "3 faults across your sites" announces a fault in a
+project the caller is not a member of, even though the row itself is hidden.
 
-The subtler half: a rendered zero is itself an oracle. "You may see this subtree
-and it is empty" must not be distinguishable from "you may not see this
-subtree", so an authorized count of zero is reported as no count at all.
+The corpus is built for this: the restricted project holds the only fault in the
+whole corpus, so any total that includes it is visibly wrong for a non-member.
+
+The subtler half: a rendered zero is itself an oracle. "You may see this and it
+is empty" must not be distinguishable from "you may not see this", so an
+authorized count of zero is reported as no count at all.
 """
 from __future__ import annotations
 
@@ -17,8 +22,8 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from .panel_factory import COUNT_ORACLE_SUBSYSTEM
-from .panel_seed import PROJECT_ID, seed_operations_project
+from .panel_factory import OPEN_PROJECT_ID, RESTRICTED_PROJECT_ID
+from .panel_seed import seed_operations_project
 
 pytestmark = [
     pytest.mark.enable_socket,
@@ -31,87 +36,87 @@ RED_MARKER = (
 )
 EFFECT_PREFIX = "PHASE4_COUNT_EFFECTS "
 
-#: Roll-ups are asserted at every level, not only at the leaf.
-ROLLUP_ADDRESSES = (
-    "site-north",
-    "site-north/bldg-north-1",
-    "site-north/bldg-north-1/floor-north-1",
-    "site-north/bldg-north-1/floor-north-1/sys-heat",
-)
-
 
 def emit_effects(**extra: Any) -> None:
     print(EFFECT_PREFIX + json.dumps({"service_attempts": 0, "network": 0, **extra}, sort_keys=True))
 
 
-async def resolve(connection, address: str, *, project_id: str = PROJECT_ID) -> dict[str, Any]:
+async def portfolio(connection) -> dict[str, Any]:
+    """The portfolio roll-up: every project this caller may open, with counts."""
     try:
-        return await connection.command({
-            "type": "glt_flow_card/navigation/resolve",
-            "project_id": project_id,
-            "address": address,
-        })
+        return await connection.command({"type": "glt_flow_card/navigation/portfolio"})
     except Exception as error:  # noqa: BLE001 - a missing route must read as a gap
         return {"success": False, "error": {"code": "no_route", "message": str(error)}}
 
 
-def child_counts(result: dict[str, Any]) -> dict[str, Any]:
-    """Map child id -> its reported counts, if any were reported at all."""
-    return {
-        child.get("id"): child.get("counts")
-        for child in result.get("children", [])
-    }
+def totals(result: dict[str, Any]) -> dict[str, Any]:
+    return result.get("totals") or {}
+
+
+def rows_by_project(result: dict[str, Any]) -> dict[str, Any]:
+    return {row.get("project_id"): row for row in result.get("projects", [])}
 
 
 async def test_expected_red_phase4_navigation_counts(
     hass: HomeAssistant, config_entry: MockConfigEntry, phase2_users,
 ) -> None:
-    """Counts cover the authorized scope only, and zero is reported as absent."""
-    emit_effects(levels=len(ROLLUP_ADDRESSES), cases=4)
+    """Counts are computed after the project filter, and zero is reported as absent."""
+    emit_effects(cases=5)
     gaps: list[str] = []
     await seed_operations_project(hass, config_entry, phase2_users)
 
-    operator = await phase2_users.async_connect("operator")
-
-    # The oracle: the only alarm-bearing child of this subsystem is an object
-    # the operator may not open, so no alarm count may be reported for it.
-    heating = await resolve(operator, "site-north/bldg-north-1/floor-north-1/sys-heat")
-    if heating.get("success") is not True:
-        gaps.append("an operator could not resolve a subsystem it may open")
-    else:
-        counts = child_counts(heating["result"])
-        if COUNT_ORACLE_SUBSYSTEM not in counts:
-            gaps.append(f"{COUNT_ORACLE_SUBSYSTEM} is not listed as a child at all")
-        else:
-            reported = counts[COUNT_ORACLE_SUBSYSTEM]
-            if reported:
-                gaps.append(
-                    f"a count was reported for {COUNT_ORACLE_SUBSYSTEM} whose only "
-                    f"alarm-bearing child is restricted: {reported}",
-                )
-
-    # An authorized-but-empty subtree must be indistinguishable from an
-    # unauthorized one: both report no count, never a zero.
-    if heating.get("success") is True:
-        for child_id, reported in child_counts(heating["result"]).items():
-            if isinstance(reported, dict) and 0 in reported.values():
-                gaps.append(f"{child_id} reported a zero count, which is itself an oracle")
-
-    # Roll-ups at every level must agree with what the caller may actually open.
+    # The engineer is a member of both projects and must see both, faults
+    # included: it is the control that proves the corpus really carries one.
     engineer = await phase2_users.async_connect("engineer")
-    for address in ROLLUP_ADDRESSES:
-        as_operator = await resolve(operator, address)
-        as_engineer = await resolve(engineer, address)
-        if as_operator.get("success") is not True or as_engineer.get("success") is not True:
-            gaps.append(f"{address} did not resolve for both principals")
-            continue
-        operator_body = json.dumps(child_counts(as_operator["result"]), sort_keys=True)
-        engineer_body = json.dumps(child_counts(as_engineer["result"]), sort_keys=True)
-        if operator_body == engineer_body:
+    full = await portfolio(engineer)
+    if full.get("success") is not True:
+        gaps.append("an authorized engineer could not read the portfolio roll-up")
+    else:
+        rows = rows_by_project(full["result"])
+        if RESTRICTED_PROJECT_ID not in rows or OPEN_PROJECT_ID not in rows:
+            gaps.append("a member of both projects was not shown both")
+        if totals(full["result"]).get("fault", 0) < 1:
+            gaps.append("the corpus fault is not counted for a principal who may see it")
+
+    # The operator is a member of the open project only. Neither the row nor
+    # the *total* may carry anything from the restricted project.
+    operator = await phase2_users.async_connect("operator")
+    partial = await portfolio(operator)
+    if partial.get("success") is not True:
+        gaps.append("an authorized operator could not read the portfolio roll-up")
+    else:
+        result = partial["result"]
+        rows = rows_by_project(result)
+        if RESTRICTED_PROJECT_ID in rows:
+            gaps.append("a project the operator is not a member of appeared as a row")
+        if totals(result).get("fault"):
             gaps.append(
-                f"{address} reported identical counts to two principals with "
-                "different authorized scopes",
+                "the portfolio total counted the restricted project's fault, so the "
+                "total was computed before the project filter",
             )
+        if RESTRICTED_PROJECT_ID in json.dumps(result):
+            gaps.append("the restricted project id appeared in the operator's roll-up")
+
+        # A rendered zero distinguishes an empty authorized scope from an
+        # unauthorized one, so an authorized zero is reported as absent.
+        for name, value in totals(result).items():
+            if value == 0:
+                gaps.append(f"a zero was reported for {name}, which is itself an oracle")
+        for project_id, row in rows.items():
+            for name, value in (row.get("counts") or {}).items():
+                if value == 0:
+                    gaps.append(f"{project_id} reported a zero {name} count")
+
+    # An unassigned principal gets an empty roll-up, not a denial and not a
+    # count: a denial would confirm that projects exist.
+    outsider = await phase2_users.async_connect("unassigned")
+    empty = await portfolio(outsider)
+    if empty.get("success") is not True:
+        gaps.append("an unassigned principal was denied rather than shown nothing")
+    elif rows_by_project(empty["result"]):
+        gaps.append("an unassigned principal was shown a project row")
+    elif totals(empty["result"]):
+        gaps.append("an unassigned principal was shown a total")
 
     if gaps:
         print(RED_MARKER)

@@ -14,7 +14,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from .panel_factory import RESTRICTED
+from .panel_factory import RESTRICTED_EQUIPMENT, RESTRICTED_PROJECT_ID
 from .panel_seed import PROJECT_ID, seed_operations_project
 
 pytestmark = [
@@ -64,25 +64,35 @@ async def test_expected_red_phase4_panel_enumeration(
     elif hidden.get("error", {}).get("code") != "not_found_or_denied":
         gaps.append(f"the denial code is not the opaque one: {hidden.get('error')}")
 
-    # An object inside a project the caller may open, but which the caller's
-    # role may not: still the same opaque answer as an object that is not there.
+    # An operator is a member of the open project but not of the restricted
+    # one. Reading an object there must answer exactly as an absent project.
+    # This is the real boundary: Phase 2 assigns one role per (project, user)
+    # and has no object granularity, so restriction is per project.
     operator = await phase2_users.async_connect("operator")
-    restricted_id = next(iter(RESTRICTED))
-    restricted = await panel(operator, restricted_id)
-    absent = await panel(operator, "eq-does-not-exist")
+    restricted_id = RESTRICTED_EQUIPMENT[0]
+    restricted = await panel(operator, restricted_id, project_id=RESTRICTED_PROJECT_ID)
+    absent = await panel(operator, restricted_id, project_id="does-not-exist")
     if restricted.get("success") is True:
-        gaps.append(f"an operator opened the restricted object {restricted_id}")
+        gaps.append(f"an operator opened {restricted_id} in a project it is not a member of")
     elif restricted.get("error") != absent.get("error"):
-        gaps.append("a restricted object and an absent object answer differently")
+        gaps.append("a project the caller is not a member of differs from a missing one")
 
-    # Nothing about the restricted object may appear anywhere in the response
-    # a permitted caller receives for a different object.
+    # An object that does not exist inside a project the caller *may* open must
+    # also answer opaquely, or the route enumerates a project's contents.
+    unknown = await panel(operator, "eq-does-not-exist")
+    if unknown.get("success") is True:
+        gaps.append("a non-existent object was served a panel")
+    elif unknown.get("error", {}).get("code") != "not_found_or_denied":
+        gaps.append(f"an unknown object leaked a distinguishable error: {unknown.get('error')}")
+
+    # Nothing from the restricted project may appear in a panel the operator
+    # legitimately receives from the open one.
     permitted = await panel(operator, "eq-hp-primary")
     if permitted.get("success") is True:
         body = json.dumps(permitted["result"])
-        for hidden_id in RESTRICTED:
+        for hidden_id in (*RESTRICTED_EQUIPMENT, RESTRICTED_PROJECT_ID):
             if hidden_id in body:
-                gaps.append(f"a permitted panel mentioned the restricted object {hidden_id}")
+                gaps.append(f"a permitted panel mentioned {hidden_id}")
 
     if gaps:
         print(RED_MARKER)

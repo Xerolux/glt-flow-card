@@ -17,7 +17,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from .panel_factory import RESTRICTED
+from .panel_factory import RESTRICTED_EQUIPMENT, RESTRICTED_PROJECT_ID
 from .panel_seed import PROJECT_ID, declared_route, seed_operations_project
 
 pytestmark = [
@@ -100,19 +100,39 @@ async def test_expected_red_phase4_navigation(
             gaps.append(f"the {label} level is not addressable")
 
     # Unauthorized, non-existent and deferred-remote must be one answer.
+    # The boundary is the project: Phase 2 assigns one role per (project, user)
+    # and has no object granularity, so an operator is excluded from the
+    # restricted project as a whole rather than from an object inside one.
     operator = await phase2_users.async_connect("operator")
-    restricted_id = next(iter(RESTRICTED))
-    unauthorized = await resolve(operator, f"site-north/{restricted_id}")
-    nonexistent = await resolve(operator, "site-north/does-not-exist")
+    unauthorized = await resolve(
+        operator, "site-south", project_id=RESTRICTED_PROJECT_ID,
+    )
+    nonexistent = await resolve(operator, "site-south", project_id="does-not-exist")
     remote = await resolve(operator, "remote:other-site/site-north")
     if unauthorized.get("success") is True:
-        gaps.append(f"an operator resolved the restricted address {restricted_id}")
+        gaps.append("an operator resolved an address in a project it is not a member of")
     if unauthorized.get("error") != nonexistent.get("error"):
-        gaps.append("an unauthorized address and a missing one answer differently")
+        gaps.append("an unauthorized project and a missing one answer differently")
     if remote.get("error") != nonexistent.get("error"):
         gaps.append("a deferred remote address is distinguishable from a missing one")
     if nonexistent.get("error", {}).get("code") != "not_found_or_denied":
         gaps.append(f"the denial code is not the opaque one: {nonexistent.get('error')}")
+
+    # An address that does not exist inside a project the caller may open must
+    # answer the same way, or resolution enumerates the hierarchy node by node.
+    unknown = await resolve(operator, "site-north/does-not-exist")
+    if unknown.get("success") is True:
+        gaps.append("a non-existent address inside an open project resolved")
+    elif unknown.get("error", {}).get("code") != "not_found_or_denied":
+        gaps.append("an unknown address leaked a distinguishable error")
+
+    # Nothing from the restricted project may appear in an authorized answer.
+    open_answer = await resolve(operator, "site-north")
+    if open_answer.get("success") is True:
+        body = json.dumps(open_answer["result"])
+        for hidden in (*RESTRICTED_EQUIPMENT, RESTRICTED_PROJECT_ID, "site-south"):
+            if hidden in body:
+                gaps.append(f"an authorized resolve mentioned {hidden}")
 
     # Bounds are enforced before the walk, not discovered during it.
     over_deep = await resolve(engineer, "/".join(f"n{index}" for index in range(MAX_DEPTH + 8)))
