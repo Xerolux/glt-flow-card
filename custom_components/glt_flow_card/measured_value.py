@@ -60,7 +60,7 @@ def _check_gaps(gaps: Any) -> list[dict[str, str]]:
     return checked
 
 
-def _canonical_number(value: float) -> float | int:
+def canonical_number(value: float) -> float | int:
     """Return the number in the form both runtimes serialise identically.
 
     JavaScript has one number type, so ``JSON.stringify(0)`` is ``0`` and there is
@@ -71,6 +71,11 @@ def _canonical_number(value: float) -> float | int:
 
     Non-integral floats need no help: both runtimes emit the shortest
     round-tripping representation, so 4/7 is ``0.5714285714285714`` in each.
+
+    Public and shared, because this is the fourth place in Phase 7 where two
+    runtimes agreed on a value and disagreed on its bytes. Solving it once per
+    module is how it keeps recurring; every number that crosses the boundary
+    goes through here.
     """
     integral = int(value)
     return integral if value == integral else value
@@ -105,13 +110,13 @@ def measured(
         # came from somewhere it should not have.
         raise ValueError("a value with zero coverage is not a value")
     return {
-        "coverage": _canonical_number(checked_coverage),
+        "coverage": canonical_number(checked_coverage),
         "gaps": checked_gaps,
         "period": period,
         "resolved_at": resolved_at,
         "source": source,
         "unit": unit,
-        "value": None if value is None else _canonical_number(float(value)),
+        "value": None if value is None else canonical_number(float(value)),
     }
 
 

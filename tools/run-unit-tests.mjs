@@ -41,7 +41,9 @@ const PHASE_GATE_SUITES = new Set([
   // `tools/assert-red.mjs`, which requires it to reach exactly its named
   // missing behaviour and fails when anything else about the run is broken.
   "replay-truth.test.mjs",
-  "period-parity.test.mjs",
+  // period-parity.test.mjs removed by plan 07-07: both runtimes now resolve
+  // every corpus entry to identical canonical bytes, so it is a regression
+  // suite rather than a sentinel.
   "report-renderings.test.mjs",
 ]);
 
