@@ -119,3 +119,52 @@ test("[expected-red:phase7-report-renderings] three renderings, one model", asyn
   }
   assert.deepEqual(gaps, [], "one model behind three renderings is unavailable");
 });
+
+/** A correct CSV reader, used only to prove the writer produced valid CSV. */
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (quoted) {
+      if (char === '"' && text[index + 1] === '"') { cell += '"'; index += 1; continue; }
+      if (char === '"') { quoted = false; continue; }
+      cell += char;
+      continue;
+    }
+    if (char === '"') { quoted = true; continue; }
+    if (char === ";") { row.push(cell); cell = ""; continue; }
+    if (char === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; continue; }
+    cell += char;
+  }
+  row.push(cell);
+  rows.push(row);
+  return rows;
+}
+
+test("phase-7-renderings the CSV writer produces CSV a correct reader recovers", async () => {
+  // The print view no longer re-parses the CSV, which is D21's fix. That alone
+  // would let the CSV itself be wrong and nothing would notice, because the two
+  // renderings that are compared to each other both come from the model.
+  //
+  // So this asserts the writer's own output separately: a correct reader must
+  // recover exactly the cells the model held, for the same four values a naive
+  // round-trip destroys.
+  const { csv } = await import("../src/v100/report-renderings.mjs");
+  const model = {
+    columns: ["Bereich", "Name", "Wert"],
+    rows: [
+      ["KPI", "Pumpe 1; Pumpe 2", "1"],
+      ["KPI", "Zeile 1\nZeile 2", "2"],
+      ["KPI", 'Ventil "A"', "3"],
+      ["KPI", "12,5", "4"],
+    ],
+  };
+  const parsed = parseCsv(csv(model).text);
+  assert.deepEqual(parsed[0], model.columns);
+  for (const [index, expected] of model.rows.entries()) {
+    assert.deepEqual(parsed[index + 1], expected, `row ${index} did not survive the round trip`);
+  }
+});

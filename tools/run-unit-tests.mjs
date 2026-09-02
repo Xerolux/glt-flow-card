@@ -45,7 +45,8 @@ const PHASE_GATE_SUITES = new Set([
   // period-parity.test.mjs removed by plan 07-07: both runtimes now resolve
   // every corpus entry to identical canonical bytes, so it is a regression
   // suite rather than a sentinel.
-  "report-renderings.test.mjs",
+  // report-renderings.test.mjs removed by plan 07-16: screen, CSV and print all
+  // render from the model, so it is a regression suite now.
 ]);
 
 const suites = readdirSync(TEST_DIR)
