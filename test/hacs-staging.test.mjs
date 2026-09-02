@@ -22,6 +22,7 @@ const COMPONENT_FILES = [
   "config_flow.py",
   "configured_controls.py",
   "equipment_profiles.py",
+  "energy_model.py",
   "const.py",
   "diagnostics.py",
   "manifest.json",
