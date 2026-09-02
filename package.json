@@ -13,7 +13,7 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "check": "node --check dist/glt-flow-card.js",
-    "test": "node --test test/*.test.mjs",
+    "test": "node tools/run-unit-tests.mjs",
     "test:v1": "node --test test/v100-*.test.mjs",
     "verify:provenance": "node tools/verify-provenance.mjs --online",
     "test:fixtures": "node --test test/contract-fixtures.test.mjs",
