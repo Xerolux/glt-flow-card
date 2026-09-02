@@ -18,8 +18,12 @@ import pytest
 
 from .phase7_red import emit_queries, missing, report
 
+# The expected_red marker was removed by plan 07-08: this file's sentinel
+# passes, so it is a regression suite now rather than a specification of
+# something missing. The RED gate still classifies it -- it runs the file with
+# filtering off, and assert-red.mjs reports a sentinel that passes as
+# implemented rather than as broken.
 pytestmark = [
-    pytest.mark.expected_red,
     pytest.mark.enable_socket,
     pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
 ]

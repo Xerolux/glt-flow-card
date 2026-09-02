@@ -31,7 +31,14 @@ from uuid import uuid4
 
 from homeassistant.util import dt as dt_util
 
-from . import alarm_engine, history_routes, notifications, period_resolution, schedule_time
+from . import (
+    alarm_engine,
+    history_bounds,
+    history_routes,
+    notifications,
+    period_resolution,
+    schedule_time,
+)
 from .configured_controls import (
     ControlRateLimiter,
     ControlRejected,
@@ -2209,6 +2216,18 @@ async def ws_schedules_preview(hass, connection, msg):
 # an empty, honestly-sourced result rather than with a fabricated one.
 
 
+def _history_bounds_for(hass, project_id: str) -> dict:
+    """Return the effective query bounds for one project.
+
+    Read from the project's `trend` block, which schema 6 closed, so a site
+    configures them where it configures everything else. An unconfigured
+    installation gets the conservative defaults rather than no bound.
+    """
+    project = _manager(hass).data["projects"].get(project_id) or {}
+    trend = (project.get("config") or {}).get("trend") or {}
+    return history_bounds.resolve_bounds(trend)
+
+
 def _history_window_hours(msg) -> float:
     """Return the requested window in hours, or zero when it is unparseable."""
     start = str(msg.get("start_time") or "")
@@ -2268,17 +2287,38 @@ async def ws_history_series(hass, connection, msg):
     if not permitted:
         connection.send_result(msg["id"], {"series": [], "coverage": 0, "source": "unavailable"})
         return
+    # Bounded before the query runs, not after the response returns. A bound
+    # checked afterwards has already paid for what it was meant to prevent.
+    bounds = _history_bounds_for(hass, project_id)
+    decision_on_bounds = history_bounds.decide_query({
+        "contract": "raw",
+        "entities": len(list(msg["entity_ids"] or [])),
+        "window_hours": _history_window_hours(msg),
+    }, bounds)
+    if decision_on_bounds["outcome"] == "refuse":
+        connection.send_error(
+            msg["id"],
+            decision_on_bounds["reason"],
+            f"{decision_on_bounds['reason']}: {decision_on_bounds['detail']}",
+        )
+        return
+
     # Filtered first, limited second. Slicing first would let another project's
     # rows consume the caller's page, turning the limit into a count oracle.
     series = []
+    capped = history_bounds.cap_rows(series, bounds)
     await _audit_history(
         hass, connection, "glt_flow_card/history/series",
-        contract="raw", msg=msg, project_id=project_id, rows=len(series),
+        contract=decision_on_bounds["source"] or "raw", msg=msg,
+        project_id=project_id, rows=len(capped["rows"]),
     )
     connection.send_result(msg["id"], {
+        "capped": capped["capped"],
         "coverage": 0,
-        "series": series[: msg["limit"]],
-        "source": "unavailable",
+        "series": capped["rows"][: msg["limit"]],
+        # A downgraded query says so. The reader is entitled to know which
+        # contract produced the number they are looking at.
+        "source": decision_on_bounds["source"] if decision_on_bounds["outcome"] == "downgrade" else "unavailable",
     })
 
 
@@ -2301,14 +2341,30 @@ async def ws_history_statistics(hass, connection, msg):
     if not permitted:
         connection.send_result(msg["id"], {"series": [], "coverage": 0, "source": "unavailable"})
         return
+    bounds = _history_bounds_for(hass, project_id)
+    decision_on_bounds = history_bounds.decide_query({
+        "contract": "statistics",
+        "entities": len(list(msg["entity_ids"] or [])),
+        "window_hours": _history_window_hours(msg),
+    }, bounds)
+    if decision_on_bounds["outcome"] == "refuse":
+        connection.send_error(
+            msg["id"],
+            decision_on_bounds["reason"],
+            f"{decision_on_bounds['reason']}: {decision_on_bounds['detail']}",
+        )
+        return
+
     series = []
+    capped = history_bounds.cap_rows(series, bounds)
     await _audit_history(
         hass, connection, "glt_flow_card/history/statistics",
-        contract="statistics", msg=msg, project_id=project_id, rows=len(series),
+        contract="statistics", msg=msg, project_id=project_id, rows=len(capped["rows"]),
     )
     connection.send_result(msg["id"], {
+        "capped": capped["capped"],
         "coverage": 0,
-        "series": series[: msg["limit"]],
+        "series": capped["rows"][: msg["limit"]],
         "source": "unavailable",
     })
 

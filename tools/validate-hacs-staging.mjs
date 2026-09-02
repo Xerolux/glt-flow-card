@@ -50,6 +50,7 @@ const COMPONENT_FILES = [
   "measured_value.py",
   "notifications.py",
   "period_vocabulary.py",
+  "history_bounds.py",
   "history_routes.py",
   "period_resolution.py",
   "schedule_time.py",
