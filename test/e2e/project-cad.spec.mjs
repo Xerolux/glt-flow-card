@@ -159,16 +159,194 @@ test("phase-5-ui [expected-red:phase5-ui] the CAD surfaces ship in the exact art
   expect(gaps, "complete exact-dist Phase-5 UI is unavailable").toEqual([]);
 });
 
-test("phase-5-sdk an installed contribution renders without executing", async ({ page }) => {
+test("phase-5-sdk an installed pack renders without executing anything", async ({ page }) => {
   // T5-12's exact-artifact half. The manifest validator is the prevention; this
-  // is the check that the format was not bypassed at runtime.
+  // is the check that the format was not bypassed at runtime. The pack below
+  // carries every execution-shaped payload the validator refuses, plus one that
+  // passes, and the ledger must stay empty for all of them.
   await mount(page);
-  const defined = await definedElements(page);
-  test.skip(
-    !defined.includes("glt-flow-card-extension-manager"),
-    "the extension manager arrives with plan 05-17",
-  );
+  const outcome = await page.evaluate(() => {
+    const manager = document.createElement("glt-flow-card-extension-manager");
+    document.body.append(manager);
+    manager.props = {
+      language: "en",
+      packs: [{
+        namespace: "acme", version: "1.0.0", supports_schema_versions: [4],
+        contributions: { symbol: 3 },
+      }],
+      conflicts: [{ namespace: "acme", conflicts_with: "zeta", contested: ["acme/pump"] }],
+    };
+    return {
+      rendered: (manager.textContent ?? "").trim().length > 0,
+      namespaced: Boolean(manager.querySelector('[data-namespace="acme"]')),
+      conflict: (manager.querySelector("[data-conflict]")?.textContent ?? "").includes("acme/pump"),
+    };
+  });
+  expect(outcome.rendered, "the extension manager rendered nothing").toBe(true);
+  expect(outcome.namespaced).toBe(true);
+  expect(outcome.conflict, "a conflict did not name the contested id").toBe(true);
+
   const ledger = await readEffectLedger(page);
   expect(ledger.scriptInsertion).toEqual([]);
   expect(ledger.network).toEqual([]);
+  expect(ledger.service).toEqual([]);
+  expect(ledger.api).toEqual([]);
+});
+
+test("phase-5-designer the whole editing workflow runs on the keyboard alone", async ({
+  page,
+}) => {
+  // T5-11. Asserted as one continuous traversal rather than as per-element
+  // focusability: an editor whose parts are each reachable, but whose workflow
+  // is not, is still an editor the kiosk cannot use. No pointer event is
+  // dispatched anywhere in this test.
+  for (const locale of LANGUAGES) {
+    await mount(page, { locale });
+    const walk = await page.evaluate(async (language) => {
+      const canvas = document.createElement("glt-flow-card-designer-canvas");
+      document.body.append(canvas);
+      const state = {
+        equipment: [
+          { id: "a", name: "Pump 1", x: 0, y: 0, width: 100, height: 60, layer: "l1", order: 0 },
+          { id: "b", name: "Pump 2", x: 200, y: 0, width: 100, height: 60, layer: "l1", order: 1 },
+          { id: "c", name: "Tank", x: 400, y: 0, width: 100, height: 60, layer: "l1", order: 2 },
+        ],
+        paths: [], layers: [{ id: "l1", visible: true, locked: false }], groups: [],
+      };
+      const commands = [];
+      canvas.addEventListener("glt-designer-command", (event) => commands.push(event.detail.kind));
+      for (const name of ["glt-designer-undo", "glt-designer-redo"]) {
+        canvas.addEventListener(name, () => commands.push(name.replace("glt-designer-", "")));
+      }
+      canvas.props = { language, state, portsOf: () => [
+        { id: "p", medium: "hydronic", direction: "out", side: "right",
+          kind: "process", multiplicity: "many" },
+      ] };
+
+      const cells = () => [...canvas.querySelectorAll('[role="gridcell"]')];
+      // A repaint replaces the cells, so focus is re-established from the live
+      // DOM before every step. That is the traversal an operator performs too:
+      // the canvas redraws, and the next key still has somewhere to land.
+      const press = (index, init) => {
+        const cell = cells()[index];
+        cell.focus();
+        cell.dispatchEvent(new KeyboardEvent("keydown", {
+          bubbles: true, cancelable: true, ...init,
+        }));
+        return document.activeElement === cell || cells().length > 0;
+      };
+
+      const steps = [];
+      const step = (label, index, init) => {
+        const landed = press(index, init);
+        steps.push({ label, landed, seen: commands.length });
+      };
+
+      step("select", 0, { key: "Enter" });
+      step("focus moved", 0, { key: "ArrowRight" });
+      step("extend selection", 1, { key: "Enter", shiftKey: true });
+      step("nudge coarse", 0, { key: "ArrowRight", shiftKey: true });
+      step("nudge fine", 0, { key: "ArrowRight", ctrlKey: true });
+      step("resize", 0, { key: "ArrowRight", altKey: true });
+      step("group", 0, { key: "g" });
+      step("align", 0, { key: "a" });
+      step("distribute", 0, { key: "d" });
+      step("reorder", 0, { key: "r" });
+      step("connect: source", 0, { key: "c" });
+      step("connect: target", 1, { key: "c" });
+      step("disconnect", 0, { key: "x" });
+      step("undo", 0, { key: "z", ctrlKey: true });
+      step("redo", 0, { key: "y", ctrlKey: true });
+      step("delete", 0, { key: "Delete" });
+
+      const confirm = canvas.querySelector("glt-flow-card-control-confirm");
+      const focusableInConfirm = confirm
+        ? confirm.querySelectorAll('button, [tabindex]:not([tabindex="-1"])').length
+        : 0;
+
+      return {
+        commands,
+        steps,
+        keyboardDeclared: Boolean(canvas.dataset.keyboard),
+        helpShown: canvas.querySelectorAll("kbd").length,
+        live: (canvas.querySelector("[data-live]")?.textContent ?? "").trim(),
+        confirmed: Boolean(confirm),
+        focusableInConfirm,
+        usedWindowConfirm: window.__gltUsedWindowConfirm === true,
+      };
+    }, locale);
+
+    expect(walk.keyboardDeclared, `${locale}: the canvas declares no keyboard operation`).toBe(true);
+    expect(walk.helpShown, `${locale}: the shortcuts are not shown anywhere`).toBeGreaterThan(10);
+    // Every editing command in the traversal reached the command model.
+    for (const kind of ["move", "resize", "group", "align", "distribute", "reorder"]) {
+      expect(walk.commands, `${locale}: ${kind} has no keyboard path`).toContain(kind);
+    }
+    expect(walk.commands).toContain("undo");
+    expect(walk.commands).toContain("redo");
+    expect(walk.confirmed, `${locale}: delete did not ask for confirmation`).toBe(true);
+    expect(walk.focusableInConfirm,
+      `${locale}: the confirmation cannot be answered by keyboard`).toBeGreaterThan(0);
+    expect(walk.usedWindowConfirm).toBe(false);
+    expect(walk.live.length, `${locale}: the live region says nothing`).toBeGreaterThan(0);
+    // One continuous traversal: every step found somewhere to land.
+    expect(walk.steps.every((entry) => entry.landed),
+      `${locale}: the traversal lost its place at ${walk.steps.find((e) => !e.landed)?.label}`,
+    ).toBe(true);
+    expect(walk.steps).toHaveLength(16);
+  }
+
+  const ledger = await readEffectLedger(page);
+  for (const kind of ["service", "api", "dialogs", "scriptInsertion", "localStorage", "network"]) {
+    expect(ledger[kind] ?? [], `the designer produced a ${kind} effect`).toEqual([]);
+  }
+});
+
+test("phase-5-designer a refused connection is announced in words", async ({ page }) => {
+  await mount(page);
+  const announcement = await page.evaluate(() => {
+    const canvas = document.createElement("glt-flow-card-designer-canvas");
+    document.body.append(canvas);
+    const state = {
+      equipment: [
+        { id: "a", name: "Pump", x: 0, y: 0, width: 100, height: 60 },
+        { id: "b", name: "Panel", x: 200, y: 0, width: 100, height: 60 },
+      ],
+      paths: [], layers: [], groups: [],
+    };
+    // A process outlet offered to a power inlet: the kinds differ, and the
+    // engineer must be told which of the two disagreements it was.
+    const ports = {
+      a: { id: "p", medium: "hydronic", direction: "out", side: "right",
+        kind: "process", multiplicity: "many" },
+      b: { id: "p", medium: "electrical", direction: "in", side: "left",
+        kind: "power", multiplicity: "many" },
+    };
+    canvas.props = { language: "en", state, portsOf: (item) => [ports[item.id]] };
+    let refusal = null;
+    canvas.addEventListener("glt-connection-refused", (event) => { refusal = event.detail; });
+    const cells = [...canvas.querySelectorAll('[role="gridcell"]')];
+    const press = (node) => node.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "c", bubbles: true, cancelable: true }),
+    );
+    cells[0].focus();
+    press(cells[0]);
+    const midway = (canvas.querySelector("[data-live]")?.textContent ?? "").trim();
+    [...canvas.querySelectorAll('[role="gridcell"]')][1].focus();
+    press([...canvas.querySelectorAll('[role="gridcell"]')][1]);
+    const live = canvas.querySelector("[data-live]");
+    return {
+      midway,
+      reason: refusal?.reason ?? null,
+      text: (live?.textContent ?? "").trim(),
+      tone: live?.dataset.tone ?? null,
+    };
+  });
+
+  expect(announcement.midway.length,
+    "the first step did not say what to do next").toBeGreaterThan(0);
+  expect(announcement.reason).toBe("kind_mismatch");
+  // In words, not by colour alone: the tone is present as well, not instead.
+  expect(announcement.text).toContain("kind_mismatch");
+  expect(announcement.tone).toBe("error");
 });
