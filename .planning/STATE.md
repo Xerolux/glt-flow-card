@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 2 execution in progress; plans 02-01 through 02-06 complete
+stopped_at: Phase 2 execution in progress; plans 02-01 through 02-06 and 02-08 complete
 last_updated: "2026-09-02T00:00:00.000Z"
 last_activity: 2026-09-02 -- bounded plan check passed; plans 02-01..02-06 executed; 12 Phase-2 RED sentinels registered, policy matrix GREEN
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 30
-  completed_plans: 19
-  percent: 17
+  completed_plans: 20
+  percent: 18
 ---
 
 # Project State
@@ -26,22 +26,22 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 02 (authoritative-policy-controls-collaboration) — EXECUTING
-Plan: 6 of 17 implemented (61 tasks planned)
-Status: Wave 0 and Wave 1 complete; the deny-default policy boundary and server-owned ACL are GREEN
-Last activity: 2026-09-02 -- plans 02-01 through 02-06 committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+Plan: 7 of 17 implemented (61 tasks planned)
+Status: the deny-default policy boundary, the server-owned ACL and exclusive leases are GREEN
+Last activity: 2026-09-02 -- plans 02-01 through 02-06 and 02-08 committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
 
-Progress: [██░░░░░░░░] 17%
+Progress: [██░░░░░░░░] 18%
 
 ### Phase 2 sentinel state
 
-`npm run test:phase2` reports 1 implemented, 11 controlled RED, 0 broken.
+`npm run test:phase2` reports 2 implemented, 10 controlled RED, 0 broken.
 
 | Sentinel | Owner plan | State |
 |---|---|---|
 | phase2-policy-matrix | 02-06 | implemented |
 | phase2-access-revocation | 02-07 | controlled RED |
 | phase2-evidence-pagination | 02-10 | controlled RED |
-| phase2-leases | 02-08 | controlled RED |
+| phase2-leases | 02-08 | implemented |
 | phase2-collaboration-guard | 02-09 | controlled RED |
 | phase2-merge | 02-09 | controlled RED |
 | phase2-configured-controls | 02-11 | controlled RED |
@@ -151,7 +151,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 ### Blockers/Concerns
 
 - [Phase 2]: No known technical blocker. The bounded plan check passed on 2026-09-02 (see `02-PLAN-CHECK.md`); execution is under way.
-- [Phase 2]: Shared mutation routes return `lease_required` until plan 02-08 implements leases. This is deliberate — unreachable rather than unguarded — and `test_websocket.py` asserts it.
+- [Phase 2]: Shared mutation routes now require a valid bearer at the policy boundary. Plan 02-09 must still add the decisive in-lock recheck; the boundary check alone cannot see authority that changes mid-request.
 - [Phase 1]: Resolved in planning — lanes are discovered and digest-pinned at execution, and Companion packaging is validated as a local integration-category artifact without unauthorized publication.
 - [Phase 5]: SDK trust, distribution, and compatibility policy must forbid project-bundled privileged execution.
 - [Phase 6]: Deployment alarm philosophy and supported schedule/calendar authoring APIs require decisions.
@@ -166,5 +166,5 @@ No numbered v1.1 requirement is deferred.
 ## Session Continuity
 
 Last session: 2026-09-02T00:00:00.000Z
-Stopped at: Phase 2 execution; plans 02-01 through 02-06 complete and pushed
+Stopped at: Phase 2 execution; plans 02-01 through 02-06 and 02-08 complete and pushed
 Resume file: .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md
