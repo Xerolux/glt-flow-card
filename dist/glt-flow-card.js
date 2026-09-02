@@ -4622,26 +4622,110 @@
       const p = item.positions?.[viewId] || item;
       return { x: +p.x || 0, y: +p.y || 0, width: +(p.width || item.width || 220), height: +(p.height || item.height || 130) };
     }
+    /**
+     * Route one connection with the Phase-5 router.
+     *
+     * What this replaces was the elbow through the midpoint: out to half the
+     * horizontal distance, across, and in. It ignored every obstacle in the
+     * room, which is why the Phase-5 corpus was built to defeat it.
+     *
+     * When the router is not published, this refuses and leaves the existing
+     * points alone. Falling back to the old shape would put a pipe through a
+     * chiller in exactly the situation nobody is watching.
+     */
     function autoRoute(config, path, viewId) {
       if (!path?.from_equipment || !path?.to_equipment || path.auto_route === false) return path?.points;
+      const routing = globalThis.GLT_FLOW_CARD_ROUTING;
+      if (!routing) return path.points;
       const a = equipmentPos(config, path.from_equipment, viewId);
       const b = equipmentPos(config, path.to_equipment, viewId);
       if (!a || !b) return path.points;
-      const leftToRight = a.x + a.width / 2 <= b.x + b.width / 2;
-      const sx = leftToRight ? a.x + a.width : a.x;
-      const ex = leftToRight ? b.x : b.x + b.width;
-      const sy = a.y + a.height / 2;
-      const ey = b.y + b.height / 2;
-      const mx = Math.round((sx + ex) / 2);
-      return [[Math.round(sx), Math.round(sy)], [mx, Math.round(sy)], [mx, Math.round(ey)], [Math.round(ex), Math.round(ey)]];
+      const clearance = Number(config.routing?.clearance) || routing.DEFAULT_CLEARANCE;
+      const obstacles = [];
+      for (const item of config.equipment || []) {
+        if (item.id === path.from_equipment || item.id === path.to_equipment) continue;
+        const box = equipmentPos(config, item.id, viewId);
+        if (box) obstacles.push({ id: item.id, x: box.x, y: box.y, width: box.width, height: box.height });
+      }
+      const facing = (from, to) => (from.x + from.width / 2 <= to.x + to.width / 2 ? "right" : "left");
+      const routed = routing.routePath({
+        source: { x: a.x, y: a.y, width: a.width, height: a.height, side: facing(a, b) },
+        target: { x: b.x, y: b.y, width: b.width, height: b.height, side: facing(b, a) },
+        obstacles,
+        options: { clearance },
+      });
+      // An explicit refusal keeps the drawing as it was and records why, rather
+      // than drawing a route the router just said does not exist.
+      if (!routed.routable) {
+        path.route_refused = routed.reason;
+        return path.points;
+      }
+      delete path.route_refused;
+      return routed.points.map(([x, y]) => [Math.round(x), Math.round(y)]);
     }
+
+    /** Per-config geometry from the last sweep, so the next one can be local. */
+    const ROUTE_GEOMETRY = new WeakMap();
+
+    /**
+     * Recompute the routes a change reached, and no others.
+     *
+     * This walked every path in the view on every emit. On a diagram of any
+     * size that is the freeze the roadmap names, and it ran on every keystroke
+     * that touched the config.
+     *
+     * A route is recomputed when one of its own endpoints moved, or when a
+     * piece of equipment that moved lies inside its corridor -- the same
+     * relevance the Phase-5 router uses, so the cheap answer is the answer a
+     * full sweep would have given.
+     */
     function reroute(config, viewId) {
-      if (config.routing?.automatic === false) return;
+      if (config.routing?.automatic === false) return [];
+      const routing = globalThis.GLT_FLOW_CARD_ROUTING;
+      const clearance = Number(config.routing?.clearance) || (routing?.DEFAULT_CLEARANCE ?? 20);
+      const key = String(viewId ?? "");
+      const held = ROUTE_GEOMETRY.get(config) || {};
+      const previous = held[key];
+      const current = {};
+      for (const item of config.equipment || []) {
+        const box = equipmentPos(config, item.id, viewId);
+        if (box) current[item.id] = box;
+      }
+      const moved = [];
+      for (const [id, box] of Object.entries(current)) {
+        const before = previous?.[id];
+        if (!before || before.x !== box.x || before.y !== box.y
+          || before.width !== box.width || before.height !== box.height) moved.push(box);
+      }
+      const recomputed = [];
       for (const path of config.paths || []) {
         if (!path.from_equipment || !path.to_equipment || path.auto_route === false) continue;
+        const drawn = Array.isArray(path.points) && path.points.length > 0;
+        if (previous && drawn && !reaches(path, moved, clearance)) continue;
         const points = autoRoute(config, path, viewId);
-        if (points) path.points = points;
+        if (points) {
+          path.points = points;
+          recomputed.push(path.id);
+        }
       }
+      held[key] = current;
+      ROUTE_GEOMETRY.set(config, held);
+      return recomputed;
+    }
+
+    /** Whether any moved box lies in this route's corridor. */
+    function reaches(path, moved, clearance) {
+      if (moved.length === 0) return false;
+      const xs = path.points.map((point) => point[0]);
+      const ys = path.points.map((point) => point[1]);
+      const corridor = {
+        left: Math.min(...xs) - clearance, right: Math.max(...xs) + clearance,
+        top: Math.min(...ys) - clearance, bottom: Math.max(...ys) + clearance,
+      };
+      return moved.some((box) => (
+        corridor.left < box.x + box.width + clearance && box.x - clearance < corridor.right
+        && corridor.top < box.y + box.height + clearance && box.y - clearance < corridor.bottom
+      ));
     }
     function editorStore(editor) {
       editor._glt4Store = editor._glt4Store || new ProjectStore(editor._hass || editor._glt4Hass);
@@ -33475,8 +33559,8 @@
       candidates.push([s, [s[0], s[1] + off], [t[0], s[1] + off], t]);
       candidates.push([s, [s[0], s[1] - off], [t[0], s[1] - off], t]);
     }
-    const clean = (pts) => pts.filter((p, i) => i === 0 || p[0] !== pts[i - 1][0] || p[1] !== pts[i - 1][1]).map(([x2, y]) => [Math.round(x2), Math.round(y)]);
-    return clean(candidates.find((pts) => !pathHits(pts, obstacles)) || candidates[0]);
+    const clean2 = (pts) => pts.filter((p, i) => i === 0 || p[0] !== pts[i - 1][0] || p[1] !== pts[i - 1][1]).map(([x2, y]) => [Math.round(x2), Math.round(y)]);
+    return clean2(candidates.find((pts) => !pathHits(pts, obstacles)) || candidates[0]);
   }
   function alignObjects(config2, refs, mode2) {
     const items = refs.map((r) => arr(config2[r.kind === "equipment" ? "equipment" : r.kind === "datapoint" ? "datapoints" : "paths"]).find((x2) => x2.id === r.id)).filter(Boolean).filter((x2) => Number.isFinite(Number(x2.x)) && Number.isFinite(Number(x2.y)));
@@ -34189,11 +34273,11 @@
   }
   function toCapabilities(value) {
     if (!Array.isArray(value)) return [];
-    const unique = /* @__PURE__ */ new Set();
+    const unique2 = /* @__PURE__ */ new Set();
     for (const entry of value) {
-      if (typeof entry === "string" && entry.length > 0 && entry.length <= 64) unique.add(entry);
+      if (typeof entry === "string" && entry.length > 0 && entry.length <= 64) unique2.add(entry);
     }
-    return [...unique].sort();
+    return [...unique2].sort();
   }
   function toRevision(value) {
     return Number.isInteger(value) && value >= 0 ? value : null;
@@ -36238,10 +36322,10 @@
         const select = element("select", "glt-safe-select");
         select.setAttribute("aria-label", `${copyFor(editor, "roleColumn")} — ${name}`);
         for (const role of ROLES) {
-          const option = element("option", "", copyFor(editor, "roleNames")[role]);
-          option.value = role;
-          option.selected = role === entry.role;
-          select.append(option);
+          const option2 = element("option", "", copyFor(editor, "roleNames")[role]);
+          option2.value = role;
+          option2.selected = role === entry.role;
+          select.append(option2);
         }
         select.disabled = Boolean(state.access.busy);
         select.addEventListener("change", () => {
@@ -36281,16 +36365,16 @@
       placeholder.value = "";
       picker.append(placeholder);
       for (const entry of candidates) {
-        const option = element("option", "", entry.name || entry.user_id);
-        option.value = entry.user_id;
-        picker.append(option);
+        const option2 = element("option", "", entry.name || entry.user_id);
+        option2.value = entry.user_id;
+        picker.append(option2);
       }
       const role = element("select", "glt-safe-select");
       role.setAttribute("aria-label", copyFor(editor, "roleColumn"));
       for (const name of ROLES) {
-        const option = element("option", "", copyFor(editor, "roleNames")[name]);
-        option.value = name;
-        role.append(option);
+        const option2 = element("option", "", copyFor(editor, "roleNames")[name]);
+        option2.value = name;
+        role.append(option2);
       }
       const confirm = button(copyFor(editor, "addMember"), "glt-safe-btn primary");
       confirm.addEventListener("click", () => {
@@ -38030,24 +38114,24 @@
         all.value = "";
         select.append(all);
         for (const [value, text] of options) {
-          const option = element4("option", null, text);
-          option.value = value;
-          if (active[name] === value) option.selected = true;
-          select.append(option);
+          const option2 = element4("option", null, text);
+          option2.value = value;
+          if (active[name] === value) option2.selected = true;
+          select.append(option2);
         }
         select.addEventListener("change", () => this._filterChanged(name, select.value));
         label.append(select);
         wrap.append(label);
       }
-      const search = element4("label");
-      search.append(element4("span", null, textFor2(language, "filter_text")));
+      const search2 = element4("label");
+      search2.append(element4("span", null, textFor2(language, "filter_text")));
       const input = element4("input");
       input.type = "search";
       input.dataset.filter = "text";
       input.value = active.text ?? "";
       input.addEventListener("input", () => this._filterChanged("text", input.value));
-      search.append(input);
-      wrap.append(search);
+      search2.append(input);
+      wrap.append(search2);
       return wrap;
     }
     _filterChanged(name, value) {
@@ -38063,7 +38147,7 @@
     render() {
       this.textContent = "";
       const language = this.language;
-      const { port: port2, refusal } = this._props;
+      const { port: port2, refusal: refusal2 } = this._props;
       if (port2) {
         const block = element4("div", "glt-cat-port");
         block.dataset.portId = port2.id ?? "";
@@ -38089,18 +38173,18 @@
         }
         this.append(block);
       }
-      if (refusal && refusal.compatible === false) {
+      if (refusal2 && refusal2.compatible === false) {
         const strip = element4("div", "glt-cat-refusal");
         strip.setAttribute("role", "status");
-        strip.dataset.refusalReason = refusal.reason ?? "unknown";
+        strip.dataset.refusalReason = refusal2.reason ?? "unknown";
         const mark = element4("span", "glt-cat-glyph", "✕");
         mark.setAttribute("aria-hidden", "true");
         strip.append(mark);
         strip.append(element4("strong", null, textFor2(language, "refusal_title")));
-        const key = REFUSAL_REASONS.includes(refusal.reason) ? `refusal_${refusal.reason}` : "refusal_unknown";
+        const key = REFUSAL_REASONS.includes(refusal2.reason) ? `refusal_${refusal2.reason}` : "refusal_unknown";
         strip.append(element4("span", null, textFor2(language, key)));
-        if (refusal.detail) {
-          const detail = Object.entries(refusal.detail).map(([name, value]) => `${name}: ${value}`).join(" · ");
+        if (refusal2.detail) {
+          const detail = Object.entries(refusal2.detail).map(([name, value]) => `${name}: ${value}`).join(" · ");
           if (detail) strip.append(element4("span", "glt-cat-meta", detail));
         }
         this.append(strip);
@@ -38273,6 +38357,604 @@
       default:
         return null;
     }
+  }
+
+  // src/v100/routing.mjs
+  var DEFAULT_CLEARANCE = 20;
+  var DEFAULT_SPACING = 12;
+  var DEFAULT_MAX_DETOUR = 4;
+  var TURN_PENALTY = 10;
+  var MAX_GRID_NODES = 4096;
+  var MAX_RELEVANCE_ROUNDS = 8;
+  var ROUTING_FAILURES = Object.freeze([
+    "obstructed",
+    "detour_exceeded",
+    "scene_too_complex",
+    "degenerate_endpoints"
+  ]);
+  function option(options, name, fallback) {
+    const value = options?.[name];
+    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  }
+  function anchorOf(box) {
+    const x2 = Number(box?.x ?? 0);
+    const y = Number(box?.y ?? 0);
+    const width = Number(box?.width ?? 0);
+    const height = Number(box?.height ?? 0);
+    switch (box?.side) {
+      case "left":
+        return [x2, y + height / 2];
+      case "right":
+        return [x2 + width, y + height / 2];
+      case "top":
+        return [x2 + width / 2, y];
+      case "bottom":
+        return [x2 + width / 2, y + height];
+      default:
+        return [x2 + width / 2, y + height / 2];
+    }
+  }
+  function stubOf(box, clearance) {
+    const [x2, y] = anchorOf(box);
+    switch (box?.side) {
+      case "left":
+        return [x2 - clearance, y];
+      case "right":
+        return [x2 + clearance, y];
+      case "top":
+        return [x2, y - clearance];
+      case "bottom":
+        return [x2, y + clearance];
+      default:
+        return [x2, y];
+    }
+  }
+  function inflate(obstacle, clearance) {
+    return {
+      id: obstacle?.id ?? null,
+      left: Number(obstacle?.x ?? 0) - clearance,
+      top: Number(obstacle?.y ?? 0) - clearance,
+      right: Number(obstacle?.x ?? 0) + Number(obstacle?.width ?? 0) + clearance,
+      bottom: Number(obstacle?.y ?? 0) + Number(obstacle?.height ?? 0) + clearance
+    };
+  }
+  function boxesOverlap(a, b) {
+    return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  }
+  function relevantObstacles(region, obstacles, clearance) {
+    const inflated = obstacles.map((obstacle) => inflate(obstacle, clearance));
+    let box = { ...region };
+    const chosen = /* @__PURE__ */ new Set();
+    for (let round = 0; round < MAX_RELEVANCE_ROUNDS; round += 1) {
+      let grew = false;
+      for (let index = 0; index < inflated.length; index += 1) {
+        if (chosen.has(index)) continue;
+        if (!boxesOverlap(box, inflated[index])) continue;
+        chosen.add(index);
+        grew = true;
+        box = {
+          left: Math.min(box.left, inflated[index].left),
+          top: Math.min(box.top, inflated[index].top),
+          right: Math.max(box.right, inflated[index].right),
+          bottom: Math.max(box.bottom, inflated[index].bottom)
+        };
+      }
+      if (!grew) break;
+    }
+    return [...chosen].sort((a, b) => a - b).map((index) => inflated[index]);
+  }
+  function enters(ax, ay, bx, by, box) {
+    const minX = Math.min(ax, bx);
+    const maxX = Math.max(ax, bx);
+    const minY = Math.min(ay, by);
+    const maxY = Math.max(ay, by);
+    return maxX > box.left && minX < box.right && maxY > box.top && minY < box.bottom;
+  }
+  function blocked(ax, ay, bx, by, boxes) {
+    for (const box of boxes) if (enters(ax, ay, bx, by, box)) return true;
+    return false;
+  }
+  function unique(values) {
+    return [...new Set(values)].sort((a, b) => a - b);
+  }
+  function refusal(reason, detail = null) {
+    return Object.freeze({ routable: false, reason, detail, points: [], length: 0, turns: 0 });
+  }
+  function manhattan([ax, ay], [bx, by]) {
+    return Math.abs(bx - ax) + Math.abs(by - ay);
+  }
+  function pathLength(points) {
+    let total = 0;
+    for (let index = 1; index < points.length; index += 1) total += manhattan(points[index - 1], points[index]);
+    return total;
+  }
+  function turnsIn(points) {
+    let turns = 0;
+    for (let index = 2; index < points.length; index += 1) {
+      const horizontalBefore = points[index - 1][1] === points[index - 2][1];
+      const horizontalAfter = points[index][1] === points[index - 1][1];
+      if (horizontalBefore !== horizontalAfter) turns += 1;
+    }
+    return turns;
+  }
+  function dedupe(points) {
+    const out = [];
+    for (const point of points) {
+      const last = out[out.length - 1];
+      if (!last || last[0] !== point[0] || last[1] !== point[1]) out.push(point);
+    }
+    const straightened = [];
+    for (const point of out) {
+      const count = straightened.length;
+      if (count >= 2) {
+        const [ax, ay] = straightened[count - 2];
+        const [bx, by] = straightened[count - 1];
+        const between = (a, b, c) => b >= Math.min(a, c) && b <= Math.max(a, c);
+        const sameRow = ay === by && by === point[1] && between(ax, bx, point[0]);
+        const sameColumn = ax === bx && bx === point[0] && between(ay, by, point[1]);
+        if (sameRow || sameColumn) {
+          straightened[count - 1] = point;
+          continue;
+        }
+      }
+      straightened.push(point);
+    }
+    return straightened;
+  }
+  function pathKey(points) {
+    return points.map(([x2, y]) => `${x2},${y}`).join("|");
+  }
+  function better(candidate, incumbent) {
+    if (!incumbent) return true;
+    if (candidate.cost !== incumbent.cost) return candidate.cost < incumbent.cost;
+    if (candidate.turns !== incumbent.turns) return candidate.turns < incumbent.turns;
+    return pathKey(candidate.points) < pathKey(incumbent.points);
+  }
+  function search(start, goal, boxes, limits) {
+    const forbiddenFirst = limits.leaving ? [-limits.leaving[0], -limits.leaving[1]] : null;
+    const forbiddenLast = limits.entering ?? null;
+    const xs = unique([start[0], goal[0], ...boxes.flatMap((box) => [box.left, box.right])]);
+    const ys = unique([start[1], goal[1], ...boxes.flatMap((box) => [box.top, box.bottom])]);
+    if (xs.length * ys.length > MAX_GRID_NODES) return { failure: "scene_too_complex" };
+    const xIndex = new Map(xs.map((value, index) => [value, index]));
+    const yIndex = new Map(ys.map((value, index) => [value, index]));
+    const startNode = [xIndex.get(start[0]), yIndex.get(start[1])];
+    const goalNode = [xIndex.get(goal[0]), yIndex.get(goal[1])];
+    const key = (cx, cy) => `${cx}:${cy}`;
+    const best = /* @__PURE__ */ new Map();
+    let frontier = [{
+      x: startNode[0],
+      y: startNode[1],
+      cost: 0,
+      turns: 0,
+      points: [[start[0], start[1]]]
+    }];
+    best.set(key(startNode[0], startNode[1]), frontier[0]);
+    let goalState = null;
+    for (let round = 0; round < xs.length * ys.length + 2 && frontier.length > 0; round += 1) {
+      const next = [];
+      for (const state of frontier) {
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = state.x + dx;
+          const ny = state.y + dy;
+          if (nx < 0 || ny < 0 || nx >= xs.length || ny >= ys.length) continue;
+          const from = [xs[state.x], ys[state.y]];
+          const to = [xs[nx], ys[ny]];
+          if (blocked(from[0], from[1], to[0], to[1], boxes)) continue;
+          const heading = [Math.sign(to[0] - from[0]), Math.sign(to[1] - from[1])];
+          if (state.points.length === 1 && forbiddenFirst && heading[0] === forbiddenFirst[0] && heading[1] === forbiddenFirst[1]) continue;
+          if (nx === goalNode[0] && ny === goalNode[1] && forbiddenLast && heading[0] === forbiddenLast[0] && heading[1] === forbiddenLast[1]) continue;
+          const points = [...state.points, to];
+          const turns = turnsIn(points);
+          const candidate = {
+            x: nx,
+            y: ny,
+            cost: state.cost + manhattan(from, to) + (turns - state.turns) * TURN_PENALTY,
+            turns,
+            points
+          };
+          if (candidate.cost > limits.maxCost) continue;
+          const at3 = key(nx, ny);
+          if (!better(candidate, best.get(at3))) continue;
+          best.set(at3, candidate);
+          next.push(candidate);
+        }
+      }
+      frontier = next;
+      const arrived = best.get(key(goalNode[0], goalNode[1]));
+      if (arrived && better(arrived, goalState)) goalState = arrived;
+    }
+    if (!goalState) return { failure: "obstructed" };
+    return { points: goalState.points };
+  }
+  function clean(points, boxes) {
+    for (let index = 1; index < points.length; index += 1) {
+      const [ax, ay] = points[index - 1];
+      const [bx, by] = points[index];
+      if (ax !== bx && ay !== by) return false;
+      if (blocked(ax, ay, bx, by, boxes)) return false;
+    }
+    return true;
+  }
+  function snapInterior(points, boxes, grid) {
+    if (points.length < 3 || !(grid > 0)) return points;
+    const originals = points.map((point) => [...point]);
+    let current = points.map((point) => [...point]);
+    for (const axis of [0, 1]) {
+      const values = unique(originals.slice(1, -1).map((point) => point[axis]));
+      for (const value of values) {
+        const snapped = Math.round(value / grid) * grid;
+        if (snapped === value) continue;
+        const candidate = current.map((point, index) => {
+          if (index === 0 || index === current.length - 1) return point;
+          if (originals[index][axis] !== value) return point;
+          return axis === 0 ? [snapped, point[1]] : [point[0], snapped];
+        });
+        if (clean(candidate, boxes)) current = candidate;
+      }
+    }
+    return current;
+  }
+  function routePath({ source, target, obstacles = [], options = {} } = {}) {
+    const clearance = option(options, "clearance", DEFAULT_CLEARANCE);
+    const maxDetour = option(options, "maxDetour", DEFAULT_MAX_DETOUR);
+    const startAnchor = anchorOf(source);
+    const goalAnchor = anchorOf(target);
+    const startStub = stubOf(source, clearance);
+    const goalStub = stubOf(target, clearance);
+    if (!Number.isFinite(startAnchor[0]) || !Number.isFinite(goalAnchor[0])) {
+      return refusal("degenerate_endpoints");
+    }
+    const region = {
+      left: Math.min(startStub[0], goalStub[0]),
+      right: Math.max(startStub[0], goalStub[0]),
+      top: Math.min(startStub[1], goalStub[1]),
+      bottom: Math.max(startStub[1], goalStub[1])
+    };
+    const boxes = relevantObstacles(region, obstacles, clearance);
+    const direct = manhattan(startAnchor, goalAnchor);
+    const grid = option(options, "grid", clearance);
+    const outward = {
+      left: [-1, 0],
+      right: [1, 0],
+      top: [0, -1],
+      bottom: [0, 1]
+    };
+    const limits = {
+      grid: grid > 0 ? grid : 1,
+      leaving: outward[source?.side] ?? null,
+      entering: outward[target?.side] ?? null,
+      maxCost: (direct + clearance * 4) * (1 + maxDetour) + TURN_PENALTY * 64
+    };
+    const found = search(startStub, goalStub, boxes, limits);
+    if (found.failure) return refusal(found.failure);
+    const points = dedupe(
+      snapInterior(dedupe([startAnchor, ...found.points, goalAnchor]), boxes, grid)
+    );
+    const length = pathLength(points);
+    if (length > direct * (1 + maxDetour) + clearance * 4) {
+      return refusal("detour_exceeded", { length, direct, limit: direct * (1 + maxDetour) });
+    }
+    return Object.freeze({
+      routable: true,
+      reason: null,
+      detail: null,
+      points,
+      length,
+      turns: turnsIn(points)
+    });
+  }
+  function samePoint(a, b) {
+    return a[0] === b[0] && a[1] === b[1];
+  }
+  function sharedTrunk(first, second) {
+    const a = [...first].reverse();
+    const b = [...second].reverse();
+    if (a.length === 0 || b.length === 0 || !samePoint(a[0], b[0])) return [];
+    const trunk = [a[0]];
+    let ai = 0;
+    let bi = 0;
+    let cursorA = a[0];
+    let cursorB = b[0];
+    while (ai + 1 < a.length && bi + 1 < b.length) {
+      const nextA = a[ai + 1];
+      const nextB = b[bi + 1];
+      const dirA = [Math.sign(nextA[0] - cursorA[0]), Math.sign(nextA[1] - cursorA[1])];
+      const dirB = [Math.sign(nextB[0] - cursorB[0]), Math.sign(nextB[1] - cursorB[1])];
+      if (dirA[0] !== dirB[0] || dirA[1] !== dirB[1]) break;
+      const stepA = manhattan(cursorA, nextA);
+      const stepB = manhattan(cursorB, nextB);
+      const step = Math.min(stepA, stepB);
+      const advanced = [cursorA[0] + dirA[0] * step, cursorA[1] + dirA[1] * step];
+      trunk.push(advanced);
+      cursorA = advanced;
+      cursorB = advanced;
+      if (step === stepA) ai += 1;
+      if (step === stepB) bi += 1;
+    }
+    return trunk.reverse();
+  }
+  function segmentsOf(points) {
+    const out = [];
+    for (let index = 1; index < points.length; index += 1) {
+      out.push([points[index - 1], points[index]]);
+    }
+    return out;
+  }
+  function overlapSpan(first, second) {
+    const [[ax0, ay0], [ax1, ay1]] = first;
+    const [[bx0, by0], [bx1, by1]] = second;
+    if (ay0 === ay1 && by0 === by1 && ay0 === by0) {
+      const low = Math.max(Math.min(ax0, ax1), Math.min(bx0, bx1));
+      const high = Math.min(Math.max(ax0, ax1), Math.max(bx0, bx1));
+      return high > low ? { axis: "y", at: ay0, from: low, to: high } : null;
+    }
+    if (ax0 === ax1 && bx0 === bx1 && ax0 === bx0) {
+      const low = Math.max(Math.min(ay0, ay1), Math.min(by0, by1));
+      const high = Math.min(Math.max(ay0, ay1), Math.max(by0, by1));
+      return high > low ? { axis: "x", at: ax0, from: low, to: high } : null;
+    }
+    return null;
+  }
+  function withinTrunk(span, trunk) {
+    for (const [start, end] of segmentsOf(trunk)) {
+      if (span.axis === "y" && start[1] === span.at && end[1] === span.at) {
+        const low = Math.min(start[0], end[0]);
+        const high = Math.max(start[0], end[0]);
+        if (span.from >= low && span.to <= high) return true;
+      }
+      if (span.axis === "x" && start[0] === span.at && end[0] === span.at) {
+        const low = Math.min(start[1], end[1]);
+        const high = Math.max(start[1], end[1]);
+        if (span.from >= low && span.to <= high) return true;
+      }
+    }
+    return false;
+  }
+  function crossingPoint(first, second) {
+    const [[ax0, ay0], [ax1, ay1]] = first;
+    const [[bx0, by0], [bx1, by1]] = second;
+    const aHorizontal = ay0 === ay1;
+    const bHorizontal = by0 === by1;
+    if (aHorizontal === bHorizontal) return null;
+    const [h, v2] = aHorizontal ? [first, second] : [second, first];
+    const y = h[0][1];
+    const x2 = v2[0][0];
+    const withinH = x2 > Math.min(h[0][0], h[1][0]) && x2 < Math.max(h[0][0], h[1][0]);
+    const withinV = y > Math.min(v2[0][1], v2[1][1]) && y < Math.max(v2[0][1], v2[1][1]);
+    return withinH && withinV ? [x2, y] : null;
+  }
+  function firstOverlap(routed, drawn) {
+    for (let index = 1; index < drawn.length; index += 1) {
+      const mine = routed[drawn[index].id].points;
+      for (let other = 0; other < index; other += 1) {
+        const theirs = routed[drawn[other].id].points;
+        const trunk = sharedTrunk(mine, theirs);
+        for (const a of segmentsOf(mine)) {
+          for (const b of segmentsOf(theirs)) {
+            const span = overlapSpan(a, b);
+            if (span && !withinTrunk(span, trunk)) {
+              return { later: drawn[index].id, earlier: drawn[other].id, span };
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+  function laneCandidates(points, span, spacing, boxes) {
+    const axis = span.axis === "x" ? 0 : 1;
+    const candidates = [];
+    for (const direction of [1, -1]) {
+      const target = span.at + spacing * direction;
+      const candidate = points.map((point, index) => {
+        if (index === 0 || index === points.length - 1) return point;
+        if (point[axis] !== span.at) return point;
+        return axis === 0 ? [target, point[1]] : [point[0], target];
+      });
+      if (candidate.some((point, index) => point !== points[index]) && clean(candidate, boxes)) {
+        candidates.push(dedupe(candidate));
+      }
+    }
+    return candidates;
+  }
+  function countOverlaps(routed, drawn) {
+    let total = 0;
+    for (let index = 1; index < drawn.length; index += 1) {
+      const mine = routed[drawn[index].id].points;
+      for (let other = 0; other < index; other += 1) {
+        const theirs = routed[drawn[other].id].points;
+        const trunk = sharedTrunk(mine, theirs);
+        for (const a of segmentsOf(mine)) {
+          for (const b of segmentsOf(theirs)) {
+            const span = overlapSpan(a, b);
+            if (span && !withinTrunk(span, trunk)) total += 1;
+          }
+        }
+      }
+    }
+    return total;
+  }
+  function routeNetwork({ routes = [], obstacles = [], options = {} } = {}) {
+    const spacing = option(options, "spacing", DEFAULT_SPACING);
+    const ordered = [...routes].sort((a, b) => String(a.id) < String(b.id) ? -1 : 1);
+    const clearance = option(options, "clearance", DEFAULT_CLEARANCE);
+    const routed = {};
+    const failures = [];
+    for (const route of ordered) {
+      const excluded = new Set(route.exclude ?? []);
+      const result2 = routePath({
+        source: route.source,
+        target: route.target,
+        obstacles: obstacles.filter((obstacle) => !excluded.has(obstacle.id)),
+        options
+      });
+      routed[route.id] = result2;
+      if (!result2.routable) failures.push({ id: route.id, reason: result2.reason });
+    }
+    const drawn = ordered.filter((route) => routed[route.id].routable);
+    const boxesFor = new Map(drawn.map((route) => {
+      const excluded = new Set(route.exclude ?? []);
+      const points = routed[route.id].points;
+      return [route.id, relevantObstacles(
+        {
+          left: Math.min(...points.map((point) => point[0])),
+          right: Math.max(...points.map((point) => point[0])),
+          top: Math.min(...points.map((point) => point[1])),
+          bottom: Math.max(...points.map((point) => point[1]))
+        },
+        obstacles.filter((obstacle) => !excluded.has(obstacle.id)),
+        clearance
+      )];
+    }));
+    for (let attempt = 0; attempt < drawn.length * 4; attempt += 1) {
+      const conflict = firstOverlap(routed, drawn);
+      if (!conflict) break;
+      const before = countOverlaps(routed, drawn);
+      let resolved = false;
+      for (const id of [conflict.later, conflict.earlier]) {
+        for (const moved of laneCandidates(
+          routed[id].points,
+          conflict.span,
+          spacing,
+          boxesFor.get(id)
+        )) {
+          const original = routed[id];
+          routed[id] = { ...original, points: moved, length: pathLength(moved) };
+          if (countOverlaps(routed, drawn) < before) {
+            resolved = true;
+            break;
+          }
+          routed[id] = original;
+        }
+        if (resolved) break;
+      }
+      if (!resolved) break;
+    }
+    const vertexCounts = /* @__PURE__ */ new Map();
+    for (const route of drawn) {
+      for (const point of routed[route.id].points) {
+        const at3 = `${point[0]},${point[1]}`;
+        if (!vertexCounts.has(at3)) vertexCounts.set(at3, /* @__PURE__ */ new Set());
+        vertexCounts.get(at3).add(String(route.id));
+      }
+    }
+    const junctions = [...vertexCounts.entries()].filter(([, ids]) => ids.size >= 3).map(([at3, ids]) => ({ at: at3.split(",").map(Number), routes: [...ids].sort() })).sort((a, b) => a.at[0] - b.at[0] || a.at[1] - b.at[1]);
+    const crossings = [];
+    const spacingViolations = [];
+    for (let i = 0; i < drawn.length; i += 1) {
+      for (let j2 = i + 1; j2 < drawn.length; j2 += 1) {
+        const first = routed[drawn[i].id].points;
+        const second = routed[drawn[j2].id].points;
+        const trunk = sharedTrunk(first, second);
+        for (const a of segmentsOf(first)) {
+          for (const b of segmentsOf(second)) {
+            const span = overlapSpan(a, b);
+            if (span) {
+              if (!withinTrunk(span, trunk)) {
+                spacingViolations.push({
+                  routes: [String(drawn[i].id), String(drawn[j2].id)].sort(),
+                  axis: span.axis,
+                  at: span.at,
+                  from: span.from,
+                  to: span.to,
+                  required_spacing: spacing
+                });
+              }
+              continue;
+            }
+            const crossing = crossingPoint(a, b);
+            if (crossing) {
+              crossings.push({
+                at: crossing,
+                routes: [String(drawn[i].id), String(drawn[j2].id)].sort()
+              });
+            }
+          }
+        }
+      }
+    }
+    crossings.sort((a, b) => a.at[0] - b.at[0] || a.at[1] - b.at[1] || (a.routes[0] < b.routes[0] ? -1 : 1));
+    spacingViolations.sort((a, b) => a.at - b.at || a.from - b.from || (a.routes[0] < b.routes[0] ? -1 : 1));
+    return Object.freeze({
+      routes: routed,
+      junctions,
+      crossings,
+      spacing_violations: spacingViolations,
+      failures
+    });
+  }
+  function createRouter({ routes = [], obstacles = [], options = {} } = {}) {
+    const clearance = option(options, "clearance", DEFAULT_CLEARANCE);
+    const scene = {
+      routes: [...routes].sort((a, b) => String(a.id) < String(b.id) ? -1 : 1),
+      obstacles: obstacles.map((obstacle) => ({ ...obstacle }))
+    };
+    const computed = /* @__PURE__ */ new Map();
+    const regionOf = (route) => {
+      const start = stubOf(route.source, clearance);
+      const goal = stubOf(route.target, clearance);
+      return {
+        left: Math.min(start[0], goal[0]),
+        right: Math.max(start[0], goal[0]),
+        top: Math.min(start[1], goal[1]),
+        bottom: Math.max(start[1], goal[1])
+      };
+    };
+    const routeOne = (route) => routePath({
+      source: route.source,
+      target: route.target,
+      obstacles: scene.obstacles,
+      options
+    });
+    const snapshot = () => Object.fromEntries(
+      scene.routes.map((route) => [route.id, computed.get(route.id)])
+    );
+    const reaches = (route, rectangles) => {
+      const relevant = relevantObstacles(regionOf(route), scene.obstacles, clearance);
+      const region = {
+        left: Math.min(regionOf(route).left, ...relevant.map((box) => box.left)),
+        right: Math.max(regionOf(route).right, ...relevant.map((box) => box.right)),
+        top: Math.min(regionOf(route).top, ...relevant.map((box) => box.top)),
+        bottom: Math.max(regionOf(route).bottom, ...relevant.map((box) => box.bottom))
+      };
+      return rectangles.some((rectangle) => boxesOverlap(region, rectangle));
+    };
+    return {
+      get obstacles() {
+        return scene.obstacles.map((obstacle) => ({ ...obstacle }));
+      },
+      routeAll() {
+        for (const route of scene.routes) computed.set(route.id, routeOne(route));
+        return { routes: snapshot(), recomputed: scene.routes.map((route) => route.id) };
+      },
+      /**
+       * Move one obstacle and recompute the routes it reached, before or after.
+       *
+       * Both positions matter: a route the obstacle has just left is as wrong as
+       * one it has just arrived in, and recomputing only the destination is the
+       * bug that leaves a stale detour around nothing.
+       */
+      moveObstacle(id, position) {
+        const index = scene.obstacles.findIndex((obstacle) => obstacle.id === id);
+        if (index < 0) throw new Error(`no such obstacle: ${String(id)}`);
+        const before = inflate(scene.obstacles[index], clearance);
+        scene.obstacles[index] = { ...scene.obstacles[index], ...position };
+        const after = inflate(scene.obstacles[index], clearance);
+        const recomputed = [];
+        for (const route of scene.routes) {
+          if (!computed.has(route.id)) {
+            computed.set(route.id, routeOne(route));
+            recomputed.push(route.id);
+            continue;
+          }
+          if (!reaches(route, [before, after])) continue;
+          computed.set(route.id, routeOne(route));
+          recomputed.push(route.id);
+        }
+        return { routes: snapshot(), recomputed };
+      }
+    };
   }
 
   // src/v100/project-designer.js
@@ -38858,6 +39540,16 @@
       }
     }
   };
+  if (typeof globalThis !== "undefined") {
+    globalThis.GLT_FLOW_CARD_ROUTING = Object.freeze({
+      DEFAULT_CLEARANCE,
+      DEFAULT_SPACING,
+      createRouter,
+      relevantObstacles,
+      routeNetwork,
+      routePath
+    });
+  }
   if (typeof document !== "undefined" && !document.querySelector("style[data-glt-designer]")) {
     const style = element5("style");
     style.dataset.gltDesigner = "1";

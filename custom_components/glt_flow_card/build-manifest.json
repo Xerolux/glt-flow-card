@@ -47,13 +47,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "9fd247892412c07940e9652bc8a67641559d366bc2e5f5e14cda1174ac2c255e",
-      "size": 1770170
+      "sha256": "207a5f1cdd406151056b9afff20314f2c4040cefe47c7a838964554f7305eedf",
+      "size": 1797945
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "9fd247892412c07940e9652bc8a67641559d366bc2e5f5e14cda1174ac2c255e",
-      "size": 1770170
+      "sha256": "207a5f1cdd406151056b9afff20314f2c4040cefe47c7a838964554f7305eedf",
+      "size": 1797945
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -107,7 +107,7 @@
     }
   ],
   "build": {
-    "commit": "08d95dfe70ccdfb7ca79200b5180870ef3451a2b",
+    "commit": "f98d4a74d275e08bef8283bdb8f57d969cd5f066",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -176,8 +176,8 @@
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "2314704d6c13510c5081b00db59995a12b4460114932fe76a4573c6764eee613",
-      "size": 282147
+      "sha256": "7ca61a179cb33465ed915f0f4a51d133b25db16a395b5f16ae62d38b02884ed3",
+      "size": 285983
     },
     {
       "path": "src/v100/catalog.mjs",
@@ -276,8 +276,8 @@
     },
     {
       "path": "src/v100/project-designer.js",
-      "sha256": "0a3d25d5285ed7b138340fee970371aa004b87c1d4ad11e4ef2233de35f5c1cb",
-      "size": 25826
+      "sha256": "8bdd5a81f487aaa7d61438b31107bb9f044ba847863d20d89964cd65be145045",
+      "size": 26799
     },
     {
       "path": "src/v100/project-diff.mjs",
