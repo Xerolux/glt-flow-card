@@ -17,7 +17,7 @@ Milestone v1.1 hardens the existing Platform 1.0 surface as ten dependency-order
 - [x] **Phase 7: Trends, Energy & Reproducible Reports** - Turn Recorder data into honest trends, unit-safe energy views, and matching period reports.
 - [x] **Phase 8: Safe Simulation, Commissioning & Assets** - Support pre-commissioning scenarios, read-only diagnostics, and bounded maintenance workflows without plant-write risk.
 - [x] **Phase 9: Failure-Isolated Multi-Site Supervision** - Supervise authorized remote Home Assistant sites without credential exposure, policy bypass, or global failure.
-- [ ] **Phase 10: Product-Wide Usability & Release Evidence** - Close localization, accessibility, capacity, compatibility, and exact-artifact release evidence across all workflows.
+- [x] **Phase 10: Product-Wide Usability & Release Evidence** - Close localization, accessibility, capacity, compatibility, and exact-artifact release evidence across all workflows.
 
 ## Phase Details
 
@@ -421,7 +421,7 @@ Every v1.1 requirement has exactly one primary owner. Cross-cutting gates in lat
 | 7. Trends, Energy & Reproducible Reports | 20/20 | 22/23 (T7-23 blocked) | Complete | 2026-09-02 |
 | 8. Safe Simulation, Commissioning & Assets | 16/16 | 24/25 (T8-25 blocked) | Complete | 2026-09-02 |
 | 9. Failure-Isolated Multi-Site Supervision | 12/12 | 19/20 (T9-20 blocked) | Complete | 2026-09-02 |
-| 10. Product-Wide Usability & Release Evidence | 0/TBD | - | Not started | - |
+| 10. Product-Wide Usability & Release Evidence | 15/15 | 15/17 (T10-03 not met, T10-16 blocked) | Complete | 2026-09-02 |
 
 **Every blocked row is the same row.** Each phase's `test:phaseN:release` leaf
 runs `test:ha-artifacts`, which probes `docker info` across twelve bounded lane
@@ -432,6 +432,12 @@ passing separately.
 Phases 3 and 4 have no per-plan summaries; their registers and phase summaries
 carry the evidence. That gap is tracked in the close-out work rather than
 papered over here.
+
+**T10-03 is the one row in the milestone marked `not met`** rather than verified
+or planned. 154 user-facing strings in the shipped artifact still do not come
+from a catalog, the sweep names each one, and the claim registry publishes the
+corresponding claim as failed. `planned` would have read as work not started;
+this work started and did not finish.
 
 ---
 *Roadmap created: 2026-08-31 for milestone v1.1 Production-Ready GLT Platform*

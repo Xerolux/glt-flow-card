@@ -93,36 +93,58 @@ Filled during roadmap creation. Every requirement must map to exactly one primar
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OPS-01 | Phase 3 | Pending |
-| OPS-02 | Phase 4 | Pending |
-| SEC-01 | Phase 2 | Pending |
-| ALM-01 | Phase 6 | Pending |
-| ALM-02 | Phase 6 | Pending |
-| SCH-01 | Phase 6 | Pending |
-| SEM-01 | Phase 3 | Pending |
-| MAP-01 | Phase 3 | Pending |
-| PROF-01 | Phase 3 | Pending |
-| CAT-01 | Phase 5 | Pending |
-| ENG-01 | Phase 5 | Pending |
-| ENG-02 | Phase 5 | Pending |
-| CAD-01 | Phase 5 | Pending |
-| NAV-01 | Phase 4 | Pending |
-| HIST-01 | Phase 7 | Pending |
-| SIM-01 | Phase 8 | Pending |
-| DIAG-01 | Phase 8 | Pending |
-| ENER-01 | Phase 7 | Pending |
-| ASSET-01 | Phase 8 | Pending |
-| REPORT-01 | Phase 7 | Pending |
-| SITE-01 | Phase 9 | Pending |
-| SDK-01 | Phase 5 | Pending |
-| PROTO-01 | Phase 3 | Pending |
+| OPS-01 | Phase 3 | Complete (T3-14 blocked: no Docker engine) |
+| OPS-02 | Phase 4 | Complete (T4-14 blocked: no Docker engine) |
+| SEC-01 | Phase 2 | Complete (T2-16 blocked: no Docker engine) |
+| ALM-01 | Phase 6 | Complete (T6-21 blocked: no Docker engine) |
+| ALM-02 | Phase 6 | Complete (T6-21 blocked: no Docker engine) |
+| SCH-01 | Phase 6 | Complete (T6-21 blocked: no Docker engine) |
+| SEM-01 | Phase 3 | Complete (T3-14 blocked: no Docker engine) |
+| MAP-01 | Phase 3 | Complete (T3-14 blocked: no Docker engine) |
+| PROF-01 | Phase 3 | Complete (T3-14 blocked: no Docker engine) |
+| CAT-01 | Phase 5 | Complete (T5-16 blocked: no Docker engine) |
+| ENG-01 | Phase 5 | Complete (T5-16 blocked: no Docker engine) |
+| ENG-02 | Phase 5 | Complete (T5-16 blocked: no Docker engine) |
+| CAD-01 | Phase 5 | Complete (T5-16 blocked: no Docker engine) |
+| NAV-01 | Phase 4 | Complete (T4-14 blocked: no Docker engine) |
+| HIST-01 | Phase 7 | Complete (T7-23 blocked: no Docker engine) |
+| SIM-01 | Phase 8 | Complete (T8-25 blocked: no Docker engine) |
+| DIAG-01 | Phase 8 | Complete (T8-25 blocked: no Docker engine) |
+| ENER-01 | Phase 7 | Complete (T7-23 blocked: no Docker engine) |
+| ASSET-01 | Phase 8 | Complete (T8-25 blocked: no Docker engine) |
+| REPORT-01 | Phase 7 | Complete (T7-23 blocked: no Docker engine) |
+| SITE-01 | Phase 9 | Complete (T9-20 blocked: no Docker engine) |
+| SDK-01 | Phase 5 | Complete (T5-16 blocked: no Docker engine) |
+| PROTO-01 | Phase 3 | Complete (T3-14 blocked: no Docker engine) |
 | SCHEMA-01 | Phase 1 | Complete |
 | DIFF-01 | Phase 1 | Complete |
-| COLLAB-01 | Phase 2 | Pending |
+| COLLAB-01 | Phase 2 | Complete (T2-16 blocked: no Docker engine) |
 | HACS-01 | Phase 1 | Complete |
-| I18N-01 | Phase 10 | Pending |
-| A11Y-01 | Phase 10 | Pending |
-| TEST-01 | Phase 10 | Pending |
+| I18N-01 | Phase 10 | Partial — see 10-THREATS.md; T10-03 not met |
+| A11Y-01 | Phase 10 | Complete (automated half only; manual not performed) |
+| TEST-01 | Phase 10 | Complete (T10-16 blocked: no Docker engine) |
+
+**How to read "Complete".** A requirement is complete when its phase's threat
+register is closed and every row was marked from its own owner command run at
+head. Where a row is blocked, the requirement says which row and why, so
+"complete" never has to be taken on trust — the register carries the exact
+failure output.
+
+**Every phase's blocked row is the same row.** Each phase's composed
+`test:phaseN:release` leaf runs `test:ha-artifacts`, which probes `docker info`
+across twelve bounded candidates; this environment has no Docker engine. Nothing
+in this repository demonstrates the artifact installing on either pinned Home
+Assistant lane.
+
+**I18N-01 is the one requirement that is not complete.** 154 user-facing strings
+in the shipped artifact still do not come from a catalog — the legacy card's two
+generated bases and the entry module. `tools/verify-i18n-coverage.mjs` names
+each one, and the claim registry publishes the corresponding claim as failed
+rather than omitting it.
+
+**A11Y-01's manual half was not performed.** No assistive technology can be
+driven in this environment, so nothing here supports a conformance statement
+regardless of what the automated sweep reports.
 
 **Coverage:**
 

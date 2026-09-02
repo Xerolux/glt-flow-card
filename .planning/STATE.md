@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 9 closed; 12 of 12 plans implemented, 19 of 20 threats verified
-last_updated: "2026-09-02T23:30:00.000Z"
-last_activity: 2026-09-02 -- Phase 9 executed and closed: partial is an answer that says it is partial, unreachability belongs to the site rather than to an entity, one bounded request per site under a total deadline the request owns, a two-half destination check that also holds at connect time, closed failure reasons with a searched-for credential sentinel, remote routes reusing local authority, and no retry beside an unknown effect
+stopped_at: Phase 10 closed; 15 of 15 plans implemented, 15 of 17 threats verified, T10-03 not met
+last_updated: "2026-09-03T02:00:00.000Z"
+last_activity: 2026-09-02 -- Phase 10 executed and closed: one catalog per language with a lookup that refuses rather than falling back, formatting that refuses rather than guessing, plurals as data, wording parity as canonical bytes, names and roles across the shipped artifact with an automated sweep that cannot become a conformance claim, capacity measurements that carry their environment, and a claim registry that fails the build on a claim nothing supports and publishes a failed claim as failed
 progress:
   total_phases: 10
-  completed_phases: 9
-  total_plans: 152
-  completed_plans: 152
-  percent: 90
+  completed_phases: 10
+  total_plans: 167
+  completed_plans: 167
+  percent: 100
 ---
 
 # Project State
@@ -21,75 +21,90 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-31)
 
 **Core value:** Operators and engineers can safely understand, operate, engineer, and diagnose a real building plant from one trustworthy Home Assistant interface.
-**Current focus:** Phase 10 — product-wide usability and release evidence
+**Current focus:** close-out — review passes and the traceability the registry now checks
 
 ## Current Position
 
-Phase: 09 (multi-site-supervision) — CLOSED
-Plan: 12 of 12 implemented (12 plans across 6 waves)
+Phase: 10 (usability-release-evidence) — CLOSED
+Plan: 15 of 15 implemented (15 plans across 7 waves)
 
-Phases 1 through 9 are executed and closed. Phase 10 is the remaining phase and
-has no planning artifacts yet.
+**All ten phases are executed and closed.** The milestone's plans are done; what
+remains is close-out, and one row that is honestly unfinished.
 
-### Phase 9, in one paragraph
+### The one row marked `not met`
 
-Phase 9's characteristic defect is **an answer that is incomplete and does not
-say so** — a portfolio view of five sites where one did not respond, rendered as
-a portfolio view of five sites. A silent site contributed zero, `unavailable`
-was written as an entity state for entities nobody could ask, any URL was
-accepted for an authenticated server-side request, `str(err)` returned internal
-host and port to the browser, `remote/states` checked nothing at all, and a
-remote timeout was reported as a failure with a retry beside it. All of those
-are closed; `09-SUMMARY.md` carries the detail and the limits.
+**T10-03.** 154 user-facing strings in the shipped artifact do not come from a
+catalog — the legacy card's two generated bases and the entry module.
+`tools/verify-i18n-coverage.mjs` names each one, and the claim registry
+publishes the corresponding claim **as failed** rather than omitting it.
+
+It is deliberately not left `planned`: `planned` reads as work not started, and
+this work started and did not finish.
+
+### Phase 10, in one paragraph
+
+Localization, accessibility and release evidence are the same defect from three
+angles — **a claim about the product that nothing behind it supports.** A locale
+is data now rather than an edit to fourteen modules; a missing translation
+throws instead of showing an English sentence to a German operator; formatting
+refuses instead of falling back to the viewer's locale; every focusable element
+has a role and a name where the product had zero `aria-label` attributes; an
+automated sweep covers every registered surface with no rule disabled; and a
+claim registry fails the build on a claim nothing supports, publishes a failed
+claim as failed, and has no schema in which an automated result and a manual
+pass combine into conformance. `10-SUMMARY.md` carries the detail and the limits.
 
 ### The blocked row, in every phase
 
-T9-20, T8-25, T7-23, T6-21, T5-16, T4-14, T3-14 and T2-16 all stay `planned`.
-Each is owned by the composed `test:phaseN:release` leaf, whose
-`test:ha-artifacts` leg probes `docker info` for all twelve bounded lane
-candidates, and this environment has no Docker engine. Each is recorded with its
-exact failure output rather than its likely cause, and none is marked from its
-parts passing separately.
+T10-16, T9-20, T8-25, T7-23, T6-21, T5-16, T4-14, T3-14 and T2-16 all stay
+`planned`. Each is owned by the composed `test:phaseN:release` leaf, whose
+`test:ha-artifacts` leg probes `docker info` for twelve bounded candidates, and
+this environment has no Docker engine. Each carries its exact failure output.
 
-### Environment limits, current as of Phase 9
+### What is claimed, and by what
 
-1. **The browser revision mismatch is now handled in the product's own config,
-   not by hand.** The container ships Chromium 1194 while `@playwright/test`
-   1.62.1 expects 1234. `playwright.config.mjs` prefers the pinned revision and
-   uses it silently; only when it is absent from disk does it substitute an
-   installed sibling, and it prints the substitution. The Phase-9 gate's F9-04
-   therefore passes without `PLAYWRIGHT_CHROMIUM_EXECUTABLE` being set, which
-   the Phase-7 gate's F7-04 could not.
-2. GitHub API access is not blocked at the host: `api.github.com/rate_limit`
-   answers 200. What fails is every third-party repository endpoint F-01 needs —
-   all five provenance sources return 403 with "GitHub access to this repository
-   is not enabled for this session". This blocks F-01 and every gate recursing
-   into it. Attaching five third-party repositories with credentials to satisfy
-   a provenance check would be a disproportionate permission change and was not
-   made.
-3. No Docker engine, which is what blocks the release leaf in every phase.
-4. In CI, that leaf fails for a *different* reason: Home Assistant 2026.9.0 was
+`node tools/claim-registry.mjs` runs every claim's command and publishes the
+result: **11 passed, 1 failed, 4 not exercised** at head. The four unexercised
+capabilities are screen-reader behaviour, representative capacity, the pinned
+Home Assistant lanes and dependency provenance — each with its reason, because a
+reader who is not told assumes they were exercised.
+
+### Environment limits, current as of Phase 10
+
+1. The container's Chromium revision differs from the pinned one; since Phase 9
+   `playwright.config.mjs` resolves that itself and prints the substitution, so
+   no gate needs `PLAYWRIGHT_CHROMIUM_EXECUTABLE` set by hand.
+2. All five third-party repository provenance endpoints answer 403;
+   `api.github.com/rate_limit` answers 200, so this is a repository-scope limit
+   rather than a network one. It blocks F-01 and every gate recursing into it,
+   which means **no phase gate from 2 upward has ever completed its recursion in
+   this environment.**
+3. No Docker engine, which blocks the release leaf in every phase.
+4. In CI that leaf fails for a different reason: Home Assistant 2026.9.0 was
    published while `pytest-homeassistant-custom-component` 0.13.362 still pins
    `homeassistant==2026.9.0b6`. Not this branch's failure; which release the
    product certifies against is a product decision, so no resolver change was
-   pushed. Diagnosed once on PR #3 with a proposed patch.
+   pushed.
 
 ### Outstanding, and not hidden
 
-- **Phase 10** is unplanned. It owns I18N-01, A11Y-01 and TEST-01 — the
-  evidence-linked claim registry, package checksums, and capacity scenarios with
-  recorded budgets. Several phases defer measured numbers to it explicitly.
+- **T10-03**, above.
 - **Phases 3 and 4 have no per-plan summaries.** Their registers and phase
-  summaries carry the evidence; the summaries are missing, and that is a real
-  gap rather than a formatting one.
-- **Review passes for Phases 2 through 9** and Phase 1's consolidated
+  summaries carry the evidence; the summaries are genuinely missing.
+- **Review passes for Phases 2 through 10** and Phase 1's consolidated
   verification are outstanding.
-- `REQUIREMENTS.md` traceability still reads "Pending" for completed phases.
+- `REQUIREMENTS.md` traceability is now current, and says which row is blocked
+  wherever a requirement is complete with an exception.
 
-Next: Phase 10 planning and execution, then the close-out above.
-Last activity: 2026-09-02 -- Phase 9 executed and closed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+Next: the close-out above. **No release is authorized and none was made.**
+Last activity: 2026-09-02 -- Phase 10 executed and closed on `claude/chatgpt-continuation-hi3y86` (PR #3)
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
+
+### Phase 10 register
+
+15 of 17 rows verified, each from its own owner command run at head. T10-03 is
+`not met` with 154 strings named; T10-16 is blocked with its exact failure.
 
 ### Phase 9 register
 
