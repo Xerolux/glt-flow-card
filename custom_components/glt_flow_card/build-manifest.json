@@ -107,7 +107,7 @@
     }
   ],
   "build": {
-    "commit": "2e864593bbc3d3843f4ba2604618ff7e8426e4bc",
+    "commit": "72e9595badf54a29e7c75be754d6345f55fe20cc",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -198,6 +198,11 @@
       "path": "src/v100/core.mjs",
       "sha256": "21cfd757e4874a8b00310b6827bb64c987bcfdd54da1ea92d18a58619d75eabd",
       "size": 23309
+    },
+    {
+      "path": "src/v100/designer-clipboard.mjs",
+      "sha256": "e86fb1ae79388349a3be68d4281fd0e8f3ff289176a40325b6077c70a0543bc7",
+      "size": 7743
     },
     {
       "path": "src/v100/designer-commands.mjs",
@@ -293,6 +298,11 @@
       "path": "src/v100/project-semantics.js",
       "sha256": "6e392a1d3e50ca42305cfee5d2b3f9fad3ea55af789aec402940dce3be3a28c9",
       "size": 8409
+    },
+    {
+      "path": "src/v100/routing.mjs",
+      "sha256": "7a3795e708c7f68bcfd32b3804ef17e0452a5fbf3319b30b457a232b92fb594b",
+      "size": 31731
     },
     {
       "path": "src/v100/sdk-manifest.mjs",
