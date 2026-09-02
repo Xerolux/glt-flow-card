@@ -107,7 +107,7 @@
     }
   ],
   "build": {
-    "commit": "2cf9bde8e13a9b8600ab271a21b52bc30ecff1e1",
+    "commit": "720627536d613aab3b32f6b0567a1bc2225756b7",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -178,6 +178,11 @@
       "path": "src/generated-bases/glt-flow-card.base.js",
       "sha256": "7ca61a179cb33465ed915f0f4a51d133b25db16a395b5f16ae62d38b02884ed3",
       "size": 285983
+    },
+    {
+      "path": "src/v100/alarm-vocabulary.mjs",
+      "sha256": "2231dfdc82a2d70b038b616d9100f0e2c8ba82e25fb1d756782befb2618833e2",
+      "size": 6498
     },
     {
       "path": "src/v100/catalog.mjs",
