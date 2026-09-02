@@ -137,8 +137,8 @@
     }
   ],
   "build": {
-    "commit": "8308175f3c48e865ee049c4842711ddd4e7118f7",
-    "dirty": true
+    "commit": "6b570763a17ad814062837143236ba26f5c7b839",
+    "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
