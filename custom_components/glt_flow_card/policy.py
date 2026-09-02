@@ -235,6 +235,10 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     # right now". It carries `project.read`, so an unassigned caller receives
     # the same opaque denial a hidden project gives and learns nothing.
     _route("glt_flow_card/capabilities/get", "project.read"),
+    # -- provenance --------------------------------------------------------
+    # A project-scoped read: an entity outside the named project is never
+    # described, so this cannot become a registry search.
+    _route("glt_flow_card/provenance/get", "project.read"),
     # -- templates --------------------------------------------------------
     _route("glt_flow_card/templates/list", "template.read", scope="component",
            enumeration="filter"),

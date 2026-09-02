@@ -16,7 +16,7 @@ from .conftest import LifecycleEffects
 
 
 EXPECTED_LOADED = {
-    "commands": 37,
+    "commands": 38,
     "listeners": 2,
     "managers": 1,
     "stores": 1,
@@ -28,10 +28,11 @@ EXPECTED_LOADED = {
     "leases": 0,
     "control_waits": 0,
     "rate_buckets": 0,
+    "provenance_cache": 0,
     "late_callbacks": 0,
 }
 EXPECTED_UNLOADED = {
-    "commands": 37,
+    "commands": 38,
     "listeners": 0,
     "managers": 0,
     "stores": 0,
@@ -43,6 +44,7 @@ EXPECTED_UNLOADED = {
     "leases": 0,
     "control_waits": 0,
     "rate_buckets": 0,
+    "provenance_cache": 0,
     "late_callbacks": 0,
 }
 

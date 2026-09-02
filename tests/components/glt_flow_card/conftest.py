@@ -95,6 +95,7 @@ PHASE2_RESOURCE_COUNTERS = (
     "leases",
     "control_waits",
     "rate_buckets",
+    "provenance_cache",
     "late_callbacks",
     "managers",
     "stores",
@@ -155,6 +156,7 @@ class LifecycleEffects:
             "leases": size("_leases", "leases", "project_leases"),
             "control_waits": size("_control_waits", "control_waits"),
             "rate_buckets": size("_rate_buckets", "rate_buckets", "control_rates"),
+            "provenance_cache": size("_provenance_cache", "provenance_cache"),
         }
 
     def snapshot(self) -> dict[str, int | list[str]]:

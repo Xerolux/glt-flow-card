@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import itertools
+from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -58,6 +59,7 @@ from .trusted_evidence import (
     TrustedEvidenceStore,
 )
 from .project_access import AccessConflict, ProjectAccessRepository
+from .provenance import ProvenanceService
 from .policy import ROLES
 from .project_leases import (
     DEFAULT_TTL_SECONDS,
@@ -83,6 +85,10 @@ from .project_transactions import (
 #: refreshes at half of this; at the end of it, shared mode goes read-only
 #: whether or not a refresh has been attempted.
 CAPABILITY_SNAPSHOT_SECONDS = 300
+
+#: How many entities one provenance request may name. A bound here keeps a
+#: single request from walking a large installation's whole registry.
+MAX_PROVENANCE_ENTITIES = 200
 
 
 def _utc() -> str:
@@ -532,6 +538,7 @@ class CompanionRuntime:
     telemetry: TelemetryStore | None = None
     controls: ControlEvidenceRecorder | None = None
     control_rates: ControlRateLimiter | None = None
+    provenance: ProvenanceService | None = None
     generation: int = 0
     available: bool = True
 
@@ -547,6 +554,10 @@ class CompanionRuntime:
         for owned in (self.leases, self.subscriptions, self.cursors):
             if owned is not None:
                 owned.invalidate_generation()
+        if self.provenance is not None:
+            # A cached provenance record from a dead generation would claim a
+            # dead entity is live, which is the one thing this data must never do.
+            self.provenance.invalidate()
 
     async def async_close(self) -> None:
         """Close the complete entry-owned runtime, tolerating repetition."""
@@ -626,6 +637,34 @@ async def ws_projects_get(hass, connection, msg):
         connection.send_error(msg["id"], "not_found_or_denied", "not_found_or_denied")
         return
     connection.send_result(msg["id"], project)
+
+
+def _project_entity_ids(config: Mapping[str, Any]) -> set[str]:
+    """Every entity the project itself references.
+
+    Provenance answers questions about a project's own datapoints. Describing an
+    entity the project never mentions would turn a project-scoped read into a
+    registry search, which is a different and much larger permission.
+    """
+    referenced: set[str] = set()
+    for collection in ("datapoints", "equipment"):
+        rows = config.get(collection)
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, Mapping):
+                continue
+            for key in ("entity_id", "entity", "state_entity"):
+                value = row.get(key)
+                if isinstance(value, str) and value:
+                    referenced.add(value)
+    model = config.get("semantic_model")
+    nodes = model.get("nodes") if isinstance(model, Mapping) else None
+    if isinstance(nodes, list):
+        for node in nodes:
+            if isinstance(node, Mapping) and isinstance(node.get("entity_id"), str):
+                referenced.add(node["entity_id"])
+    return referenced
 
 
 def _mutation_guard(hass, connection, msg, *, capability: str) -> MutationGuard:
@@ -1219,6 +1258,42 @@ async def ws_leases_status(hass, connection, msg):
 
 
 @websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/provenance/get",
+    vol.Required("project_id"): str,
+    # Optional: a request that names no entity is a legitimate empty request,
+    # and requiring the field would make the route unprobeable by the policy
+    # matrix without teaching that matrix about this one route's shape.
+    vol.Optional("entity_ids", default=[]): [str],
+})
+@websocket_api.async_response
+async def ws_provenance_get(hass, connection, msg):
+    """Describe where a project's datapoint values come from.
+
+    The caller names entities, but only those the *project* already references
+    are described. Without that restriction this route would be a way to probe
+    the whole entity registry from inside any project the caller can read.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    project = _manager(hass).project(decision.project_id)
+    if project is None:
+        connection.send_error(msg["id"], "not_found_or_denied", "not_found_or_denied")
+        return
+
+    referenced = _project_entity_ids(project.get("config") or {})
+    requested = [entity_id for entity_id in msg["entity_ids"][:MAX_PROVENANCE_ENTITIES]]
+    described = [
+        await runtime.provenance.async_describe(entity_id)
+        for entity_id in requested
+        if entity_id in referenced
+    ]
+    connection.send_result(msg["id"], {
+        "project_id": decision.project_id,
+        "rows": described,
+    })
+
+
+@websocket_api.websocket_command({
     vol.Required("type"): "glt_flow_card/capabilities/get",
     vol.Required("project_id"): str,
 })
@@ -1426,7 +1501,7 @@ _COMMAND_HANDLERS = (
     ws_evidence_list, ws_telemetry_list, ws_telemetry_add,
     ws_projects_lock, ws_projects_unlock,
     ws_leases_acquire, ws_leases_renew, ws_leases_release, ws_leases_status,
-    ws_capabilities_get,
+    ws_capabilities_get, ws_provenance_get,
     ws_templates_list, ws_templates_save,
     ws_templates_delete, ws_control_execute, ws_alarms_list, ws_alarms_ack,
     ws_alarms_shelve, ws_work_orders_list, ws_work_orders_save, ws_reports_run,
@@ -1659,6 +1734,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         telemetry=telemetry,
         controls=ControlEvidenceRecorder(hass, evidence=evidence),
         control_rates=ControlRateLimiter(),
+        provenance=ProvenanceService(hass, generation=generation),
         generation=generation,
     )
     manager.project_transactions.set_mutation_guard(recheck_before_commit)
