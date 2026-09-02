@@ -46,6 +46,7 @@ const COMPONENT_FILES = [
   "project_transactions.py",
   "navigation.py",
   "alarm_vocabulary.py",
+  "alarm_engine.py",
   "panels.py",
   "provenance.py",
   "sdk_manifest.py",

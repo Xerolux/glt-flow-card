@@ -44,10 +44,6 @@ from .phase6_red import emit_effects, report
 pytestmark = [
     pytest.mark.enable_socket,
     pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
-    # Deselected from the default suite for the length of the RED wave. The
-    # Phase-6 RED gate selects them explicitly and requires each to fail for
-    # exactly its own named reason. Removed when the sentinel goes GREEN.
-    pytest.mark.expected_red,
 ]
 
 RED_MARKER = (
@@ -97,7 +93,12 @@ async def lifecycle_gaps(
     # The engine must be callable without Home Assistant. A lifecycle that can
     # only be exercised through a full integration is one that will be
     # exercised rarely.
-    for name in ("evaluate", "decide", "suppression_for"):
+    #
+    # `suppression_for` is deliberately not checked here: it belongs to plan
+    # 06-07 and to `test_alarm_suppression.py`. A sentinel that requires another
+    # plan's work cannot go green when its own owner lands, which makes the
+    # gate's owner column a fiction.
+    for name in ("evaluate", "decide"):
         if not hasattr(alarm_engine, name):
             gaps.append(f"alarm_engine has no {name}()")
 
@@ -170,3 +171,163 @@ async def test_expected_red_phase6_lifecycle(
 
     gaps = await lifecycle_gaps(hass, config_entry)
     report(RED_MARKER, gaps, "per-alarm anchored delays and hysteresis transitions are unavailable")
+
+
+# ---------------------------------------------------------------------------
+# The behaviour, now that it exists
+# ---------------------------------------------------------------------------
+
+
+def test_two_alarms_on_one_entity_keep_their_own_delays() -> None:
+    """D2, closed. One alarm cannot show this; two with different delays can."""
+    alarms = two_delays_on_one_entity()
+    configured = {alarm["id"]: alarm["delay_seconds"] for alarm in alarms}
+    assert len(set(configured.values())) == 2, "the fixture must carry two distinct delays"
+    from custom_components.glt_flow_card import alarm_engine
+
+    assert alarm_engine.scheduled_delays(alarms) == configured
+
+
+def test_the_naive_binding_would_have_collapsed_them() -> None:
+    """The defect reproduced beside the fix, so this is not mistaken for a refactor."""
+    from .alarm_factory import last_delay_wins
+
+    alarms = two_delays_on_one_entity()
+    naive = last_delay_wins(alarms)
+    assert len(set(naive.values())) == 1, "the reproduced defect no longer collapses"
+    from custom_components.glt_flow_card import alarm_engine
+
+    assert alarm_engine.scheduled_delays(alarms) != naive
+
+
+def test_a_delay_is_anchored_to_the_first_activation() -> None:
+    """D10, closed. A delay suppresses a transient, not a noisy persistent fault."""
+    from custom_components.glt_flow_card import alarm_engine
+    from .alarm_factory import restarting_delay
+
+    transitions = oscillating_transitions(60)
+    assert alarm_engine.annunciates_at(transitions, 60) == 60
+    assert alarm_engine.annunciates_at(transitions, 60) == anchored_delay(transitions, 60)
+    # And it differs from the implementation it replaces, by a lot.
+    assert restarting_delay(transitions, 60) > alarm_engine.annunciates_at(transitions, 60)
+
+
+def test_a_genuine_clear_resets_the_anchor() -> None:
+    """Otherwise the anchor is a one-way latch and the delay never applies again."""
+    from custom_components.glt_flow_card import alarm_engine
+
+    assert alarm_engine.annunciates_at([(0.0, True), (5.0, False)], 60) is None
+    assert alarm_engine.annunciates_at([(0.0, True), (5.0, False), (10.0, True)], 60) == 70
+
+
+def test_hysteresis_needs_the_previous_state() -> None:
+    from custom_components.glt_flow_card import alarm_engine
+
+    previous = False
+    for state, expected in hysteresis_sequence():
+        active = alarm_engine.evaluate(state, threshold_alarms()[0], previous)
+        assert active is expected, f"{state} -> {active}, expected {expected}"
+        previous = active
+
+
+def test_the_stateless_walk_differs_so_hysteresis_is_really_exercised() -> None:
+    from custom_components.glt_flow_card import alarm_engine
+
+    stateless = [
+        alarm_engine.evaluate(state, threshold_alarms()[0], False)
+        for state, _ in hysteresis_sequence()
+    ]
+    assert stateless != [expected for _, expected in hysteresis_sequence()]
+
+
+def test_the_engine_agrees_with_the_manager_it_replaced() -> None:
+    """A move, not a rewrite: every corpus fixture keeps its answer."""
+    from custom_components.glt_flow_card import _state_active, alarm_engine
+
+    for alarm in threshold_alarms():
+        for previous in (False, True):
+            assert alarm_engine.evaluate(alarm["probe_state"], alarm, previous) == _state_active(
+                alarm["probe_state"], alarm, previous
+            ), alarm["id"]
+
+
+def test_an_unavailable_entity_is_indeterminate_not_cleared() -> None:
+    """The restart fix's foundation: three answers, not two."""
+    from custom_components.glt_flow_card import alarm_engine
+
+    alarm = {"id": "a", "active_states": ["on"]}
+    for raw in ("unavailable", "unknown", None, ""):
+        assert alarm_engine.classify_state(raw, alarm) == "indeterminate", raw
+    assert alarm_engine.classify_state("on", alarm) == "active"
+    assert alarm_engine.classify_state("off", alarm) == "inactive"
+
+
+def test_a_site_that_really_alarms_on_unavailable_is_honoured() -> None:
+    """Declaring it in `active_states` is a deliberate choice, not an accident."""
+    from custom_components.glt_flow_card import alarm_engine
+
+    alarm = {"id": "a", "active_states": ["unavailable"]}
+    assert alarm_engine.classify_state("unavailable", alarm) == "active"
+
+
+def test_every_decision_carries_a_reason_from_the_closed_set() -> None:
+    from custom_components.glt_flow_card import alarm_engine
+
+    for alarm in threshold_alarms():
+        decision = alarm_engine.decide(alarm, alarm["probe_state"])
+        assert decision["reason"] in alarm_engine.TRANSITION_REASONS, alarm["id"]
+        assert decision["state"] in alarm_engine.STATES, alarm["id"]
+        assert decision["suppressed_by"] is None
+
+
+def test_a_suppressed_decision_names_which_suppression_applied() -> None:
+    from custom_components.glt_flow_card import alarm_engine
+
+    decision = alarm_engine.decide(
+        threshold_alarms()[0], "85",
+        suppression={"reason": "shelved", "by": "anna", "until": "2026-09-09T14:00:00Z"},
+    )
+    assert decision["reason"] == "suppressed"
+    assert decision["suppressed_by"] == "shelved"
+    assert decision["suppression"]["by"] == "anna"
+
+
+def test_an_undeclared_suppression_reason_raises() -> None:
+    """A reason outside the set would make "why is this quiet" unanswerable."""
+    from custom_components.glt_flow_card import alarm_engine
+
+    with pytest.raises(ValueError, match="unknown suppression reason"):
+        alarm_engine.decide(threshold_alarms()[0], "85", suppression={"reason": "because"})
+
+
+def test_a_first_activation_with_a_delay_is_pending_not_active() -> None:
+    from custom_components.glt_flow_card import alarm_engine
+
+    alarm = two_delays_on_one_entity()[1]
+    decision = alarm_engine.decide(alarm, "85", previous_active=False)
+    assert decision["reason"] == "delay_pending"
+    assert decision["active"] is False
+    assert decision["delay_seconds"] == alarm["delay_seconds"]
+
+
+def test_the_engine_needs_no_running_home_assistant() -> None:
+    """Asserted, because a lifecycle testable only end to end is tested shallowly.
+
+    Checked against the module's *imports*, parsed, rather than against its text.
+    A substring search over the source fails on the docstring that states this
+    very rule, which would make the honest thing to do deleting the explanation.
+    """
+    import ast
+    import inspect
+
+    from custom_components.glt_flow_card import alarm_engine
+
+    tree = ast.parse(inspect.getsource(alarm_engine))
+    imported: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.append(node.module)
+    reached = [name for name in imported if name.split(".")[0] == "homeassistant"]
+    assert not reached, f"the engine reached for Home Assistant: {reached}"

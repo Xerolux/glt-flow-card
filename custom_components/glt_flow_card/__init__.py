@@ -26,6 +26,7 @@ from homeassistant.helpers.storage import Store
 
 from uuid import uuid4
 
+from . import alarm_engine
 from .configured_controls import (
     ControlRateLimiter,
     ControlRejected,
@@ -457,33 +458,79 @@ class GltStore:
         new_state = event.data.get("new_state")
         if not entity_id:
             return
+        raw = getattr(new_state, "state", None)
         for project_id, project in list(self.data["projects"].items()):
             for alarm in project.get("config", {}).get("alarms", []):
                 if _entity_id(alarm.get("entity")) != entity_id:
                     continue
                 key = f"{project_id}:{alarm.get('id')}"
                 current = self.data["alarm_state"].get(key, {})
-                active = _state_active(getattr(new_state, "state", None), alarm, bool(current.get("active")))
-                delay = int(alarm.get("delay_seconds", 0) or 0)
-                if active and delay > 0 and not current.get("active"):
-                    task = self._alarm_tasks.pop(key, None)
-                    if task:
-                        task.cancel()
-                    async def delayed(pid=project_id, a=deepcopy(alarm), e=entity_id, k=key):
-                        try:
-                            await asyncio.sleep(delay)
-                            st = self.hass.states.get(e)
-                            cur = self.data["alarm_state"].get(k, {})
-                            if _state_active(st.state if st else None, a, bool(cur.get("active"))):
-                                await self.alarm_transition(pid, a, True, st.state if st else None)
-                        except asyncio.CancelledError:
-                            return
-                    self._alarm_tasks[key] = self.hass.async_create_task(delayed())
-                else:
-                    task = self._alarm_tasks.pop(key, None)
-                    if task and not active:
-                        task.cancel()
-                    await self.alarm_transition(project_id, alarm, active, getattr(new_state, "state", None))
+                previous_active = bool(current.get("active"))
+                decision = alarm_engine.decide(
+                    alarm, raw,
+                    previous_active=previous_active,
+                    previous_state=current.get("state"),
+                )
+
+                if decision["reason"] == "indeterminate":
+                    # An entity that vanished has not returned to normal. Holding
+                    # the previous state is what stops a restart -- during which
+                    # every entity passes through `unavailable` -- from looking
+                    # like every alarm clearing at once, which is D5.
+                    continue
+
+                if decision["reason"] == "delay_pending":
+                    # The anchor, not a restart. A pending task is left alone
+                    # while the condition stays continuously active, so a sensor
+                    # whose value keeps changing above threshold still
+                    # annunciates at first_activation + delay. Cancelling and
+                    # recreating here was D10, and it meant a persistent noisy
+                    # fault never annunciated at all.
+                    if key in self._alarm_tasks and not self._alarm_tasks[key].done():
+                        continue
+                    self._alarm_tasks[key] = self.hass.async_create_task(
+                        self._delayed_transition(
+                            project_id=project_id,
+                            alarm=deepcopy(alarm),
+                            entity_id=entity_id,
+                            key=key,
+                            # Read from the alarm this call is about. The defect
+                            # (D2) was a free `delay` variable read after the
+                            # loop finished, so every alarm on one entity waited
+                            # the last one's delay.
+                            delay_seconds=alarm_engine.scheduled_delays([alarm])[str(alarm.get("id"))],
+                        )
+                    )
+                    continue
+
+                task = self._alarm_tasks.pop(key, None)
+                if task is not None and not decision["active"]:
+                    task.cancel()
+                await self.alarm_transition(project_id, alarm, decision["active"], raw)
+
+    async def _delayed_transition(
+        self, *, project_id: str, alarm: dict[str, Any], entity_id: str, key: str,
+        delay_seconds: int,
+    ) -> None:
+        """Annunciate one alarm after its own delay, if it is still active.
+
+        Every value this needs is a parameter. The version this replaces bound
+        four of them as default arguments and left the fifth -- the delay --
+        free, so it read the enclosing loop's final value when the coroutine
+        actually ran.
+        """
+        try:
+            await asyncio.sleep(delay_seconds)
+            state = self.hass.states.get(entity_id)
+            current = self.data["alarm_state"].get(key, {})
+            raw = state.state if state else None
+            if alarm_engine.evaluate(raw, alarm, bool(current.get("active"))):
+                await self.alarm_transition(project_id, alarm, True, raw)
+        except asyncio.CancelledError:
+            return
+        finally:
+            if self._alarm_tasks.get(key) is asyncio.current_task():
+                self._alarm_tasks.pop(key, None)
 
     async def run_schedules(self, now: datetime) -> None:
         weekday = now.weekday()
