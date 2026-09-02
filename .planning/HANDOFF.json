@@ -12,7 +12,7 @@
     "stage": "execution",
     "plans_created": 17,
     "tasks_planned": 61,
-    "plans_implemented": 7,
+    "plans_implemented": 11,
     "implementation_started": true,
     "resume_file": ".planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md"
   },
@@ -24,10 +24,15 @@
     "Plan 02-01: threat register status column, seven-principal authenticated HA fixtures, controlled fake service, Phase-2 resource ledger, the twelve-entry strict RED classifier with mutation tests, and the extended browser effect ledger with seeded secret scanning.",
     "Plans 02-02 through 02-05: all twelve Phase-2 RED sentinels exist and are accepted by the classifier - policy matrix, access and subscriptions, evidence pagination, leases, collaboration guard, merge, configured controls, control evidence, migration and lifecycle, browser reducers, exact-dist fixture seed, and the complete exact-dist UI.",
     "Plan 02-06: the deny-default policy boundary and the server-owned ACL are GREEN; T2-01, T2-02 and T2-03 pass their owner commands.",
-    "Plan 02-08: connection-bound exclusive engineering leases are GREEN; T2-10 passes its owner command."
+    "Plan 02-08: connection-bound exclusive engineering leases are GREEN (T2-10).",
+    "Plan 02-07: membership administration, per-event subscriptions and opaque cursors are GREEN (T2-04, T2-05).",
+    "Plan 02-09: the in-lock mutation guard and bounded three-way merge are GREEN (T2-11, T2-12).",
+    "Plan 02-10: trusted evidence separated from bounded browser telemetry is GREEN (T2-09).",
+    "Plan 02-11: configured controls resolve from the verified head and dispatch at most once (T2-06, T2-07, T2-08).",
+    "CI was red on main before this branch; both root causes are fixed - shallow checkouts fabricated the build manifest's provenance, and the parity gates had no Python dependencies. A third issue found on the branch: the Phase-2 modules were missing from the HACS packaging lists."
   ],
   "remaining": [
-    "Execute Phase 2 plans 02-07 and 02-09 through 02-17 in dependency order: 02-07 sessions and ACL writes, 02-09 in-lock guard and merge, 02-10 trusted evidence, 02-11 configured controls, 02-12 and 02-13 browser UI, 02-14 migration and lifecycle, 02-15 packaging, 02-16 documentation, 02-17 the phase gate.",
+    "Execute Phase 2 plans 02-12 through 02-17: browser authority and collaboration UI, migration and lifecycle, packaging, documentation, and the phase gate.",
     "Complete Phase 2 code review, security audit, UI audit, drift checks, and independent goal verification.",
     "Complete Phases 3 through 10 and the final milestone/release verification.",
     "Close the still-open consolidated Phase 1 security, UI, drift, and goal verification."
@@ -44,7 +49,7 @@
   "blockers": [],
   "open_verification": [
     "Phase 1 consolidated security, UI, drift, and goal verification.",
-    "Phase 2 threats T2-04 through T2-09 and T2-11 through T2-16 remain planned; T2-01, T2-02, T2-03 and T2-10 pass their owner commands."
+    "Phase 2 threats T2-13 through T2-16 remain planned; T2-01 through T2-12 pass their owner commands."
   ],
   "human_actions_required": [],
   "background_processes": [],
@@ -64,7 +69,7 @@
   },
   "resume": {
     "first_action": "Read .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md and run npm run test:phase2 to see which sentinels are still RED.",
-    "next_gate": "Plan 02-07: implement policy_sessions.py (subscriptions and cursors) and the guarded ACL write route so phase2-access-revocation turns green.",
-    "after_gate": "Continue in dependency order: 02-09, 02-10, 02-11, 02-12, 02-13, 02-14, 02-15, 02-16, 02-17."
+    "next_gate": "Plan 02-12: src/v100/project-authority.mjs and the Project Safety authority state bar, so phase2-authority-reducers and phase2-ui-fixture-seed turn green.",
+    "after_gate": "Then 02-13, 02-14, 02-15, 02-16, 02-17."
   }
 }

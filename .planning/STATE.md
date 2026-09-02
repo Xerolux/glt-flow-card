@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 2 execution in progress; plans 02-01 through 02-06 and 02-08 complete
+stopped_at: Phase 2 execution in progress; plans 02-01 through 02-11 complete
 last_updated: "2026-09-02T00:00:00.000Z"
 last_activity: 2026-09-02 -- bounded plan check passed; plans 02-01..02-06 executed; 12 Phase-2 RED sentinels registered, policy matrix GREEN
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 30
-  completed_plans: 20
-  percent: 18
+  completed_plans: 24
+  percent: 22
 ---
 
 # Project State
@@ -26,27 +26,27 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 02 (authoritative-policy-controls-collaboration) — EXECUTING
-Plan: 7 of 17 implemented (61 tasks planned)
-Status: the deny-default policy boundary, the server-owned ACL and exclusive leases are GREEN
-Last activity: 2026-09-02 -- plans 02-01 through 02-06 and 02-08 committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+Plan: 11 of 17 implemented (61 tasks planned)
+Status: every Phase-2 backend gate is GREEN; the browser authority UI remains
+Last activity: 2026-09-02 -- plans 02-01 through 02-11 committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
 
-Progress: [██░░░░░░░░] 18%
+Progress: [██░░░░░░░░] 22%
 
 ### Phase 2 sentinel state
 
-`npm run test:phase2` reports 2 implemented, 10 controlled RED, 0 broken.
+`npm run test:phase2` reports 9 implemented, 3 controlled RED, 0 broken. Every backend gate is green; only the browser sentinels remain.
 
 | Sentinel | Owner plan | State |
 |---|---|---|
 | phase2-policy-matrix | 02-06 | implemented |
-| phase2-access-revocation | 02-07 | controlled RED |
-| phase2-evidence-pagination | 02-10 | controlled RED |
+| phase2-access-revocation | 02-07 | implemented |
+| phase2-evidence-pagination | 02-10 | implemented |
 | phase2-leases | 02-08 | implemented |
-| phase2-collaboration-guard | 02-09 | controlled RED |
-| phase2-merge | 02-09 | controlled RED |
-| phase2-configured-controls | 02-11 | controlled RED |
-| phase2-control-evidence | 02-11 | controlled RED |
-| phase2-migration-lifecycle | 02-14 | controlled RED |
+| phase2-collaboration-guard | 02-09 | implemented |
+| phase2-merge | 02-09 | implemented |
+| phase2-configured-controls | 02-11 | implemented |
+| phase2-control-evidence | 02-11 | implemented |
+| phase2-migration-lifecycle | 02-14 | implemented |
 | phase2-authority-reducers | 02-12 | controlled RED |
 | phase2-ui-fixture-seed | 02-12 | controlled RED |
 | phase2-ui | 02-13 | controlled RED |
@@ -166,5 +166,5 @@ No numbered v1.1 requirement is deferred.
 ## Session Continuity
 
 Last session: 2026-09-02T00:00:00.000Z
-Stopped at: Phase 2 execution; plans 02-01 through 02-06 and 02-08 complete and pushed
+Stopped at: Phase 2 execution; plans 02-01 through 02-11 complete and pushed
 Resume file: .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md
