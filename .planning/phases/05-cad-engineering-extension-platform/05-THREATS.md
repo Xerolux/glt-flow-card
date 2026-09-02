@@ -59,11 +59,12 @@ T5-16 stays `planned`, for the same reason T2-16, T3-14 and T4-14 do, and it is
 an environment limit rather than a defect. Its owner is the composed
 `npm run test:phase5:release` leaf, which installs the exact HACS stage on
 digest-pinned Home Assistant images; this container has no Docker engine, so
-the command has never been run as one command anywhere. Its four parts each
-pass on their own -- `validate:hacs-staging`, `test:ha-artifacts`,
-`verify:release` and `test:release-acceptance` -- and that is precisely why the
-row is not marked: a composed leaf verified from its parts is a leaf nobody
-composed.
+the command has never been run as one command anywhere. Its first leg
+`validate:hacs-staging` passes at head; `test:ha-artifacts` cannot run at all,
+because each of its twelve bounded lane candidates probes `docker info` and none
+resolves, so `verify:release` and `test:release-acceptance` are never reached.
+The row would not be marked even if every leg passed separately: a composed leaf
+verified from its parts is a leaf nobody composed.
 
 T5-16 is expected to stay `planned` in the current execution environment for the
 same reason T2-16, T3-14 and T4-14 did: its owner installs the exact stage on

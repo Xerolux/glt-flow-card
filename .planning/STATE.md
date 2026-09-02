@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 6 execution in progress; plans 06-01 through 06-11 complete and pushed, 06-12 next
-last_updated: "2026-09-02T14:00:00.000Z"
-last_activity: 2026-09-02 -- Phase 6 planned: source audit (14 defects), context, research (HA authoring APIs confirmed by execution, DST behaviour measured), patterns, 21 threats, validation map, UI contract and 20 plans; the alarms/list authorization leak found during the audit was fixed separately in 9f53bcb
+stopped_at: Phase 6 complete; all 20 plans implemented and pushed, threat register closed, Phase 7 next
+last_updated: "2026-09-02T16:30:00.000Z"
+last_activity: 2026-09-02 -- Phase 6 closed: 20 of 20 plans implemented, 20 of 21 threats verified by running each owner command at head, T6-21 left planned because its composed release leaf needs a Docker engine this container does not have
 progress:
   total_phases: 10
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 84
-  completed_plans: 75
-  percent: 38
+  completed_plans: 95
+  percent: 50
 ---
 
 # Project State
@@ -25,21 +25,52 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 
 ## Current Position
 
-Phase: 06 (alarms-notifications-schedules) — EXECUTING
-Plan: 11 of 20 implemented (20 plans across 5 waves)
-Status: every Phase-6 planning artifact is committed and the roadmap's
-`Plans: TBD` is replaced with the itemised list, so the gate has plan text to
-bind. The research flag is resolved in both halves: the Home Assistant
-authoring APIs were confirmed against the vendored 2026.2.3 and the DST
-behaviour was measured by execution, and the alarm philosophy was settled with
-the user as configuration with conservative defaults.
+Phase: 06 (alarms-notifications-schedules) — COMPLETE
+Plan: 20 of 20 implemented (20 plans across 5 waves)
+Status: closed and summarised in `06-SUMMARY.md`. Twenty of the twenty-one
+threats are `verified`, each by running its own owner command at head rather
+than by inferring one row from another's result. All fourteen audited defects
+are closed.
 
-Phases 2 through 5 are executed. T5-16, T4-14, T3-14 and T2-16 all stay
-`planned`: each is owned by the composed `test:phaseN:release` leaf, which needs
-a Docker engine this environment does not have.
-Last activity: 2026-09-02 -- Phase 6 planning committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+Phases 2 through 6 are executed. T6-21, T5-16, T4-14, T3-14 and T2-16 all stay
+`planned`: each is owned by the composed `test:phaseN:release` leaf, whose
+`test:ha-artifacts` leg probes `docker info` for all twelve bounded lane
+candidates and this environment has no Docker engine.
 
-Progress: [████░░░░░░] 38%
+A second, independent environment limit is now recorded: every composed
+`test:phaseN` gate recurses to Phase 1's `F-01`, whose
+`verify-provenance.mjs --online` leg needs `api.github.com`, and the egress
+proxy answers `403` for that host while `registry.npmjs.org` answers `200`. The
+gate fails closed rather than skipping, which is what a provenance check that
+cannot reach its source should do.
+
+Next: Phase 7 (Trends, Energy & Reproducible Reports) planning, plus the
+outstanding review passes for Phases 2-6 and Phase 1's consolidated
+verification.
+Last activity: 2026-09-02 -- Phase 6 execution and closure on `claude/chatgpt-continuation-hi3y86` (PR #3)
+
+Progress: [█████░░░░░] 50%
+
+### Phase 6 sentinel state
+
+`node tools/phase6-red-gate.mjs` reports 14 implemented, 0 controlled RED, 0 broken.
+
+| Sentinel | Owner plan | State |
+|---|---|---|
+| phase6-vocabulary | 06-02 | implemented |
+| phase6-lifecycle | 06-06 | implemented |
+| phase6-suppression | 06-07 | implemented |
+| phase6-restart | 06-08 | implemented |
+| phase6-index | 06-09 | implemented |
+| phase6-retention | 06-10 | implemented |
+| phase6-notifications | 06-11 | implemented |
+| phase6-escalation | 06-11 | implemented |
+| phase6-schedule-dst | 06-12 | implemented |
+| phase6-schedule-parity | 06-12 | implemented |
+| phase6-schedule-routes | 06-13 | implemented |
+| phase6-schedule-bindings | 06-14 | implemented |
+| phase6-shipped-truth | 06-15 | implemented |
+| phase6-ui | 06-17 | implemented |
 
 ### Phase 4 sentinel state
 
@@ -192,7 +223,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 - [Phase 4]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T4-14 row and the review passes remain.
 - [Phase 5]: No known technical blocker. All 20 plans are implemented; the Docker-dependent T5-16 row, the review passes, and three recorded limitations remain (two diagonals a lane offset cannot separate, five editor naming prompts, and v040 extension parts 05/06 still absent from the shipped artifact).
-- [Phase 6]: Planning is complete; execution has not started. The audit found the three areas are not greenfield and named 14 locatable defects, one of which (`alarms/list` returning every project's alarm state to any caller) was a live authorization hole and was fixed separately in `9f53bcb`.
+- [Phase 6]: No known technical blocker. All 20 plans are implemented and all 14 audited defects are closed, including the live `alarms/list` authorization hole fixed separately in `9f53bcb`. The Docker-dependent T6-21 row, the review passes, and two recorded limitations remain: a site cannot express four or five alarm priority classes (that is a schema change, not a setting), and measured capacity at thousands of alarms is Phase 10's.
 - [Phase 3]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T3-14 row and the review passes remain.
 - [Phase 2]: No known technical blocker. The bounded plan check passed on 2026-09-02 (see `02-PLAN-CHECK.md`); execution is complete.
 - [Phase 2]: Shared mutation routes now require a valid bearer at the policy boundary. Plan 02-09 must still add the decisive in-lock recheck; the boundary check alone cannot see authority that changes mid-request.
@@ -218,6 +249,8 @@ Two capabilities are deliberately out of v1.1 and recorded in
 
 ## Session Continuity
 
-Last session: 2026-09-02T14:00:00.000Z
-Stopped at: Phase 6 planning complete; 20 plans and the roadmap entry pushed
-Resume file: .planning/phases/06-alarms-notifications-schedules/.continue-here.md
+Last session: 2026-09-02T16:30:00.000Z
+Stopped at: Phase 6 complete and closed; `06-SUMMARY.md` written and the threat
+register marked from owner commands run at head
+Resume file: .planning/phases/07-trends-energy-reports/.continue-here.md (to be
+written when Phase 7 planning starts)

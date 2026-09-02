@@ -78,9 +78,11 @@ sources is exactly what kept passing while the shipped bytes carried the defect.
 
 **T5-16 is `planned`.** Its owner is the composed `test:phase5:release` leaf,
 which installs the exact stage on digest-pinned Home Assistant images and needs
-a Docker engine this container does not have. All four parts pass individually;
-the row is unmarked because a composed leaf verified from its parts is a leaf
-nobody composed. T2-16, T3-14 and T4-14 stand unmarked for the same reason.
+a Docker engine this container does not have. `validate:hacs-staging` passes at
+head and `test:ha-artifacts` then cannot resolve a lane at all, because each of
+its twelve bounded candidates probes `docker info`. The row would be unmarked
+even if every leg passed separately: a composed leaf verified from its parts is
+a leaf nobody composed. T2-16, T3-14 and T4-14 stand unmarked for the same reason.
 
 **Two diagonal routes in a closed box cannot be separated by a lane offset.**
 Each owns the near end of one row and the far end of the other, so no ordering
