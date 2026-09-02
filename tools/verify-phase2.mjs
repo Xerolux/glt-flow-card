@@ -32,7 +32,7 @@ const FOCUSED_COMMANDS = [
   ["F2-02", "Node regression suites", "npm test"],
   ["F2-03", "Companion suite", "npm run test:python"],
   ["F2-04", "Exact-dist browser suites", "npm run test:e2e"],
-  ["F2-05", "Deterministic documentation site", "node tools/build-site.mjs"],
+  ["F2-05", "Complete sources and deterministic documentation site", "node tools/verify-docs-site.mjs"],
   ["F2-06", "Phase-1 gate", "npm run test:phase1"],
 ].map(([id, name, command]) => ({ command, id, name, owner: false }));
 

@@ -32,7 +32,11 @@ jobs:
       - run: npm run verify:release
       - run: npm run test:e2e
       - run: npm run resolve:ha-minimum -- --max-candidates=12
-      - run: npm run test:ha-artifacts
+      # The Phase-1 gate is mandatory and already runs the exact Home Assistant
+      # artifact lanes, so it replaces a separate test:ha-artifacts step rather
+      # than adding a second 30-minute pass over the same two images. Release
+      # acceptance requires the evidence manifest it writes.
+      - run: npm run test:phase1
       - run: npm run test:release-acceptance -- --tag=${{ github.ref_name }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

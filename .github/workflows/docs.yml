@@ -34,19 +34,10 @@ jobs:
         with:
           node-version: 22
       - run: npm ci --ignore-scripts
-      # The wiki job copies these files verbatim, so a missing or empty source
-      # would silently delete a published page rather than fail here.
-      - name: Every wiki source is present and non-empty
-        run: |
-          for file in README.md README.de.md docs/wiki/*.md; do
-            test -s "$file" || { echo "empty or missing documentation source: $file"; exit 1; }
-          done
-      - name: The site build is deterministic
-        run: |
-          node tools/build-site.mjs
-          mv _site _site-first
-          node tools/build-site.mjs
-          diff -r _site-first _site
+      # Complete sources and a byte-identical two-run build. The wiki job copies
+      # these files verbatim, so an empty source would silently delete a page.
+      - name: Verify documentation sources and site determinism
+        run: node tools/verify-docs-site.mjs
 
   pages:
     name: Deploy Pages + online editor
