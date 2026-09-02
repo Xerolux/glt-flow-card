@@ -101,7 +101,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
     await route.continue();
   });
 
-  await page.addInitScript(({ states, wsResults, locale, secrets }) => {
+  await page.addInitScript(({ states, wsResults, locale, secrets, bridge }) => {
     const effects = {
       filesystem: [],
       network: [],
@@ -248,6 +248,13 @@ export async function installFakeHomeAssistant(page, options = {}) {
     const callWS = async (message) => {
       effects.websocket.push(structuredClone(message));
       effects.websocketRequests.push({ type: String(message?.type ?? ""), body: structuredClone(message) });
+      if (bridge && typeof window[bridge] === "function") {
+        const response = await window[bridge](structuredClone(message));
+        if (response && response.error) {
+          throw Object.assign(new Error(response.error.message ?? "denied"), response.error);
+        }
+        return response ? structuredClone(response.result) : {};
+      }
       if (control.mode === "unavailable" && message.type.startsWith("glt_flow_card/")) {
         throw Object.assign(new Error("Companion unavailable"), { code: "unavailable" });
       }
@@ -304,6 +311,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
     wsResults: defaultWsResults,
     locale: options.locale ?? "en",
     secrets: { ...SEEDED_SECRETS, ...(options.secrets ?? {}) },
+    bridge: options.bridge ?? null,
   });
 }
 

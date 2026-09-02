@@ -101,7 +101,11 @@ try {
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Exact-dist server did not bind a TCP port");
   const baseUrl = `http://127.0.0.1:${address.port}/`;
-  const args = [cliPath, "test", "test/e2e/project-safety.spec.mjs", "--config=playwright.config.mjs"];
+  const specs = [
+    "test/e2e/project-safety.spec.mjs",
+    "test/e2e/project-authority.spec.mjs",
+  ];
+  const args = [cliPath, "test", ...specs, "--config=playwright.config.mjs"];
   if (options.grep) args.push(`--grep=${options.grep}`);
   const exitCode = await run(process.execPath, args, {
     cwd: projectRoot,
