@@ -27,6 +27,7 @@ const COMPONENT_FILES = [
   "manifest.json",
   "policy.py",
   "policy_sessions.py",
+  "ports.py",
   "project_access.py",
   "project_bundle.py",
   "project_contract.py",
