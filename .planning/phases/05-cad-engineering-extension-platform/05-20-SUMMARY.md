@@ -68,8 +68,17 @@ PASS F5-05 Complete sources and deterministic documentation site
 RUN  F5-06 Phase-4 gate  → chains to Phase 3, Phase 2 and Phase 1
 ```
 
-F5-06 keeps the previous phase gate mandatory, and Phase 1's chain reaches
-`verify:provenance --online`, which this container's egress proxy answers with
-HTTP 403. That is the same recorded environment limit, and the gate fails closed
-on it rather than skipping it — which is the correct behaviour, and the reason
-the local run cannot be the release evidence.
+F5-06 keeps the previous phase gate mandatory. The whole chain was run rather
+than assumed: Phase 4's gate passes F4-01 to F4-05 and stops at F4-06, which
+chains to Phase 3, Phase 2 and Phase 1, and Phase 1 stops at its first command.
+
+That command is `verify:provenance --online`, and running it directly names the
+cause exactly: **`api.github.com` returns HTTP 403 through this container's
+egress proxy.** The npm registry itself answers 200 — it is on the proxy's
+no-proxy list — so this is the source-repository half of the provenance check,
+not the registry half.
+
+The tool was left alone. Routing a supply-chain check through a different
+transport to suit an environment weakens the check, and the gate failing closed
+on an unreachable source of truth is the behaviour that check exists to have.
+It is also why a local gate run cannot be the release evidence.
