@@ -41,6 +41,8 @@ CAPABILITIES: tuple[str, ...] = (
     "alarm.write",
     "schedule.read",
     "schedule.write",
+    "history.read",
+    "history.export",
     "work_order.read",
     "work_order.write",
     "report.read",
@@ -60,6 +62,10 @@ _VIEWER = frozenset({
     "control.read",
     "alarm.read",
     "schedule.read",
+    # Whoever may see the plant's current state may see how it reached it. The
+    # boundary this creates is about *bounds and audit*, not about hiding
+    # history from a viewer who can already read every entity on the card.
+    "history.read",
     "work_order.read",
     "report.read",
     "evidence.read",
@@ -67,6 +73,9 @@ _VIEWER = frozenset({
 })
 _OPERATOR = _VIEWER | {
     "control.execute",
+    # Separate from reading, because an export leaves the building. It is the
+    # same reasoning that keeps `report.run` out of the viewer's set.
+    "history.export",
     "alarm.write",
     "work_order.write",
     "report.run",
@@ -283,6 +292,20 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/schedules/save", "schedule.write", rate_class="mutation"),
     _route("glt_flow_card/schedules/delete", "schedule.write", rate_class="mutation"),
     _route("glt_flow_card/schedules/preview", "schedule.read"),
+    # -- history ----------------------------------------------------------
+    # Until this phase every history read was a browser `callApi` straight to
+    # `history/period`, so the project policy never saw one and no export was
+    # audited. This was the last product area reading shared data with no route.
+    #
+    # `series` and `statistics` enumerate, so they filter rather than deny: a
+    # refusal would tell an unauthorized caller that rows exist. The limit is
+    # applied after filtering by the handler, or it becomes a count oracle.
+    _route("glt_flow_card/history/series", "history.read", enumeration="filter"),
+    _route("glt_flow_card/history/statistics", "history.read", enumeration="filter"),
+    _route("glt_flow_card/history/coverage", "history.read"),
+    # An export leaves the building, so it is rate-limited like a mutation even
+    # though it changes nothing. What it costs is the reason, not what it writes.
+    _route("glt_flow_card/history/export", "history.export", rate_class="mutation"),
     _route("glt_flow_card/work_orders/list", "work_order.read", enumeration="filter"),
     _route("glt_flow_card/work_orders/save", "work_order.write"),
     _route("glt_flow_card/reports/run", "report.run"),

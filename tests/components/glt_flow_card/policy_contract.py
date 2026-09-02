@@ -45,6 +45,8 @@ CAPABILITIES = (
     "alarm.write",
     "schedule.read",
     "schedule.write",
+    "history.read",
+    "history.export",
     "work_order.read",
     "work_order.write",
     "report.read",
@@ -64,6 +66,8 @@ _VIEWER = frozenset({
     "control.read",
     "alarm.read",
     "schedule.read",
+    # Whoever may see the plant's current state may see how it reached it.
+    "history.read",
     "work_order.read",
     "report.read",
     "evidence.read",
@@ -71,6 +75,8 @@ _VIEWER = frozenset({
 })
 _OPERATOR = _VIEWER | {
     "control.execute",
+    # Separate from reading, because an export leaves the building.
+    "history.export",
     "alarm.write",
     "work_order.write",
     "report.run",
@@ -241,6 +247,10 @@ COMMAND_POLICY_CONTRACT: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/schedules/save", "schedule.write"),
     _route("glt_flow_card/schedules/delete", "schedule.write"),
     _route("glt_flow_card/schedules/preview", "schedule.read"),
+    _route("glt_flow_card/history/series", "history.read", enumeration="filter"),
+    _route("glt_flow_card/history/statistics", "history.read", enumeration="filter"),
+    _route("glt_flow_card/history/coverage", "history.read"),
+    _route("glt_flow_card/history/export", "history.export"),
     _route("glt_flow_card/work_orders/list", "work_order.read", enumeration="filter"),
     _route("glt_flow_card/work_orders/save", "work_order.write"),
     _route("glt_flow_card/reports/run", "report.run"),

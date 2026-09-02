@@ -29,7 +29,9 @@ from homeassistant.helpers.storage import Store
 
 from uuid import uuid4
 
-from . import alarm_engine, notifications, schedule_time
+from homeassistant.util import dt as dt_util
+
+from . import alarm_engine, history_routes, notifications, period_resolution, schedule_time
 from .configured_controls import (
     ControlRateLimiter,
     ControlRejected,
@@ -2195,6 +2197,178 @@ async def ws_schedules_preview(hass, connection, msg):
     connection.send_result(msg["id"], {"timezone": zone, "dates": rows})
 
 
+# -- history ---------------------------------------------------------------
+#
+# Four routes, and the boundary they create is the point of plan 07-08. Every
+# history read used to be a browser `callApi`, so the project policy never saw
+# one and no export was audited.
+#
+# The bodies here are deliberately thin. They enforce the boundary -- filter,
+# bound, audit -- and hand the query itself to the modules that own it. Plans
+# 07-09 and 07-10 fill in bounds and coverage; until they land these answer with
+# an empty, honestly-sourced result rather than with a fabricated one.
+
+
+def _history_window_hours(msg) -> float:
+    """Return the requested window in hours, or zero when it is unparseable."""
+    start = str(msg.get("start_time") or "")
+    end = str(msg.get("end_time") or "")
+    if not start or not end:
+        return 0.0
+    try:
+        resolved_start = dt_util.parse_datetime(start)
+        resolved_end = dt_util.parse_datetime(end)
+    except (TypeError, ValueError):
+        return 0.0
+    if resolved_start is None or resolved_end is None:
+        return 0.0
+    return max(0.0, (resolved_end - resolved_start).total_seconds() / 3600)
+
+
+async def _audit_history(hass, connection, route, *, project_id, msg, rows, contract):
+    """Write the audit row for one history read or export."""
+    uid, uname, _admin = _user(connection)
+    await _manager(hass).add_audit(
+        history_routes.audit_read(
+            route,
+            contract=contract,
+            entities=len(list(msg.get("entity_ids") or [])),
+            project_id=project_id,
+            rows=rows,
+            window_hours=_history_window_hours(msg),
+        ),
+        uid,
+        uname,
+    )
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/history/series",
+    # Optional with defaults, so the generic policy prober reaches a decision
+    # rather than a schema rejection. Phase 5 lost a round to exactly this.
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("entity_ids", default=list): [str],
+    vol.Optional("start_time", default=""): str,
+    vol.Optional("end_time", default=""): str,
+    vol.Optional("limit", default=500): int,
+})
+@websocket_api.async_response
+async def ws_history_series(hass, connection, msg):
+    """Return raw-state series for the entities of the project this names.
+
+    Declared `enumeration="filter"`, so the guard deliberately does not deny and
+    the filtering is the handler's job. An unpermitted caller gets an empty
+    result rather than a refusal, because a refusal would itself say that rows
+    exist.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    project_id = decision.project_id
+    permitted = runtime.policy.visible_projects(connection, [project_id], "history.read")
+    if not permitted:
+        connection.send_result(msg["id"], {"series": [], "coverage": 0, "source": "unavailable"})
+        return
+    # Filtered first, limited second. Slicing first would let another project's
+    # rows consume the caller's page, turning the limit into a count oracle.
+    series = []
+    await _audit_history(
+        hass, connection, "glt_flow_card/history/series",
+        contract="raw", msg=msg, project_id=project_id, rows=len(series),
+    )
+    connection.send_result(msg["id"], {
+        "coverage": 0,
+        "series": series[: msg["limit"]],
+        "source": "unavailable",
+    })
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/history/statistics",
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("entity_ids", default=list): [str],
+    vol.Optional("period", default="day"): str,
+    vol.Optional("start_time", default=""): str,
+    vol.Optional("end_time", default=""): str,
+    vol.Optional("limit", default=500): int,
+})
+@websocket_api.async_response
+async def ws_history_statistics(hass, connection, msg):
+    """Return long-term statistics for the entities of the project this names."""
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    project_id = decision.project_id
+    permitted = runtime.policy.visible_projects(connection, [project_id], "history.read")
+    if not permitted:
+        connection.send_result(msg["id"], {"series": [], "coverage": 0, "source": "unavailable"})
+        return
+    series = []
+    await _audit_history(
+        hass, connection, "glt_flow_card/history/statistics",
+        contract="statistics", msg=msg, project_id=project_id, rows=len(series),
+    )
+    connection.send_result(msg["id"], {
+        "coverage": 0,
+        "series": series[: msg["limit"]],
+        "source": "unavailable",
+    })
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/history/coverage",
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("entity_ids", default=list): [str],
+    vol.Optional("period", default="day"): str,
+    vol.Optional("start_time", default=""): str,
+    vol.Optional("end_time", default=""): str,
+})
+@websocket_api.async_response
+async def ws_history_coverage(hass, connection, msg):
+    """Return what the Recorder has for this window, without the values.
+
+    A separate route because coverage is a question an operator asks *before*
+    committing to a query -- "is there anything there?" -- and answering it by
+    fetching everything and counting would be the bound it exists to avoid.
+    """
+    decision = msg[DECISION_KEY]
+    project_id = decision.project_id
+    await _audit_history(
+        hass, connection, "glt_flow_card/history/coverage",
+        contract="statistics", msg=msg, project_id=project_id, rows=0,
+    )
+    connection.send_result(msg["id"], {"coverage": 0, "gaps": [], "source": "unavailable"})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/history/export",
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("entity_ids", default=list): [str],
+    vol.Optional("start_time", default=""): str,
+    vol.Optional("end_time", default=""): str,
+    vol.Optional("format", default="csv"): str,
+})
+@websocket_api.async_response
+async def ws_history_export(hass, connection, msg):
+    """Export a bounded window, and audit that it left the building.
+
+    A separate capability from reading. Whoever may look at the plant's history
+    on screen is not automatically whoever may carry it out of the building, and
+    the audit row is what lets the site say afterwards what left and how much.
+    """
+    decision = msg[DECISION_KEY]
+    project_id = decision.project_id
+    rows = []
+    await _audit_history(
+        hass, connection, "glt_flow_card/history/export",
+        contract="raw", msg=msg, project_id=project_id, rows=len(rows),
+    )
+    connection.send_result(msg["id"], {
+        "coverage": 0,
+        "rows": rows,
+        "source": "unavailable",
+        "truncated": False,
+    })
+
+
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/alarms/ack", vol.Required("project_id"): str, vol.Required("alarm_id"): str, vol.Optional("comment", default=""): str})
 @websocket_api.async_response
 async def ws_alarms_ack(hass, connection, msg):
@@ -2418,6 +2592,7 @@ _COMMAND_HANDLERS = (
     ws_templates_delete, ws_control_execute, ws_alarms_list, ws_alarms_ack,
     ws_alarms_shelve,
     ws_schedules_list, ws_schedules_save, ws_schedules_delete, ws_schedules_preview,
+    ws_history_series, ws_history_statistics, ws_history_coverage, ws_history_export,
     ws_work_orders_list, ws_work_orders_save, ws_reports_run,
     ws_reports_list, ws_remote_list, ws_remote_states, ws_remote_control,
     ws_audit_add, ws_audit_list,

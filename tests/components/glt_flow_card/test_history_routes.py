@@ -57,13 +57,24 @@ def test_expected_red_phase7_history_routes(recorder_ledger) -> None:
 
         # Both tables, deliberately duplicated at different trust boundaries: a
         # route present in only one passes the prober and fails the contract.
-        shipped = getattr(policy, "POLICY_TABLE", None) or getattr(policy, "ROUTES", None)
-        if shipped is None:
-            gaps.append("policy exposes no route table to declare history in")
-        else:
-            for route in EXPECTED_ROUTES:
-                if route not in shipped:
-                    gaps.append(f"{route} is absent from the shipped policy table")
+        #
+        # `COMMAND_POLICIES` is asked for by name because it is the mapping the
+        # guard itself consults -- asserting against the thing that decides,
+        # rather than against a table that might merely describe it. The first
+        # draft of this guessed at `POLICY_TABLE`, which is the mistake this
+        # file's own docstring warns about: a contract that names a shape rather
+        # than an effect fails correct work.
+        for route in EXPECTED_ROUTES:
+            declared_policy = policy.COMMAND_POLICIES.get(route)
+            if declared_policy is None:
+                gaps.append(f"{route} is absent from the shipped policy table")
+                continue
+            expected_capability = history_routes.CAPABILITIES[route]
+            if declared_policy.capability != expected_capability:
+                gaps.append(
+                    f"{route} requires {declared_policy.capability!r}, "
+                    f"not the declared {expected_capability!r}"
+                )
 
         # Filtering, not denial: a refusal tells an unauthorized caller that
         # rows exist. And the limit is applied *after* filtering, or it becomes
@@ -72,6 +83,10 @@ def test_expected_red_phase7_history_routes(recorder_ledger) -> None:
         for route in ("glt_flow_card/history/series", "glt_flow_card/history/statistics"):
             if enumeration.get(route) != "filter":
                 gaps.append(f"{route} denies rather than filters, which leaks that rows exist")
+            # And the guard must agree, or the declaration is a comment.
+            guarded = policy.COMMAND_POLICIES.get(route)
+            if guarded is not None and guarded.enumeration != "filter":
+                gaps.append(f"{route} is declared filtering but the guard denies")
 
         if missing("history_routes", "audit_read"):
             gaps.append(
