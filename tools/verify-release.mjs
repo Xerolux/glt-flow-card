@@ -278,7 +278,7 @@ async function verifyStageConsumesCheckedInBytes() {
   } catch {
     throw new Error(
       "no staged packages found at build/release/hacs-staging-manifest.json. "
-      + "Run `npm run stage:hacs` before `npm run verify:release`: this step consumes the stage, it never creates one.",
+      + "Stage the packages first: this step consumes the stage, it never creates one.",
     );
   }
   if (manifest.format !== "glt-flow-card-hacs-staging-manifest" || manifest.manifest_version !== 1) {

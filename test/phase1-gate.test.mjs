@@ -93,6 +93,19 @@ async function createAcceptanceFixture() {
     report_version: 1,
     verified: true,
   });
+  await writeJson(path.join(evidenceRoot, "phase1-evidence.json"), {
+    format: "glt-flow-card-phase1-evidence",
+    report_version: 1,
+    verified: true,
+    artifacts: {
+      "custom_components/glt_flow_card/build-manifest.json": {
+        sha256: sha256(await readFile(path.join(
+          fixtureRoot,
+          "custom_components/glt_flow_card/build-manifest.json",
+        ))),
+      },
+    },
+  });
   await writeJson(path.join(evidenceRoot, "release-build-verification.json"), {
     format: "glt-flow-card-release-build-verification",
     report_version: 1,
