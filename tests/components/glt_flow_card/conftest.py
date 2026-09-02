@@ -248,12 +248,15 @@ def controlled_service(hass: HomeAssistant) -> Generator[Any]:
     controlled = ControlledService(hass)
     original_call = type(hass.services).async_call
 
-    async def guarded_call(services, domain, service, data=None, *args, **kwargs):
+    # `patch.object(..., side_effect=...)` installs a MagicMock as a class
+    # attribute, so the instance lookup does not bind `self`; the replacement
+    # therefore takes the call arguments only, exactly like the global blocker.
+    async def guarded_call(domain, service, data=None, *args, **kwargs):
         if not controlled.is_allowed(str(domain), str(service)):
             raise AssertionError(f"live service attempt blocked: {domain}.{service}")
-        return await original_call(services, domain, service, data, *args, **kwargs)
+        return await original_call(hass.services, domain, service, data, *args, **kwargs)
 
-    with patch.object(type(hass.services), "async_call", autospec=True, side_effect=guarded_call):
+    with patch.object(type(hass.services), "async_call", side_effect=guarded_call):
         yield controlled
 
 
