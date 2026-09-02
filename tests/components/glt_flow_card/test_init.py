@@ -174,3 +174,116 @@ async def test_recovery_finishes_before_runtime_is_available(
     assert observations == [True]
     assert integration._runtime_for(hass, config_entry.entry_id) is not None
     assert await hass.config_entries.async_unload(config_entry.entry_id)
+
+
+@pytest.mark.enable_socket
+@pytest.mark.allow_hosts(["127.0.0.1", "localhost"])
+async def test_phase2_user_factory_creates_distinct_authenticated_principals(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    phase2_users,
+) -> None:
+    """Every Phase-2 principal is a real HA identity with its own access token."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    keys = ("viewer", "operator", "engineer", "engineer_two", "admin", "ha_admin", "unassigned")
+    principals = [phase2_users.principal(key) for key in keys]
+    assert len({principal.user_id for principal in principals}) == len(keys)
+    assert [principal.is_admin for principal in principals] == [
+        False, False, False, False, False, True, False
+    ]
+    assert phase2_users.principal("admin").project_role == "admin"
+    assert phase2_users.principal("ha_admin").project_role is None
+
+    token_a = await phase2_users.async_access_token("engineer", session="a")
+    token_b = await phase2_users.async_access_token("engineer", session="b")
+    assert token_a != token_b
+
+
+@pytest.mark.enable_socket
+@pytest.mark.allow_hosts(["127.0.0.1", "localhost"])
+async def test_phase2_user_factory_binds_connections_and_sessions(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    phase2_users,
+) -> None:
+    """Two connections for one user differ, and reconnect never reuses a session."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    first = await phase2_users.async_connect("engineer", session="a")
+    second = await phase2_users.async_connect("engineer", session="b")
+    other = await phase2_users.async_connect("engineer_two")
+
+    assert first.user_id == second.user_id
+    assert first.session_id != second.session_id
+    assert first.connection_id != second.connection_id
+    assert other.user_id != first.user_id
+
+    await phase2_users.async_disconnect(first)
+    reconnected = await phase2_users.async_connect("engineer")
+    assert reconnected.session_id != first.session_id
+    assert reconnected.connection_id != first.connection_id
+
+    await phase2_users.async_close()
+
+
+@pytest.mark.enable_socket
+@pytest.mark.allow_hosts(["127.0.0.1", "localhost"])
+async def test_controlled_service_fixture_defaults_to_zero_allowed_calls(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    controlled_service,
+) -> None:
+    """The controlled fake service records exact payloads and allows none by default."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert controlled_service.allowed == ()
+    assert controlled_service.calls == []
+
+    controlled_service.allow("switch", "turn_on")
+    await hass.services.async_call(
+        "switch", "turn_on", {"entity_id": "switch.pump"}, blocking=True
+    )
+    assert len(controlled_service.calls) == 1
+    recorded = controlled_service.calls[0]
+    assert recorded["domain"] == "switch"
+    assert recorded["service"] == "turn_on"
+    assert recorded["data"] == {"entity_id": "switch.pump"}
+    assert recorded["context_id"]
+
+    with pytest.raises(AssertionError):
+        await hass.services.async_call("light", "turn_on", {}, blocking=True)
+
+
+@pytest.mark.enable_socket
+@pytest.mark.allow_hosts(["127.0.0.1", "localhost"])
+async def test_lifecycle_ledger_accounts_for_every_phase2_resource(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    lifecycle_effects: LifecycleEffects,
+) -> None:
+    """Phase-2 runtime resources are counted and return to zero after unload."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    snapshot = lifecycle_effects.snapshot()
+    for counter in (
+        "subscriptions",
+        "cursors",
+        "leases",
+        "control_waits",
+        "rate_buckets",
+        "late_callbacks",
+    ):
+        assert counter in snapshot, counter
+
+    assert await hass.config_entries.async_unload(config_entry.entry_id)
+    await hass.async_block_till_done()
+    after = lifecycle_effects.snapshot()
+    assert lifecycle_effects.phase2_resource_total(after) == 0
+
+    lifecycle_effects.reset()
+    assert lifecycle_effects.service_attempts == []
