@@ -93,6 +93,54 @@ Feiertage, Ausnahmen, Ferien, Sondertage und Betriebszeiten binden an die
 `schedule`-, `calendar`- und Workday-Fähigkeiten von Home Assistant, und eine
 Bindung sagt, was sie nicht kann, bevor Sie es versuchen.
 
+### Trends, Energie und Berichte
+
+**Dieses Produkt liest den Recorder von Home Assistant; es ist kein Historian.**
+Es hat keine eigene Zeitreihendatenbank, keine eigene Aufbewahrungsfrist und
+keine eigene Verdichtung. Die frühere Oberfläche legte das Gegenteil nahe — sie
+bot Zeiträume bis zu einem Jahr an und integrierte Energien im Browser —, sodass
+eine Installation mit zehn Tagen Recorder-Historie einen „Monatsbericht" ohne
+Monat bekam und das nirgends sagte.
+
+Eine Regel bestimmt alle Oberflächen: **Die Anzeige zeigt nie eine Zahl, ohne zu
+zeigen, wovon sie eine Zahl ist.** Wert, Einheit, Zeitraum und Abdeckung reisen
+gemeinsam oder gar nicht.
+
+**Eine Lücke ist ein Bruch in der Linie** — nicht gestrichelt, nicht heller,
+kein Tooltip; auf einem monochromen Leitstand und in erzwungenen Farben ist das
+alles dieselbe Linie. Maßgeblich ist die Lückenliste des Companion, nicht das
+Fehlen eines Punktes; ein unlesbarer Zeitstempel bricht ebenfalls, denn zwei
+Messwerte zu verbinden, deren Reihenfolge nicht feststeht, zeichnete eine
+Stetigkeit, die niemand gemessen hat. **Die Abdeckung wird auch bei 100 %
+genannt**, damit ihr Fehlen nie „wir haben nicht nachgesehen" bedeutet, und
+jedes Diagramm hat eine über Tastatur erreichbare Tabelle, in der eine Lücke
+eine markierte Zeile mit ihrem Intervall ist.
+
+**Zeiträume sind Kalenderzeiträume, serverseitig in der Zeitzone des Standorts
+aufgelöst.** Ein Frühjahrstag hat 23 Stunden, ein Herbsttag 25, und der Oktober
+2027 hat 745. Die ausgelieferte `Math.floor(x / bucketMs)`-Eimerbildung — immer
+exakt gleich lang, am UTC-Epoch ausgerichtet und außerstande, einen Monat
+überhaupt auszudrücken — ist jetzt **aus dem Artefakt entfernt**, nicht nur
+ungenutzt.
+
+**Zwei Zählermodelle, nie ineinander umgerechnet.** Ein `counter` akkumuliert,
+sein Verbrauch ist eine Differenz über die Zeitraumgrenze; eine `rate` ist ein
+Momentanwert, ihre Energie ein Integral über den Zeitraum. Zählerrücksetzungen
+sind Sache des Recorders. **Einheiten werden geprüft, nicht geraten**: Ein
+unverträgliches Paar wird mit Begründung abgelehnt, denn eine falsche
+Kostenzahl ist schlimmer als eine fehlende — und eine Summe nennt in einer
+eigenen Zeile, was sie ausgelassen hat.
+
+**Ein Bericht ist reproduzierbar.** Er hält aufgelösten Zeitraum, Zeitzone,
+Entitäten, Vertragsart, Abdeckung und Lücken fest, und seine Kennungen leiten
+sich aus dem Inhalt ab statt aus der Uhr. Zeitpläne werden beim Speichern
+geprüft und laufen über denselben Runner wie die Anlagenzeitprogramme.
+
+**Was es nicht tut:** `history/coverage` und `history/export` antworten
+`unavailable` — die Fähigkeitsgrenze und die Audit-Zeile stehen, die Antworten
+nicht. CSV-Download und Druck/PDF im Browser sind entfernt: Sie schrieben den
+gerade gerenderten Wert, ohne Zeitraum und ohne Abdeckung.
+
 > Für sichere Bedienungen, geräteübergreifende Projekte, Alarme, Zeitprogramme, Audit, Locks und Remote-Home-Assistant wird der **GLT Flow Card Companion** empfohlen. Die reine Dashboard-Card bleibt weiterhin ohne Backend nutzbar.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**
@@ -337,10 +385,12 @@ könnte.
 **Betriebsstunden und Starts** stammen aus profil-deklarierten Datenpunkten und
 erscheinen deshalb ohne jede Historienabfrage.
 
-**Trends gibt es noch nicht.** Der Trendbereich zeigt einen deklarierten
-"nicht verfügbar"-Zustand. Ehrliche Recorder-Historie — mit Abdeckung, Lücken
-und Herkunft — gehört zu Phase 7, und ein Bereich, der sagt, dass er nichts hat,
-ist besser als einer, der sich etwas ausdenkt.
+**Trends lesen den Recorder von Home Assistant** (Phase 7). Die Karte ist
+**kein Historian**: keine eigene Zeitreihendatenbank, keine eigene
+Aufbewahrungsfrist — was der Recorder nicht aufgezeichnet hat, existiert für sie
+nicht. Jeder Wert trägt Einheit, Zeitraum und **Abdeckung**, sodass ein Monat,
+in dem der Recorder an neun Tagen nichts hatte, genau das aussagt statt einer
+kleineren, selbstbewussten Zahl.
 
 **Vier getrennte Bedienergebnisse.** *Angenommen* heißt, der Server hat es
 notiert. *Gesendet* heißt, Home Assistant wurde gefragt. Nur *Bestätigt* heißt,

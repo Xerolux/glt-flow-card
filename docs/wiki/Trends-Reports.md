@@ -1,11 +1,12 @@
 # Trends, Replay und Reports
 
-Der bestehende Replay-Modus bleibt erhalten. **Trend+** ergänzt:
+Diese Seite ist aufgeteilt worden, weil sie Funktionen beschrieb, die das
+Produkt bewusst nicht mehr ausführt: Energie-Integration im Browser,
+CSV-Direktdownload und Druck/PDF über ein selbst beschriebenes Fenster. Alle
+drei schrieben den gerade angezeigten Wert, ohne Zeitraum und ohne Abdeckung.
 
-- eigene Y-Achsen pro Einheit,
-- Min/Max/Mittelwert,
-- Leistung→Energie-Integration,
-- 24-h-Vergleich zum vorherigen Zeitraum,
-- CSV-Export.
+- **[Trends & Energie](Trends-Energy)** — Abdeckung, Lücken, Kalenderzeiträume,
+  die zwei Zählermodelle und die Einheitenprüfung.
+- **[Berichte](Reports)** — Reproduzierbarkeit, Zeitpläne und der Designer.
 
-Reports enthalten KPIs, Alarme und Wartungsinformationen. CSV wird direkt heruntergeladen; Druck/PDF öffnet eine druckoptimierte Ansicht, die im Browser als PDF gespeichert werden kann.
+Der Replay-Modus bleibt erhalten.

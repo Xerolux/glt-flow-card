@@ -88,6 +88,51 @@ vacations, special days and operating periods bind to Home Assistant's own
 `schedule`, `calendar` and workday capabilities, and a binding says what it
 cannot do before you attempt it.
 
+### Trends, energy and reports
+
+**This product reads Home Assistant's Recorder; it is not a historian.** It
+keeps no time-series database, no retention policy and no compaction of its own.
+The earlier interface implied otherwise — it offered periods up to a year and
+integrated energy in the browser — so an installation that keeps ten days of
+Recorder history got a "monthly report" with no month in it, and said so
+nowhere.
+
+One rule governs the surfaces: **the screen never shows a number without showing
+what it is a number of.** Value, unit, period and coverage travel together or
+none of them appears.
+
+**A gap is a break in the line** — never dashed, lighter or a tooltip, all of
+which are the same line on a monochrome kiosk and in forced colours. The
+Companion's gap list is authoritative rather than the absence of a point, and an
+unparseable timestamp breaks too: joining two readings whose order cannot be
+established would draw a continuity nobody measured. **Coverage is stated even
+at 100 %**, so its absence never comes to mean "we forgot to check", and every
+chart has a keyboard-reachable table where a gap is a marked row carrying its
+interval.
+
+**Periods are calendar periods, resolved server-side in the site's timezone.** A
+spring day is 23 hours, a fall day is 25, and October 2027 is 745 hours. The
+shipped `Math.floor(x / bucketMs)` bucketing — always exactly one bucket long
+and aligned to the UTC epoch, and unable to express a month at all — is now
+*absent from the artifact* rather than merely unused.
+
+**Two meter models, never converted into each other.** A `counter` accumulates,
+so its consumption is a difference across the period boundary; a `rate` is
+instantaneous, so its energy is an integral over the period. Meter resets are
+the Recorder's job, not ours. **Units are checked, not guessed**: an
+incompatible pair is refused with a reason, because a wrong cost figure is worse
+than a missing one, and a total names what it excluded in its own row.
+
+**A report is reproducible.** It records the resolved period, timezone,
+entities, contract, coverage and gaps, and its ids derive from content rather
+than the clock. Schedules are validated when saved and executed by the same
+runner the plant schedules use.
+
+**What this does not do:** `history/coverage` and `history/export` answer
+`unavailable` — the capability boundary and audit row stand, the answers do
+not. Browser-side CSV download and print/PDF are removed: they wrote the value
+being rendered at that moment, with no period and no coverage.
+
 > The **GLT Flow Card Companion** is recommended for secure controls, cross-device projects, alarms, schedules, audit, locks and remote Home Assistant sites. The dashboard card still works standalone.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**
@@ -320,10 +365,12 @@ in the browser holds something it could dispatch directly.
 **Operating hours and starts** come from profile-declared datapoints, which is
 why they appear without any history query.
 
-**Trends are not available yet.** The trend region renders a declared
-"unavailable" state. Honest Recorder-backed history — with coverage, gaps and
-provenance — is Phase 7's, and a region that says it has nothing beats one that
-invents content.
+**Trends read Home Assistant's Recorder** (Phase 7). The card is **not a
+historian**: it has no time-series database of its own, no retention policy of
+its own, and what the Recorder did not record does not exist for it. Every value
+carries its unit, its period and its **coverage**, so a month in which the
+Recorder held nine days of nothing reads as exactly that rather than as a
+smaller, confident number.
 
 **Four command outcomes, kept apart.** *Accepted* means the server wrote it
 down. *Sent* means Home Assistant was asked. Only *Confirmed* means a read-back
