@@ -283,6 +283,60 @@ Alarmkorrelation, keine gemessenen Kapazitätszahlen (Phase 10 besitzt die
 Budgets; diese Phase macht die *Form* der Kosten begrenzbar und nennt ihre
 Grenzen) und keine Neugestaltung der Zugangsdatenhaltung.
 
+### Benutzbarkeit und Nachweise
+
+Drei Anforderungen, die zusammenhanglos aussehen — Sprachen, Barrierefreiheit,
+Nachweise — sind derselbe Fehler aus drei Richtungen: **eine Aussage über das
+Produkt, hinter der nichts steht.**
+
+**Zwei Kataloge, und eine dritte Sprache ist eine Datei.** Wortlaut stand vorher
+in vierzehn Modulen als `{ de, en }`-Paar, was das Hinzufügen von Französisch zu
+einer Änderung an jedem Modul machte, das irgendetwas anzeigt. Jetzt sind es
+Daten. Eine fehlende Übersetzung **wirft**, statt auf den englischen Satz
+zurückzufallen — neun Module taten das stillschweigend, und eine deutsche
+Bedienerin sah einen englischen Satz, nicht zu unterscheiden von einem
+absichtlich englisch belassenen Fachbegriff. Ein zur Testzeit erzeugtes
+Pseudo-Locale beweist, dass dieses Werfen erreichbar ist, und Mehrzahlformen
+sind CLDR-Kategorien statt `count === 1 ? … : …`, geprüft gegen Polnisch und
+Arabisch.
+
+Formatierung kommt aus der Konfiguration oder verweigert. Vorher fiel sie auf
+`toLocaleString()` zurück — die Sprache des *Betrachters* —, sodass ein
+Leitstandsbildschirm zwei Datumsformate tragen konnte, ohne zu sagen, welches
+welches ist.
+
+**Barrierefreiheit wird geprüft, und ihre Grenzen werden genannt.** Das Produkt
+hatte kein einziges `aria-label`; ein `title` ist kein zugänglicher Name und ein
+`placeholder` verschwindet beim Tippen. Jedes fokussierbare Element hat jetzt
+Rolle und Namen, der Fokus überlebt entfernte Farbe, nichts fängt die Tastatur,
+und eine automatische Prüfung erfasst jede registrierte Oberfläche, ohne dass
+eine Regel abgeschaltet wäre.
+
+**Diese Prüfung ist keine Konformitätsaussage.** Automatische Regeln entscheiden
+nur einen Teil der WCAG-Kriterien, deshalb sind „automatisch bestanden" und
+„manuell geprüft" getrennte Aussagen — und das Register kennt keine Struktur, in
+der sie sich verbinden. Die manuelle Hälfte wurde hier nicht durchgeführt: In
+dieser Umgebung lässt sich keine assistive Technologie steuern.
+
+Die Statuspalette scheiterte auf jedem hellen Bildschirm am Kontrast — 1,87 bis
+3,24 gegen Weiß, wo AA 4,5 verlangt. Farben für einen dunklen Grund, auf beiden
+verwendet. Jetzt ist es eine Palette, mit dem gemessenen Verhältnis neben jedem
+Wert.
+
+**Jede veröffentlichte Aussage nennt einen Befehl und dessen Ergebnis.** Eine
+Aussage ohne Nachweis lässt den Build scheitern; eine Aussage, deren Nachweis
+fehlschlug, wird *als fehlgeschlagen* veröffentlicht — sie wegzulassen würde ihr
+Fehlen als „trifft nicht zu" lesbar machen. Kapazitätsmessungen tragen ihre
+Umgebung, und nur eine als repräsentativ markierte stützt eine Kapazitätsaussage;
+nichts im Werkzeug kann dieses Kennzeichen setzen.
+
+**Was nicht fertig ist, steht hier statt entdeckt zu werden.** Rund 150
+Zeichenketten in den erzeugten Basisdateien der Alt-Karte kommen noch nicht aus
+dem Katalog; der Prüflauf nennt jede einzelne. Screenreader-Verhalten,
+repräsentative Kapazität, die festgelegten Home-Assistant-Stände und die
+Herkunftsprüfung der Abhängigkeiten wurden hier nicht ausgeführt und stehen
+jeweils mit Grund als nicht ausgeführt im Register.
+
 > Für sichere Bedienungen, geräteübergreifende Projekte, Alarme, Zeitprogramme, Audit, Locks und Remote-Home-Assistant wird der **GLT Flow Card Companion** empfohlen. Die reine Dashboard-Card bleibt weiterhin ohne Backend nutzbar.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**

@@ -262,6 +262,54 @@ measured capacity numbers (Phase 10 owns the budgets; this phase makes the
 *shape* of the cost boundable and states its limits) and no redesign of
 credential storage.
 
+### Usability and release evidence
+
+Three requirements that look unrelated — localization, accessibility, release
+evidence — are the same defect from three angles: **a claim about the product
+that nothing behind it supports.**
+
+**Two catalogs, and a third locale is a file.** Wording used to live in fourteen
+modules as `{ de, en }` pairs, which made adding French an edit to every module
+that renders anything. It is data now. A missing translation **throws** rather
+than resolving to the English string — nine modules used to fall back silently,
+and a German operator saw an English sentence indistinguishable from a term
+deliberately left in English. A pseudo-locale generated at test time proves the
+refusal is reachable, and plurals are CLDR categories rather than
+`count === 1 ? … : …`, checked against Polish and Arabic.
+
+Formatting resolves from configuration or refuses. It used to fall back to
+`toLocaleString()` — the *viewer's* locale — so one control-room screen could
+carry two date formats with nothing saying which was which.
+
+**Accessibility is asserted, and its limits are stated.** The product shipped
+with zero `aria-label` attributes; a `title` is not an accessible name and a
+`placeholder` disappears when you type. Every focusable element now has a role
+and a name, focus survives colour removal, nothing traps the keyboard, and an
+automated sweep covers every registered surface with no rule disabled.
+
+**That sweep is not a conformance claim.** Automated rules decide a minority of
+WCAG criteria by construction, so "automated checks pass" and "manual pass
+recorded" are separate claims — and the registry has no schema in which they
+combine. The manual half was not performed here: no assistive technology can be
+driven in this environment.
+
+The status palette failed contrast on every light screen — 1.87 to 3.24 against
+white, where AA asks 4.5. Colours designed for a dark ground, used on both. It
+is one palette now, with the measured ratio recorded beside each value.
+
+**Every published claim cites a command and its result.** A claim with no
+evidence fails the build; a claim whose evidence failed is published *as failed*,
+because omitting it would let its absence read as "not applicable". Capacity
+measurements carry the environment they were taken in, and only an environment
+marked representative supports a platform-capacity claim — nothing in the
+harness can set that flag.
+
+**What is not done, said here rather than discovered.** About 150 strings in the
+legacy card's generated bases still do not come from a catalog; the sweep names
+each one. Screen-reader behaviour, representative capacity, the pinned Home
+Assistant lanes and dependency provenance were not exercised in this
+environment, and each is published as unexercised with its reason.
+
 > The **GLT Flow Card Companion** is recommended for secure controls, cross-device projects, alarms, schedules, audit, locks and remote Home Assistant sites. The dashboard card still works standalone.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**
@@ -891,7 +939,9 @@ Open **Trend**, select several configured data points and compare their history 
 - `dist/glt-flow-card.js` – HACS / production card.
 - `examples/` – ready-to-adapt YAML configurations.
 - `docs/` – documentation and screenshots.
-- `test/` – lightweight validation tests.
+- `test/` – the Node and browser suites (521 Node, 92 exact-dist browser at the
+  time of writing; `.planning/claims.json` names the command behind that number,
+  and `tools/claim-registry.mjs` re-runs it rather than trusting this line).
 
 ## Roadmap
 
