@@ -183,26 +183,26 @@ Plans:
 **Plans**: 20 plans across 8 dependency-ordered waves
 
 Plans:
-- [ ] 05-01-PLAN.md — Stand up the Phase-5 gate, CAD corpus and extended effect ledger.
-- [ ] 05-02-PLAN.md — Specify the catalog evidence and typed-port RED contracts.
-- [ ] 05-03-PLAN.md — Specify the routing, designer and SDK RED contracts.
-- [ ] 05-04-PLAN.md — Introduce schema 4 and the sequential 3-4 migration.
-- [ ] 05-05-PLAN.md — Generate catalog evidence and fill the fire/electrical domain.
-- [ ] 05-06-PLAN.md — Prove state and contrast legibility, and ship the symbol browser.
-- [ ] 05-07-PLAN.md — Implement typed ports and explained compatibility refusal.
-- [ ] 05-08-PLAN.md — Make endpoint identity survive edits, bundles and migration.
-- [ ] 05-09-PLAN.md — Establish routing determinism as the precondition for the rest.
-- [ ] 05-10-PLAN.md — Implement obstacle-aware geometry, junctions, crossings and spacing.
-- [ ] 05-11-PLAN.md — Make rerouting incremental and retire the eight-line router.
-- [ ] 05-12-PLAN.md — Model editing as commands with proven inverses.
-- [ ] 05-13-PLAN.md — Implement id-remapping cross-project copy and paste.
-- [ ] 05-14-PLAN.md — Ship the designer surfaces and retire the legacy editor dialogs.
-- [ ] 05-15-PLAN.md — Close the non-pointer editing workflow as one keyboard scenario.
-- [ ] 05-16-PLAN.md — Define the data-only contribution format and prove nothing executes.
-- [ ] 05-17-PLAN.md — Make extension installation atomic, namespaced and version-checked.
-- [ ] 05-18-PLAN.md — Close the Phase-5 lifecycle and packaging obligations.
-- [ ] 05-19-PLAN.md — Document the Phase-5 contract in English and German.
-- [ ] 05-20-PLAN.md — Build the Phase-5 gate and close the phase honestly.
+- [x] 05-01-PLAN.md — Stand up the Phase-5 gate, CAD corpus and extended effect ledger.
+- [x] 05-02-PLAN.md — Specify the catalog evidence and typed-port RED contracts.
+- [x] 05-03-PLAN.md — Specify the routing, designer and SDK RED contracts.
+- [x] 05-04-PLAN.md — Introduce schema 4 and the sequential 3-4 migration.
+- [x] 05-05-PLAN.md — Generate catalog evidence and fill the fire/electrical domain.
+- [x] 05-06-PLAN.md — Prove state and contrast legibility, and ship the symbol browser.
+- [x] 05-07-PLAN.md — Implement typed ports and explained compatibility refusal.
+- [x] 05-08-PLAN.md — Make endpoint identity survive edits, bundles and migration.
+- [x] 05-09-PLAN.md — Establish routing determinism as the precondition for the rest.
+- [x] 05-10-PLAN.md — Implement obstacle-aware geometry, junctions, crossings and spacing.
+- [x] 05-11-PLAN.md — Make rerouting incremental and retire the eight-line router.
+- [x] 05-12-PLAN.md — Model editing as commands with proven inverses.
+- [x] 05-13-PLAN.md — Implement id-remapping cross-project copy and paste.
+- [x] 05-14-PLAN.md — Ship the designer surfaces and retire the legacy editor dialogs.
+- [x] 05-15-PLAN.md — Close the non-pointer editing workflow as one keyboard scenario.
+- [x] 05-16-PLAN.md — Define the data-only contribution format and prove nothing executes.
+- [x] 05-17-PLAN.md — Make extension installation atomic, namespaced and version-checked.
+- [x] 05-18-PLAN.md — Close the Phase-5 lifecycle and packaging obligations.
+- [x] 05-19-PLAN.md — Document the Phase-5 contract in English and German.
+- [x] 05-20-PLAN.md — Build the Phase-5 gate and close the phase honestly.
 **UI hint**: yes
 
 ### Phase 6: Alarms, Notifications & Schedules

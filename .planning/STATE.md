@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 4 execution complete; all 17 plans implemented, T4-14/T3-14/T2-16 await a Docker-capable environment
+stopped_at: Phase 5 execution complete; all 20 plans implemented, T5-16/T4-14/T3-14/T2-16 await a Docker-capable environment
 last_updated: "2026-09-02T09:00:00.000Z"
-last_activity: 2026-09-02 -- Phase 4 planned and executed end to end; server-composed panels, a sequenced view stream, re-authorized deep links, authorized-scope counts, five surfaces and the Phase-4 gate are committed
+last_activity: 2026-09-02 -- Phase 5 planned and executed end to end; generated catalog evidence, typed ports, a deterministic obstacle-aware router, transactional editing, the data-only SDK and the Phase-5 gate are committed, and four false claims already in the product were found and closed
 progress:
   total_phases: 10
   completed_phases: 4
@@ -186,7 +186,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 ### Blockers/Concerns
 
 - [Phase 4]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T4-14 row and the review passes remain.
-- [Phase 5]: CAD Engineering & Extension Platform still carries `Plans: TBD`; it needs its planning artifacts before execution.
+- [Phase 5]: No known technical blocker. All 20 plans are implemented; the Docker-dependent T5-16 row, the review passes, and three recorded limitations remain (two diagonals a lane offset cannot separate, five editor naming prompts, and v040 extension parts 05/06 still absent from the shipped artifact).
+- [Phase 6]: Alarms, Notifications & Schedules still carries `Plans: TBD`; it needs its planning artifacts before execution.
 - [Phase 3]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T3-14 row and the review passes remain.
 - [Phase 2]: No known technical blocker. The bounded plan check passed on 2026-09-02 (see `02-PLAN-CHECK.md`); execution is complete.
 - [Phase 2]: Shared mutation routes now require a valid bearer at the policy boundary. Plan 02-09 must still add the decisive in-lock recheck; the boundary check alone cannot see authority that changes mid-request.
@@ -213,5 +214,5 @@ Two capabilities are deliberately out of v1.1 and recorded in
 ## Session Continuity
 
 Last session: 2026-09-02T09:00:00.000Z
-Stopped at: Phase 4 execution complete; plans 04-01 through 04-17 pushed
+Stopped at: Phase 5 execution complete; plans 05-01 through 05-20 pushed
 Resume file: .planning/phases/04-runtime-operations-drilldown/.continue-here.md

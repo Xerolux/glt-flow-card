@@ -3,18 +3,18 @@
   "project": "GLT Flow Card",
   "milestone": "v1.1",
   "created_at": "2026-09-01T20:39:55.9074407+02:00",
-  "updated_at": "2026-09-02T09:00:00Z",
+  "updated_at": "2026-09-02T12:30:00Z",
   "status": "in_progress",
   "pause_reason": null,
   "current_position": {
-    "phase": "04",
-    "phase_name": "runtime-operations-drilldown",
-    "stage": "phase-verification",
-    "plans_created": 17,
-    "tasks_planned": 17,
-    "plans_implemented": 17,
+    "phase": "05",
+    "phase_name": "cad-engineering-extension-platform",
+    "stage": "phase-complete",
+    "plans_created": 20,
+    "tasks_planned": 20,
+    "plans_implemented": 20,
     "implementation_started": true,
-    "resume_file": ".planning/phases/04-runtime-operations-drilldown/.continue-here.md"
+    "resume_file": ".planning/phases/05-cad-engineering-extension-platform/.continue-here.md"
   },
   "completed": [
     "Phase 1: all 13 implementation plans and all 14 recorded code-review fixes are committed; full post-fix gates pass.",
@@ -53,7 +53,11 @@
     "Plan 04-13: five operations surfaces in the generated artifact, and the legacy operate path retired and proven inert - including a canOperate that granted control to everyone whenever no permission list was configured at all.",
     "Plans 04-14 through 04-17: lifecycle and packaging, bilingual documentation and a wiki page, and tools/verify-phase4.mjs with 22 gate mutation tests. T4-01 through T4-13 verified; T4-14 stays planned for lack of Docker.",
     "Phase 4 corrected its own threat model during execution: the first corpus hid objects inside one project as though authorization were per-object, but AccessService.async_assign has no object granularity. The corpus is now two projects and T4-04 moved to the portfolio total, where the leak actually is.",
-    "Phase 4 added test_lane_portability.py after the same lane-only bug appeared twice: a component test that reaches for src/, a top-level test/ directory or a host binary now fails locally instead of only in ha-artifacts."
+    "Phase 4 added test_lane_portability.py after the same lane-only bug appeared twice: a component test that reaches for src/, a top-level test/ directory or a host binary now fails locally instead of only in ha-artifacts.",
+    "Phase 5 planning: context, source audit, research, patterns, threats, validation, UI contract and 20 plans across 8 waves are committed.",
+    "Phase 5 execution: all 20 plans implemented. Schema 4, the CAD corpus, generated catalog evidence, typed ports, endpoint identity, a deterministic obstacle-aware router with bounded incremental rerouting, transactional editing, id-remapping paste, six CAD surfaces, the data-only contribution format in both runtimes, atomic namespaced installation, lifecycle release, bilingual documentation and the Phase-5 gate.",
+    "Phase 5 defects found and closed in shipped bytes: three base symbols that drew nothing and nine that shared another's drawing; a router that returned a path through the obstacle; a paste that aliased instead of copying; and the browser-derived control path in src/v100/index.js -- a browser-side role check, a window.confirm, and a direct hass.callService -- which Phase 4 had retired only in files that are not build inputs.",
+    "Phase 5 threats: 15 of 16 verified at head against their owner commands. T5-16 remains planned; its owner is the composed test:phase5:release leaf and needs Docker."
   ],
   "remaining": [
     "Run npm run test:phase4 (which subsumes phases 2 and 3) where Docker and the package-provenance endpoints are reachable, then mark T4-14, T3-14 and T2-16 verified.",
