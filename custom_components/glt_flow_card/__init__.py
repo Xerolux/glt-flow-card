@@ -33,14 +33,17 @@ from homeassistant.util import dt as dt_util
 
 from . import (
     alarm_engine,
+    dispatch_gate,
     history_bounds,
     history_routes,
     notifications,
     period_resolution,
     recorder_query,
     schedule_time,
+    scenarios,
     series_coverage,
 )
+from .simulation_session import SessionRejected, SimulationSessions
 from .configured_controls import (
     ControlRateLimiter,
     ControlRejected,
@@ -988,21 +991,53 @@ class GltStore:
                 data = deepcopy(sched.get("data") or {})
                 if sched.get("entity_id"):
                     data.setdefault("entity_id", sched["entity_id"])
-                try:
-                    await asyncio.wait_for(
-                        self.hass.services.async_call(domain, service, data, blocking=True),
-                        timeout=self.alarm_settings()["notify_timeout_seconds"],
-                    )
-                except asyncio.TimeoutError:
-                    record.update(outcome="timeout", error="no result within the timeout")
-                except Exception as error:  # noqa: BLE001 - the outcome is the subject
-                    record.update(outcome="failed", error=str(error))
+                # A schedule firing a real service during a rehearsal is the
+                # same write with a timer in front of it, so it asks the same
+                # question the button does.
+                schedule_gate = dispatch_gate.decide_dispatch(
+                    "schedule_service",
+                    is_simulating=lambda: self.simulation_active(sched.get("project_id") or ""),
+                )
+                if not schedule_gate.may_dispatch:
+                    # Recorded, not skipped. A schedule that did not run during
+                    # a rehearsal must be distinguishable afterwards from one
+                    # that ran and failed, and from one that never fired --
+                    # which is the whole reason Phase 6 gave schedule runs an
+                    # outcome field. It falls through to the same append below.
+                    record.update(outcome="refused", error=schedule_gate.reason)
+                else:
+                    try:
+                        await asyncio.wait_for(
+                            self.hass.services.async_call(domain, service, data, blocking=True),
+                            timeout=self.alarm_settings()["notify_timeout_seconds"],
+                        )
+                    except asyncio.TimeoutError:
+                        record.update(outcome="timeout", error="no result within the timeout")
+                    except Exception as error:  # noqa: BLE001 - the outcome is the subject
+                        record.update(outcome="failed", error=str(error))
         self.data["schedule_history"] = alarm_engine.append_history(
             self.data.get("schedule_history") or [],
             record,
             bound=self.alarm_settings()["history_bound"],
         )
         return record
+
+    def simulation_active(self, project_id: str) -> bool:
+        """Return whether a project is being rehearsed.
+
+        The store holds no runtime reference, so the runtime injects a reader
+        when it is published. Absent one, this answers `None` by raising, which
+        `decide_dispatch` treats as "cannot tell" and therefore refuses -- the
+        fail-closed rule. A store that answered `False` here would silently
+        disable the whole gate for schedules.
+        """
+        reader = getattr(self, "_simulation_reader", None)
+        if reader is None:
+            raise RuntimeError("simulation state reader is not attached")
+        return bool(reader(project_id))
+
+    def attach_simulation_reader(self, reader) -> None:
+        self._simulation_reader = reader
 
 
 #: Incremented on every runtime publication. Every ephemeral capability the
@@ -1028,6 +1063,10 @@ class CompanionRuntime:
     control_rates: ControlRateLimiter | None = None
     provenance: ProvenanceService | None = None
     views: ViewStreamService | None = None
+    #: Which projects are being rehearsed. Runtime state the Companion owns, not
+    #: a project-document field: D2 made operator-authored data decide whether a
+    #: write reached plant.
+    simulation: SimulationSessions = field(default_factory=SimulationSessions)
     #: One registry per project. Keyed rather than shared, so a listing
     #: cannot reach a project the caller never opened.
     extensions: dict[str, SdkRegistry] = field(default_factory=dict)
@@ -1380,6 +1419,23 @@ async def ws_controls_execute(hass, connection, msg):
     except ControlRejected as rejected:
         code = "rate_limited" if rejected.reason == "rate_limited" else "invalid_input"
         connection.send_error(msg["id"], code, rejected.reason)
+        return
+
+    # The simulation gate, asked immediately before anything durable happens.
+    #
+    # T8-01. Before this, `hass.services.async_call` below ran unconditionally
+    # while the interface displayed "Simulationsmodus aktiv", so an engineer
+    # rehearsing a sequence was operating the plant and had been told they were
+    # not. The state is read *now* rather than captured earlier: a session that
+    # started or expired while this handler was awaiting something is exactly
+    # the window the gate exists to cover.
+    gate = dispatch_gate.decide_dispatch(
+        "control",
+        is_simulating=lambda: runtime.simulation.is_simulating(project_id=decision.project_id),
+    )
+    if not gate.may_dispatch:
+        await _audit_simulation_refusal(hass, connection, decision, "control", gate, resolved.control_id)
+        connection.send_error(msg["id"], gate.reason, f"{gate.reason}: control was not dispatched")
         return
 
     # Durable `accepted` first. If this fails, nothing was dispatched and there
@@ -2036,6 +2092,20 @@ async def ws_control_execute(hass, connection, msg):
         before = hass.states.get(entity_id)
         data = deepcopy(msg["service_data"])
         data.setdefault("entity_id", entity_id)
+        # Reachable and retired, but still a path to a service call -- so it
+        # asks the same question. A gate applied only to the paths somebody
+        # remembered has the shape of somebody's memory (T8-03).
+        legacy_gate = dispatch_gate.decide_dispatch(
+            "control",
+            is_simulating=lambda: _runtime_for(hass).simulation.is_simulating(
+                project_id=str(msg.get("project_id") or ""),
+            ),
+        )
+        if not legacy_gate.may_dispatch:
+            connection.send_error(
+                msg["id"], legacy_gate.reason, f"{legacy_gate.reason}: control was not dispatched",
+            )
+            return
         await hass.services.async_call(domain, msg["service"], data, blocking=True, context=Context(user_id=uid))
         after = hass.states.get(entity_id)
         event = {"action":"control.execute","detail":{"project_id":msg["project_id"],"entity_id":entity_id,"service":f"{domain}.{msg['service']}","before":before.state if before else None,"after":after.state if after else None}}
@@ -2295,6 +2365,26 @@ def _history_bounds_for(hass, project_id: str) -> dict:
     project = _manager(hass).data["projects"].get(project_id) or {}
     trend = (project.get("config") or {}).get("trend") or {}
     return history_bounds.resolve_bounds(trend)
+
+
+async def _audit_simulation_refusal(hass, connection, decision, kind, gate, subject) -> None:
+    """Record that an effect was withheld, and why.
+
+    A refusal that leaves no trace is indistinguishable afterwards from a
+    dispatch nobody attempted. During a rehearsal that distinction is the whole
+    record: "we tried to start the pump and the block held" and "nobody tried"
+    are different facts about a commissioning test.
+    """
+    uid, uname, _admin = _user(connection)
+    await _manager(hass).add_audit({
+        "action": "simulation.refused",
+        "detail": {
+            "kind": kind,
+            "project_id": getattr(decision, "project_id", ""),
+            "reason": gate.reason,
+            "subject": subject,
+        },
+    }, uid, uname)
 
 
 def _site_timezone(hass, project_id: str) -> str:
@@ -2798,6 +2888,21 @@ async def ws_remote_states(hass, connection, msg):
 async def ws_remote_control(hass, connection, msg):
     try:
         _require_project_role(hass, connection, msg, "operator")
+        # A remote control is the same plant write with a network hop in front
+        # of it, so it is gated here rather than left for Phase 9 to remember.
+        # Phase 9 inherits a gate instead of needing to add one.
+        remote_gate = dispatch_gate.decide_dispatch(
+            "remote_control",
+            is_simulating=lambda: _runtime_for(hass).simulation.is_simulating(
+                project_id=str(msg.get("project_id") or ""),
+            ),
+        )
+        if not remote_gate.may_dispatch:
+            connection.send_error(
+                msg["id"], remote_gate.reason,
+                f"{remote_gate.reason}: the remote service was not called",
+            )
+            return
         result = await _manager(hass).remote_control(msg["site_id"], msg["domain"], msg["service"], msg["service_data"])
         connection.send_result(msg["id"], result)
     except Exception as err:
@@ -3183,6 +3288,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # attached after the runtime exists rather than constructed inside it.
     runtime.views = ViewStreamService(
         sequence_of=runtime.subscriptions.sequence, generation=generation,
+    )
+    # The schedule runner lives on the store, which holds no runtime reference,
+    # so the reader is injected here. Without it the store raises and
+    # `decide_dispatch` treats that as "cannot tell" and refuses -- fail closed,
+    # rather than a store that answers False and silently disables the gate.
+    manager.attach_simulation_reader(
+        lambda project_id: runtime.simulation.is_simulating(project_id=project_id),
     )
     manager.project_transactions.set_mutation_guard(recheck_before_commit)
     data["runtimes"][entry.entry_id] = runtime

@@ -21,6 +21,8 @@ told about, not less.
 """
 from __future__ import annotations
 
+from . import dispatch_gate
+
 import asyncio
 from typing import Any
 
@@ -147,6 +149,7 @@ async def deliver(
     allowlist: Any = None,
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
     context: Any = None,
+    is_simulating: Any = None,
 ) -> dict[str, Any]:
     """Attempt one delivery and return what happened.
 
@@ -156,7 +159,9 @@ async def deliver(
     """
     from datetime import datetime, timezone
 
-    def record(outcome: str, *, error: str | None = None, target: Any = None) -> dict[str, Any]:
+    def record(
+        outcome: str, *, error: str | None = None, target: Any = None, simulated: bool = False,
+    ) -> dict[str, Any]:
         if outcome not in NOTIFICATION_OUTCOMES:
             raise ValueError(f"unknown notification outcome: {outcome!r}")
         return {
@@ -164,6 +169,9 @@ async def deliver(
             "target": list(target or []),
             "outcome": outcome,
             "error": error,
+            # A field as well as a sentence in the message, so the audit can
+            # separate rehearsal traffic afterwards without parsing prose.
+            "simulated": simulated,
             "at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -181,6 +189,20 @@ async def deliver(
 
     data = dict(policy.get("data") or {})
     data.setdefault("message", policy.get("message") or "GLT Alarm")
+
+    # T8-05. A notification during a rehearsal is **marked, not silenced**.
+    #
+    # The obvious reading of "block everything during simulation" would suppress
+    # alarms, turning a commissioning test into a window in which nobody is told
+    # about a real fault. That is a safety defect in the other direction, and a
+    # worse one than the defect Phase 8 is closing: an operator who was told
+    # nothing assumes nothing happened.
+    #
+    # So the message goes out and says on its face that the plant was simulated.
+    gate = dispatch_gate.decide_dispatch("notification", is_simulating=is_simulating)
+    simulated = gate.is_marked
+    if simulated:
+        data["message"] = f"{dispatch_gate.simulation_notice(gate)} {data['message']}"
     if target:
         data.setdefault("target", list(target))
 
@@ -192,5 +214,7 @@ async def deliver(
     except asyncio.TimeoutError:
         return record("timeout", error=f"no result within {timeout_seconds}s", target=target)
     except Exception as error:  # noqa: BLE001 - the outcome is the subject
-        return record("failed", error=str(error), target=target)
-    return record("delivered", target=target)
+        return record("failed", error=str(error), target=target, simulated=simulated)
+    # `simulated` travels on the record as well as in the message, so the audit
+    # can separate rehearsal traffic afterwards without parsing German prose.
+    return record("delivered", target=target, simulated=simulated)
