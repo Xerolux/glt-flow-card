@@ -1,5 +1,5 @@
 import { VISUAL_STYLES, COMPONENT_PROFILES, SYMBOL_VARIANTS, profileForEquipment, portsForEquipment } from "./catalog.mjs";
-import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignObjects, diagnoseConfig, aggregateSeries, energySummary, projectDiff, makeProjectBundle, readProjectBundle, symbolCatalogStats, semanticPath } from "./core.mjs";
+import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignObjects, diagnoseConfig,  energySummary, projectDiff, makeProjectBundle, readProjectBundle, symbolCatalogStats, semanticPath } from "./core.mjs";
 
 (() => {
   "use strict";
@@ -171,6 +171,35 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
     m.querySelectorAll("[data-shelve]").forEach(b=>b.onclick=async()=>{const answer=await askText(card,"F\u00fcr wie viele Minuten unterdr\u00fccken?","60");if(answer===null)return;const minutes=Number(answer)||60;try{await ws(card,"alarms/shelve",{project_id:projectId(cfg),alarm_id:b.dataset.shelve,minutes});}catch(err){notice(card,err.message);}m.remove();alarmsPanel(card)});}
   function operationsPanel(card){const cfg=ensureV1(card._config);const items=cfg.equipment.map(i=>({i,s:deriveOperationalState(i,card._hass?.states,{stale_minutes:cfg.diagnostics.stale_minutes})})).sort((a,b)=>b.s.severity-a.s.severity);const m=modal(card,t(cfg,"operations"),`<div class="glt-v1-grid">${items.map(({i,s})=>`<div class="glt-v1-card"><b>${esc(i.name||i.id)}</b><small>${esc(s.label)} · ${esc(s.quality)}</small><div class="glt-v1-actions"><button class="glt-v1-btn" data-open="${esc(i.id)}">Bedienen</button></div></div>`).join("")}</div>`);m.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{const i=cfg.equipment.find(x=>x.id===b.dataset.open);m.remove();openOperations(card,i)});}
   function runtimeButtons(card){const root=card.shadowRoot,bar=root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");if(!bar||bar.querySelector("[data-glt-v1-runtime]"))return;const wrap=document.createElement("span");wrap.dataset.gltV1Runtime="1";wrap.className="glt-v1-actions";wrap.innerHTML=`<button class="glt4-pill glt-v1-btn" data-ops>${t(card._config,"operations")}</button><button class="glt4-pill glt-v1-btn" data-alarm>${t(card._config,"alarms")}</button><button class="glt4-pill glt-v1-btn" data-trend>${t(card._config,"trends")}</button>`;wrap.querySelector("[data-ops]").onclick=()=>operationsPanel(card);wrap.querySelector("[data-alarm]").onclick=()=>alarmsPanel(card);wrap.querySelector("[data-trend]").onclick=()=>trendsPanel(card);bar.appendChild(wrap);}
+  // Fetching the trend state is the card's job, not the panel's.
+  //
+  // This is the Phase-6 defect one phase later, and it is worth naming because
+  // the shape recurs: retiring the card's own Recorder aggregation (D9) left
+  // every trend consumer reading a field that only the panel wrote, so the
+  // authoritative series was displayed nowhere until an operator happened to
+  // open it. `test/shipped-history-truth.test.mjs` would have passed throughout,
+  // because the routes do appear in the bytes -- in the one place nothing else
+  // reaches. A grep cannot tell reachable from reached.
+  //
+  // Bounded for the same reason as the alarm refresh, and 07-09 bounded the
+  // backend's query cost precisely so the browser would not hand it back: the
+  // stamp is written *before* the request, so a Companion that is refusing or
+  // unreachable is asked once per interval rather than once per render.
+  const HISTORY_REFRESH_MS=60000;
+  function refreshHistoryState(card){
+    const cfg=ensureV1(card._config);
+    const entities=cfg.datapoints.map(d=>entityId(d.entity)).filter(Boolean).slice(0,20);
+    if(!entities.length)return;
+    if(card._historyLoading)return;
+    const now=Date.now();
+    if(card._historyAt&&now-card._historyAt<HISTORY_REFRESH_MS)return;
+    card._historyAt=now;
+    card._historyLoading=true;
+    loadHistory(card,{contract:"statistics",entity_ids:entities,period:"day"}).then(loaded=>{
+      card._historyState=loaded;card._historyLoading=false;card._queueRender?.();
+    },()=>{card._historyLoading=false;});
+  }
+
   // The trend surfaces are given what the Companion measured; they derive
   // nothing. The source travels with the values and is displayed, because an
   // empty answer and a broken one look identical on an axis and only the stated
@@ -190,7 +219,7 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
     badge.props=props;chart.props=props;table.props=props;
   }
 
-  const oldCardRender=Card.prototype._render;Card.prototype._render=function(){this._config=ensureV1(this._config);const r=oldCardRender.call(this);addStyle(this.shadowRoot);runtimeButtons(this);refreshAlarmState(this);if(this._config.ui?.kiosk)document.body.classList.add("glt-v1-kiosk");return r;};
+  const oldCardRender=Card.prototype._render;Card.prototype._render=function(){this._config=ensureV1(this._config);const r=oldCardRender.call(this);addStyle(this.shadowRoot);runtimeButtons(this);refreshAlarmState(this);refreshHistoryState(this);if(this._config.ui?.kiosk)document.body.classList.add("glt-v1-kiosk");return r;};
 
   function editorRoot(editor){return editor.shadowRoot;} function editorModal(editor,title,html){return modal(editor,title,html);} function emit(editor){editor._emit?.();editor._render?.();}
   function selectedRefs(editor){const multi=[...(editor._glt4Multi||[])].map(k=>{const [kind,id]=k.split(":");return{kind,id}});if(multi.length)return multi;return editor._sel?[{kind:editor._sel.k,id:editor._sel.id}]:[];}
@@ -223,7 +252,21 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
   const oldEditorRender=Editor.prototype._render;Editor.prototype._render=function(){this._config=ensureV1(this._config);const r=oldEditorRender.call(this);addStyle(this.shadowRoot);editorToolbar(this);applyLayers(this);minimap(this);return r;};
 
   // History aggregation hook: preserve original data source, process after retrieval when possible.
-  const oldSeries=Card.prototype._seriesFor; if(oldSeries)Card.prototype._seriesFor=function(point){const raw=oldSeries.call(this,point)||[];const h=ensureV1(this._config).historian;return aggregateSeries(raw,{aggregate:h.aggregate,deadband:h.deadband,bucket_ms:h.bucket_minutes?Number(h.bucket_minutes)*60000:0});};
+  // The Companion's answer where there is one, and the local points otherwise.
+  // This was the last call to `aggregateSeries`, so dropping it drops the
+  // function from the artifact entirely: its epoch-aligned
+  // `Math.floor(x / bucketMs)` buckets cannot express a 23-hour day, a 25-hour
+  // day or a month at all, and the report designer offers months and years.
+  // Calling it here would put a displaced bucket back on the screen under the
+  // Companion's name. The artifact can no longer do that at all, rather than
+  // being trusted not to.
+  const oldSeries=Card.prototype._seriesFor; if(oldSeries)Card.prototype._seriesFor=function(point){
+    const measured=(this._historyState&&this._historyState.series)||[];
+    const id=entityId(point&&point.entity||point);
+    const row=measured.find(entry=>entry&&(entry.entity_id===id||entry.statistic_id===id));
+    if(row&&Array.isArray(row.points))return row.points;
+    return oldSeries.call(this,point)||[];
+  };
 
   console.info(`GLT Flow Card Engineering Platform 1.0 enabled · ${symbolCatalogStats().variants} symbol variants · ${COMPONENT_PROFILES.length} parametric profiles`);
 })();

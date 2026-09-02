@@ -48,11 +48,10 @@ function code(body) {
 /**
  * Retirements that reach the artifact, and what each must no longer do.
  *
- * These four are referenced by something the bundle includes, so "reachable and
- * inert" is a property the shipped bytes can actually carry.
+ * These three are referenced by something the bundle includes, so "reachable
+ * and inert" is a property the shipped bytes can actually carry.
  */
 const RETIRED_IN_ARTIFACT = [
-  ["aggregateSeries", "function aggregateSeries(", [/Math\.floor/, /bucket/i]],
   ["trendCsv", "function trendCsv(", [/Math\.abs/, /download/]],
   ["reportCsv", "function reportCsv(", [/_display/, /csvCell/]],
   ["printReport", "function printReport(", [/window\.open/, /document\.write/]],
@@ -61,8 +60,9 @@ const RETIRED_IN_ARTIFACT = [
 /**
  * Retirements the bundler removes, and why that is not a gap in the assertion.
  *
- * `integrateEnergy` and `energySummary` are module-level exports of `core.mjs`
- * that nothing in the bundle imports, so esbuild drops them. **"Reachable and
+ * `integrateEnergy`, `energySummary` and now `aggregateSeries` are module-level
+ * exports of `core.mjs` that nothing in the bundle imports, so esbuild drops
+ * them. **"Reachable and
  * inert" is not a property the artifact can carry for an export nothing
  * references**, and pretending otherwise would mean adding a fake reference to
  * keep a dead function alive so a test could assert it does nothing.
@@ -74,8 +74,17 @@ const RETIRED_IN_ARTIFACT = [
  * `test_energy_units.py` prove the arithmetic that took over. The pattern's
  * warning is about proving the absence of something *nothing checks*; these are
  * checked, elsewhere and by name.
+ *
+ * `aggregateSeries` moved here in 07-19 and the move is the point: it was
+ * reachable-and-inert only because `_seriesFor` still called it. Once
+ * `_seriesFor` began returning the Companion's measured series, the last
+ * reference went and the bundler dropped it -- so the artifact now cannot
+ * display an epoch-aligned bucket at all, rather than merely being trusted not
+ * to. Its replacement is asserted by behaviour in `test_period_resolution.py`,
+ * against a corpus generated from the vendored Home Assistant, which is where
+ * the 23-hour day, the 25-hour day and the 745-hour month are actually proven.
  */
-const REMOVED_BY_BUNDLER = ["integrateEnergy", "energySummary"];
+const REMOVED_BY_BUNDLER = ["integrateEnergy", "energySummary", "aggregateSeries"];
 
 test("every retired evaluator that ships is present and computes nothing", () => {
   for (const [name, declaration, forbidden] of RETIRED_IN_ARTIFACT) {

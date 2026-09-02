@@ -253,3 +253,102 @@ test("phase-7-trends the artifact reaches the Companion's history routes", async
     "glt_flow_card/history/statistics",
   ]);
 });
+
+test("phase-7-trends the card fetches measured history without a panel being opened", async ({
+  page,
+}) => {
+  // T7-22, and it is Phase 6's defect one phase later.
+  //
+  // Retiring the card's own Recorder aggregation (D9) left every trend consumer
+  // reading a field only the trends panel wrote, so the authoritative series
+  // was displayed nowhere until an operator happened to open it.
+  // `test/shipped-history-truth.test.mjs` passes either way, because the routes
+  // do appear in the shipped bytes -- in the one place nothing else reaches.
+  //
+  // So this asserts the outcome: render the card, open nothing, and read the
+  // number. A grep cannot tell reachable from reached.
+  await mount(page, {
+    wsResults: {
+      "glt_flow_card/history/statistics": {
+        coverage: 0.75,
+        gaps: [{ end: "2027-06-04T00:00:00+02:00", start: "2027-06-03T00:00:00+02:00" }],
+        series: [{
+          entity_id: "sensor.vorlauf",
+          points: [
+            { at: "2027-06-01T00:00:00+02:00", value: 21 },
+            { at: "2027-06-02T00:00:00+02:00", value: 22 },
+          ],
+        }],
+        source: "statistics",
+      },
+    },
+  });
+
+  const observed = await page.evaluate(async () => {
+    const card = document.createElement("glt-flow-card");
+    card.setConfig({
+      type: "custom:glt-flow-card",
+      title: "Anlage",
+      datapoints: [{ id: "d1", name: "Vorlauf", entity: "sensor.vorlauf" }],
+    });
+    document.body.append(card);
+    card.hass = window.__fakeHass;
+    // One render is all an operator does. Nothing below opens a panel.
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      if (card._historyState && card._historyState.source !== "unavailable") break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return {
+      coverage: card._historyState?.coverage ?? null,
+      gaps: (card._historyState?.gaps ?? []).length,
+      points: (card._historyState?.series?.[0]?.points ?? []).length,
+      source: card._historyState?.source ?? null,
+    };
+  });
+
+  expect(
+    observed.source,
+    "the card rendered without ever asking the Companion for measured history",
+  ).toBe("statistics");
+  // The confident zero this test exists to catch: a surface that reports 0 %
+  // coverage and no gaps because nothing was fetched looks exactly like a plant
+  // with no data, and nobody investigates a zero.
+  expect(observed.coverage, "coverage read as a confident zero").toBe(0.75);
+  expect(observed.gaps, "the reported gap never reached the card").toBe(1);
+  expect(observed.points).toBe(2);
+});
+
+test("phase-7-trends a burst of renders is one request, not one per render", async ({ page }) => {
+  // 07-09 bounded the backend's query cost. Handing that cost back to the
+  // browser -- one Recorder query per render, on a card that re-renders on
+  // every state change in the plant -- would spend the bound rather than keep
+  // it. The stamp is written before the request, so a Companion that is
+  // refusing or unreachable is asked once per interval too.
+  await mount(page);
+
+  await page.evaluate(async () => {
+    const card = document.createElement("glt-flow-card");
+    card.setConfig({
+      type: "custom:glt-flow-card",
+      title: "Anlage",
+      datapoints: [{ id: "d1", name: "Vorlauf", entity: "sensor.vorlauf" }],
+    });
+    document.body.append(card);
+    card.hass = window.__fakeHass;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      card._render();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  });
+
+  const ledger = await readEffectLedger(page);
+  const history = ledger.recorderQueries.filter((query) => query.contract === "statistics");
+  // Exactly one, not "at most one". A card that never fetched would satisfy an
+  // upper bound while failing at the thing the bound exists to protect, and a
+  // test that passes when nothing happened is the Phase-4 defect this suite
+  // already corrected once.
+  expect(
+    history.length,
+    `ten renders produced ${history.length} Recorder queries`,
+  ).toBe(1);
+});
