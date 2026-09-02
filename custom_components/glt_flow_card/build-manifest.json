@@ -117,7 +117,7 @@
     }
   ],
   "build": {
-    "commit": "105d7eb49bb74de575f963a4fbd220c659e4c1e6",
+    "commit": "854b5fcd43c35f490774cbd0caf1cc1f71c8c7c5",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -246,6 +246,11 @@
       "size": 38741
     },
     {
+      "path": "src/v100/measured-value.mjs",
+      "sha256": "39782b8a9445d03e2e7961c11afb03b55438a923f975478f3abc27db47ea8098",
+      "size": 5488
+    },
+    {
       "path": "src/v100/navigation.mjs",
       "sha256": "438f1db725135300b28d5f2b5fbb5bc384af6522662568f5dc448bcd87b33848",
       "size": 5712
@@ -259,6 +264,11 @@
       "path": "src/v100/panel-model.mjs",
       "sha256": "85138d601d98011ce316175e8a363ebaa392538fbd7ae074af749a592f90fa0f",
       "size": 3070
+    },
+    {
+      "path": "src/v100/period-vocabulary.mjs",
+      "sha256": "d96d1b90f0c14e1ed12edfdd3ce492a1f5b8f099b3c5d14fedfe2d8bd6b5c5a9",
+      "size": 9099
     },
     {
       "path": "src/v100/ports.mjs",
