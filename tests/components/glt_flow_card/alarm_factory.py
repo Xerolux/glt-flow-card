@@ -451,7 +451,10 @@ def notification_policies() -> list[dict[str, Any]]:
         {
             "id": "policy-unlisted",
             "service": "notify.mobile_app_phone",
-            "expected_outcome": "service_not_allowed",
+            # `refused` is the declared member of NOTIFICATION_OUTCOMES; the
+            # specific reason travels in the record's `error`, so the closed set
+            # stays small and the explanation stays exact.
+            "expected_outcome": "refused",
             # The project document is operator input. A service string in it is
             # not authorization, which is what D11 assumed.
         },

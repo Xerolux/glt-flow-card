@@ -39,7 +39,6 @@ from .user_factory import FAKE_NOTIFY_DOMAIN, FAKE_NOTIFY_SERVICE
 pytestmark = [
     pytest.mark.enable_socket,
     pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
-    pytest.mark.expected_red,
 ]
 
 RED_MARKER = (
@@ -93,25 +92,54 @@ def delivery_gaps() -> list[str]:
         gaps.append("notifications has no deliver(); there is nothing that returns an outcome")
         return gaps
 
+    # Read the *code*, not the prose. A substring search over the source
+    # matches the docstring that explains why `blocking=False` was wrong, which
+    # would make the honest response deleting the explanation.
+    import ast
     import inspect
 
-    source = inspect.getsource(notifications)
-    if "blocking=False" in source:
+    tree = ast.parse(inspect.getsource(notifications))
+    non_blocking = [
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        for keyword in node.keywords
+        if keyword.arg == "blocking" and getattr(keyword.value, "value", None) is False
+    ]
+    if non_blocking:
         gaps.append(
             "a notification path still calls with blocking=False, which makes the "
             "outcome unobtainable and ALM-02 requires recording it"
         )
-    if "except Exception:\n" in source and "raise" not in source:
-        gaps.append("a bare except still discards a notification exception")
-    if "TIMEOUT" not in source and "timeout" not in source:
+    swallowing = [
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.ExceptHandler)
+        and not any(
+            isinstance(statement, (ast.Raise, ast.Return)) for statement in node.body
+        )
+    ]
+    if swallowing:
+        gaps.append("an except handler still discards a notification exception")
+    if not any(
+        isinstance(node, ast.Call)
+        and getattr(getattr(node.func, "attr", None), "__str__", str)() == "wait_for"
+        for node in ast.walk(tree)
+    ) and "DEFAULT_TIMEOUT_SECONDS" not in {
+        target.id
+        for node in ast.walk(tree) if isinstance(node, ast.Assign)
+        for target in node.targets if isinstance(target, ast.Name)
+    }:
         gaps.append("no explicit timeout: a blocking call without one is a hang, not a record")
 
+    # The allowlist a *configured* site would have: the default, plus the one
+    # fixture notifier the corpus's permitted policies name. Testing every
+    # policy against the bare default would only ever exercise the refusal.
+    configured = (*DEFAULT_ALLOWLIST, f"{FAKE_NOTIFY_DOMAIN}.{FAKE_NOTIFY_SERVICE}")
     for policy in notification_policies():
         record = getattr(notifications, "describe", None)
         if record is None:
             gaps.append("notifications has no describe() to report an attempt's outcome")
             break
-        outcome = record(policy, allowlist=DEFAULT_ALLOWLIST)
+        outcome = record(policy, allowlist=configured)
         expected = policy["expected_outcome"]
         if outcome != expected:
             gaps.append(f"{policy['id']}: expected outcome {expected!r}, got {outcome!r}")
@@ -144,3 +172,193 @@ async def test_expected_red_phase6_notifications(
 
     report(RED_MARKER, delivery_gaps(),
            "recorded, allowlisted notification delivery is unavailable")
+
+
+# ---------------------------------------------------------------------------
+# The behaviour, now that it exists
+# ---------------------------------------------------------------------------
+
+FIXTURE_SERVICE = f"{FAKE_NOTIFY_DOMAIN}.{FAKE_NOTIFY_SERVICE}"
+CONFIGURED = (*DEFAULT_ALLOWLIST, FIXTURE_SERVICE)
+
+
+def test_an_empty_allowlist_permits_no_external_notifier() -> None:
+    from custom_components.glt_flow_card import notifications
+
+    assert notifications.is_allowed("notify", "mobile_app_phone", allowlist=()) is False
+    assert notifications.is_allowed("notify", "notify", allowlist=()) is False
+
+
+def test_the_shipped_default_reaches_nobody_outside_the_frontend() -> None:
+    """`persistent_notification.create` is visible in Home Assistant and pages
+    no one. That is what "conservative default" has to mean here."""
+    from custom_components.glt_flow_card import notifications
+
+    assert tuple(notifications.DEFAULT_ALLOWLIST) == ("persistent_notification.create",)
+    assert notifications.is_allowed("persistent_notification", "create") is True
+    assert notifications.is_allowed("notify", "mobile_app_phone") is False
+
+
+def test_a_malformed_service_string_is_not_a_target() -> None:
+    from custom_components.glt_flow_card import notifications
+
+    for spec in (None, "", "notify", ".create", "notify.", "   "):
+        assert notifications.split_service(spec) is None, spec
+
+
+def test_every_corpus_policy_reaches_its_declared_outcome() -> None:
+    from custom_components.glt_flow_card import notifications
+
+    for policy in notification_policies():
+        outcome = notifications.describe(policy, allowlist=CONFIGURED)
+        assert outcome == policy["expected_outcome"], policy["id"]
+        assert outcome in NOTIFICATION_OUTCOMES, policy["id"]
+
+
+def test_a_delivery_failure_never_hides_the_alarm() -> None:
+    """The obvious implementation treats a failed notify as handled."""
+    from custom_components.glt_flow_card import notifications
+
+    for outcome in NOTIFICATION_OUTCOMES:
+        assert notifications.alarm_survives_delivery_failure(
+            {"active": True}, outcome=outcome,
+        ) is True, outcome
+    with pytest.raises(ValueError, match="unknown notification outcome"):
+        notifications.alarm_survives_delivery_failure({}, outcome="handled")
+
+
+async def test_a_delivery_records_service_target_and_outcome(
+    hass: HomeAssistant, config_entry: MockConfigEntry, notification_ledger: Any,
+) -> None:
+    from custom_components.glt_flow_card import notifications
+
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    record = await notifications.deliver(
+        hass,
+        {"service": FIXTURE_SERVICE, "target": ["glt-test-recipient"], "message": "hi"},
+        allowlist=CONFIGURED,
+    )
+    assert record["outcome"] == "delivered"
+    assert record["service"] == FIXTURE_SERVICE
+    assert record["target"] == ["glt-test-recipient"]
+    assert record["error"] is None
+    assert record["at"]
+
+
+async def test_a_notifier_that_raises_is_recorded_not_swallowed(
+    hass: HomeAssistant, config_entry: MockConfigEntry, notification_ledger: Any,
+) -> None:
+    """D6, closed. `blocking=False` made this outcome unobtainable."""
+    from custom_components.glt_flow_card import notifications
+
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    notification_ledger.fail_next("notifier unavailable")
+    record = await notifications.deliver(
+        hass,
+        {"service": FIXTURE_SERVICE, "target": ["glt-test-recipient"], "message": "hi"},
+        allowlist=CONFIGURED,
+    )
+    assert record["outcome"] == "failed"
+    assert "notifier unavailable" in record["error"]
+
+
+async def test_an_unlisted_target_is_refused_and_never_called(
+    hass: HomeAssistant, config_entry: MockConfigEntry, notification_ledger: Any,
+) -> None:
+    """D11, closed. Recorded, not silently skipped.
+
+    An operator who configured a target the site does not permit must be able to
+    see that, or they will believe the page went out.
+    """
+    from custom_components.glt_flow_card import notifications
+
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    record = await notifications.deliver(
+        hass, {"service": "notify.mobile_app_phone", "message": "hi"}, allowlist=CONFIGURED,
+    )
+    assert record["outcome"] == "refused"
+    assert "allowlist" in record["error"]
+    assert notification_ledger.attempts == [], "an unlisted service was called anyway"
+
+
+async def test_a_slow_notifier_times_out_rather_than_hanging(
+    hass: HomeAssistant, config_entry: MockConfigEntry,
+) -> None:
+    """A hang in the alarm path stops every later alarm behind it."""
+    import asyncio
+
+    from custom_components.glt_flow_card import notifications
+
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    class _Hanging:
+        async def async_call(self, *args: Any, **kwargs: Any) -> None:
+            await asyncio.sleep(3600)
+
+    class _Hass:
+        services = _Hanging()
+
+    record = await notifications.deliver(
+        _Hass(), {"service": FIXTURE_SERVICE, "message": "hi"},
+        allowlist=CONFIGURED, timeout_seconds=0,
+    )
+    assert record["outcome"] == "timeout"
+
+
+async def test_the_manager_records_attempts_against_the_alarm(
+    hass: HomeAssistant, config_entry: MockConfigEntry, notification_ledger: Any,
+) -> None:
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager
+
+    manager = _manager(hass)
+    manager.effective_options = {
+        **manager.effective_options, "notify_allowlist": CONFIGURED,
+    }
+    alarm = {"id": "alm", "name": "Test",
+             "notification": {"service": FIXTURE_SERVICE, "target": ["glt-test-recipient"]}}
+    await manager._notify_alarm(alarm, "p")
+
+    state = manager.data["alarm_state"]["p:alm"]
+    assert state["last_delivery"]["outcome"] == "delivered"
+    assert len(state["delivery_attempts"]) == 1
+
+
+async def test_attempts_are_bounded(
+    hass: HomeAssistant, config_entry: MockConfigEntry, notification_ledger: Any,
+) -> None:
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager
+
+    manager = _manager(hass)
+    manager.effective_options = {
+        **manager.effective_options,
+        "notify_allowlist": CONFIGURED,
+        "notify_attempt_bound": 3,
+    }
+    alarm = {"id": "alm", "notification": {"service": FIXTURE_SERVICE,
+                                           "target": ["glt-test-recipient"]}}
+    for _ in range(8):
+        await manager._notify_alarm(alarm, "p")
+    assert len(manager.data["alarm_state"]["p:alm"]["delivery_attempts"]) == 3
+
+
+async def test_an_unconfigured_installation_reaches_no_external_service(
+    hass: HomeAssistant, config_entry: MockConfigEntry, notification_ledger: Any,
+) -> None:
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager
+
+    manager = _manager(hass)
+    assert tuple(manager.alarm_settings()["notify_allowlist"]) == DEFAULT_ALLOWLIST
+    alarm = {"id": "alm", "notification": {"service": "notify.mobile_app_phone"}}
+    await manager._notify_alarm(alarm, "p")
+    assert manager.data["alarm_state"]["p:alm"]["last_delivery"]["outcome"] == "refused"
+    assert notification_ledger.attempts == []

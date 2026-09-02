@@ -185,7 +185,12 @@ def test_a_calendar_without_create_event_is_in_the_corpus() -> None:
 
 def test_the_notification_policies_cover_the_default_and_the_unlisted_case() -> None:
     outcomes = {policy["expected_outcome"] for policy in notification_policies()}
-    assert {"no_target_configured", "service_not_allowed", "delivered", "failed"} == outcomes
+    assert {"no_target_configured", "refused", "delivered", "failed"} == outcomes
+    # Every expectation must name a declared member, or the corpus is asserting
+    # against a vocabulary nothing implements.
+    from custom_components.glt_flow_card.alarm_vocabulary import NOTIFICATION_OUTCOMES
+
+    assert outcomes <= set(NOTIFICATION_OUTCOMES)
     failing = next(p for p in notification_policies() if p["expected_outcome"] == "failed")
     # The rule that makes the feature honest: a delivery failure never removes,
     # downgrades or hides the alarm.

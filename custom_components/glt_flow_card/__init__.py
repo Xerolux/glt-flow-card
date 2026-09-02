@@ -29,7 +29,7 @@ from homeassistant.helpers.storage import Store
 
 from uuid import uuid4
 
-from . import alarm_engine
+from . import alarm_engine, notifications
 from .configured_controls import (
     ControlRateLimiter,
     ControlRejected,
@@ -388,20 +388,40 @@ class GltStore:
         )
         await self.async_save()
         if active:
-            await self._notify_alarm(alarm)
+            await self._notify_alarm(alarm, project_id)
 
-    async def _notify_alarm(self, alarm: dict[str, Any]) -> None:
-        notification = alarm.get("notification") or {}
-        spec = notification.get("service")
-        if not spec or "." not in spec:
-            return
-        domain, service = spec.split(".", 1)
-        data = deepcopy(notification.get("data") or {})
-        data.setdefault("message", notification.get("message") or f"GLT Alarm: {alarm.get('name') or alarm.get('id')}")
-        try:
-            await self.hass.services.async_call(domain, service, data, blocking=False)
-        except Exception:
-            return
+    async def _notify_alarm(self, alarm: dict[str, Any], project_id: str = "") -> None:
+        """Deliver one alarm's notification and record what happened.
+
+        Replaces twelve lines that called with `blocking=False` inside a bare
+        `except`, so a delivery nobody received was indistinguishable from one
+        they did, and that called whatever domain and service the project
+        document named with no allowlist at all.
+        """
+        policy = dict(alarm.get("notification") or {})
+        policy.setdefault(
+            "message", f"GLT Alarm: {alarm.get('name') or alarm.get('id')}"
+        )
+        settings = self.alarm_settings()
+        record = await notifications.deliver(
+            self.hass,
+            policy,
+            allowlist=settings["notify_allowlist"],
+            timeout_seconds=settings["notify_timeout_seconds"],
+        )
+        key = f"{project_id}:{alarm.get('id')}"
+        state = self.data["alarm_state"].setdefault(
+            key, {"project_id": project_id, "alarm_id": alarm.get("id")}
+        )
+        attempts = [record, *(state.get("delivery_attempts") or [])]
+        state["delivery_attempts"] = attempts[: settings["notify_attempt_bound"]]
+        state["last_delivery"] = record
+        # The rule that makes the whole feature honest. The obvious
+        # implementation treats a failed notify as handled; an alarm nobody
+        # could be told about is more urgent than one they were told about.
+        assert notifications.alarm_survives_delivery_failure(
+            state, outcome=record["outcome"]
+        )
 
     async def ack_alarm(self, project_id: str, alarm_id: str, user_id: str | None, user_name: str | None, comment: str) -> dict[str, Any]:
         key = f"{project_id}:{alarm_id}"
@@ -436,6 +456,17 @@ class GltStore:
             "schedule_run_retention_days": int(options.get(
                 "schedule_run_retention_days",
                 alarm_engine.DEFAULT_SCHEDULE_RUN_RETENTION_DAYS,
+            )),
+            # Site configuration, never project data: a service string in a
+            # project document is operator input, not authorization.
+            "notify_allowlist": tuple(
+                options.get("notify_allowlist", notifications.DEFAULT_ALLOWLIST)
+            ),
+            "notify_timeout_seconds": int(options.get(
+                "notify_timeout_seconds", notifications.DEFAULT_TIMEOUT_SECONDS,
+            )),
+            "notify_attempt_bound": int(options.get(
+                "notify_attempt_bound", notifications.DEFAULT_ATTEMPT_BOUND,
             )),
         }
 
