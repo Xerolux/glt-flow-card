@@ -1,8 +1,8 @@
 # GLT Flow Card v1.1 — Living Cross-AI Execution Handoff
 
-**Last updated:** 2026-09-02T12:00:00+02:00
+**Last updated:** 2026-09-02T09:00:00+02:00
 **Canonical scope:** Implement and verify all original roadmap items **1-30**.
-**Overall status:** Executing on `claude/chatgpt-continuation-hi3y86` (PR #3). Phase 1 implementation and all 14 reported code-review fixes are committed with full post-fix gates passing; its consolidated verification is still open. Phase 2 is implemented at 17/17 plans with T2-01..T2-15 verified. Phase 3 is planned and implemented at 17/17 plans with T3-01..T3-13 verified. T2-16 and T3-14 both stay `planned`: their owners install the exact stage on digest-pinned Home Assistant images and need a Docker engine this environment does not have. Phases 4-10 have not started and all still carry `Plans: TBD`. No release is authorized.
+**Overall status:** Executing on `claude/chatgpt-continuation-hi3y86` (PR #3). Phase 1 implementation and all 14 reported code-review fixes are committed with full post-fix gates passing; its consolidated verification is still open. Phase 2 is implemented at 17/17 plans with T2-01..T2-15 verified. Phase 3 is implemented at 17/17 plans with T3-01..T3-13 verified. Phase 4 is planned and implemented at 17/17 plans with T4-01..T4-13 verified. T2-16, T3-14 and T4-14 all stay `planned`: their owners install the exact stage on digest-pinned Home Assistant images and need a Docker engine this environment does not have. Phases 5-10 have not started and all still carry `Plans: TBD`. No release is authorized.
 **Maintainer rule:** Update this file whenever implementation, review, verification, or blockers change.
 
 ## Purpose and User Intent
@@ -50,6 +50,7 @@ Read these as a set; no single file is sufficient:
 - Current workflow position, decisions, todos, and blockers: [STATE.md](STATE.md)
 - This living cross-AI checklist: [HANDOFF.md](HANDOFF.md)
 - Machine-readable pause handoff: [HANDOFF.json](HANDOFF.json)
+- Exact Phase 4 resume marker: [`.continue-here.md`](phases/04-runtime-operations-drilldown/.continue-here.md)
 - Exact Phase 3 resume marker: [`.continue-here.md`](phases/03-semantic-equipment-provenance/.continue-here.md)
 - Exact Phase 2 resume marker: [`.continue-here.md`](phases/02-authoritative-policy-controls-collaboration/.continue-here.md)
 - Phase 1 decisions and acceptance model: [01-CONTEXT.md](phases/01-trusted-contract-release-foundation/01-CONTEXT.md)
@@ -72,8 +73,8 @@ The current `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` record Phase 1 as im
 | 1 | Trusted Contract & Release Foundation | SCHEMA-01, DIFF-01, HACS-01 | ◆ 13/13 plans and 14/14 review fixes implemented; final verification open | Resume with one consolidated verification pass, not another review loop |
 | 2 | Authoritative Policy, Controls & Collaboration | SEC-01, COLLAB-01 | ◆ 17/17 plans implemented; T2-01..T2-15 verified, T2-16 needs a Docker-capable environment | Run `npm run test:phase2` where Docker and the provenance endpoints are reachable, then start the Phase-2 review pass |
 | 3 | Semantic Equipment & Provenance | OPS-01, SEM-01, MAP-01, PROF-01, PROTO-01 | ◆ 17/17 plans implemented; T3-01..T3-13 verified, T3-14 needs a Docker-capable environment | Run `npm run test:phase3` where Docker and the provenance endpoints are reachable, then start the Phase-3 review pass |
-| 4 | Runtime Operations & Drill-Down | OPS-02, NAV-01 | ○ Not started; `Plans: TBD` | Write the Phase-4 planning artifacts, then execute |
-| 5 | CAD Engineering & Extension Platform | CAT-01, ENG-01, ENG-02, CAD-01, SDK-01 | ○ Not started | Start after Phase 4 verification |
+| 4 | Runtime Operations & Drill-Down | OPS-02, NAV-01 | ◆ 17/17 plans implemented; T4-01..T4-13 verified, T4-14 needs a Docker-capable environment | Run `npm run test:phase4` where Docker and the provenance endpoints are reachable, then start the Phase-4 review pass |
+| 5 | CAD Engineering & Extension Platform | CAT-01, ENG-01, ENG-02, CAD-01, SDK-01 | ○ Not started; `Plans: TBD` | Write the Phase-5 planning artifacts, then execute |
 | 6 | Alarms, Notifications & Schedules | ALM-01, ALM-02, SCH-01 | ○ Not started | Start after Phase 5 verification |
 | 7 | Trends, Energy & Reproducible Reports | HIST-01, ENER-01, REPORT-01 | ○ Not started | Start after Phase 6 verification |
 | 8 | Safe Simulation, Commissioning & Assets | SIM-01, DIAG-01, ASSET-01 | ○ Not started | Start after Phase 7 verification |
@@ -85,7 +86,7 @@ The current `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` record Phase 1 as im
 Checkboxes represent final acceptance, not implementation alone. All remain unchecked until their phase verifier and applicable release evidence pass.
 
 - [ ] **1 — OPS-01: Deterministic operational state** — Owner: Phase 3 — Status: Implementation complete (Phase 3, 17/17 plans); T3-14 and the Phase-3 review pass are pending.
-- [ ] **2 — OPS-02: Profile-driven object panels and command outcomes** — Owner: Phase 4 — Status: Not started.
+- [ ] **2 — OPS-02: Profile-driven object panels and command outcomes** — Owner: Phase 4 — Status: Implementation complete (17/17 plans); T4-14 and the Phase-4 review pass are pending.
 - [ ] **3 — SEC-01: Authoritative server-side permissions** — Owner: Phase 2 — Status: Implementation complete (17/17 plans); T2-16 and the Phase-2 review pass are pending.
 - [ ] **4 — ALM-01: Restart-safe alarm lifecycle** — Owner: Phase 6 — Status: Not started.
 - [ ] **5 — ALM-02: Notification and escalation policies** — Owner: Phase 6 — Status: Not started.
@@ -97,7 +98,7 @@ Checkboxes represent final acceptance, not implementation alone. All remain unch
 - [ ] **11 — ENG-01: Typed compatible ports and stable endpoints** — Owner: Phase 5 — Status: Not started.
 - [ ] **12 — ENG-02: Deterministic obstacle-aware auto-routing** — Owner: Phase 5 — Status: Not started.
 - [ ] **13 — CAD-01: Transactional full CAD designer workflow** — Owner: Phase 5 — Status: Not started.
-- [ ] **14 — NAV-01: Permission-safe contextual navigation** — Owner: Phase 4 — Status: Not started.
+- [ ] **14 — NAV-01: Permission-safe contextual navigation** — Owner: Phase 4 — Status: Implementation complete (17/17 plans); T4-14 and the Phase-4 review pass are pending.
 - [ ] **15 — HIST-01: Honest Recorder-backed trends** — Owner: Phase 7 — Status: Not started.
 - [ ] **16 — SIM-01: Deterministic no-write simulation** — Owner: Phase 8 — Status: Not started.
 - [ ] **17 — DIAG-01: Read-only commissioning diagnostics** — Owner: Phase 8 — Status: Not started.
@@ -155,7 +156,7 @@ Phase 2 is implemented: all 17 plans are committed, `npm run test:phase2:quick` 
 
 - [ ] **Phase 2:** *(implemented; T2-16 and the review pass open)* Establish authoritative default-deny Companion permissions, configured exact control targets, trusted audit, and atomic revision-plus-lease collaboration; prove multi-user denials and fail-closed shared behavior.
 - [ ] **Phase 3:** *(implemented; T3-14 and the review pass open)* Build the validated semantic hierarchy, versioned profiles, explainable entity mapping, registry-derived provenance, and deterministic operational state shared across UI/backend.
-- [ ] **Phase 4:** Deliver profile-driven operational panels, explicit command result states, contextual drill-down, deep links, breadcrumbs, and permission-filtered navigation.
+- [ ] **Phase 4:** *(implemented; T4-14 and the review pass open)* Deliver profile-driven operational panels, explicit command result states, contextual drill-down, deep links, breadcrumbs, and permission-filtered navigation.
 - [ ] **Phase 5:** Deliver the verified 300-plus catalog, typed ports, deterministic routing, transactional accessible CAD tools, and a bounded declarative SDK without privileged project scripts.
 - [ ] **Phase 6:** Deliver restart-safe alarms, suppression/shelving/hysteresis, observable notifications/escalations, and audited timezone/DST-safe schedule/calendar execution.
 - [ ] **Phase 7:** Deliver bounded Recorder history, honest provenance/coverage, reset-aware unit-safe energy calculations, and reproducible screen/CSV/print report models.
@@ -192,6 +193,7 @@ For every phase: discuss unresolved product decisions, research unstable framewo
 
 | Timestamp | Change | Commit/evidence |
 |---|---|---|
+| 2026-09-02T09:00:00+02:00 | Planned and executed Phase 4 end to end: server-composed object panels whose control list is filtered before serialization, a sequenced bounded view stream, deep links re-authorized on every use, portfolio counts summed after the project filter, four separated command outcomes, five generated surfaces, the legacy operate path retired and proven inert, bilingual documentation and `tools/verify-phase4.mjs`. T4-01..T4-13 verified; T4-14 blocked on Docker. Corrected the phase's own threat model mid-execution after finding it assumed per-object ACLs the product does not have, and added a lane-portability guard after the same lane-only bug appeared twice. | `phases/04-runtime-operations-drilldown/04-SUMMARY.md`; `04-THREATS.md`; `tools/verify-phase4.mjs` |
 | 2026-09-02T12:00:00+02:00 | Planned and executed Phase 3 end to end: schema 3 with closed dimensioned vocabularies, the sequential 2 to 3 migration in both runtimes, the semantic hierarchy with cross-runtime verdict parity, registry-derived provenance behind a project-scoped route, versioned parametric profiles with deny-default controls, assignment-based explainable mapping, the frozen operational-state precedence table, four generated surfaces, bilingual documentation and `tools/verify-phase3.mjs`. T3-01..T3-13 verified; T3-14 blocked on Docker. Fixed four latent schema-index bugs and a HACS packaging gap the phase exposed. | `e4d84fe`; `phases/03-semantic-equipment-provenance/03-SUMMARY.md`; `03-THREATS.md`; `tools/verify-phase3.mjs` |
 | 2026-09-02T07:10:00+02:00 | Executed Phase 2 end to end on `claude/chatgpt-continuation-hi3y86`: the deny-default policy boundary, server-owned ACL, connection-bound leases, in-lock mutation guard, bounded merge, configured controls resolved from the verified head, the fail-closed browser authority reducer and its surfaces, conservative legacy retirement, hardened HA lanes, bilingual documentation and `tools/verify-phase2.mjs`. T2-01..T2-15 verified; T2-16 blocked on Docker. | `phases/02-authoritative-policy-controls-collaboration/.continue-here.md`; `02-THREATS.md`; `tools/verify-phase2.mjs` |
 | 2026-09-01T20:41:43+02:00 | Paused all phase work at explicit user request. Committed the complete Phase 2 planning package (17 plans/61 tasks), recorded the interrupted final plan check as the exact resume gate, and pushed the pause state to `origin/main`; no release. | `7d77583`; `0f935ac`; `HANDOFF.json`; `phases/02-authoritative-policy-controls-collaboration/.continue-here.md` |
