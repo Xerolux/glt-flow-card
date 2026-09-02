@@ -139,3 +139,95 @@ test("[expected-red:phase5-clipboard] paste remaps ids and every reference", asy
   }
   assert.deepEqual(gaps, [], "id-remapping cross-project paste is unavailable");
 });
+
+// -- Beyond the sentinel ----------------------------------------------------
+// The sentinel checks each reference kind once. These check that nothing
+// dangles at all, that pasting into the source really copies rather than
+// aliases, and that the payload's own shape is validated before it is read.
+
+const clipboard = await import(MODULE_URL.href);
+
+const empty = () => ({ equipment: [], paths: [], groups: [], layers: [], masters: [] });
+
+test("nothing dangles after a paste, by enumeration rather than by sampling", () => {
+  const payload = clipboard.serializeSelection(selection());
+  const pasted = clipboard.pasteSelection(empty(), payload, { seed: "paste-1" });
+  assert.deepEqual(clipboard.danglingReferences(pasted), []);
+  assert.deepEqual(REFERENCES.length, 4);
+});
+
+test("pasting into the source copies it, and the copy is independent", () => {
+  const source = selection();
+  const payload = clipboard.serializeSelection(source);
+  const merged = clipboard.pasteSelection(source, payload, { seed: "paste-2" });
+
+  assert.equal(merged.equipment.length, source.equipment.length * 2);
+  const ids = merged.equipment.map((item) => item.id);
+  assert.equal(new Set(ids).size, ids.length, "the paste aliased instead of copying");
+  assert.deepEqual(clipboard.danglingReferences(merged), []);
+
+  // The copied connection joins the copies, not the originals.
+  const copied = merged.paths.find((path) => path.id !== "run-1");
+  assert.ok(!["pump-1", "pump-2"].includes(copied.from_equipment));
+  assert.ok(!["pump-1", "pump-2"].includes(copied.to_equipment));
+  // And the original is untouched.
+  assert.deepEqual(source.equipment.map((item) => item.id), ["pump-1", "pump-2"]);
+});
+
+test("port ids survive the paste, because the profile did not come with it", () => {
+  const payload = clipboard.serializeSelection(selection());
+  const pasted = clipboard.pasteSelection(empty(), payload, { seed: "paste-1" });
+  assert.equal(pasted.paths[0].from_port, "out");
+  assert.equal(pasted.paths[0].to_port, "in");
+});
+
+test("two seeds give two copies; one seed gives the same copy everywhere", () => {
+  const payload = clipboard.serializeSelection(selection());
+  const first = clipboard.pasteSelection(empty(), payload, { seed: "a" });
+  const second = clipboard.pasteSelection(empty(), payload, { seed: "b" });
+  assert.notDeepEqual(first.equipment.map((i) => i.id), second.equipment.map((i) => i.id));
+  assert.deepEqual(
+    clipboard.pasteSelection(empty(), payload, { seed: "a" }),
+    first,
+    "the same seed produced a different paste",
+  );
+});
+
+test("a paste with no seed is refused rather than defaulted", () => {
+  // A default seed would be one more place for a clock to get in, and the
+  // caller is the only one who knows what makes this paste distinct.
+  const payload = clipboard.serializeSelection(selection());
+  assert.throws(() => clipboard.pasteSelection(empty(), payload), /needs a seed/);
+  assert.throws(() => clipboard.pasteSelection(empty(), payload, { seed: "" }), /needs a seed/);
+});
+
+test("a payload that is not this clipboard's is refused before it is read", () => {
+  for (const [payload, expected] of [
+    ["not json at all", /not JSON/],
+    [JSON.stringify({ format: "something-else", version: 1 }), /unknown clipboard format/],
+    [JSON.stringify({ format: clipboard.CLIPBOARD_FORMAT, version: 99 }), /unsupported clipboard version/],
+    [JSON.stringify([1, 2, 3]), /not a selection/],
+  ]) {
+    assert.throws(() => clipboard.pasteSelection(empty(), payload, { seed: "s" }), expected);
+  }
+});
+
+test("the bound is checked on the bytes, before the parser sees them", () => {
+  const oversized = "x".repeat(clipboard.CLIPBOARD_MAX_BYTES + 1);
+  assert.throws(() => clipboard.pasteSelection(empty(), oversized, { seed: "s" }), RangeError);
+  // Copying is bounded at the same place, so a selection that cannot be pasted
+  // cannot be produced either.
+  const count = Math.ceil(clipboard.CLIPBOARD_MAX_BYTES / 16) + 1000;
+  const huge = { equipment: Array.from({ length: count }, (_, index) => ({ id: `e${index}` })) };
+  assert.throws(() => clipboard.serializeSelection(huge), /cannot be copied/);
+});
+
+test("danglingReferences finds what a broken paste would leave behind", () => {
+  // The check has to be able to fail, or its passing means nothing.
+  const broken = clipboard.pasteSelection(empty(), clipboard.serializeSelection(selection()),
+    { seed: "s" });
+  broken.paths[0].from_equipment = "pump-1";
+  broken.groups[0].members[0] = "pump-1";
+  assert.deepEqual(clipboard.danglingReferences(broken).map((entry) => entry.field).sort(),
+    ["from_equipment", "members"]);
+});
