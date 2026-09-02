@@ -3,7 +3,7 @@
   "project": "GLT Flow Card",
   "milestone": "v1.1",
   "created_at": "2026-09-01T20:39:55.9074407+02:00",
-  "updated_at": "2026-09-02T05:30:00Z",
+  "updated_at": "2026-09-02T06:10:00Z",
   "status": "in_progress",
   "pause_reason": null,
   "current_position": {
@@ -12,7 +12,7 @@
     "stage": "execution",
     "plans_created": 17,
     "tasks_planned": 61,
-    "plans_implemented": 12,
+    "plans_implemented": 13,
     "implementation_started": true,
     "resume_file": ".planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md"
   },
@@ -30,10 +30,11 @@
     "Plan 02-10: trusted evidence separated from bounded browser telemetry is GREEN (T2-09).",
     "Plan 02-11: configured controls resolve from the verified head and dispatch at most once (T2-06, T2-07, T2-08).",
     "CI was red on main before this branch; both root causes are fixed - shallow checkouts fabricated the build manifest's provenance, and the parity gates had no Python dependencies. A third issue found on the branch: the Phase-2 modules were missing from the HACS packaging lists.",
-    "Plan 02-12: the fail-closed browser authority reducer, the persistent authority state bar, the capability-aware Overview cards, the in-dialog access work surface and the separated trusted/untrusted evidence sections are GREEN (T2-13 core). The plan also added the missing glt_flow_card/capabilities/get route: the UI contract and the exact-dist fixture had assumed it since the RED wave, but no backend plan declared it."
+    "Plan 02-12: the fail-closed browser authority reducer, the persistent authority state bar, the capability-aware Overview cards, the in-dialog access work surface and the separated trusted/untrusted evidence sections are GREEN (T2-13 core). The plan also added the missing glt_flow_card/capabilities/get route: the UI contract and the exact-dist fixture had assumed it since the RED wave, but no backend plan declared it.",
+    "Plan 02-13: the collaboration and configured-control state machines and their lease, conflict, control-confirmation and evidence surfaces are GREEN (T2-13, T2-14). Every one of the twelve Phase-2 sentinels now reports implemented; the phase gate is 12 implemented, 0 controlled RED, 0 broken."
   ],
   "remaining": [
-    "Execute Phase 2 plans 02-13 through 02-17: collaboration and configured-control UI, migration and lifecycle, packaging, documentation, and the phase gate.",
+    "Execute Phase 2 plans 02-14 through 02-17: migration and lifecycle, packaging and HA lanes, DE/EN documentation, and the tools/verify-phase2.mjs phase gate.",
     "Complete Phase 2 code review, security audit, UI audit, drift checks, and independent goal verification.",
     "Complete Phases 3 through 10 and the final milestone/release verification.",
     "Close the still-open consolidated Phase 1 security, UI, drift, and goal verification."
@@ -51,7 +52,7 @@
   "blockers": [],
   "open_verification": [
     "Phase 1 consolidated security, UI, drift, and goal verification.",
-    "Phase 2 threats T2-14 through T2-16 remain planned; T2-01 through T2-13 pass their owner commands."
+    "Phase 2 threats T2-15 and T2-16 remain planned; T2-01 through T2-14 pass their owner commands."
   ],
   "human_actions_required": [],
   "background_processes": [],
@@ -70,8 +71,8 @@
     "gate": "npm run test:phase2 reports every Phase-2 sentinel as controlled RED, implemented, or broken"
   },
   "resume": {
-    "first_action": "Read .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md and run npm run test:phase2 to see which sentinels are still RED.",
-    "next_gate": "Plan 02-13: src/v100/project-collaboration.mjs and src/v100/configured-control.mjs plus their UI, so phase2-collaboration and phase2-ui turn green.",
-    "after_gate": "Then 02-14, 02-15, 02-16, 02-17."
+    "first_action": "Read .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md; npm run test:phase2 now reports 12 implemented, 0 controlled RED, 0 broken.",
+    "next_gate": "Plan 02-14: migration and lifecycle.",
+    "after_gate": "Then 02-15 (packaging and HA lanes), 02-16 (DE/EN documentation) and 02-17 (tools/verify-phase2.mjs)."
   }
 }
