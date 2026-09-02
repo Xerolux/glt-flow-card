@@ -59,6 +59,7 @@ const COMPONENT_FILES = [
   "schedule_bindings.py",
   "series_coverage.py",
   "panels.py",
+  "recorder_query.py",
   "report_runs.py",
   "report_schedule.py",
   "provenance.py",

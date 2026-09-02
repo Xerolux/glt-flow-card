@@ -102,6 +102,24 @@ def gaps_between(expected_instants: list[str], returned_instants: list[str]) -> 
     return gaps
 
 
+def _whole_window(expected_instants: list[str], case: Any) -> list[dict[str, str]]:
+    """Return one gap spanning everything that was asked for.
+
+    Used when nothing came back at all. A single interval rather than one gap
+    per bucket: a renderer needs the span to break across, and seven adjacent
+    one-day gaps would draw as seven breaks with six invisible segments between
+    them.
+    """
+    if len(expected_instants) >= 2:
+        return [{"end": expected_instants[-1], "start": expected_instants[0]}]
+    window = case.get("window") or []
+    if len(window) == 2:
+        return [{"end": str(window[1]), "start": str(window[0])}]
+    if len(expected_instants) == 1:
+        return [{"end": expected_instants[0], "start": expected_instants[0]}]
+    return []
+
+
 def build_series(case: Any) -> dict[str, Any]:
     """Build one series from a Recorder answer, with its coverage and gaps.
 
@@ -121,8 +139,19 @@ def build_series(case: Any) -> dict[str, Any]:
     # with source "statistics" here would confirm the defect rather than catch
     # it.
     if case.get("error"):
+        # The gaps cover the whole expected window. Reporting coverage 0 with an
+        # empty gap list would leave a renderer nothing to break the line
+        # across, so the chart would draw an unbroken nothing and the operator
+        # would see a flat plant rather than an absent one. Found by the
+        # no-Recorder route test rather than by inspection.
+        expected_all = [str(entry) for entry in (case.get("expected_instants") or [])]
         return {
-            **absent(period=period, source="unavailable", unit=unit),
+            **absent(
+                gaps=_whole_window(expected_all, case),
+                period=period,
+                source="unavailable",
+                unit=unit,
+            ),
             "error": str(case["error"]),
             "expected_buckets": expected_buckets,
             "points": [],

@@ -105,3 +105,68 @@ def test_expected_red_phase7_history_routes(recorder_ledger) -> None:
         gaps.append("the sentinel itself queried a Recorder, which it must not")
 
     report(RED_MARKER, gaps, "server-owned history routes are unavailable")
+
+
+async def test_a_route_with_no_recorder_states_it_rather_than_returning_empty(
+    hass, config_entry, phase2_users,
+) -> None:
+    """The distinction 07-VALIDATION criterion 4 turns on.
+
+    A Home Assistant with the Recorder disabled is a supported configuration,
+    not a fault. The route must say so: an empty series sourced "statistics"
+    and an empty series sourced "unavailable" look identical to every assertion
+    about the result's shape, and only the second is true here.
+
+    This is also what proves the query is wired at all. Before the Recorder
+    query landed the handler returned a hard-coded `source: "unavailable"`,
+    which would pass an assertion that only checked the string.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager, _runtime_for, _ask_recorder
+
+    manager = _manager(hass)
+    manager.data["projects"]["history-live"] = {
+        "id": "history-live",
+        "config": {"timezone": "Europe/Berlin", "trend": {}},
+    }
+    runtime = _runtime_for(hass)
+    await runtime.access.async_assign(
+        project_id="history-live",
+        user_id=phase2_users.principal("viewer").user_id,
+        role="viewer",
+    )
+
+    # The query function itself, so the branch is reached rather than inferred
+    # from the handler's output.
+    answer, error = await _ask_recorder(hass, {
+        "contract": "statistics",
+        "message": {
+            "end_time": "2027-06-08T00:00:00+02:00",
+            "period": "day",
+            "start_time": "2027-06-01T00:00:00+02:00",
+            "statistic_ids": ["sensor.a"],
+            "types": ["change"],
+        },
+    })
+    assert answer is None
+    assert error, "a disabled Recorder produced neither an answer nor a reason"
+
+    connection = await phase2_users.async_connect("viewer")
+    response = await connection.command({
+        "type": "glt_flow_card/history/series",
+        "project_id": "history-live",
+        "entity_ids": ["sensor.a"],
+        "start_time": "2027-06-01T00:00:00+02:00",
+        "end_time": "2027-06-08T00:00:00+02:00",
+        "expected_instants": [
+            f"2027-06-0{day}T00:00:00+02:00" for day in range(1, 8)
+        ],
+    })
+    assert response["success"] is True
+    assert response["result"]["source"] == "unavailable", (
+        "a route with no Recorder returned an empty series without saying why"
+    )
+    assert response["result"]["coverage"] == 0
+    # Seven days were asked for and none came back, so the gap is the window.
+    assert response["result"]["gaps"], "seven missing days produced no gap"

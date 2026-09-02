@@ -37,7 +37,9 @@ from . import (
     history_routes,
     notifications,
     period_resolution,
+    recorder_query,
     schedule_time,
+    series_coverage,
 )
 from .configured_controls import (
     ControlRateLimiter,
@@ -2216,6 +2218,73 @@ async def ws_schedules_preview(hass, connection, msg):
 # an empty, honestly-sourced result rather than with a fabricated one.
 
 
+async def _ask_recorder(hass, request):
+    """Issue one Recorder request, returning `(answer, error)`.
+
+    A failure is carried rather than raised, because the caller has to turn it
+    into a *stated* outcome: a correct implementation and a broken one both
+    produce an empty series, and only the stated source separates them.
+
+    The Recorder's query functions are synchronous and touch the database, so
+    they run on its own executor rather than the event loop. An installation
+    with the Recorder disabled -- which is a supported configuration, not a
+    fault -- reaches the first branch and reports it as a stated outcome rather
+    than raising.
+    """
+    contract = request.get("contract")
+    message = request.get("message") or {}
+    try:
+        from homeassistant.components.recorder import get_instance, statistics
+        from homeassistant.components.recorder import history as recorder_history
+    except ImportError:
+        return None, "recorder is not installed"
+
+    instance = None
+    try:
+        instance = get_instance(hass)
+    except (KeyError, RuntimeError):
+        instance = None
+    if instance is None:
+        return None, "recorder is not running"
+
+    start = dt_util.parse_datetime(str(message.get("start_time") or ""))
+    end = dt_util.parse_datetime(str(message.get("end_time") or ""))
+    if start is None:
+        return None, "query window has no start"
+
+    try:
+        if contract == "statistics":
+            return await instance.async_add_executor_job(
+                statistics.statistics_during_period,
+                hass,
+                start,
+                end,
+                set(message.get("statistic_ids") or []),
+                message.get("period") or "day",
+                None,
+                set(message.get("types") or ("change",)),
+            ), None
+        if contract == "statistic":
+            return await instance.async_add_executor_job(
+                statistics.statistic_during_period,
+                hass,
+                start,
+                end,
+                str(message.get("statistic_id") or ""),
+                set(message.get("types") or ("change",)),
+                None,
+            ), None
+        return await instance.async_add_executor_job(
+            recorder_history.get_significant_states,
+            hass,
+            start,
+            end,
+            list(message.get("entity_ids") or []),
+        ), None
+    except Exception as error:  # noqa: BLE001 - the outcome is the subject
+        return None, str(error)
+
+
 def _history_bounds_for(hass, project_id: str) -> dict:
     """Return the effective query bounds for one project.
 
@@ -2269,6 +2338,7 @@ async def _audit_history(hass, connection, route, *, project_id, msg, rows, cont
     vol.Optional("entity_ids", default=list): [str],
     vol.Optional("start_time", default=""): str,
     vol.Optional("end_time", default=""): str,
+    vol.Optional("expected_instants", default=list): [str],
     vol.Optional("limit", default=500): int,
 })
 @websocket_api.async_response
@@ -2305,7 +2375,23 @@ async def ws_history_series(hass, connection, msg):
 
     # Filtered first, limited second. Slicing first would let another project's
     # rows consume the caller's page, turning the limit into a count oracle.
-    series = []
+    #
+    # The expected instants come from the resolved period, never from the
+    # answer: the Recorder omits empty periods, so what came back is exactly the
+    # thing that cannot say what was asked for.
+    expected = list(msg.get("expected_instants") or [])
+    request = recorder_query.build_request(
+        end=msg["end_time"] or "",
+        entity_ids=msg["entity_ids"],
+        period="custom",
+        start=msg["start_time"] or "",
+    )
+    answer, query_error = await _ask_recorder(hass, request)
+    shaped = recorder_query.shape_answer(
+        request["contract"], answer, error=query_error, expected_instants=expected,
+    )
+    built = series_coverage.build_series(shaped)
+    series = built.get("points") or []
     capped = history_bounds.cap_rows(series, bounds)
     await _audit_history(
         hass, connection, "glt_flow_card/history/series",
@@ -2314,11 +2400,17 @@ async def ws_history_series(hass, connection, msg):
     )
     connection.send_result(msg["id"], {
         "capped": capped["capped"],
-        "coverage": 0,
+        "coverage": built.get("coverage", 0),
+        "gaps": built.get("gaps") or [],
         "series": capped["rows"][: msg["limit"]],
-        # A downgraded query says so. The reader is entitled to know which
-        # contract produced the number they are looking at.
-        "source": decision_on_bounds["source"] if decision_on_bounds["outcome"] == "downgrade" else "unavailable",
+        # A downgraded query says so, and a failed one says so too. The reader is
+        # entitled to know which contract produced what they are looking at, and
+        # whether anything produced it at all.
+        "source": (
+            decision_on_bounds["source"]
+            if decision_on_bounds["outcome"] == "downgrade"
+            else built.get("source", "unavailable")
+        ),
     })
 
 
