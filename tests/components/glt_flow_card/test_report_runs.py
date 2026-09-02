@@ -20,8 +20,8 @@ import pytest
 
 from .phase7_red import emit_queries, missing, report
 
+# The expected_red marker was removed by plan 07-14: this file's sentinel passes.
 pytestmark = [
-    pytest.mark.expected_red,
     pytest.mark.enable_socket,
     pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
 ]
@@ -72,14 +72,31 @@ def test_expected_red_phase7_report_runs(recorder_ledger) -> None:
         )
 
     # Reproducible, or explicit about which input changed.
-    again = report_runs.execute(definition, now="2027-11-15T09:30:00+01:00", timezone="Europe/Berlin")
+    again = report_runs.execute(
+        definition, now="2027-11-15T09:30:00+01:00", previous=run, timezone="Europe/Berlin"
+    )
     if again.get("value") != run.get("value"):
         gaps.append("re-running over unchanged inputs produced a different value")
+    if not report_runs.reproduces(run, again):
+        gaps.append("an identical re-run does not report itself as reproducing the first")
+    if again.get("changed_inputs"):
+        gaps.append(f"an identical re-run named {again['changed_inputs']!r} as changed")
+    # Corrected during execution: the first draft asked for `changed_inputs`
+    # without giving anything to compare against, which is under-specified. A
+    # caller with stored runs passes the previous one, and that is the shape
+    # this asserts.
     changed = report_runs.execute(
-        {**definition, "version": 2}, now="2027-11-15T09:30:00+01:00", timezone="Europe/Berlin"
+        {**definition, "version": 2},
+        now="2027-11-15T09:30:00+01:00",
+        previous=run,
+        timezone="Europe/Berlin",
     )
     if not changed.get("changed_inputs"):
         gaps.append("re-running over changed inputs did not name which input changed")
+    if "version" not in (changed.get("changed_inputs") or []):
+        gaps.append("the changed input was not named; a bare 'something changed' leaves the reader to guess")
+    if report_runs.reproduces(run, changed):
+        gaps.append("a run with different inputs claims to reproduce the earlier one")
 
     # D23. Ids are content-derived or authored, never minted from the clock.
     if str(run.get("report_id", "")).startswith("report_") and run.get("report_id") != definition["id"]:
