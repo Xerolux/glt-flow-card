@@ -32,9 +32,7 @@ const TEST_DIR = fileURLToPath(new URL("../test", import.meta.url));
  * anything else about the run is broken. That is stricter than a bare pass or
  * fail, not weaker.
  */
-const PHASE_GATE_SUITES = new Set([
-  "shipped-alarm-truth.test.mjs",  // released by plan 06-15
-]);
+const PHASE_GATE_SUITES = new Set();
 
 const suites = readdirSync(TEST_DIR)
   .filter((name) => name.endsWith(".test.mjs"))

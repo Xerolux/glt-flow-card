@@ -21,6 +21,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from .alarm_vocabulary import migrate_severity
 from .equipment_profiles import validate_profile
 
 #: The ordered region kinds. Closed: an unknown kind is an error, never a
@@ -180,16 +181,30 @@ def compose_panel(
         **(dict(provenance) if provenance else {"health": "unknown"}),
     })
 
-    alarms = [
-        {
+    # D4's fourth derivation. `state` was a *design-time* config field the
+    # engine never writes -- it writes `alarm_state` -- so this badge was
+    # permanently detached from the running engine. It reads the engine's row
+    # now, and reports the priority through the closed vocabulary so the panel
+    # and the roll-up use the same word.
+    runtime = config.get("_alarm_runtime")
+    runtime = runtime if isinstance(runtime, Mapping) else {}
+    alarms = []
+    for alarm in config.get("alarms", []) or []:
+        if not isinstance(alarm, Mapping) or alarm.get("equipment_id") != object_id:
+            continue
+        row = runtime.get(str(alarm.get("id")))
+        row = row if isinstance(row, Mapping) else {}
+        alarms.append({
             "id": alarm.get("id"),
-            "severity": alarm.get("severity"),
-            "state": alarm.get("state"),
+            "priority": migrate_severity(
+                row.get("priority", alarm.get("priority", alarm.get("severity")))
+            )["priority"],
+            "state": row.get("state"),
+            "active": bool(row.get("active")),
+            "suppressed_by": row.get("suppressed_by"),
             "label": alarm.get("label"),
-        }
-        for alarm in config.get("alarms", []) or []
-        if isinstance(alarm, Mapping) and alarm.get("equipment_id") == object_id
-    ][:MAX_ALARMS_PER_PANEL]
+        })
+    alarms = alarms[:MAX_ALARMS_PER_PANEL]
     regions.append({"kind": "alarms", "alarms": alarms, "emptyText": "no_alarms"})
 
     regions.append(_controls_region(profile, capabilities))

@@ -71,7 +71,33 @@ async def seed_operations_project(
 
     await _save(hass, users, OPEN_PROJECT_ID, operations_project())
     await _save(hass, users, RESTRICTED_PROJECT_ID, restricted_project())
+    _seed_alarm_runtime(hass)
     return runtime
+
+
+def _seed_alarm_runtime(hass: HomeAssistant) -> None:
+    """Put the corpus's alarms into the *engine's* state, where they belong.
+
+    Phase 6 detached the panel badges and the portfolio roll-up from
+    `alarm["state"]` -- a design-time config field the engine never writes --
+    and pointed them at `alarm_state`, which it does. A corpus that seeds only
+    the config field therefore describes an installation whose alarms the engine
+    has never seen, which is not the installation these tests are about.
+    """
+    from custom_components.glt_flow_card import _manager
+
+    manager = _manager(hass)
+    for project_id, project in manager.data["projects"].items():
+        for alarm in (project.get("config") or {}).get("alarms") or []:
+            if alarm.get("state") != "active":
+                continue
+            manager.data["alarm_state"][f"{project_id}:{alarm.get('id')}"] = {
+                "project_id": project_id,
+                "alarm_id": alarm.get("id"),
+                "active": True,
+                "state": "active",
+                "priority": alarm.get("priority", alarm.get("severity")),
+            }
 
 
 def declared_route(route: str) -> Any:

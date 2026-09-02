@@ -4608,13 +4608,29 @@
     function canDesign(config, hass) {
       return roleFor(config, hass) === "designer";
     }
+    /* Retired in Phase 6, reachable and inert.
+     *
+     * This was a string-membership test with no operator, no threshold, no
+     * hysteresis and no delay, so it disagreed with the Companion for every
+     * alarm that has a condition -- a flow temperature of 55 against a limit of
+     * 80 read as active, because "55" was not in its inactive list. It was one
+     * of four derivations of "is this alarm active" in the product, and they
+     * disagreed with each other.
+     *
+     * The Companion evaluates now, and every surface renders what it evaluated.
+     * The entry point stays so a test can prove the replacement rather than
+     * prove the absence of something nothing checks -- the same retirement
+     * Phase 5 gave the midpoint router.
+     *
+     * It reads the state the Companion published and derives nothing. Absent
+     * state answers "not active", because a card that has not yet been told is
+     * a card that does not know.
+     */
     function activeAlarm(card, alarm) {
-      const st = card._stateAt?.(field(alarm.entity)?.entity);
-      if (!st) return false;
-      const raw = String(st.state ?? "").toLowerCase();
-      const inactive = alarm.inactive_states || ["off", "0", "ok", "normal", "none", "idle", "clear", "unavailable", "unknown"];
-      if (Array.isArray(alarm.active_states) && alarm.active_states.length) return alarm.active_states.map(String).map((x) => x.toLowerCase()).includes(raw);
-      return !inactive.map(String).map((x) => x.toLowerCase()).includes(raw);
+      const published = card._alarmState;
+      if (!published) return false;
+      const row = published[String(alarm.id)];
+      return Boolean(row && row.active);
     }
     function equipmentPos(config, id, viewId) {
       const item = config.equipment.find((x) => x.id === id);
@@ -5487,12 +5503,16 @@
         const h = document.createElement("div");
         h.innerHTML = alarmsMarkup(this);
         replay?.after(h.firstElementChild);
-        root.querySelectorAll("[data-ack]").forEach((b) => b.onclick = async () => {
-          const a = this._config.alarms.find((x) => x.id === b.dataset.ack);
-          if (!a?.ack?.service) return;
-          const [domain, service] = a.ack.service.split(".");
-          await this._hass.callService(domain, service, a.ack.data || {});
-          await runtimeStore(this).audit("alarm.ack", { alarm_id: a.id, entity_id: field(a.entity)?.entity });
+        /* Retired in Phase 6, reachable and inert.
+         *
+         * Acknowledgement called a Home Assistant service directly from the
+         * browser and never reached the Companion, so the acknowledgement the
+         * operator made was invisible to the engine that owns the alarm's
+         * state. The authoritative path is `glt_flow_card/alarms/ack`, and the
+         * v100 layer's alarm surface is where it lives.
+         */
+        root.querySelectorAll("[data-ack]").forEach((b) => b.onclick = () => {
+          editorNotice(this, "Quittieren erfolgt \u00fcber die Alarmliste.");
         });
       }
       if (this._glt4Panel === "assets") {

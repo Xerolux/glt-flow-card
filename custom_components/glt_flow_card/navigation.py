@@ -153,6 +153,32 @@ def resolve_address(config: Mapping[str, Any], address: str) -> dict[str, Any] |
     }
 
 
+def _alarm_runtime_state(config: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Return the engine's alarm state for this project, if it was supplied.
+
+    Passed in on the config rather than read from a global, so this module stays
+    a pure function of its input and the caller decides what the roll-up is
+    counting.
+    """
+    runtime = config.get("_alarm_runtime")
+    return runtime if isinstance(runtime, Mapping) else {}
+
+
+def _is_active(alarm: Mapping[str, Any], runtime: Mapping[str, Any]) -> bool:
+    """Return whether the *engine* considers this alarm active.
+
+    A suppressed alarm is not counted in the roll-up: an operator who shelved it
+    asked for it to be quiet, and a badge that keeps counting it makes the
+    shelf look broken. The detail view still shows it, with its reason.
+    """
+    row = runtime.get(str(alarm.get("id")))
+    if not isinstance(row, Mapping):
+        return False
+    if row.get("suppressed_by"):
+        return False
+    return bool(row.get("active"))
+
+
 def _counts_for(config: Mapping[str, Any]) -> dict[str, int]:
     """Alarm counts for one project. Zero counts are omitted, not reported.
 
@@ -160,10 +186,15 @@ def _counts_for(config: Mapping[str, Any]) -> dict[str, int]:
     empty scope from an unauthorized one.
     """
     counts: dict[str, int] = {}
+    runtime = _alarm_runtime_state(config)
     for alarm in config.get("alarms", []) or []:
         if not isinstance(alarm, Mapping):
             continue
-        if alarm.get("state") != "active":
+        # D4's fourth derivation. This read `alarm["state"]`, a *design-time*
+        # config field the engine never writes -- the engine writes
+        # `alarm_state` -- so the badge showed a value nobody updated. It reads
+        # the engine's state now, passed in beside the config.
+        if not _is_active(alarm, runtime):
             continue
         # Migrated, not matched. A stored string nobody declared still lands in
         # a bucket -- the most severe one -- rather than vanishing from the

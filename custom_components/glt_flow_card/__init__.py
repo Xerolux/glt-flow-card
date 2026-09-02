@@ -838,6 +838,28 @@ class GltStore:
             )
             await self.async_save()
 
+    def alarm_runtime_for(self, project_id: str) -> dict[str, Any]:
+        """Return the engine's alarm rows for one project, keyed by alarm id.
+
+        The panel badge and the portfolio roll-up both read this, so both show
+        what the engine decided. They previously read `alarm["state"]` from the
+        project *config* -- a design-time field the engine never writes -- which
+        is why they were permanently detached from the running engine.
+        """
+        rows: dict[str, Any] = {}
+        for row in self.data["alarm_state"].values():
+            if row.get("project_id") != project_id:
+                continue
+            rows[str(row.get("alarm_id"))] = deepcopy(row)
+        return rows
+
+    def with_alarm_runtime(self, project: dict[str, Any]) -> dict[str, Any]:
+        """Return a copy of `project` whose config carries the engine's rows."""
+        copy = deepcopy(project)
+        config = copy.setdefault("config", {})
+        config["_alarm_runtime"] = self.alarm_runtime_for(str(copy.get("id")))
+        return copy
+
     async def save_schedule(
         self, project_id: str, entry: dict[str, Any], *, actor: Any = None,
     ) -> dict[str, Any]:
@@ -1820,7 +1842,10 @@ async def ws_navigation_portfolio(hass, connection, msg):
     visible = set(runtime.policy.visible_projects(
         connection, [head["id"] for head in heads],
     ))
-    permitted = [head for head in heads if head["id"] in visible]
+    manager = _manager(hass)
+    permitted = [
+        manager.with_alarm_runtime(head) for head in heads if head["id"] in visible
+    ]
     connection.send_result(msg["id"], roll_up_portfolio(permitted))
 
 
@@ -1917,7 +1942,7 @@ async def ws_panels_get(hass, connection, msg):
         return
 
     panel = compose_panel(
-        config,
+        {**config, "_alarm_runtime": _manager(hass).alarm_runtime_for(decision.project_id)},
         msg["object_id"],
         capabilities=decision.capabilities,
         states=states,

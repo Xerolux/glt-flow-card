@@ -4608,13 +4608,29 @@
     function canDesign(config, hass) {
       return roleFor(config, hass) === "designer";
     }
+    /* Retired in Phase 6, reachable and inert.
+     *
+     * This was a string-membership test with no operator, no threshold, no
+     * hysteresis and no delay, so it disagreed with the Companion for every
+     * alarm that has a condition -- a flow temperature of 55 against a limit of
+     * 80 read as active, because "55" was not in its inactive list. It was one
+     * of four derivations of "is this alarm active" in the product, and they
+     * disagreed with each other.
+     *
+     * The Companion evaluates now, and every surface renders what it evaluated.
+     * The entry point stays so a test can prove the replacement rather than
+     * prove the absence of something nothing checks -- the same retirement
+     * Phase 5 gave the midpoint router.
+     *
+     * It reads the state the Companion published and derives nothing. Absent
+     * state answers "not active", because a card that has not yet been told is
+     * a card that does not know.
+     */
     function activeAlarm(card, alarm) {
-      const st = card._stateAt?.(field(alarm.entity)?.entity);
-      if (!st) return false;
-      const raw = String(st.state ?? "").toLowerCase();
-      const inactive = alarm.inactive_states || ["off", "0", "ok", "normal", "none", "idle", "clear", "unavailable", "unknown"];
-      if (Array.isArray(alarm.active_states) && alarm.active_states.length) return alarm.active_states.map(String).map((x) => x.toLowerCase()).includes(raw);
-      return !inactive.map(String).map((x) => x.toLowerCase()).includes(raw);
+      const published = card._alarmState;
+      if (!published) return false;
+      const row = published[String(alarm.id)];
+      return Boolean(row && row.active);
     }
     function equipmentPos(config, id, viewId) {
       const item = config.equipment.find((x) => x.id === id);
@@ -5487,12 +5503,16 @@
         const h = document.createElement("div");
         h.innerHTML = alarmsMarkup(this);
         replay?.after(h.firstElementChild);
-        root.querySelectorAll("[data-ack]").forEach((b) => b.onclick = async () => {
-          const a = this._config.alarms.find((x) => x.id === b.dataset.ack);
-          if (!a?.ack?.service) return;
-          const [domain, service] = a.ack.service.split(".");
-          await this._hass.callService(domain, service, a.ack.data || {});
-          await runtimeStore(this).audit("alarm.ack", { alarm_id: a.id, entity_id: field(a.entity)?.entity });
+        /* Retired in Phase 6, reachable and inert.
+         *
+         * Acknowledgement called a Home Assistant service directly from the
+         * browser and never reached the Companion, so the acknowledgement the
+         * operator made was invisible to the engine that owns the alarm's
+         * state. The authoritative path is `glt_flow_card/alarms/ack`, and the
+         * v100 layer's alarm surface is where it lives.
+         */
+        root.querySelectorAll("[data-ack]").forEach((b) => b.onclick = () => {
+          editorNotice(this, "Quittieren erfolgt \u00fcber die Alarmliste.");
         });
       }
       if (this._glt4Panel === "assets") {
@@ -41384,6 +41404,29 @@
       if (!owner?._hass?.callWS) throw new Error("Companion nicht verfügbar");
       return owner._hass.callWS({ type: `glt_flow_card/${type}`, ...payload });
     }
+    function askText(owner, label, initial = "") {
+      return new Promise((resolve) => {
+        const root = owner.shadowRoot || owner;
+        const host = document.createElement("div");
+        host.className = "glt-v1-modal";
+        host.dataset.gltAsk = "1";
+        host.innerHTML = `<div class="glt-v1-body" role="dialog" aria-modal="true" aria-label="${esc(label)}"><label class="glt-v1-label">${esc(label)}<input class="glt-v1-input" data-value></label><div class="glt-v1-actions"><button class="glt-v1-btn primary" data-ok>OK</button><button class="glt-v1-btn" data-cancel>Abbrechen</button></div></div>`;
+        const input = host.querySelector("[data-value]");
+        input.value = String(initial ?? "");
+        const close = (value) => {
+          host.remove();
+          resolve(value);
+        };
+        host.querySelector("[data-ok]").onclick = () => close(input.value);
+        host.querySelector("[data-cancel]").onclick = () => close(null);
+        host.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") close(null);
+          if (event.key === "Enter") close(input.value);
+        });
+        root.appendChild(host);
+        input.focus();
+      });
+    }
     async function audit(owner, action, detail = {}) {
       try {
         await ws(owner, "audit/add", { event: { action, detail, at: (/* @__PURE__ */ new Date()).toISOString() } });
@@ -41404,33 +41447,59 @@
       notice(card2, "Bedienung läuft über die vom Server zusammengestellte Objektbedienung.");
       return void 0;
     }
-    function alarmsPanel(card2) {
+    async function loadAlarms(card2) {
       const cfg = ensureV1(card2._config);
-      const derived = cfg.alarms.map((a) => {
-        const st2 = stateOf(card2, entityId(a.entity));
-        const active = a.active_states?.length ? a.active_states.map(String).includes(String(st2?.state)) : !["off", "0", "ok", "normal", "clear", "unknown", "unavailable"].includes(String(st2?.state).toLowerCase());
-        return { ...a, active, state: st2?.state };
-      });
-      const m = modal(card2, t(cfg, "alarms"), `<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div><table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorität</th><th>Meldung</th><th>Wert</th><th>Aktion</th></tr></thead><tbody>${derived.map((a) => `<tr><td>${a.active ? "🔴 aktiv" : "⚪ normal"}</td><td>${esc(a.severity || a.priority || "warning")}</td><td>${esc(a.name || entityId(a.entity))}</td><td>${esc(a.state ?? "–")}</td><td>${a.active ? `<button class="glt-v1-btn" data-ack="${esc(a.id)}">Quittieren</button> <button class="glt-v1-btn" data-shelve="${esc(a.id)}">Shelve</button>` : ""}</td></tr>`).join("") || '<tr><td colspan="5">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`);
+      try {
+        const res = await ws(card2, "alarms/list", { project_id: projectId(cfg), limit: 500 });
+        const byId = {};
+        for (const row of res?.states || []) byId[String(row.alarm_id)] = row;
+        card2._alarmState = byId;
+        return { states: res?.states || [], history: res?.history || [], byId };
+      } catch (_e2) {
+        card2._alarmState = card2._alarmState || {};
+        return { states: [], history: [], byId: card2._alarmState, unavailable: true };
+      }
+    }
+    function alarmRow(cfg, a, row) {
+      const active = Boolean(row && row.active);
+      const suppression = row && row.suppression;
+      const delivery = row && row.last_delivery;
+      const priority = esc(String(row && row.priority || a.priority || a.severity || "warning"));
+      const shape = active ? "◆" : "○";
+      const state = suppression ? `unterdrückt` : active ? "aktiv" : "normal";
+      const why = suppression ? `${esc(String(suppression.reason || ""))}${suppression.by ? ` · ${esc(String(suppression.by))}` : ""}${suppression.until ? ` · bis ${esc(String(suppression.until))}` : ""}` : "";
+      const failed = delivery && delivery.outcome && delivery.outcome !== "delivered";
+      return `<tr data-alarm="${esc(a.id)}"><td><span data-priority-shape>${shape}</span> <span data-state>${esc(state)}</span></td><td data-priority>${priority}</td><td>${esc(a.name || entityId(a.entity))}</td><td data-suppression>${why}</td><td>${failed ? `<span data-delivery-failed>Zustellung fehlgeschlagen: ${esc(String(delivery.error || delivery.outcome))}</span>` : ""}</td><td>${active && !suppression ? `<button class="glt-v1-btn" data-ack="${esc(a.id)}">Quittieren</button> <button class="glt-v1-btn" data-shelve="${esc(a.id)}">Shelve</button>` : ""}</td></tr>`;
+    }
+    async function alarmsPanel(card2) {
+      const cfg = ensureV1(card2._config);
+      const loaded = await loadAlarms(card2);
+      const rows = cfg.alarms.map((a) => alarmRow(cfg, a, loaded.byId[String(a.id)]));
+      const m = modal(card2, t(cfg, "alarms"), `<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div>${loaded.unavailable ? '<p data-unavailable style="font-size:9px;color:var(--mut)">Alarmzustand derzeit nicht abrufbar.</p>' : ""}<table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorität</th><th>Meldung</th><th>Unterdrückung</th><th>Zustellung</th><th>Aktion</th></tr></thead><tbody>${rows.join("") || '<tr><td colspan="6">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`);
       m.querySelector("[data-refresh]").onclick = () => {
         m.remove();
         alarmsPanel(card2);
       };
       m.querySelectorAll("[data-ack]").forEach((b) => b.onclick = async () => {
-        const comment = prompt("Quittierkommentar", "") || "";
+        const comment = await askText(card2, "Quittierkommentar", "");
+        if (comment === null) return;
         try {
           await ws(card2, "alarms/ack", { project_id: projectId(cfg), alarm_id: b.dataset.ack, comment });
-        } catch (_e2) {
+        } catch (err) {
+          notice(card2, err.message);
         }
-        await audit(card2, "alarm.ack", { alarm_id: b.dataset.ack, comment });
+        await audit(card2, "alarm.ack", { alarm_id: b.dataset.ack });
         m.remove();
         alarmsPanel(card2);
       });
       m.querySelectorAll("[data-shelve]").forEach((b) => b.onclick = async () => {
-        const minutes = Number(prompt("Für wie viele Minuten unterdrücken?", "60") || 60);
+        const answer = await askText(card2, "Für wie viele Minuten unterdrücken?", "60");
+        if (answer === null) return;
+        const minutes = Number(answer) || 60;
         try {
           await ws(card2, "alarms/shelve", { project_id: projectId(cfg), alarm_id: b.dataset.shelve, minutes });
-        } catch (_e2) {
+        } catch (err) {
+          notice(card2, err.message);
         }
         m.remove();
         alarmsPanel(card2);
