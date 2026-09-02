@@ -1,9 +1,31 @@
 ---
 phase: 10-usability-release-evidence
+status: planned
 requirements: [I18N-01, A11Y-01, TEST-01]
 ---
 
-# Phase 10 Validation
+# Phase 10 Validation Map
+
+The gate parses the table below. Six columns, and the threat cell carries every
+threat the row's command proves.
+
+## Requirement coverage
+
+| Requirement | Threats | What is proven | Kind | Command | Status |
+|---|---|---|---|---|---|
+| I18N-01 | T10-01 | One enumerable catalog per language, with completeness computed from the catalogs rather than asserted about them, and an empty catalog failing rather than trivially passing | Browser contract | `node --test test/catalog-completeness.test.mjs` | ⏳ planned |
+| I18N-01 | T10-02 | A missing translation fails at load rather than resolving to the English string or the raw key, proven by a pseudo-locale generated from the catalogs at test time | Browser contract | `node --test test/pseudo-locale.test.mjs` | ⏳ planned |
+| I18N-01 | T10-03 | Every user-facing string in the shipped artifact comes from a catalog, with the sweep failing with the list of any that do not rather than with a count | Artifact sweep | `node tools/verify-i18n-coverage.mjs` | ⏳ planned |
+| I18N-01 | T10-04, T10-05 | Date, time, number and unit formatting resolves from configuration or refuses rather than falling back to the viewer's locale, and plural selection is data expressible for a locale with more than two forms | Cross-runtime parity | `node --test test/locale-formatting.test.mjs` | ⏳ planned |
+| I18N-01 | T10-06 | The Companion's wording and the browser's are compared as canonical bytes rather than only their codes | Cross-runtime parity | `node --test test/catalog-parity.test.mjs` | ⏳ planned |
+| A11Y-01 | T10-07, T10-08 | Every interactive element in the exact artifact has a role from the element itself where possible and an accessible name from the catalog, with visible unobscured focus and no keyboard trap | Browser artifact | `node tools/run-exact-dist-playwright.mjs --grep=phase-10-a11y` | ⏳ planned |
+| A11Y-01 | T10-09 | An automated sweep covers every registered surface in the exact artifact, no rule is disabled, and a surface it does not cover fails rather than being skipped | Browser artifact | `node tools/run-exact-dist-playwright.mjs --grep=phase-10-axe` | ⏳ planned |
+| TEST-01 | T10-10, T10-11, T10-12, T10-17 | Every published claim cites a command and its result, a claim with no evidence fails the build, a failed claim is published as failed, automated and manual accessibility evidence cannot merge into a conformance statement, and every capability never exercised here is named with its reason | Release evidence | `node --test test/claim-registry.test.mjs` | ⏳ planned |
+| TEST-01 | T10-13, T10-14 | Scenarios at 100, 500 and 2,000 objects run against recorded budgets and fail when one is exceeded, every measurement carries its environment, and only an environment marked representative supports a platform-capacity claim | Release evidence | `node --test test/capacity-budgets.test.mjs` | ⏳ planned |
+| TEST-01 | T10-15 | Every dependency this phase adds is pinned to an exact version and appears in the release evidence | Release evidence | `npm run verify:release` | ⏳ planned |
+| TEST-01 | T10-16 | Authored source, generated card, Companion copy, HACS stage and ZIP, HA lanes, docs and release evidence agree byte for byte, installed as the exact stage | Release evidence | `npm run test:phase10:release` | ⏳ planned |
+
+## In prose
 
 ## What must be true at the end
 

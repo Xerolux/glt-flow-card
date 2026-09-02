@@ -367,8 +367,25 @@ Plans:
 
 **Known defects closed**: Hardcoded/incomplete locale behavior, CSS-only or token-only accessibility claims, a 2,000-object diagnostics micro-test presented as platform capacity, absence of real Python/browser/security tests, unproven HA compatibility, and release copies that can drift from reviewed source.
 **Research flag**: Derive numeric capacity budgets from representative hardware and finalize the evidence/claim publication format before release.
-**Plans**: 15 across 7 waves — see `.planning/phases/10-usability-release-evidence/`.
+**Research flag**: RESOLVED 2026-09-02 — see `10-RESEARCH.md`. Automated rule engines decide only a minority of WCAG success criteria by construction, so an automated pass and a recorded manual pass stay separate claims that the registry has no schema for merging; a capacity number measured in an environment not marked representative supports "the scenario is bounded and runs" and never "the platform handles N objects"; and a pseudo-locale generated from the catalogs at test time enumerates hardcoded strings rather than counting them, where a checked-in one drifts from what it tests.
+**Plans**: 15
 **UI hint**: yes
+
+- [ ] 10-01-PLAN.md — Stand up the Phase-10 gate and the measured-nothing ledger.
+- [ ] 10-02-PLAN.md — One catalog per language, with completeness as a computation.
+- [ ] 10-03-PLAN.md — Generate a pseudo-locale that makes a missing key visible.
+- [ ] 10-04-PLAN.md — Move the legacy base's hundred hardcoded strings into the catalog.
+- [ ] 10-05-PLAN.md — Format from configuration or refuse, and make plurals data.
+- [ ] 10-06-PLAN.md — Compare the two runtimes' wording as canonical bytes.
+- [ ] 10-07-PLAN.md — Give every interactive element a real role and an accessible name.
+- [ ] 10-08-PLAN.md — Assert names, roles, focus and reflow in the exact artifact.
+- [ ] 10-09-PLAN.md — Sweep every shipped surface automatically, and fail on an unswept one.
+- [ ] 10-10-PLAN.md — Build a capacity harness whose numbers carry their environment.
+- [ ] 10-11-PLAN.md — Build the claim registry that refuses a claim with no evidence.
+- [ ] 10-12-PLAN.md — Publish what was never exercised here, with reasons.
+- [ ] 10-13-PLAN.md — Record budgets, and bound what a measurement may claim.
+- [ ] 10-14-PLAN.md — Document accessibility, localization and release evidence.
+- [ ] 10-15-PLAN.md — Close the register from commands, and fix the traceability debt.
 
 ## Requirement Coverage
 
