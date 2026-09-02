@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 6 execution in progress; plans 06-01 through 06-07 complete and pushed, 06-08 next
+stopped_at: Phase 6 execution in progress; plans 06-01 through 06-11 complete and pushed, 06-12 next
 last_updated: "2026-09-02T14:00:00.000Z"
 last_activity: 2026-09-02 -- Phase 6 planned: source audit (14 defects), context, research (HA authoring APIs confirmed by execution, DST behaviour measured), patterns, 21 threats, validation map, UI contract and 20 plans; the alarms/list authorization leak found during the audit was fixed separately in 9f53bcb
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 84
-  completed_plans: 71
+  completed_plans: 75
   percent: 38
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 06 (alarms-notifications-schedules) — EXECUTING
-Plan: 7 of 20 implemented (20 plans across 5 waves)
+Plan: 11 of 20 implemented (20 plans across 5 waves)
 Status: every Phase-6 planning artifact is committed and the roadmap's
 `Plans: TBD` is replaced with the itemised list, so the gate has plan text to
 bind. The research flag is resolved in both halves: the Home Assistant
