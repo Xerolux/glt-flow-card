@@ -48,6 +48,7 @@ const COMPONENT_FILES = [
   "period_resolution.py",
   "schedule_time.py",
   "schedule_bindings.py",
+  "series_coverage.py",
   "panels.py",
   "provenance.py",
   "sdk_manifest.py",

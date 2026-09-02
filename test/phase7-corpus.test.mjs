@@ -109,3 +109,23 @@ test("every Recorder corpus case says which defect it exists to catch", () => {
     assert.ok(entry.why && entry.why.length > 40, `case ${entry.name} does not say why it exists`);
   }
 });
+
+test("every Recorder corpus case carries the grid the resolved period asks for", () => {
+  // Coverage is expected buckets against returned ones, and only the caller
+  // that resolved the period knows which buckets were expected. Inferring the
+  // grid from what came back would make a series with three missing days look
+  // like a shorter series with none, which is the defect rather than the fix.
+  for (const entry of recorder.cases) {
+    assert.ok(
+      Array.isArray(entry.expected_instants) && entry.expected_instants.length > 0,
+      `case ${entry.name} carries no expected grid`,
+    );
+    if (typeof entry.expected_buckets === "number") {
+      assert.equal(
+        entry.expected_instants.length,
+        entry.expected_buckets,
+        `case ${entry.name} disagrees with itself about how many buckets were asked for`,
+      );
+    }
+  }
+});

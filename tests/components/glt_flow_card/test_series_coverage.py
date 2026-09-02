@@ -23,8 +23,9 @@ import pytest
 
 from .phase7_red import emit_queries, missing, report
 
+# The expected_red marker was removed by plan 07-10: this file's sentinel
+# passes. The RED gate still classifies it, running the file with filtering off.
 pytestmark = [
-    pytest.mark.expected_red,
     pytest.mark.enable_socket,
     pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
 ]
