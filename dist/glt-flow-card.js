@@ -40470,8 +40470,8 @@
   function rotateRight(value, amount) {
     return value >>> amount | value << 32 - amount;
   }
-  function sha256Hex(text) {
-    const source = textEncoder.encode(text);
+  function sha256Hex(text2) {
+    const source = textEncoder.encode(text2);
     const paddedLength = Math.ceil((source.length + 9) / 64) * 64;
     const bytes = new Uint8Array(paddedLength);
     bytes.set(source);
@@ -49871,11 +49871,11 @@
     return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   }
   function canonicalDocument(bytes, path) {
-    let text;
+    let text2;
     let document2;
     try {
-      text = decoder.decode(bytes);
-      document2 = JSON.parse(text);
+      text2 = decoder.decode(bytes);
+      document2 = JSON.parse(text2);
     } catch {
       failure("bundle.manifest_mismatch", path, { reason: "invalid_json" });
     }
@@ -49885,7 +49885,7 @@
     } catch {
       failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
     }
-    if (text !== canonical) failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
+    if (text2 !== canonical) failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
     return { document: document2, canonical };
   }
   function manifestErrorPath(error) {
@@ -50561,8 +50561,8 @@
     };
     const canOperate = (c, h) => ["operator", "designer"].includes(currentRole(c, h));
     const LANG = {
-      de: { operations: "Betrieb", alarms: "Alarme", schedule: "Zeitprogramme", semantics: "Semantik", automap: "Auto-Mapping", cad: "CAD", diagnostics: "Diagnose", simulation: "Simulation", energy: "Energie", maintenance: "Wartung", project: "Projekt v1", symbols: "Symbole 300+" },
-      en: { operations: "Operations", alarms: "Alarms", schedule: "Schedules", semantics: "Semantics", automap: "Auto mapping", cad: "CAD", diagnostics: "Diagnostics", simulation: "Simulation", energy: "Energy", maintenance: "Maintenance", project: "Project v1", symbols: "Symbols 300+" }
+      de: { operations: "Betrieb", alarms: "Alarme", trends: "Trends", schedule: "Zeitprogramme", semantics: "Semantik", automap: "Auto-Mapping", cad: "CAD", diagnostics: "Diagnose", simulation: "Simulation", energy: "Energie", maintenance: "Wartung", project: "Projekt v1", symbols: "Symbole 300+" },
+      en: { operations: "Operations", alarms: "Alarms", trends: "Trends", schedule: "Schedules", semantics: "Semantics", automap: "Auto mapping", cad: "CAD", diagnostics: "Diagnostics", simulation: "Simulation", energy: "Energy", maintenance: "Maintenance", project: "Project v1", symbols: "Symbols 300+" }
     };
     const t = (config2, key) => (LANG[config2?.ui?.locale] || LANG.de)[key] || key;
     const sdk = window.GLTFlowCardSDK || { symbols: /* @__PURE__ */ new Map(), profiles: /* @__PURE__ */ new Map(), panels: /* @__PURE__ */ new Map(), migrations: [], languages: /* @__PURE__ */ new Map() };
@@ -50623,7 +50623,8 @@
     }
     async function ws(owner, type, payload = {}) {
       if (!owner?._hass?.callWS) throw new Error("Companion nicht verfügbar");
-      return owner._hass.callWS({ type: `glt_flow_card/${type}`, ...payload });
+      const wire = String(type).startsWith("glt_flow_card/") ? String(type) : `glt_flow_card/${type}`;
+      return owner._hass.callWS({ type: wire, ...payload });
     }
     function askText(owner, label, initial = "") {
       return new Promise((resolve) => {
@@ -50700,6 +50701,39 @@
         }
       );
     }
+    async function loadHistory(card2, request) {
+      const cfg = ensureV1(card2._config);
+      const contract = request && request.contract === "statistics" ? "statistics" : "series";
+      const route = contract === "statistics" ? "glt_flow_card/history/statistics" : "glt_flow_card/history/series";
+      const payload = {
+        project_id: projectId(cfg),
+        entity_ids: request?.entity_ids || [],
+        start_time: request?.start || "",
+        end_time: request?.end || "",
+        expected_instants: request?.expected_instants || [],
+        limit: request?.limit || 500
+      };
+      if (contract === "statistics") payload.period = request?.period || "day";
+      try {
+        const res = await ws(card2, route, payload);
+        return {
+          capped: Boolean(res?.capped),
+          coverage: Number(res?.coverage || 0),
+          gaps: res?.gaps || [],
+          series: res?.series || [],
+          source: res?.source || "unavailable"
+        };
+      } catch (err) {
+        return {
+          capped: false,
+          coverage: 0,
+          gaps: [],
+          series: [],
+          source: "unavailable",
+          error: String(err && err.message || err)
+        };
+      }
+    }
     function alarmRow(cfg, a, row) {
       const active = Boolean(row && row.active);
       const suppression = row && row.suppression;
@@ -50761,10 +50795,32 @@
       const wrap = document.createElement("span");
       wrap.dataset.gltV1Runtime = "1";
       wrap.className = "glt-v1-actions";
-      wrap.innerHTML = `<button class="glt4-pill glt-v1-btn" data-ops>${t(card2._config, "operations")}</button><button class="glt4-pill glt-v1-btn" data-alarm>${t(card2._config, "alarms")}</button>`;
+      wrap.innerHTML = `<button class="glt4-pill glt-v1-btn" data-ops>${t(card2._config, "operations")}</button><button class="glt4-pill glt-v1-btn" data-alarm>${t(card2._config, "alarms")}</button><button class="glt4-pill glt-v1-btn" data-trend>${t(card2._config, "trends")}</button>`;
       wrap.querySelector("[data-ops]").onclick = () => operationsPanel(card2);
       wrap.querySelector("[data-alarm]").onclick = () => alarmsPanel(card2);
+      wrap.querySelector("[data-trend]").onclick = () => trendsPanel(card2);
       bar.appendChild(wrap);
+    }
+    async function trendsPanel(card2) {
+      const cfg = ensureV1(card2._config);
+      const entities = cfg.datapoints.map((d) => entityId(d.entity)).filter(Boolean).slice(0, 20);
+      const m = modal(card2, t(cfg, "trends"), `<div data-trend-host></div>`);
+      const host = m.querySelector("[data-trend-host]");
+      const loaded = await loadHistory(card2, { contract: "statistics", entity_ids: entities, period: "day" });
+      const badge = document.createElement("glt-flow-card-coverage-badge");
+      const chart = document.createElement("glt-flow-card-trend-chart");
+      const table2 = document.createElement("glt-flow-card-trend-table");
+      host.append(badge, chart, table2);
+      const props = {
+        coverage: loaded.coverage,
+        gaps: loaded.gaps,
+        language: "de",
+        series: loaded.series,
+        source: loaded.source
+      };
+      badge.props = props;
+      chart.props = props;
+      table2.props = props;
     }
     const oldCardRender = Card.prototype._render;
     Card.prototype._render = function() {
@@ -51507,7 +51563,7 @@
         return dispatch({ type: "candidate/discarded" });
       },
       /** Load one evidence page through the server's opaque cursor. */
-      async evidencePage({ cursor = null, append: append2 = false } = {}) {
+      async evidencePage({ cursor = null, append: append3 = false } = {}) {
         try {
           const page = await call("glt_flow_card/evidence/list", cursor ? { cursor } : {});
           return dispatch({
@@ -51515,13 +51571,13 @@
             rows: page?.rows ?? [],
             cursor: page?.cursor ?? null,
             hasMore: Boolean(page?.has_more),
-            append: append2
+            append: append3
           });
         } catch (error) {
           return dispatch({ type: "evidence/page-failed", code: error?.code });
         }
       },
-      async telemetryPage({ cursor = null, append: append2 = false } = {}) {
+      async telemetryPage({ cursor = null, append: append3 = false } = {}) {
         try {
           const page = await call("glt_flow_card/telemetry/list", cursor ? { cursor } : {});
           return dispatch({
@@ -51529,7 +51585,7 @@
             rows: page?.rows ?? [],
             cursor: page?.cursor ?? null,
             hasMore: Boolean(page?.has_more),
-            append: append2
+            append: append3
           });
         } catch (error) {
           return dispatch({ type: "telemetry/page-failed", code: error?.code });
@@ -52586,10 +52642,10 @@
     const locale = projectSafetyLocale(editor._hass || editor._glt4Hass, document.documentElement.lang);
     return projectSafetyCopy(locale, key, values);
   }
-  function element(name, className, text) {
+  function element(name, className, text2) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text !== void 0) node.textContent = String(text);
+    if (text2 !== void 0) node.textContent = String(text2);
     return node;
   }
   function button(label, className = "glt-safe-btn") {
@@ -52603,11 +52659,11 @@
     if (detail) node.append(element("div", "glt-safe-help", detail));
     return node;
   }
-  function status(kind, text) {
+  function status(kind, text2) {
     const node = element("div", `glt-safe-status ${kind}`);
     node.setAttribute("role", "status");
     node.setAttribute("aria-live", "polite");
-    node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text));
+    node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text2));
     return node;
   }
   var COMPANION_STATE = {
@@ -52629,12 +52685,12 @@
     "lease_lost",
     "companion_disconnected"
   ]);
-  function chip(glyph, text, state) {
+  function chip(glyph, text2, state) {
     const node = element("span", "glt-safe-chip");
     node.dataset.state = state;
     const icon = element("span", "", glyph);
     icon.setAttribute("aria-hidden", "true");
-    node.append(icon, element("span", "", text));
+    node.append(icon, element("span", "", text2));
     return node;
   }
   function leaseChipState(state, affordances) {
@@ -52723,10 +52779,10 @@
       const announcement = state.announcement;
       if (!announcement || announcement.code === this._announced) return;
       this._announced = announcement.code;
-      const text = t("announcements")[announcement.code] || t("readOnlyReasons")[announcement.code] || t("errorCodes")[announcement.code] || "";
-      if (!text) return;
+      const text2 = t("announcements")[announcement.code] || t("readOnlyReasons")[announcement.code] || t("errorCodes")[announcement.code] || "";
+      if (!text2) return;
       const assertive = announcement.level === "assertive";
-      (assertive ? this._assertive : this._polite).textContent = text;
+      (assertive ? this._assertive : this._polite).textContent = text2;
       (assertive ? this._polite : this._assertive).textContent = "";
     }
   };
@@ -54066,10 +54122,10 @@
   .glt-sem-weak{font-style:italic}
   @media(forced-colors:active){.glt-sem-badge{border:1px solid CanvasText}}
 `;
-  function element2(name, className, text) {
+  function element2(name, className, text2) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text !== void 0) node.textContent = String(text);
+    if (text2 !== void 0) node.textContent = String(text2);
     return node;
   }
   var GltSemanticElement = class extends HTMLElement {
@@ -54432,10 +54488,10 @@
     const table2 = COPY2[language] ?? COPY2.en;
     return table2[key] ?? COPY2.en[key] ?? key;
   }
-  function element3(name, className, text) {
+  function element3(name, className, text2) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text !== void 0) node.textContent = String(text);
+    if (text2 !== void 0) node.textContent = String(text2);
     return node;
   }
   var GltOperationsElement = class extends HTMLElement {
@@ -54896,10 +54952,10 @@
     return document.importNode(root, true);
   }
   var PUBLISHED = symbolCatalogStats();
-  function element4(name, className, text) {
+  function element4(name, className, text2) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text !== void 0) node.textContent = String(text);
+    if (text2 !== void 0) node.textContent = String(text2);
     return node;
   }
   var GltCatalogElement = class extends HTMLElement {
@@ -54998,8 +55054,8 @@
         const all = element4("option", null, textFor2(language, "filter_all"));
         all.value = "";
         select.append(all);
-        for (const [value, text] of options) {
-          const option2 = element4("option", null, text);
+        for (const [value, text2] of options) {
+          const option2 = element4("option", null, text2);
           option2.value = value;
           if (active[name] === value) option2.selected = true;
           select.append(option2);
@@ -55989,10 +56045,10 @@
     const table2 = COPY4[language] ?? COPY4.en;
     return table2[key] ?? COPY4.en[key] ?? key;
   }
-  function element5(name, className, text) {
+  function element5(name, className, text2) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text !== void 0) node.textContent = String(text);
+    if (text2 !== void 0) node.textContent = String(text2);
     return node;
   }
   var GltDesignerElement = class extends HTMLElement {
@@ -56656,10 +56712,10 @@
     const table2 = COPY5[language] || COPY5.en;
     return table2[key] ?? COPY5.en[key] ?? key;
   }
-  function element6(tag, className, text) {
+  function element6(tag, className, text2) {
     const node = document.createElement(tag);
     if (className) node.className = className;
-    if (text !== void 0 && text !== null) node.textContent = String(text);
+    if (text2 !== void 0 && text2 !== null) node.textContent = String(text2);
     return node;
   }
   function priorityOf(row) {
@@ -57003,6 +57059,393 @@
     ["glt-flow-card-schedule-editor", GltScheduleEditor],
     ["glt-flow-card-schedule-preview", GltSchedulePreview]
   ]) {
+    if (!customElements.get(name)) customElements.define(name, constructor);
+  }
+
+  // src/v100/period-vocabulary.mjs
+  var PERIOD_NAMES = Object.freeze(["day", "week", "month", "year", "custom"]);
+  var PERIOD_CONTRACTS = Object.freeze({
+    custom: "either",
+    day: "statistics",
+    month: "statistics",
+    week: "statistics",
+    year: "statistic"
+  });
+  var AGGREGATES = Object.freeze(["none", "min", "max", "mean", "change", "state"]);
+  var VALUE_SOURCES = Object.freeze(["statistics", "raw", "unavailable"]);
+  var FIRST_WEEKDAYS = Object.freeze(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]);
+  var REFUSAL_REASONS2 = Object.freeze([
+    "unknown_period",
+    "unknown_aggregate",
+    "unknown_source",
+    "incompatible_unit",
+    "undeclared_meter_model",
+    "window_exceeds_limit",
+    "entities_exceed_limit",
+    "circular_mean_required",
+    "outside_statistic_coverage"
+  ]);
+  var LABELS2 = Object.freeze({
+    aggregate: {
+      change: { de: "Verbrauch", en: "Consumption" },
+      max: { de: "Maximum", en: "Maximum" },
+      mean: { de: "Mittelwert", en: "Mean" },
+      none: { de: "Alle Messwerte", en: "Every sample" },
+      min: { de: "Minimum", en: "Minimum" },
+      state: { de: "Zählerstand", en: "Meter reading" }
+    },
+    period: {
+      custom: { de: "Freier Zeitraum", en: "Custom range" },
+      day: { de: "Tag", en: "Day" },
+      month: { de: "Monat", en: "Month" },
+      week: { de: "Woche", en: "Week" },
+      year: { de: "Jahr", en: "Year" }
+    },
+    refusal: {
+      circular_mean_required: {
+        de: "Diese Größe ist eine Richtung — ein arithmetischer Mittelwert wäre falsch.",
+        en: "This quantity is a direction — an arithmetic mean would be wrong."
+      },
+      entities_exceed_limit: {
+        de: "Die Abfrage nennt mehr Entitäten, als der Standort erlaubt.",
+        en: "The query names more entities than the site permits."
+      },
+      incompatible_unit: {
+        de: "Einheit und Preis passen nicht zusammen — nicht verrechenbar.",
+        en: "The unit and the price do not match — they cannot be combined."
+      },
+      outside_statistic_coverage: {
+        de: "Dieser Zeitraum liegt vor dem ersten aufgezeichneten Wert.",
+        en: "This period lies before the first recorded value."
+      },
+      undeclared_meter_model: {
+        de: "Für diesen Zähler ist nicht festgelegt, ob er zählt oder misst.",
+        en: "This meter does not declare whether it counts or measures."
+      },
+      unknown_aggregate: {
+        de: "Diese Auswertung ist nicht bekannt.",
+        en: "That aggregate is not known."
+      },
+      unknown_period: {
+        de: "Dieser Zeitraum ist nicht bekannt.",
+        en: "That period is not known."
+      },
+      unknown_source: {
+        de: "Diese Quelle ist nicht bekannt.",
+        en: "That source is not known."
+      },
+      window_exceeds_limit: {
+        de: "Der Zeitraum ist länger, als für Rohwerte erlaubt ist.",
+        en: "The window is longer than raw values permit."
+      }
+    },
+    source: {
+      raw: { de: "aus Rohwerten", en: "from raw values" },
+      statistics: { de: "aus Langzeitstatistik", en: "from long-term statistics" },
+      unavailable: { de: "nicht abrufbar", en: "unavailable" }
+    }
+  });
+  var LANGUAGES = Object.freeze(["de", "en"]);
+  for (const [group, members] of [
+    ["aggregate", AGGREGATES],
+    ["period", PERIOD_NAMES],
+    ["refusal", REFUSAL_REASONS2],
+    ["source", VALUE_SOURCES]
+  ]) {
+    for (const member of members) {
+      const wording = LABELS2[group]?.[member];
+      for (const language of LANGUAGES) {
+        if (typeof wording?.[language] !== "string" || wording[language].length === 0) {
+          throw new Error(`period vocabulary: ${group} "${member}" has no ${language} wording`);
+        }
+      }
+    }
+    for (const member of Object.keys(LABELS2[group] ?? {})) {
+      if (!members.includes(member)) {
+        throw new Error(`period vocabulary: ${group} "${member}" is labelled but not a member`);
+      }
+    }
+  }
+  for (const name of PERIOD_NAMES) {
+    if (!PERIOD_CONTRACTS[name]) {
+      throw new Error(`period vocabulary: period "${name}" names no Recorder contract`);
+    }
+  }
+  function membership(frozen) {
+    const members = new Set(frozen);
+    return (value) => typeof value === "string" && members.has(value);
+  }
+  var isPeriodName = membership(PERIOD_NAMES);
+  var isAggregate = membership(AGGREGATES);
+  var isValueSource = membership(VALUE_SOURCES);
+  var isFirstWeekday = membership(FIRST_WEEKDAYS);
+  var isRefusalReason = membership(REFUSAL_REASONS2);
+  function labelFor(group, member, language = "de") {
+    const wording = LABELS2[group]?.[member];
+    if (!wording) throw new Error(`no wording for ${group} "${member}"`);
+    const text2 = wording[language] ?? wording.en;
+    if (!text2) throw new Error(`no ${language} wording for ${group} "${member}"`);
+    return text2;
+  }
+
+  // src/v100/project-trends.js
+  var LANGUAGES2 = ["de", "en"];
+  var TEXT = {
+    coverage: {
+      de: (percent, gaps) => gaps ? `Abdeckung ${percent} % · ${gaps} ${gaps === 1 ? "Lücke" : "Lücken"}` : `Abdeckung ${percent} %`,
+      en: (percent, gaps) => gaps ? `Coverage ${percent} % · ${gaps} ${gaps === 1 ? "gap" : "gaps"}` : `Coverage ${percent} %`
+    },
+    gapRow: {
+      de: (start, end) => `Keine Daten von ${start} bis ${end}`,
+      en: (start, end) => `No data from ${start} to ${end}`
+    },
+    noData: { de: "Keine Daten", en: "No data" },
+    spanDay23: {
+      de: "Dieser Tag hat 23 Stunden — die Zeitumstellung fällt hinein.",
+      en: "This day has 23 hours — the clock change falls inside it."
+    },
+    spanDay25: {
+      de: "Dieser Tag hat 25 Stunden — die Zeitumstellung fällt hinein.",
+      en: "This day has 25 hours — the clock change falls inside it."
+    },
+    spanMonth: {
+      de: (hours) => `Dieser Monat hat ${hours} Stunden — die Zeitumstellung fällt hinein.`,
+      en: (hours) => `This month has ${hours} hours — the clock change falls inside it.`
+    },
+    unreadable: { de: "Nicht lesbar", en: "Unreadable" }
+  };
+  for (const key of Object.keys(TEXT)) {
+    for (const language of LANGUAGES2) {
+      if (TEXT[key][language] === void 0) {
+        throw new Error(`trend surfaces: "${key}" has no ${language} wording`);
+      }
+    }
+  }
+  function text(key, language, ...args) {
+    const entry = TEXT[key]?.[language] ?? TEXT[key]?.en;
+    return typeof entry === "function" ? entry(...args) : entry;
+  }
+  function append2(parent, tag, value, attributes = {}) {
+    const node = document.createElement(tag);
+    for (const [name, attribute] of Object.entries(attributes)) {
+      if (attribute !== null && attribute !== void 0) node.setAttribute(name, String(attribute));
+    }
+    if (value !== null && value !== void 0) node.textContent = String(value);
+    parent.append(node);
+    return node;
+  }
+  function percentOf(coverage) {
+    return Math.round((Number(coverage) || 0) * 100);
+  }
+  var CoverageBadge = class extends HTMLElement {
+    set props({ coverage, gaps = [], language = "de" }) {
+      this.replaceChildren();
+      this.setAttribute("data-coverage", String(coverage ?? 0));
+      append2(this, "span", text("coverage", language, percentOf(coverage), gaps.length), {
+        "data-coverage-text": ""
+      });
+    }
+  };
+  function crossesGap(previousAt, at3, gaps) {
+    const from = Date.parse(previousAt ?? "");
+    const to = Date.parse(at3 ?? "");
+    if (Number.isNaN(from) || Number.isNaN(to)) return true;
+    return (gaps ?? []).some((gap) => {
+      const start = Date.parse(gap?.start ?? "");
+      const end = Date.parse(gap?.end ?? "");
+      if (Number.isNaN(start) || Number.isNaN(end)) return true;
+      return start < to && end > from;
+    });
+  }
+  var TrendChart = class extends HTMLElement {
+    set props({ series = [], coverage = 0, gaps = [], period = null, source = null, language = "de" }) {
+      this.replaceChildren();
+      this.setAttribute("data-source", String(source ?? "unavailable"));
+      const badge = document.createElement("glt-flow-card-coverage-badge");
+      this.append(badge);
+      badge.props = { coverage, gaps, language };
+      if (period) {
+        const spanNote = document.createElement("span");
+        spanNote.setAttribute("data-period", "");
+        spanNote.textContent = `${labelFor("period", period.name ?? "custom", language)} · ${period.start} → ${period.end} · ${period.span_hours} h`;
+        this.append(spanNote);
+        const unusual = unusualSpan(period, language);
+        if (unusual) append2(this, "span", unusual, { "data-span-note": "" });
+      }
+      const plot = document.createElement("div");
+      plot.setAttribute("data-plot", "");
+      this.append(plot);
+      for (const entry of series) {
+        let segment = null;
+        let previousAt = null;
+        for (const point of entry.points ?? []) {
+          if (point.value === null || point.value === void 0 || point.state === "indeterminate") {
+            segment = null;
+            previousAt = null;
+            continue;
+          }
+          if (previousAt !== null && crossesGap(previousAt, point.at, gaps)) segment = null;
+          previousAt = point.at ?? null;
+          if (segment === null) {
+            segment = document.createElement("span");
+            segment.setAttribute("data-segment", entry.label ?? "");
+            segment.setAttribute("data-marker", entry.marker ?? "●");
+            plot.append(segment);
+          }
+          append2(segment, "span", point.value, { "data-point": point.at ?? "" });
+        }
+      }
+      for (const gap of gaps) {
+        append2(plot, "span", text("gapRow", language, gap.start, gap.end), { "data-gap": "" });
+      }
+      if (!series.some((entry) => (entry.points ?? []).some((point) => point.value !== null))) {
+        append2(plot, "span", text("noData", language), { "data-empty": "" });
+      }
+    }
+  };
+  function unusualSpan(period, language) {
+    const hours = Number(period?.span_hours);
+    if (period?.name === "day" && hours === 23) return text("spanDay23", language);
+    if (period?.name === "day" && hours === 25) return text("spanDay25", language);
+    if (period?.name === "month" && hours !== 720 && Number.isFinite(hours)) {
+      return text("spanMonth", language, hours);
+    }
+    return null;
+  }
+  var TrendTable = class extends HTMLElement {
+    set props({ series = [], gaps = [], language = "de" }) {
+      this.replaceChildren();
+      this.setAttribute("tabindex", "0");
+      const table2 = document.createElement("table");
+      this.append(table2);
+      const head = document.createElement("tr");
+      table2.append(head);
+      append2(head, "th", language === "de" ? "Zeitpunkt" : "Instant");
+      for (const entry of series) append2(head, "th", entry.label ?? "");
+      const instants = [...new Set(series.flatMap((entry) => (entry.points ?? []).map((point) => point.at)))].sort();
+      for (const instant of instants) {
+        const row = document.createElement("tr");
+        table2.append(row);
+        append2(row, "td", instant);
+        for (const entry of series) {
+          const point = (entry.points ?? []).find((candidate) => candidate.at === instant);
+          if (point && point.value !== null && point.state !== "indeterminate") {
+            append2(row, "td", point.value);
+          } else {
+            append2(row, "td", text("unreadable", language), { "data-unreadable": "" });
+          }
+        }
+      }
+      for (const gap of gaps) {
+        const row = document.createElement("tr");
+        row.setAttribute("data-gap-row", "");
+        table2.append(row);
+        const cell = append2(row, "td", text("gapRow", language, gap.start, gap.end));
+        cell.setAttribute("colspan", String(series.length + 1));
+      }
+    }
+  };
+  var PeriodPicker = class extends HTMLElement {
+    set props({ periods = [], selected = null, resolved = null, language = "de" }) {
+      this.replaceChildren();
+      for (const name of periods) {
+        const option2 = append2(this, "button", labelFor("period", name, language), {
+          "data-period-option": name,
+          "aria-pressed": String(name === selected),
+          type: "button"
+        });
+        void option2;
+      }
+      if (resolved) {
+        append2(this, "span", `${resolved.start} → ${resolved.end} · ${resolved.span_hours} h`, {
+          "data-resolved": ""
+        });
+        const unusual = unusualSpan(resolved, language);
+        if (unusual) append2(this, "span", unusual, { "data-span-note": "" });
+      }
+    }
+  };
+  var EnergySummary = class extends HTMLElement {
+    set props({ rows = [], total = null, language = "de" }) {
+      this.replaceChildren();
+      for (const row of rows) {
+        const line = document.createElement("div");
+        line.setAttribute("data-medium", row.medium ?? "");
+        this.append(line);
+        append2(line, "span", row.name ?? row.id ?? "", { "data-name": "" });
+        if (row.refused) {
+          append2(line, "span", labelFor("refusal", row.refused, language), { "data-refused": row.refused });
+          continue;
+        }
+        append2(line, "span", row.value === null || row.value === void 0 ? text("noData", language) : `${row.value} ${row.unit ?? ""}`.trim(), { "data-value": "" });
+        const badge = document.createElement("glt-flow-card-coverage-badge");
+        line.append(badge);
+        badge.props = { coverage: row.coverage ?? 0, gaps: row.gaps ?? [], language };
+      }
+      if (total) {
+        const line = document.createElement("div");
+        line.setAttribute("data-total", "");
+        this.append(line);
+        append2(line, "span", total.value === null || total.value === void 0 ? text("noData", language) : `${total.value} ${total.unit ?? ""}`.trim(), { "data-value": "" });
+        const badge = document.createElement("glt-flow-card-coverage-badge");
+        line.append(badge);
+        badge.props = { coverage: total.coverage ?? 0, gaps: total.gaps ?? [], language };
+        for (const excluded of total.excluded ?? []) {
+          append2(line, "span", `${excluded.id ?? ""}: ${excluded.reason ?? ""}`, {
+            "data-excluded": excluded.reason ?? ""
+          });
+        }
+      }
+    }
+  };
+  var ReportDesigner = class extends HTMLElement {
+    set props({ definitions = [], runs = [], language = "de" }) {
+      this.replaceChildren();
+      const form = document.createElement("form");
+      form.setAttribute("data-report-form", "");
+      this.append(form);
+      for (const [name, type] of [["name", "text"], ["period", "text"], ["schedule", "text"]]) {
+        const field = append2(form, "input", null, {
+          "data-field": name,
+          name,
+          required: name === "name" ? "" : null,
+          type
+        });
+        void field;
+      }
+      for (const definition of definitions) {
+        const row = document.createElement("div");
+        row.setAttribute("data-definition", definition.id ?? "");
+        this.append(row);
+        append2(row, "span", definition.name ?? definition.id ?? "", { "data-name": "" });
+        append2(row, "span", labelFor("period", definition.period?.name ?? "custom", language), {
+          "data-period": ""
+        });
+      }
+      for (const run of runs) {
+        const row = document.createElement("div");
+        row.setAttribute("data-run", run.report_id ?? "");
+        this.append(row);
+        append2(row, "span", `${run.window?.start ?? ""} → ${run.window?.end ?? ""}`, { "data-window": "" });
+        append2(row, "span", run.timezone ?? "", { "data-timezone": "" });
+        const badge = document.createElement("glt-flow-card-coverage-badge");
+        row.append(badge);
+        badge.props = { coverage: run.coverage ?? 0, gaps: [], language };
+        for (const changed of run.changed_inputs ?? []) {
+          append2(row, "span", changed, { "data-changed-input": changed });
+        }
+      }
+    }
+  };
+  var ELEMENTS = [
+    ["glt-flow-card-coverage-badge", CoverageBadge],
+    ["glt-flow-card-trend-chart", TrendChart],
+    ["glt-flow-card-trend-table", TrendTable],
+    ["glt-flow-card-period-picker", PeriodPicker],
+    ["glt-flow-card-energy-summary", EnergySummary],
+    ["glt-flow-card-report-designer", ReportDesigner]
+  ];
+  for (const [name, constructor] of ELEMENTS) {
     if (!customElements.get(name)) customElements.define(name, constructor);
   }
 
