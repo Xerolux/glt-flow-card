@@ -179,7 +179,7 @@
         }
       ],
       "unit_of_measurement": "Wh",
-      "why": "A meter in Wh against a price denominated in EUR/kWh. Converting on a guess is wrong by three orders of magnitude; the answer is a refusal with a reason."
+      "why": "The entity reports Wh while the meter declares kWh. That is a disagreement about what the meter is, not a conversion question, and it is refused: converting would paper over a misconfiguration the site should fix. A declared unit against a price unit of the same group is a different question and converts through a declared factor."
     },
     {
       "class": "recorder_failure",

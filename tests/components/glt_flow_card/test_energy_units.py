@@ -21,8 +21,8 @@ import pytest
 
 from .phase7_red import emit_queries, missing, report
 
+# The expected_red marker was removed by plan 07-13: this file's sentinel passes.
 pytestmark = [
-    pytest.mark.expected_red,
     pytest.mark.enable_socket,
     pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
 ]
@@ -46,13 +46,39 @@ def test_expected_red_phase7_energy_units(recorder_ledger) -> None:
 
     from custom_components.glt_flow_card import energy_units
 
-    # D15. Wh against a price in EUR/kWh is refused with a reason, not scaled on
-    # a guess and not silently dropped.
-    refusal = energy_units.check_units({"unit": "Wh", "price_unit": "EUR/kWh", "model": "counter"})
-    if refusal.get("ok") is not False:
-        gaps.append("a meter in Wh was combined with a price denominated in EUR/kWh")
-    if refusal.get("reason") != "incompatible_unit":
-        gaps.append("an incompatible unit pair carries no reason from the closed set")
+    # D15, corrected during execution. The first draft of this sentinel demanded
+    # that Wh against a price in EUR/kWh be *refused*, which conflated two
+    # different questions.
+    #
+    # An entity reporting Wh while the meter declares kWh is a disagreement
+    # about what the meter is, and is refused: converting would paper over a
+    # misconfiguration the site should fix.
+    disagreement = energy_units.check_units({
+        "entity_unit": "Wh", "model": "counter", "unit": "kWh",
+    })
+    if disagreement.get("ok") is not False:
+        gaps.append("an entity reporting Wh was accepted against a meter declaring kWh")
+    if disagreement.get("reason") != "incompatible_unit":
+        gaps.append("a unit disagreement carries no reason from the closed set")
+
+    # A declared unit against a price unit is arithmetic with an exact answer.
+    # Wh and kWh are the same quantity at a factor of 1000, and refusing that
+    # would be pedantry rather than safety: "not converted on a guess" means a
+    # factor between two units of one group is not a guess.
+    convertible = energy_units.check_units({
+        "model": "counter", "price_unit": "EUR/kWh", "unit": "Wh",
+    })
+    if convertible.get("ok") is not True:
+        gaps.append("a convertible unit pair was refused rather than scaled")
+    if convertible.get("factor") != 0.001:
+        gaps.append(f"Wh against EUR/kWh scaled by {convertible.get('factor')!r}, expected 0.001")
+
+    # Genuinely incompatible: a volume against a price per unit of energy.
+    incompatible = energy_units.check_units({
+        "model": "counter", "price_unit": "EUR/kWh", "unit": "m³",
+    })
+    if incompatible.get("ok") is not False:
+        gaps.append("a volume was combined with a price denominated per kWh")
 
     matched = energy_units.check_units({"unit": "kWh", "price_unit": "EUR/kWh", "model": "counter"})
     if matched.get("ok") is not True:
