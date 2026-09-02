@@ -46,7 +46,19 @@ function pytest(file) {
 
 /** Registry key -> the command that must reach exactly that controlled RED. */
 const GATES = [
-  // Populated by plans 07-04 and 07-05.
+  // Wave 1, plan 07-04: history acquisition and interpretation.
+  ["phase7-history-routes", pytest("tests/components/glt_flow_card/test_history_routes.py")],
+  ["phase7-history-bounds", pytest("tests/components/glt_flow_card/test_history_bounds.py")],
+  ["phase7-series-coverage", pytest("tests/components/glt_flow_card/test_series_coverage.py")],
+  ["phase7-replay-truth", [process.execPath, "--test", "test/replay-truth.test.mjs"]],
+  // Wave 1, plan 07-05: periods, energy and reports.
+  ["phase7-period-resolution", pytest("tests/components/glt_flow_card/test_period_resolution.py")],
+  ["phase7-period-parity", [process.execPath, "--test", "test/period-parity.test.mjs"]],
+  ["phase7-energy-counters", pytest("tests/components/glt_flow_card/test_energy_counters.py")],
+  ["phase7-energy-units", pytest("tests/components/glt_flow_card/test_energy_units.py")],
+  ["phase7-report-runs", pytest("tests/components/glt_flow_card/test_report_runs.py")],
+  ["phase7-report-schedule", pytest("tests/components/glt_flow_card/test_report_schedule.py")],
+  ["phase7-report-renderings", [process.execPath, "--test", "test/report-renderings.test.mjs"]],
 ];
 
 const registered = new Set(GATES.map(([key]) => key));

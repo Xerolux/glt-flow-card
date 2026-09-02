@@ -370,6 +370,78 @@ export const EXPECTED_RED = Object.freeze(Object.fromEntries([
     "complete exact-dist Phase-6 alarm and schedule UI is unavailable",
     "PHASE6_UI_EFFECTS ",
   ),
+  // -- Phase 7 -----------------------------------------------------------
+  //
+  // The Phase-7 sentinels carry a QUERY ledger prefix rather than the usual
+  // EFFECTS one. This phase's subject is a *read* that is intended, so the
+  // ledger must also say which contract each query used, how many entities it
+  // named and how long a window it wanted. A run that stayed inside the fixture
+  // and still asked for a year of raw states proves the bound is decoration --
+  // and it proves it while passing, which is the failure shape this whole phase
+  // exists to catch.
+  pythonEntry(
+    "phase7-history-routes",
+    `${TESTS}/test_history_routes.py`,
+    "server-owned, filtered and audited history routes are unavailable",
+    "PHASE7_HISTORY_QUERIES ",
+  ),
+  pythonEntry(
+    "phase7-history-bounds",
+    `${TESTS}/test_history_bounds.py`,
+    "enforced row, entity and window bounds are unavailable",
+    "PHASE7_BOUNDS_QUERIES ",
+  ),
+  pythonEntry(
+    "phase7-series-coverage",
+    `${TESTS}/test_series_coverage.py`,
+    "coverage and gaps travelling with every series are unavailable",
+    "PHASE7_COVERAGE_QUERIES ",
+  ),
+  browserEntry(
+    "phase7-replay-truth",
+    "replay that reads the record rather than the present is unavailable",
+    "PHASE7_REPLAY_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase7-period-resolution",
+    `${TESTS}/test_period_resolution.py`,
+    "local-calendar period resolution is unavailable",
+    "PHASE7_PERIOD_QUERIES ",
+  ),
+  browserEntry(
+    "phase7-period-parity",
+    "byte-identical period resolution across both runtimes is unavailable",
+    "PHASE7_PARITY_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase7-energy-counters",
+    `${TESTS}/test_energy_counters.py`,
+    "reset-aware counter differencing and gap-excluding rate integration are unavailable",
+    "PHASE7_ENERGY_QUERIES ",
+  ),
+  pythonEntry(
+    "phase7-energy-units",
+    `${TESTS}/test_energy_units.py`,
+    "unit validation, stated exclusions and circular means are unavailable",
+    "PHASE7_UNITS_QUERIES ",
+  ),
+  pythonEntry(
+    "phase7-report-runs",
+    `${TESTS}/test_report_runs.py`,
+    "reports that record their inputs and reproduce their values are unavailable",
+    "PHASE7_REPORT_QUERIES ",
+  ),
+  pythonEntry(
+    "phase7-report-schedule",
+    `${TESTS}/test_report_schedule.py`,
+    "validated and executed report schedules are unavailable",
+    "PHASE7_SCHEDULE_QUERIES ",
+  ),
+  browserEntry(
+    "phase7-report-renderings",
+    "one model behind the screen, CSV and print renderings is unavailable",
+    "PHASE7_RENDER_EFFECTS ",
+  ),
 ]));
 
 const HARNESS_FAILURES = [

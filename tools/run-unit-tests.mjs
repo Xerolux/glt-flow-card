@@ -22,9 +22,10 @@ const TEST_DIR = fileURLToPath(new URL("../test", import.meta.url));
  * Suites still owned by a phase gate rather than by the regression run.
  *
  * Emptied at plan 02-13 when both Phase-2 browser sentinels went green. Refilled
- * by plan 06-05 with the two Phase-6 sentinels: their owning plans (06-12 and
- * 06-15) have not landed, so they are red on purpose and leaving them here would
- * hide every real regression behind them.
+ * by plan 06-05 with the two Phase-6 sentinels and emptied again as those
+ * landed; refilled by plan 07-05 with the three Phase-7 sentinels. Their owning
+ * plans have not landed, so they are red on purpose and leaving them in the
+ * regression run would hide every real regression behind them.
  *
  * Each entry is removed by the plan that makes it pass, and each is still run --
  * `npm run test:phase6:quick` puts it through `tools/assert-red.mjs`, which
@@ -32,7 +33,17 @@ const TEST_DIR = fileURLToPath(new URL("../test", import.meta.url));
  * anything else about the run is broken. That is stricter than a bare pass or
  * fail, not weaker.
  */
-const PHASE_GATE_SUITES = new Set();
+const PHASE_GATE_SUITES = new Set([
+  // Refilled by plan 07-05 with the three Phase-7 browser sentinels. Their
+  // owning plans -- 07-11, 07-07 and 07-16 -- have not landed, so they are red
+  // on purpose. Each is removed by the plan that makes it pass, and each is
+  // still run: `npm run test:phase7:quick` puts it through
+  // `tools/assert-red.mjs`, which requires it to reach exactly its named
+  // missing behaviour and fails when anything else about the run is broken.
+  "replay-truth.test.mjs",
+  "period-parity.test.mjs",
+  "report-renderings.test.mjs",
+]);
 
 const suites = readdirSync(TEST_DIR)
   .filter((name) => name.endsWith(".test.mjs"))
