@@ -170,3 +170,31 @@ async def test_a_route_with_no_recorder_states_it_rather_than_returning_empty(
     assert response["result"]["coverage"] == 0
     # Seven days were asked for and none came back, so the gap is the window.
     assert response["result"]["gaps"], "seven missing days produced no gap"
+
+    # The statistics route, which shipped as a shell: it built no request, asked
+    # the Recorder nothing and returned a hard-coded empty series. Its answer
+    # was honest -- `source: "unavailable"` -- which is exactly why a string
+    # assertion could not tell it apart from a working route that found nothing.
+    #
+    # The gap is what separates them. A route that never asked cannot say which
+    # days are missing, so seven expected days with nothing behind them must
+    # come back as a gap rather than as a quiet zero.
+    statistics = await connection.command({
+        "type": "glt_flow_card/history/statistics",
+        "project_id": "history-live",
+        "entity_ids": ["sensor.a"],
+        "period": "day",
+        "start_time": "2027-06-01T00:00:00+02:00",
+        "end_time": "2027-06-08T00:00:00+02:00",
+        "expected_instants": [
+            f"2027-06-0{day}T00:00:00+02:00" for day in range(1, 8)
+        ],
+    })
+    assert statistics["success"] is True
+    assert statistics["result"]["source"] == "unavailable", (
+        "the statistics route returned an empty series without saying why"
+    )
+    assert statistics["result"]["coverage"] == 0
+    assert statistics["result"]["gaps"], (
+        "seven missing days produced no gap: the route did not ask the Recorder"
+    )

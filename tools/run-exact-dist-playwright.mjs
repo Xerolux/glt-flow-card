@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 
@@ -109,7 +109,24 @@ try {
     "test/e2e/project-operations.spec.mjs",
     "test/e2e/project-cad.spec.mjs",
     "test/e2e/project-alarms.spec.mjs",
+    "test/e2e/project-trends.spec.mjs",
   ];
+  // The list above is explicit so the run order is stated rather than inherited
+  // from directory order. Explicit lists drift: a spec added to `test/e2e/` and
+  // never listed here would not run, and a suite that runs nothing reports
+  // success. Refuse instead -- the same confident-zero shape the alarm-state
+  // and Phase-4 defects had.
+  const present = (await readdir(resolve(projectRoot, "test/e2e")))
+    .filter((name) => name.endsWith(".spec.mjs"))
+    .map((name) => `test/e2e/${name}`)
+    .sort();
+  const unlisted = present.filter((spec) => !specs.includes(spec));
+  const missing = specs.filter((spec) => !present.includes(spec));
+  if (unlisted.length || missing.length) {
+    throw new Error(`exact-dist gate: spec list does not match test/e2e${
+      unlisted.length ? `; unlisted on disk: ${unlisted.join(", ")}` : ""}${
+      missing.length ? `; listed but absent: ${missing.join(", ")}` : ""}`);
+  }
   const args = [cliPath, "test", ...specs, "--config=playwright.config.mjs"];
   if (options.grep) args.push(`--grep=${options.grep}`);
   const exitCode = await run(process.execPath, args, {

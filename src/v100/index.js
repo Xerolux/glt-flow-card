@@ -18,8 +18,8 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
   const canOperate = (c,h) => ["operator","designer"].includes(currentRole(c,h));
 
   const LANG = {
-    de:{operations:"Betrieb",alarms:"Alarme",schedule:"Zeitprogramme",semantics:"Semantik",automap:"Auto-Mapping",cad:"CAD",diagnostics:"Diagnose",simulation:"Simulation",energy:"Energie",maintenance:"Wartung",project:"Projekt v1",symbols:"Symbole 300+"},
-    en:{operations:"Operations",alarms:"Alarms",schedule:"Schedules",semantics:"Semantics",automap:"Auto mapping",cad:"CAD",diagnostics:"Diagnostics",simulation:"Simulation",energy:"Energy",maintenance:"Maintenance",project:"Project v1",symbols:"Symbols 300+"}
+    de:{operations:"Betrieb",alarms:"Alarme",trends:"Trends",schedule:"Zeitprogramme",semantics:"Semantik",automap:"Auto-Mapping",cad:"CAD",diagnostics:"Diagnose",simulation:"Simulation",energy:"Energie",maintenance:"Wartung",project:"Projekt v1",symbols:"Symbole 300+"},
+    en:{operations:"Operations",alarms:"Alarms",trends:"Trends",schedule:"Schedules",semantics:"Semantics",automap:"Auto mapping",cad:"CAD",diagnostics:"Diagnostics",simulation:"Simulation",energy:"Energy",maintenance:"Maintenance",project:"Project v1",symbols:"Symbols 300+"}
   };
   const t = (config,key) => (LANG[config?.ui?.locale]||LANG.de)[key] || key;
 
@@ -47,7 +47,10 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
   function notice(owner,message){const root=owner.shadowRoot||owner;root.querySelector("[data-glt-notice]")?.remove();const strip=document.createElement("div");strip.dataset.gltNotice="1";strip.setAttribute("role","status");strip.setAttribute("aria-live","polite");strip.className="glt-v1-notice";strip.textContent=String(message);(root.querySelector(".glt-v1-modal .glt-v1-body")||root).appendChild(strip);}
 
   function modal(owner,title,html){const root=owner.shadowRoot||owner;root.querySelector(".glt-v1-modal")?.remove();const m=document.createElement("div");m.className="glt-v1-modal";m.innerHTML=`<div class="glt-v1-dialog"><div class="glt-v1-head"><b>${esc(title)}</b><button class="glt-v1-close">✕</button></div><div class="glt-v1-body">${html}</div></div>`;m.querySelector(".glt-v1-close").onclick=()=>m.remove();m.onclick=e=>{if(e.target===m)m.remove()};root.appendChild(m);return m;}
-  async function ws(owner,type,payload={}){if(!owner?._hass?.callWS)throw new Error("Companion nicht verfügbar");return owner._hass.callWS({type:`glt_flow_card/${type}`,...payload});}
+  // A fully qualified type is passed through unchanged, so a call site may name
+  // the exact wire route it depends on rather than a suffix that reads the same
+  // as several unrelated things.
+  async function ws(owner,type,payload={}){if(!owner?._hass?.callWS)throw new Error("Companion nicht verfügbar");const wire=String(type).startsWith("glt_flow_card/")?String(type):`glt_flow_card/${type}`;return owner._hass.callWS({type:wire,...payload});}
   // A real dialog, not `prompt()`. The UI contract forbids `prompt` on the
   // acknowledgement path: it blocks the whole page, cannot be styled, cannot be
   // localized, and is unreachable in a kiosk. Resolves to null when cancelled,
@@ -118,6 +121,39 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
       ()=>{card._alarmStateLoading=false;});
   }
 
+  // The Companion queries Home Assistant's Recorder; the browser asks the
+  // Companion. Phase 7 retired the card's own Recorder call, and retiring it
+  // only helps if the replacement is present -- so these two routes are the
+  // trend surfaces' only source of measured values.
+  //
+  // The period's expected instants are sent with the request because the
+  // Recorder omits an empty period entirely: what came back is exactly the
+  // thing that cannot say what was asked for. Inferring the grid from the
+  // returned rows would report a month with half its meters offline as a
+  // complete month with a smaller total.
+  //
+  // A failure is returned as a stated `unavailable` source rather than thrown.
+  // A correct empty answer and a broken one look identical, and only the stated
+  // source separates them -- an empty series drawn inside a populated axis is
+  // the defect this phase exists to close.
+  async function loadHistory(card,request){
+    const cfg=ensureV1(card._config);
+    const contract=request&&request.contract==="statistics"?"statistics":"series";
+    const route=contract==="statistics"?"glt_flow_card/history/statistics":"glt_flow_card/history/series";
+    const payload={project_id:projectId(cfg),entity_ids:request?.entity_ids||[],
+      start_time:request?.start||"",end_time:request?.end||"",
+      expected_instants:request?.expected_instants||[],limit:request?.limit||500};
+    if(contract==="statistics")payload.period=request?.period||"day";
+    try{
+      const res=await ws(card,route,payload);
+      return {capped:Boolean(res?.capped),coverage:Number(res?.coverage||0),
+        gaps:res?.gaps||[],series:res?.series||[],source:res?.source||"unavailable"};
+    }catch(err){
+      return {capped:false,coverage:0,gaps:[],series:[],source:"unavailable",
+        error:String(err&&err.message||err)};
+    }
+  }
+
   function alarmRow(cfg,a,row){const active=Boolean(row&&row.active);const suppression=row&&row.suppression;const delivery=row&&row.last_delivery;const priority=esc(String(row&&row.priority||a.priority||a.severity||"warning"));
     // Priority as a word *and* a shape: a red dot on a monochrome kiosk is no
     // information at all.
@@ -134,7 +170,26 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
     m.querySelectorAll("[data-ack]").forEach(b=>b.onclick=async()=>{const comment=await askText(card,"Quittierkommentar","");if(comment===null)return;try{await ws(card,"alarms/ack",{project_id:projectId(cfg),alarm_id:b.dataset.ack,comment});}catch(err){notice(card,err.message);}await audit(card,"alarm.ack",{alarm_id:b.dataset.ack});m.remove();alarmsPanel(card)});
     m.querySelectorAll("[data-shelve]").forEach(b=>b.onclick=async()=>{const answer=await askText(card,"F\u00fcr wie viele Minuten unterdr\u00fccken?","60");if(answer===null)return;const minutes=Number(answer)||60;try{await ws(card,"alarms/shelve",{project_id:projectId(cfg),alarm_id:b.dataset.shelve,minutes});}catch(err){notice(card,err.message);}m.remove();alarmsPanel(card)});}
   function operationsPanel(card){const cfg=ensureV1(card._config);const items=cfg.equipment.map(i=>({i,s:deriveOperationalState(i,card._hass?.states,{stale_minutes:cfg.diagnostics.stale_minutes})})).sort((a,b)=>b.s.severity-a.s.severity);const m=modal(card,t(cfg,"operations"),`<div class="glt-v1-grid">${items.map(({i,s})=>`<div class="glt-v1-card"><b>${esc(i.name||i.id)}</b><small>${esc(s.label)} · ${esc(s.quality)}</small><div class="glt-v1-actions"><button class="glt-v1-btn" data-open="${esc(i.id)}">Bedienen</button></div></div>`).join("")}</div>`);m.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{const i=cfg.equipment.find(x=>x.id===b.dataset.open);m.remove();openOperations(card,i)});}
-  function runtimeButtons(card){const root=card.shadowRoot,bar=root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");if(!bar||bar.querySelector("[data-glt-v1-runtime]"))return;const wrap=document.createElement("span");wrap.dataset.gltV1Runtime="1";wrap.className="glt-v1-actions";wrap.innerHTML=`<button class="glt4-pill glt-v1-btn" data-ops>${t(card._config,"operations")}</button><button class="glt4-pill glt-v1-btn" data-alarm>${t(card._config,"alarms")}</button>`;wrap.querySelector("[data-ops]").onclick=()=>operationsPanel(card);wrap.querySelector("[data-alarm]").onclick=()=>alarmsPanel(card);bar.appendChild(wrap);}
+  function runtimeButtons(card){const root=card.shadowRoot,bar=root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");if(!bar||bar.querySelector("[data-glt-v1-runtime]"))return;const wrap=document.createElement("span");wrap.dataset.gltV1Runtime="1";wrap.className="glt-v1-actions";wrap.innerHTML=`<button class="glt4-pill glt-v1-btn" data-ops>${t(card._config,"operations")}</button><button class="glt4-pill glt-v1-btn" data-alarm>${t(card._config,"alarms")}</button><button class="glt4-pill glt-v1-btn" data-trend>${t(card._config,"trends")}</button>`;wrap.querySelector("[data-ops]").onclick=()=>operationsPanel(card);wrap.querySelector("[data-alarm]").onclick=()=>alarmsPanel(card);wrap.querySelector("[data-trend]").onclick=()=>trendsPanel(card);bar.appendChild(wrap);}
+  // The trend surfaces are given what the Companion measured; they derive
+  // nothing. The source travels with the values and is displayed, because an
+  // empty answer and a broken one look identical on an axis and only the stated
+  // source separates them.
+  async function trendsPanel(card){
+    const cfg=ensureV1(card._config);
+    const entities=cfg.datapoints.map(d=>entityId(d.entity)).filter(Boolean).slice(0,20);
+    const m=modal(card,t(cfg,"trends"),`<div data-trend-host></div>`);
+    const host=m.querySelector("[data-trend-host]");
+    const loaded=await loadHistory(card,{contract:"statistics",entity_ids:entities,period:"day"});
+    const badge=document.createElement("glt-flow-card-coverage-badge");
+    const chart=document.createElement("glt-flow-card-trend-chart");
+    const table=document.createElement("glt-flow-card-trend-table");
+    host.append(badge,chart,table);
+    const props={coverage:loaded.coverage,gaps:loaded.gaps,language:"de",
+      series:loaded.series,source:loaded.source};
+    badge.props=props;chart.props=props;table.props=props;
+  }
+
   const oldCardRender=Card.prototype._render;Card.prototype._render=function(){this._config=ensureV1(this._config);const r=oldCardRender.call(this);addStyle(this.shadowRoot);runtimeButtons(this);refreshAlarmState(this);if(this._config.ui?.kiosk)document.body.classList.add("glt-v1-kiosk");return r;};
 
   function editorRoot(editor){return editor.shadowRoot;} function editorModal(editor,title,html){return modal(editor,title,html);} function emit(editor){editor._emit?.();editor._render?.();}

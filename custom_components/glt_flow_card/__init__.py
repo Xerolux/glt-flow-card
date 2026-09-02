@@ -2421,6 +2421,10 @@ async def ws_history_series(hass, connection, msg):
     vol.Optional("period", default="day"): str,
     vol.Optional("start_time", default=""): str,
     vol.Optional("end_time", default=""): str,
+    # Same hazard as the raw route, and the same reason it cannot be inferred:
+    # the Recorder omits an empty period entirely, so the answer is exactly the
+    # thing that cannot say what was asked for.
+    vol.Optional("expected_instants", default=list): [str],
     vol.Optional("limit", default=500): int,
 })
 @websocket_api.async_response
@@ -2447,17 +2451,35 @@ async def ws_history_statistics(hass, connection, msg):
         )
         return
 
-    series = []
+    expected = list(msg.get("expected_instants") or [])
+    request = recorder_query.build_request(
+        end=msg["end_time"] or "",
+        entity_ids=msg["entity_ids"],
+        period=msg["period"] or "day",
+        start=msg["start_time"] or "",
+    )
+    answer, query_error = await _ask_recorder(hass, request)
+    shaped = recorder_query.shape_answer(
+        request["contract"], answer, error=query_error, expected_instants=expected,
+    )
+    built = series_coverage.build_series(shaped)
+    series = built.get("points") or []
     capped = history_bounds.cap_rows(series, bounds)
     await _audit_history(
         hass, connection, "glt_flow_card/history/statistics",
-        contract="statistics", msg=msg, project_id=project_id, rows=len(capped["rows"]),
+        contract=decision_on_bounds["source"] or "statistics", msg=msg,
+        project_id=project_id, rows=len(capped["rows"]),
     )
     connection.send_result(msg["id"], {
         "capped": capped["capped"],
-        "coverage": 0,
+        "coverage": built.get("coverage", 0),
+        "gaps": built.get("gaps") or [],
         "series": capped["rows"][: msg["limit"]],
-        "source": "unavailable",
+        "source": (
+            decision_on_bounds["source"]
+            if decision_on_bounds["outcome"] == "downgrade"
+            else built.get("source", "unavailable")
+        ),
     })
 
 
@@ -2483,6 +2505,13 @@ async def ws_history_coverage(hass, connection, msg):
         hass, connection, "glt_flow_card/history/coverage",
         contract="statistics", msg=msg, project_id=project_id, rows=0,
     )
+    # Stated `unavailable` rather than a fabricated answer. Resolving coverage
+    # needs the period's expected instants -- the grid the window *should* have
+    # produced -- and that grid has no owner yet: its bucket step is a decision
+    # with a corpus behind it, because inferring it from the rows that came back
+    # is the defect `expected_instants` exists to prevent. Until that lands this
+    # route says it has no answer, which is the one thing it must never get
+    # wrong.
     connection.send_result(msg["id"], {"coverage": 0, "gaps": [], "source": "unavailable"})
 
 
