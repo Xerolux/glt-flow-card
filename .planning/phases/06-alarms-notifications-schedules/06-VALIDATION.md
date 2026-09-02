@@ -77,5 +77,8 @@ is configurable *and* that the shipped default is the conservative value.
   proves the index bounds the *shape* of the cost, with a fixture corpus, not the
   measured number.
 - **The composed release leaf.** `npm run test:phase6:release` needs a Docker
-  engine this container does not have; its parts pass individually and the row
-  stays `planned` for exactly that reason.
+  engine this container does not have. Measured at head: `validate:hacs-staging`
+  passes, and `test:ha-artifacts` then fails before any test runs because each of
+  its twelve bounded lane candidates probes `docker info`. The row stays
+  `planned` because a composed leaf verified from its legs is a leaf nobody
+  composed.
