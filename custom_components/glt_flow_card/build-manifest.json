@@ -2,7 +2,7 @@
   "artifacts": [
     {
       "path": "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
-      "sha256": "14494b45c2f4f2bb5605f87faccf155031a9a000ee7ec74712611246bedcb1b8",
+      "sha256": "0ec0c8d24fee67da9be330bbe119cd6cbfb547333ea8b66e6567bdfbc776ba24",
       "size": 2321
     },
     {
@@ -51,18 +51,23 @@
       "size": 26798
     },
     {
+      "path": "custom_components/glt_flow_card/schemas/project/6.schema.json",
+      "sha256": "fedfea485e30a3750e2d5917fc8c66fd7ea8672dd5d8a685bc458fa2673e4701",
+      "size": 33991
+    },
+    {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "40da8813be2666daf849e77525ed472b06dff82fa910a7ad150167fdc0f8bd67",
-      "size": 2154826
+      "sha256": "1b9a2dfb6a23100e50b81ea7c1706b35904e464db363237c539fa5d13c0ef6fd",
+      "size": 2555303
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "40da8813be2666daf849e77525ed472b06dff82fa910a7ad150167fdc0f8bd67",
-      "size": 2154826
+      "sha256": "1b9a2dfb6a23100e50b81ea7c1706b35904e464db363237c539fa5d13c0ef6fd",
+      "size": 2555303
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
-      "sha256": "14494b45c2f4f2bb5605f87faccf155031a9a000ee7ec74712611246bedcb1b8",
+      "sha256": "0ec0c8d24fee67da9be330bbe119cd6cbfb547333ea8b66e6567bdfbc776ba24",
       "size": 2321
     },
     {
@@ -111,19 +116,24 @@
       "size": 26798
     },
     {
+      "path": "dist/schemas/project/6.schema.json",
+      "sha256": "fedfea485e30a3750e2d5917fc8c66fd7ea8672dd5d8a685bc458fa2673e4701",
+      "size": 33991
+    },
+    {
       "path": "docs/editor/app.js",
       "sha256": "523cb1e2aec259da18ea6ea8c770ae08b7fb63d118cc8defef1a664cdc020af2",
       "size": 32113
     }
   ],
   "build": {
-    "commit": "854b5fcd43c35f490774cbd0caf1cc1f71c8c7c5",
+    "commit": "2df12b4b6d4e2ff5300d652ba3097f575522cd38",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
   "schemas": {
-    "bundleManifest": "14494b45c2f4f2bb5605f87faccf155031a9a000ee7ec74712611246bedcb1b8",
+    "bundleManifest": "0ec0c8d24fee67da9be330bbe119cd6cbfb547333ea8b66e6567bdfbc776ba24",
     "diffPolicy": "6ba0aaaa2460d7b9e6d765a2842cad2eefb6899f681dd1fb487df8539cafce9f",
     "limits": "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619",
     "project0": "992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8",
@@ -132,6 +142,7 @@
     "project3": "4ffb7214e5e1e041a38416b3293dba476aabc53d1c38ccbeefffe4caf69c4f78",
     "project4": "80f355c82d67c8db2c7ae187aadbc59da49eff2314a3d843041766f062269769",
     "project5": "ff8310cbde374c7445438f9f0bd72da0c4f1de2771ef4af1173c65046271c573",
+    "project6": "fedfea485e30a3750e2d5917fc8c66fd7ea8672dd5d8a685bc458fa2673e4701",
     "vocabularies": "abd346b1cbc7a5b581f2e6a3651767d69fbb3d16f0248c20556434e8584ede94"
   },
   "sources": [
@@ -152,7 +163,7 @@
     },
     {
       "path": "schemas/bundle-manifest.schema.json",
-      "sha256": "14494b45c2f4f2bb5605f87faccf155031a9a000ee7ec74712611246bedcb1b8",
+      "sha256": "0ec0c8d24fee67da9be330bbe119cd6cbfb547333ea8b66e6567bdfbc776ba24",
       "size": 2321
     },
     {
@@ -212,8 +223,8 @@
     },
     {
       "path": "src/v100/core.mjs",
-      "sha256": "21cfd757e4874a8b00310b6827bb64c987bcfdd54da1ea92d18a58619d75eabd",
-      "size": 23309
+      "sha256": "05f3519e7bfe1012bf9d6e28a9b613d41f06c4e9ad9b3e80dc2b57ba59729878",
+      "size": 23404
     },
     {
       "path": "src/v100/designer-clipboard.mjs",
@@ -267,8 +278,8 @@
     },
     {
       "path": "src/v100/period-vocabulary.mjs",
-      "sha256": "d96d1b90f0c14e1ed12edfdd3ce492a1f5b8f099b3c5d14fedfe2d8bd6b5c5a9",
-      "size": 9099
+      "sha256": "705639b4a16851cba4d89d3c9230267b0cce9f2c29165cf694cdb3d5a9d6acab",
+      "size": 9582
     },
     {
       "path": "src/v100/ports.mjs",
@@ -317,8 +328,8 @@
     },
     {
       "path": "src/v100/project-migrations.mjs",
-      "sha256": "5a2647ddc01837967e39dcbeee6c8a4700aa5795e96b1170816dc133828f32d0",
-      "size": 12730
+      "sha256": "883c88f821162bf6895c69fff928fb929f47c8a6e1aa94721251bd21714e433b",
+      "size": 20601
     },
     {
       "path": "src/v100/project-operations.js",
@@ -382,8 +393,8 @@
     },
     {
       "path": "tools/generate-project-validators.mjs",
-      "sha256": "cb25fa676e446ba71020735dbe9ed086b9ae3335fe939beecac8c506d3638892",
-      "size": 3906
+      "sha256": "234cc14a292330b18c4986ba15396cb201056a5c9bcf59416b412fbb676be495",
+      "size": 3955
     }
   ],
   "tools": {
@@ -392,8 +403,8 @@
     "node": "22"
   },
   "validator": {
-    "sha256": "fcf36ee8a6d261fefe26283f92007237f449a6c397f21fd7b0ee4ee417815e7c",
-    "size": 871336
+    "sha256": "e6e544023b32e36cc4fe672a8a4bff1b24513a0b145599d938e6c3c41327657b",
+    "size": 1191450
   },
   "versions": {
     "card": "1.0.0",
@@ -405,7 +416,8 @@
       2,
       3,
       4,
-      5
+      5,
+      6
     ]
   }
 }
