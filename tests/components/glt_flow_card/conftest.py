@@ -75,6 +75,21 @@ def config_entry(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
+#: Phase-2 runtime resources that must all return to zero after unload.
+PHASE2_RESOURCE_COUNTERS = (
+    "listeners",
+    "tasks",
+    "subscriptions",
+    "cursors",
+    "leases",
+    "control_waits",
+    "rate_buckets",
+    "late_callbacks",
+    "managers",
+    "stores",
+)
+
+
 @dataclass
 class LifecycleEffects:
     """Record integration-owned effects without allowing external I/O."""
@@ -85,6 +100,7 @@ class LifecycleEffects:
     active_listeners: dict[int, str] = field(default_factory=dict)
     service_attempts: list[dict[str, Any]] = field(default_factory=list)
     session_attempts: list[dict[str, Any]] = field(default_factory=list)
+    late_callbacks: list[dict[str, Any]] = field(default_factory=list)
     _next_listener: int = 0
 
     def track_unsubscribe(self, kind: str, unsubscribe: Callable[[], Any]) -> Callable[[], Any]:
@@ -98,6 +114,37 @@ class LifecycleEffects:
             return unsubscribe()
 
         return tracked_unsubscribe
+
+    def record_late_callback(self, kind: str, detail: Any = None) -> None:
+        """Record a callback that fired after its owning runtime was released."""
+        self.late_callbacks.append({"kind": kind, "detail": detail})
+
+    def _phase2_counts(self, manager: Any) -> dict[str, int]:
+        """Count Phase-2 runtime resources, defaulting to zero before they exist.
+
+        Phase-2 introduces these registries incrementally. Counting them through
+        a tolerant accessor keeps the ledger honest at every wave: a registry
+        that does not exist yet contributes zero, and the moment a plan adds one
+        the same ledger starts failing on leaked entries.
+        """
+
+        def size(*names: str) -> int:
+            for name in names:
+                container = getattr(manager, name, None)
+                if container is not None:
+                    try:
+                        return len(container)
+                    except TypeError:
+                        return int(bool(container))
+            return 0
+
+        return {
+            "subscriptions": size("_subscriptions", "subscriptions"),
+            "cursors": size("_cursors", "cursors"),
+            "leases": size("_leases", "leases", "project_leases"),
+            "control_waits": size("_control_waits", "control_waits"),
+            "rate_buckets": size("_rate_buckets", "rate_buckets"),
+        }
 
     def snapshot(self) -> dict[str, int | list[str]]:
         """Return exact observable counts for the current entry runtime."""
@@ -113,7 +160,20 @@ class LifecycleEffects:
             "tasks": sum(not task.done() for task in alarm_tasks.values()),
             "sessions": len(self.session_attempts),
             "service_attempts": len(self.service_attempts),
+            "late_callbacks": len(self.late_callbacks),
+            **self._phase2_counts(manager),
         }
+
+    def phase2_resource_total(self, snapshot: dict[str, Any] | None = None) -> int:
+        """Return the summed Phase-2 resource count; zero means fully released."""
+        current = snapshot if snapshot is not None else self.snapshot()
+        return sum(int(current.get(name, 0)) for name in PHASE2_RESOURCE_COUNTERS)
+
+    def reset(self) -> None:
+        """Clear recorded attempts so one test can assert successive phases."""
+        self.service_attempts.clear()
+        self.session_attempts.clear()
+        self.late_callbacks.clear()
 
 
 @pytest.fixture
@@ -160,6 +220,40 @@ def lifecycle_effects(hass: HomeAssistant) -> Generator[LifecycleEffects]:
         patch.object(integration, "async_get_clientsession", side_effect=reject_session),
     ):
         yield effects
+
+
+@pytest.fixture
+async def phase2_users(hass: HomeAssistant, local_auth, hass_ws_client):
+    """Provide the Phase-2 multi-principal authenticated identity factory."""
+    from .user_factory import Phase2UserFactory
+
+    factory = Phase2UserFactory(hass, local_auth, hass_ws_client)
+    await factory.async_prepare()
+    try:
+        yield factory
+    finally:
+        await factory.async_close()
+
+
+@pytest.fixture
+def controlled_service(hass: HomeAssistant) -> Generator[Any]:
+    """Provide a named fake service that permits zero calls until allowed.
+
+    The global blocker stays in force for every unnamed domain/service, so a
+    test proves an intended service attempt only by naming it first.
+    """
+    from .user_factory import ControlledService
+
+    controlled = ControlledService(hass)
+    original_call = type(hass.services).async_call
+
+    async def guarded_call(services, domain, service, data=None, *args, **kwargs):
+        if not controlled.is_allowed(str(domain), str(service)):
+            raise AssertionError(f"live service attempt blocked: {domain}.{service}")
+        return await original_call(services, domain, service, data, *args, **kwargs)
+
+    with patch.object(type(hass.services), "async_call", autospec=True, side_effect=guarded_call):
+        yield controlled
 
 
 @pytest.fixture

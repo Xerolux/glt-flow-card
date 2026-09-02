@@ -23,6 +23,12 @@ EXPECTED_LOADED = {
     "tasks": 0,
     "sessions": 0,
     "service_attempts": 0,
+    "subscriptions": 0,
+    "cursors": 0,
+    "leases": 0,
+    "control_waits": 0,
+    "rate_buckets": 0,
+    "late_callbacks": 0,
 }
 EXPECTED_UNLOADED = {
     "commands": 25,
@@ -32,6 +38,12 @@ EXPECTED_UNLOADED = {
     "tasks": 0,
     "sessions": 0,
     "service_attempts": 0,
+    "subscriptions": 0,
+    "cursors": 0,
+    "leases": 0,
+    "control_waits": 0,
+    "rate_buckets": 0,
+    "late_callbacks": 0,
 }
 
 
