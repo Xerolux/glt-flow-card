@@ -15,7 +15,7 @@ Milestone v1.1 hardens the existing Platform 1.0 surface as ten dependency-order
 - [ ] **Phase 5: CAD Engineering & Extension Platform** - Deliver the verified catalog, typed connectivity, deterministic routing, transactional CAD, and declarative SDK.
 - [ ] **Phase 6: Alarms, Notifications & Schedules** - Make time-sensitive operational workflows authoritative, restart-safe, observable, and timezone-correct.
 - [x] **Phase 7: Trends, Energy & Reproducible Reports** - Turn Recorder data into honest trends, unit-safe energy views, and matching period reports.
-- [ ] **Phase 8: Safe Simulation, Commissioning & Assets** - Support pre-commissioning scenarios, read-only diagnostics, and bounded maintenance workflows without plant-write risk.
+- [x] **Phase 8: Safe Simulation, Commissioning & Assets** - Support pre-commissioning scenarios, read-only diagnostics, and bounded maintenance workflows without plant-write risk.
 - [ ] **Phase 9: Failure-Isolated Multi-Site Supervision** - Supervise authorized remote Home Assistant sites without credential exposure, policy bypass, or global failure.
 - [ ] **Phase 10: Product-Wide Usability & Release Evidence** - Close localization, accessibility, capacity, compatibility, and exact-artifact release evidence across all workflows.
 
@@ -301,22 +301,22 @@ Plans:
 **Plans**: 16
 **UI hint**: yes
 
-- [ ] 08-01-PLAN.md — Stand up the Phase-8 gate, the dispatch effect ledger and the scenario and registry corpora.
-- [ ] 08-02-PLAN.md — Close the dispatch, diagnosis and transition vocabularies, and introduce schema 7.
-- [ ] 08-03-PLAN.md — Derive record identity from content, in one helper both runtimes use.
-- [ ] 08-04-PLAN.md — Make a scenario a pure function of definition and tick, validated against the profile.
-- [ ] 08-05-PLAN.md — Give the simulation session an owner, a bounded TTL and an end.
-- [ ] 08-06-PLAN.md — Consult one dispatch decision at the point of dispatch, and fail closed.
-- [ ] 08-07-PLAN.md — Enumerate every dispatch path and prove none escapes the gate.
-- [ ] 08-08-PLAN.md — Mark notifications during a rehearsal rather than silencing them.
-- [ ] 08-09-PLAN.md — Move the commissioning diagnostic to the Companion and stop it inventing findings.
-- [ ] 08-10-PLAN.md — Check services, units, device classes and duplicates, and bound the suggestions.
-- [ ] 08-11-PLAN.md — Prove commissioning writes nothing, and replace the invented score with counts.
-- [ ] 08-12-PLAN.md — Make work orders append-only with a closed transition table.
-- [ ] 08-13-PLAN.md — Bound attachments, completion history and the work-order store.
-- [ ] 08-14-PLAN.md — Ship the simulation, commissioning and asset surfaces.
-- [ ] 08-15-PLAN.md — Compute due and next-due from interval and operating-hour plans.
-- [ ] 08-16-PLAN.md — Document the contract and close the Phase-8 register from commands.
+- [x] 08-01-PLAN.md — Stand up the Phase-8 gate, the dispatch effect ledger and the scenario and registry corpora.
+- [x] 08-02-PLAN.md — Close the dispatch, diagnosis and transition vocabularies, and introduce schema 7.
+- [x] 08-03-PLAN.md — Derive record identity from content, in one helper both runtimes use.
+- [x] 08-04-PLAN.md — Make a scenario a pure function of definition and tick, validated against the profile.
+- [x] 08-05-PLAN.md — Give the simulation session an owner, a bounded TTL and an end.
+- [x] 08-06-PLAN.md — Consult one dispatch decision at the point of dispatch, and fail closed.
+- [x] 08-07-PLAN.md — Enumerate every dispatch path and prove none escapes the gate.
+- [x] 08-08-PLAN.md — Mark notifications during a rehearsal rather than silencing them.
+- [x] 08-09-PLAN.md — Move the commissioning diagnostic to the Companion and stop it inventing findings.
+- [x] 08-10-PLAN.md — Check services, units, device classes and duplicates, and bound the suggestions.
+- [x] 08-11-PLAN.md — Prove commissioning writes nothing, and replace the invented score with counts.
+- [x] 08-12-PLAN.md — Make work orders append-only with a closed transition table.
+- [x] 08-13-PLAN.md — Bound attachments, completion history and the work-order store.
+- [x] 08-14-PLAN.md — Ship the simulation, commissioning and asset surfaces.
+- [x] 08-15-PLAN.md — Compute due and next-due from interval and operating-hour plans.
+- [x] 08-16-PLAN.md — Document the contract and close the Phase-8 register from commands.
 
 ### Phase 9: Failure-Isolated Multi-Site Supervision
 

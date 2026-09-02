@@ -148,6 +148,63 @@ schrieben den gerade gerenderten Wert, ohne Zeitraum und ohne Abdeckung. Der
 Export liefert jetzt das Modell, und alle drei Darstellungen leiten daraus ab
 statt auseinander.
 
+### Simulation, Inbetriebnahme und Assets
+
+**Während einer Simulation kann diese Karte die Anlage nicht bedienen** — und das
+ist serverseitig durchgesetzt, nicht im Browser.
+
+Dieser Satz steht hier, weil er vorher nicht stimmte. Der Simulationsmodus war
+ein Feld im Projektdokument, das **keine Serverroute las**: Dienstaufrufe gingen
+unverändert raus, während die Oberfläche „Simulationsmodus aktiv" anzeigte. Wer
+samstags eine Sequenz durchspielte, bediente die Anlage — und war vom Produkt
+darüber getäuscht worden.
+
+Jeder Weg, über den eine Wirkung dieses Produkt verlässt, fragt jetzt dieselbe
+Entscheidung, unmittelbar bevor die Wirkung eintritt. Bedienbefehle, entfernte
+Bedienbefehle und Zeitprogramm-Dienstaufrufe werden **abgelehnt**;
+Benachrichtigungen und Berichtsversand werden **markiert** und sagen, dass die
+Anlage simuliert wurde; der Audit-Eintrag bleibt. Markieren statt Blockieren ist
+Absicht: Alarme verstummen zu lassen verwandelte einen Probelauf in ein
+Zeitfenster, in dem niemand von einer echten Störung erfährt — ein
+Sicherheitsfehler in der anderen Richtung, und ein schlimmerer.
+
+**Es scheitert zur sicheren Seite.** Lässt sich der Simulationszustand nicht
+feststellen, wird ein anlagenwirksamer Aufruf abgelehnt — mit einer *anderen*
+Begründung als bei einer normalen Simulationsablehnung, denn „Sie proben" und
+„der Companion kann es nicht sagen" verlangen verschiedene Reaktionen. Die
+Sitzung gehört dem Companion, nicht einem Projektdokument, nennt wer sie startete
+und wann sie endet, und läuft von selbst ab. Eine zu lange Anforderung wird
+abgelehnt, nicht gekürzt.
+
+**Ein simulierter Wert trägt ein Wort und eine Form, nie eine Farbe**, und die
+Herkunft steht neben dem Wert, nicht nur im Banner.
+
+**Die Inbetriebnahme ist nur lesend, ausgeführt geprüft.** Ein vollständiger
+Durchlauf erzeugt ein leeres Wirkungsprotokoll — und erzeugt dabei Befunde.
+Sie antwortet aus den Registries von Home Assistant, liest also Integration,
+Gerät und Config-Entry, statt sie aus der Entitäts-ID zu raten. Registry und
+Zustandsmaschine sind zwei Fragen mit vier Antworten: `present`,
+`registered_not_loaded` (deaktiviert oder Integration nicht hochgekommen),
+`unregistered` (Template-Entität — in Ordnung, aber ohne Herkunft) und `missing`.
+
+Sie erfindet keine Befunde mehr: Referenzen kommen nur aus deklarierten Stellen,
+wo vorher *jede Zeichenkette mit einem Punkt* als Entitäts-ID galt und
+Versionsnummern als fehlende Entitäten gemeldet wurden. Es gibt keine
+Bereitschaftsprozentzahl mehr — Anzahlen je Diagnose, denn eine besser gerechnete
+erfundene Zahl wäre derselbe Fehler mit hübscherer Formel.
+
+**Wartungsnachweise werden angehängt, nicht überschrieben.** Einen Auftrag
+abzuschließen löschte vorher, wer ihn eröffnet hatte. Eine Korrektur ist ein
+neuer Eintrag, der Status wird aus den Einträgen abgeleitet, und Wiedereröffnen
+braucht eine Begründung, Zurückgeben nicht. Fälligkeiten werden aus einem
+deklarierten Plan gerechnet — mit dem Kalender, sechs Monate ab 31. Januar sind
+der 31. Juli — und Betriebsstundenpläne entscheiden unterhalb einer
+Abdeckungsschwelle nicht, statt Laufstunden zu niedrig zu melden: Diese Richtung
+lässt eine überfällige Wartung aussehen wie eine erledigte.
+
+**Das ist kein CMMS**, und das Produkt behauptet keine CMMS-, Brick-, Haystack-
+oder ISO-Konformität.
+
 > Für sichere Bedienungen, geräteübergreifende Projekte, Alarme, Zeitprogramme, Audit, Locks und Remote-Home-Assistant wird der **GLT Flow Card Companion** empfohlen. Die reine Dashboard-Card bleibt weiterhin ohne Backend nutzbar.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**

@@ -11,6 +11,7 @@
 - [Zeitprogramme](Schedules)
 - [Trends & Energie](Trends-Energy)
 - [Berichte](Reports)
+- [Simulation & Inbetriebnahme](Simulation-Commissioning)
 - [Wartung & Assets](Assets-Maintenance)
 - [Rechte & Audit](Permissions-Audit)
 - [Multi-Site](Multi-Site)

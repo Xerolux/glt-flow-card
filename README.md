@@ -139,6 +139,62 @@ report a month missing nine days as a complete 22-day month.
 coverage. Export now returns the model, and all three renderings derive from it
 rather than from each other's serialisation.
 
+### Simulation, commissioning and assets
+
+**While a simulation is running, this card cannot operate the plant** — enforced
+server-side, not in the browser.
+
+That sentence is here because it used to be false. Simulation mode was a field in
+the project document that **no server route read**: service calls went out
+unchanged while the interface displayed "Simulationsmodus aktiv". An engineer
+rehearsing a sequence on a Saturday was operating the plant, and the product had
+told them otherwise.
+
+Every path through which an effect leaves this integration now asks the same
+decision immediately before the effect. Controls, remote controls and scheduled
+service calls are **refused**; notifications and report delivery are **marked**
+and say the plant was simulated; the audit record is kept. Marking rather than
+blocking is deliberate: silencing alarms would turn a rehearsal into a window in
+which nobody is told about a real fault, which is a safety defect in the other
+direction and a worse one.
+
+**It fails closed.** If the simulation state cannot be read, a plant-moving call
+is refused — and with a *different* reason from an ordinary simulated refusal,
+because "you are rehearsing" and "the Companion cannot tell" call for different
+responses. The session belongs to the Companion rather than to a project
+document, names who started it and when it ends, and expires on its own. An
+over-long request is refused rather than capped.
+
+**A simulated value carries a word and a shape, never a colour**, and the
+provider travels next to the value rather than only in a banner.
+
+**Commissioning is read-only, proven by execution.** A full diagnostic run
+produces an empty effect ledger while having produced findings. It answers from
+Home Assistant's registries, so integration, device and config-entry provenance
+is read rather than guessed from an entity id. Registry membership and
+state-machine membership are two questions with four answers: `present`,
+`registered_not_loaded` (disabled, or the integration failed to start),
+`unregistered` (a template entity — fine, but with no provenance) and `missing`.
+Collapsing them sent an engineer to hunt a typo when an integration had not come
+up.
+
+It no longer invents findings: references are collected from declared locations
+only, where the previous collector treated *any string containing a dot* as an
+entity id and reported version numbers as missing entities. There is no readiness
+percentage — counts per diagnosis, because replacing an invented score with a
+better-computed one would be the same defect with a nicer formula.
+
+**Maintenance records are append-only.** Completing a work order used to erase
+who opened it and when. A correction is a new entry naming what it corrects,
+status is derived from the entries, and reopening requires a reason while handing
+a job back does not. Due dates are computed from a declared plan — calendar
+arithmetic, so six months from 31 January is 31 July — and operating-hour plans
+decline to decide below a coverage threshold rather than under-report running
+hours, because that direction makes an overdue service look current.
+
+**This is not a CMMS**, and the product makes no CMMS, Brick, Haystack or ISO
+conformance claim.
+
 > The **GLT Flow Card Companion** is recommended for secure controls, cross-device projects, alarms, schedules, audit, locks and remote Home Assistant sites. The dashboard card still works standalone.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**
