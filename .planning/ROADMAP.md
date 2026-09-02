@@ -105,7 +105,26 @@ Plans:
   5. Representative live, stale, invalid, unavailable, pending, failed, manual/local, interlocked, maintenance, warning/fault, running/standby/off fixtures produce one severity-ranked state whose symbol, quality, freshness, German/English accessible label, and drill-down evidence agree.
 
 **Known defects closed**: Browser/domain rule divergence, unstable or weakly validated semantic identities, name-inferred provenance, silent unsafe auto-binding, and unproven operational-state token claims.
-**Plans**: TBD
+**Plans**: 17 plans across 11 dependency-ordered waves
+
+Plans:
+- [ ] 03-01-PLAN.md — Stand up registry fixtures, iDM corpus, sentinel keys and command scripts.
+- [ ] 03-02-PLAN.md — Specify the hierarchy, cycle and vocabulary RED contracts.
+- [ ] 03-03-PLAN.md — Specify provenance, communication health and their authorization RED contracts.
+- [ ] 03-04-PLAN.md — Specify profile, mapping, state and exact-dist UI RED contracts.
+- [ ] 03-05-PLAN.md — Introduce schema 3 and the sequential 2-3 migration.
+- [ ] 03-06-PLAN.md — Implement containment, cycle rejection, bounds and closed vocabularies.
+- [ ] 03-07-PLAN.md — Integrate the new collections into diff, closure and bundles.
+- [ ] 03-08-PLAN.md — Implement registry-derived provenance, health and its authorized route.
+- [ ] 03-09-PLAN.md — Bind the provenance cache to the runtime generation.
+- [ ] 03-10-PLAN.md — Implement versioned profiles and override-preserving upgrades.
+- [ ] 03-11-PLAN.md — Expose profile instantiation and upgrade as guarded mutations.
+- [ ] 03-12-PLAN.md — Implement explained, dual-runtime mapping ranking.
+- [ ] 03-13-PLAN.md — Expose ranking, acceptance and undo without automatic binding.
+- [ ] 03-14-PLAN.md — Implement the deterministic operational-state precedence.
+- [ ] 03-15-PLAN.md — Build the semantic, provenance, mapping and state surfaces.
+- [ ] 03-16-PLAN.md — Document the Phase-3 contract in English and German.
+- [ ] 03-17-PLAN.md — Package the new modules and close the Phase-3 gate.
 **UI hint**: yes
 
 ### Phase 4: Runtime Operations & Drill-Down
