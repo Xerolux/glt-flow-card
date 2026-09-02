@@ -39,6 +39,8 @@ CAPABILITIES: tuple[str, ...] = (
     "control.execute",
     "alarm.read",
     "alarm.write",
+    "schedule.read",
+    "schedule.write",
     "work_order.read",
     "work_order.write",
     "report.read",
@@ -57,6 +59,7 @@ _VIEWER = frozenset({
     "template.read",
     "control.read",
     "alarm.read",
+    "schedule.read",
     "work_order.read",
     "report.read",
     "evidence.read",
@@ -69,7 +72,13 @@ _OPERATOR = _VIEWER | {
     "report.run",
     "evidence.telemetry.write",
 }
-_ENGINEER = _OPERATOR | {"project.write", "template.write", "lease.engineering"}
+_ENGINEER = _OPERATOR | {
+    "project.write", "template.write", "lease.engineering",
+    # A schedule was previously editable only through `project.write`,
+    # which is the engineer's. Giving schedules a boundary of their own
+    # must not change who may cross it.
+    "schedule.write",
+}
 _ADMIN = _ENGINEER | {
     "project.delete",
     "project.access.read",
@@ -267,6 +276,13 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/alarms/list", "alarm.read", enumeration="filter"),
     _route("glt_flow_card/alarms/ack", "alarm.write"),
     _route("glt_flow_card/alarms/shelve", "alarm.write"),
+    # Schedules had no route at all: they were edited as project config, so
+    # there was no authorization boundary of their own, no audit of an edit and
+    # no route for a preview -- for the thing that runs the plant.
+    _route("glt_flow_card/schedules/list", "schedule.read", enumeration="filter"),
+    _route("glt_flow_card/schedules/save", "schedule.write", rate_class="mutation"),
+    _route("glt_flow_card/schedules/delete", "schedule.write", rate_class="mutation"),
+    _route("glt_flow_card/schedules/preview", "schedule.read"),
     _route("glt_flow_card/work_orders/list", "work_order.read", enumeration="filter"),
     _route("glt_flow_card/work_orders/save", "work_order.write"),
     _route("glt_flow_card/reports/run", "report.run"),

@@ -838,6 +838,90 @@ class GltStore:
             )
             await self.async_save()
 
+    async def save_schedule(
+        self, project_id: str, entry: dict[str, Any], *, actor: Any = None,
+    ) -> dict[str, Any]:
+        """Create or replace one schedule entry, validated and audited.
+
+        Schedules were previously edited only as project config through the
+        ordinary save path, so there was no audit of an edit at all -- for the
+        thing that runs the plant. Every edit writes a row with server
+        provenance now.
+        """
+        project = self.data["projects"].get(project_id)
+        if project is None:
+            raise ValueError("unknown_project")
+        entry = deepcopy(entry)
+        # Validated here, not at the runner. Schema 5 closed the shape; this is
+        # the boundary that keeps a `time` of "tea" from being stored at all,
+        # rather than discovered at the moment it was supposed to run.
+        time = entry.get("time") or entry.get("from")
+        if entry.get("kind", "instant") == "instant":
+            if not time:
+                raise ValueError("schedule_time_required")
+            try:
+                schedule_time.candidate_instants(
+                    "2000-01-03", str(time), self.schedule_timezone(project),
+                )
+            except ValueError as error:
+                raise ValueError("schedule_time_malformed") from error
+        days = entry.get("days")
+        if days is not None and not all(
+            isinstance(day, int) and not isinstance(day, bool) and 0 <= day <= 6
+            for day in days
+        ):
+            raise ValueError("schedule_days_malformed")
+
+        config = project.setdefault("config", {})
+        schedules = config.setdefault("schedules", [])
+        replaced = False
+        for index, existing in enumerate(schedules):
+            if existing.get("id") == entry["id"]:
+                schedules[index] = entry
+                replaced = True
+                break
+        if not replaced:
+            schedules.append(entry)
+
+        await self.add_audit(
+            {
+                "action": "schedule.save",
+                "detail": {
+                    "project_id": project_id,
+                    "schedule_id": entry["id"],
+                    "replaced": replaced,
+                },
+            },
+            getattr(actor, "user_id", None),
+            getattr(actor, "user_name", None),
+        )
+        await self.async_save()
+        return deepcopy(entry)
+
+    async def delete_schedule(
+        self, project_id: str, schedule_id: str, *, actor: Any = None,
+    ) -> bool:
+        """Remove one schedule entry, and audit the removal."""
+        project = self.data["projects"].get(project_id)
+        if project is None:
+            return False
+        schedules = (project.get("config") or {}).get("schedules") or []
+        remaining = [entry for entry in schedules if entry.get("id") != schedule_id]
+        removed = len(remaining) != len(schedules)
+        if not removed:
+            return False
+        project["config"]["schedules"] = remaining
+        await self.add_audit(
+            {
+                "action": "schedule.delete",
+                "detail": {"project_id": project_id, "schedule_id": schedule_id},
+            },
+            getattr(actor, "user_id", None),
+            getattr(actor, "user_name", None),
+        )
+        await self.async_save()
+        return True
+
     async def _execute_schedule(
         self, project_id: str, sched: dict[str, Any], allowed: Any, *, instant: str,
     ) -> dict[str, Any]:
@@ -1975,6 +2059,117 @@ async def ws_alarms_list(hass, connection, msg):
     connection.send_result(msg["id"], {"states": states, "history": history})
 
 
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/schedules/list",
+    # Optional with a default, so the generic policy prober reaches a decision
+    # rather than a schema rejection. Phase 5 lost a round to exactly this.
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("limit", default=500): int,
+})
+@websocket_api.async_response
+async def ws_schedules_list(hass, connection, msg):
+    """Return the schedules and execution history of the project this names.
+
+    Declared `enumeration="filter"`, so the guard deliberately does not deny --
+    refusing would itself tell an unauthorized caller that rows exist -- and the
+    filtering is the handler's job. This is the shape of the `alarms/list` leak
+    fixed in `9f53bcb`, applied before it can happen again.
+
+    Rows are filtered *before* the limit. Slicing first would let another
+    project's rows consume the caller's page, turning the limit into a count
+    oracle for a project they cannot open.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    manager = _manager(hass)
+    project_id = decision.project_id
+    permitted = runtime.policy.visible_projects(connection, [project_id], "schedule.read")
+    if not permitted:
+        connection.send_result(msg["id"], {"schedules": [], "history": []})
+        return
+
+    project = manager.data["projects"].get(project_id) or {}
+    schedules = deepcopy((project.get("config") or {}).get("schedules") or [])
+    history = [
+        deepcopy(row) for row in (manager.data.get("schedule_history") or [])
+        if row.get("project_id") == project_id
+    ][: msg["limit"]]
+    connection.send_result(msg["id"], {
+        "schedules": schedules,
+        "history": history,
+        "timezone": manager.schedule_timezone(project),
+    })
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/schedules/save",
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("schedule", default=dict): dict,
+})
+@websocket_api.async_response
+async def ws_schedules_save(hass, connection, msg):
+    """Create or replace one schedule entry, and audit the edit."""
+    decision = msg[DECISION_KEY]
+    manager = _manager(hass)
+    entry = dict(msg["schedule"] or {})
+    if not entry.get("id"):
+        connection.send_error(msg["id"], "invalid_input", "schedule_id_required")
+        return
+    try:
+        saved = await manager.save_schedule(
+            decision.project_id, entry, actor=decision.actor,
+        )
+    except ValueError as error:
+        connection.send_error(msg["id"], "invalid_input", str(error))
+        return
+    connection.send_result(msg["id"], saved)
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/schedules/delete",
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("schedule_id", default=""): str,
+})
+@websocket_api.async_response
+async def ws_schedules_delete(hass, connection, msg):
+    """Remove one schedule entry, and audit the removal."""
+    decision = msg[DECISION_KEY]
+    manager = _manager(hass)
+    removed = await manager.delete_schedule(
+        decision.project_id, str(msg["schedule_id"]), actor=decision.actor,
+    )
+    connection.send_result(msg["id"], {"removed": removed})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/schedules/preview",
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("schedule", default=dict): dict,
+    vol.Optional("dates", default=list): [str],
+})
+@websocket_api.async_response
+async def ws_schedules_preview(hass, connection, msg):
+    """Resolve one entry across the dates asked for, and say what happens.
+
+    Server-side, on the *site's* timezone, so the preview an engineer verifies
+    is the resolution the runner will use. Resolving in the browser would answer
+    for the browser's zone, and a browser in a different zone from the plant is
+    ordinary.
+    """
+    decision = msg[DECISION_KEY]
+    manager = _manager(hass)
+    project = manager.data["projects"].get(decision.project_id) or {}
+    zone = manager.schedule_timezone(project)
+    entry = dict(msg["schedule"] or {})
+    rows = []
+    for date in list(msg["dates"])[:31]:
+        try:
+            rows.append({"date": date, **schedule_time.resolve_entry(entry, date, zone)})
+        except ValueError as error:
+            rows.append({"date": date, "status": "invalid", "error": str(error)})
+    connection.send_result(msg["id"], {"timezone": zone, "dates": rows})
+
+
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/alarms/ack", vol.Required("project_id"): str, vol.Required("alarm_id"): str, vol.Optional("comment", default=""): str})
 @websocket_api.async_response
 async def ws_alarms_ack(hass, connection, msg):
@@ -2196,7 +2391,9 @@ _COMMAND_HANDLERS = (
     ws_navigation_resolve, ws_navigation_portfolio,
     ws_templates_list, ws_templates_save,
     ws_templates_delete, ws_control_execute, ws_alarms_list, ws_alarms_ack,
-    ws_alarms_shelve, ws_work_orders_list, ws_work_orders_save, ws_reports_run,
+    ws_alarms_shelve,
+    ws_schedules_list, ws_schedules_save, ws_schedules_delete, ws_schedules_preview,
+    ws_work_orders_list, ws_work_orders_save, ws_reports_run,
     ws_reports_list, ws_remote_list, ws_remote_states, ws_remote_control,
     ws_audit_add, ws_audit_list,
     ws_extensions_list, ws_extensions_install, ws_extensions_remove,

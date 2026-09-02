@@ -26,7 +26,7 @@ from .conftest import LifecycleEffects
 #: entities do exist, so the ledger still proves the new subscription is
 #: released rather than merely absent.
 EXPECTED_LOADED = {
-    "commands": 45,
+    "commands": 49,
     "listeners": 1,
     "managers": 1,
     "stores": 1,
@@ -42,7 +42,7 @@ EXPECTED_LOADED = {
     "late_callbacks": 0,
 }
 EXPECTED_UNLOADED = {
-    "commands": 45,
+    "commands": 49,
     "listeners": 0,
     "managers": 0,
     "stores": 0,
