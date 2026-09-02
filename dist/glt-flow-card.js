@@ -31750,10 +31750,10 @@
   function valueHash(value, present) {
     return present ? digestCanonicalJson(value).digest : null;
   }
-  function categoryFor(parts) {
-    const last = parts.at(-1) || "";
-    if (parts.some((part) => moveFields.has(part))) return "move";
-    if (["entity", "entity_id", "state_entity"].includes(last) || parts[0] === "bindings" || parts[0] === "fields" && parts.length >= 3 && last === "entity" || parts[0] === "slots" && parts.length >= 3 && last === "entity_id") return "binding";
+  function categoryFor(parts2) {
+    const last = parts2.at(-1) || "";
+    if (parts2.some((part) => moveFields.has(part))) return "move";
+    if (["entity", "entity_id", "state_entity"].includes(last) || parts2[0] === "bindings" || parts2[0] === "fields" && parts2.length >= 3 && last === "entity" || parts2[0] === "slots" && parts2.length >= 3 && last === "entity_id") return "binding";
     return diff_policy_default.category_rules.fallback_category;
   }
   function impactFor(category, path) {
@@ -40146,6 +40146,11 @@
   var isNotificationOutcome = frozenMembership(NOTIFICATION_OUTCOMES);
   var isEscalationStageKind = frozenMembership(ESCALATION_STAGE_KINDS);
   var isScheduleBindingKind = frozenMembership(SCHEDULE_BINDING_KINDS);
+  function priorityRank(priority) {
+    const rank = ALARM_PRIORITIES.indexOf(priority);
+    if (rank < 0) throw new RangeError(`unknown alarm priority: ${String(priority)}`);
+    return rank;
+  }
   function migrateSeverity(stored) {
     const raw = String(stored ?? "").trim().toLowerCase();
     if (raw === "") {
@@ -40458,8 +40463,8 @@
     if (path.includes("\\")) failure("bundle.path_backslash", pointer, { path });
     if (/[\u0000-\u001f\u007f-\u009f]/u.test(path)) failure("bundle.path_control", pointer, { path });
     const normalized = path.normalize("NFC");
-    const parts = normalized.split("/");
-    if (!normalized || parts.some((part) => !part || part === "." || part === "..")) {
+    const parts2 = normalized.split("/");
+    if (!normalized || parts2.some((part) => !part || part === "." || part === "..")) {
       failure("bundle.path_traversal", pointer, { path });
     }
     if (normalized.length > LIMITS.maxPathChars) {
@@ -41103,8 +41108,8 @@
   function semanticPath(item, config2) {
     if (item?.semantic_path) return item.semantic_path;
     const site = config2?.sites?.find((x2) => x2.id === item?.site)?.name || item?.site;
-    const parts = [site, item?.building, item?.floor, item?.system, item?.subsystem, item?.name || item?.id].filter(Boolean);
-    return parts.join(" / ");
+    const parts2 = [site, item?.building, item?.floor, item?.system, item?.subsystem, item?.name || item?.id].filter(Boolean);
+    return parts2.join(" / ");
   }
   function rectFor(e, padding = 0) {
     return { x1: Number(e.x || 0) - padding, y1: Number(e.y || 0) - padding, x2: Number(e.x || 0) + Number(e.width || 180) + padding, y2: Number(e.y || 0) + Number(e.height || 100) + padding };
@@ -44179,9 +44184,9 @@
   function renderCollaboration(editor, state, content) {
     const controller = state.collaborationController;
     if (!controller) return;
-    const copy = (key, values) => copyFor(editor, key, values);
+    const copy2 = (key, values) => copyFor(editor, key, values);
     const lease = document.createElement("glt-flow-card-lease-control");
-    lease.copy = copy;
+    lease.copy = copy2;
     lease.props = {
       authority: state.authority,
       collaboration: state.collaboration,
@@ -44194,7 +44199,7 @@
     content.append(lease);
     if (!state.collaboration.conflict) return;
     const recovery = document.createElement("glt-flow-card-conflict-recovery");
-    recovery.copy = copy;
+    recovery.copy = copy2;
     recovery.props = {
       collaboration: state.collaboration,
       onChoose: (choice) => controller.recover(choice)
@@ -47205,6 +47210,562 @@
     ["glt-flow-card-layer-panel", GltLayerPanel],
     ["glt-flow-card-minimap", GltMinimap],
     ["glt-flow-card-extension-manager", GltExtensionManager]
+  ]) {
+    if (!customElements.get(name)) customElements.define(name, constructor);
+  }
+
+  // src/v100/schedule-time.mjs
+  var RESOLUTION_STATUSES = Object.freeze(["normal", "nonexistent", "ambiguous"]);
+  var NONEXISTENT_POLICIES = Object.freeze(["skip", "after", "before"]);
+  var AMBIGUOUS_POLICIES = Object.freeze(["first", "second", "both"]);
+  var DEFAULT_NONEXISTENT_POLICY = "skip";
+  var DEFAULT_AMBIGUOUS_POLICY = "first";
+  var TIME_PATTERN2 = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+  function canonicalInstant(value) {
+    const instant = value instanceof Date ? value : new Date(value);
+    return instant.toISOString().replace(/\.\d{3}Z$/, "Z");
+  }
+  function parts(date, time) {
+    const [year, month, day] = String(date).split("-").map(Number);
+    const [hour, minute] = String(time).split(":").map(Number);
+    return { year, month, day, hour, minute };
+  }
+  function offsetMinutes(instant, zone) {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+    const read = Object.fromEntries(
+      formatter.formatToParts(instant).map(({ type, value }) => [type, value])
+    );
+    const asUtc = Date.UTC(
+      Number(read.year),
+      Number(read.month) - 1,
+      Number(read.day),
+      Number(read.hour) % 24,
+      Number(read.minute),
+      Number(read.second)
+    );
+    return (asUtc - instant.getTime()) / 6e4;
+  }
+  function candidateInstants(date, time, zone) {
+    if (!TIME_PATTERN2.test(String(time))) {
+      throw new RangeError(`not a wall-clock time: ${String(time)}`);
+    }
+    const { year, month, day, hour, minute } = parts(date, time);
+    const naive = Date.UTC(year, month - 1, day, hour, minute, 0);
+    const found = [];
+    for (const probe of [naive - 864e5, naive, naive + 864e5]) {
+      const offset = offsetMinutes(new Date(probe), zone);
+      const instant = new Date(naive - offset * 6e4);
+      if (offsetMinutes(instant, zone) !== offset) continue;
+      const iso = instant.toISOString();
+      if (!found.some((entry) => entry.toISOString() === iso)) found.push(instant);
+    }
+    return found.sort((a, b) => a - b);
+  }
+  function resolveEntry(entry, date, zone, options = {}) {
+    const nonexistent = options.nonexistent ?? DEFAULT_NONEXISTENT_POLICY;
+    const ambiguous = options.ambiguous ?? DEFAULT_AMBIGUOUS_POLICY;
+    if (!NONEXISTENT_POLICIES.includes(nonexistent)) {
+      throw new RangeError(`unknown nonexistent policy: ${nonexistent}`);
+    }
+    if (!AMBIGUOUS_POLICIES.includes(ambiguous)) {
+      throw new RangeError(`unknown ambiguous policy: ${ambiguous}`);
+    }
+    const time = entry?.time ?? entry?.from;
+    if (!time || !TIME_PATTERN2.test(String(time))) {
+      return { status: "normal", instants: [], candidates: [], reason: "no_time" };
+    }
+    const candidates = candidateInstants(date, time, zone).map(canonicalInstant);
+    if (candidates.length === 0) {
+      let instants = [];
+      if (nonexistent !== "skip") {
+        const { hour, minute } = parts(date, time);
+        const configured = hour * 60 + minute;
+        for (let step = 1; step <= 240 && instants.length === 0; step += 1) {
+          const walked = configured + (nonexistent === "after" ? step : -step);
+          if (walked < 0 || walked > 24 * 60 - 1) break;
+          const probe = `${String(Math.floor(walked / 60)).padStart(2, "0")}:${String(walked % 60).padStart(2, "0")}`;
+          const resolved = candidateInstants(date, probe, zone);
+          if (resolved.length > 0) {
+            instants = [canonicalInstant(nonexistent === "before" ? resolved[resolved.length - 1] : resolved[0])];
+          }
+        }
+      }
+      return { status: "nonexistent", instants, candidates: [], policy: nonexistent };
+    }
+    if (candidates.length > 1) {
+      const chosen = ambiguous === "both" ? candidates : [ambiguous === "second" ? candidates[candidates.length - 1] : candidates[0]];
+      return { status: "ambiguous", instants: chosen, candidates, policy: ambiguous };
+    }
+    return { status: "normal", instants: candidates, candidates };
+  }
+
+  // src/v100/project-alarms.js
+  var STYLE6 = `
+  .glt-alm{font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;display:block;max-width:100%}
+  .glt-alm,.glt-alm *{min-width:0;overflow-wrap:anywhere}
+  .glt-alm-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+  .glt-alm-row{display:grid;gap:4px;padding:8px;border:1px solid currentColor;border-radius:8px}
+  .glt-alm-head{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+  .glt-alm-shape{font:700 14px/1 ui-monospace,SFMono-Regular,Consolas,monospace}
+  .glt-alm-priority{font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:12px}
+  .glt-alm-meta{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad)}
+  .glt-alm-suppressed{font-style:italic}
+  .glt-alm-failed{font-weight:700;border:1px solid currentColor;border-radius:8px;padding:2px 8px;display:inline-block}
+  .glt-alm-empty{color:var(--mut,#8198ad);font-style:italic;padding:8px 0}
+  .glt-alm-actions{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0}
+  .glt-alm-actions button{min-height:44px;border:1px solid currentColor;border-radius:8px;background:transparent;color:inherit;padding:0 12px;cursor:pointer}
+  .glt-alm label{display:inline-flex;flex-direction:column;gap:2px;font:12px/1.4 inherit}
+  .glt-alm input,.glt-alm select{min-height:44px;border:1px solid currentColor;border-radius:8px;background:transparent;color:inherit;padding:0 8px}
+  .glt-alm-attempts{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+  .glt-alm-preview{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+  .glt-alm-preview li{padding:8px;border:1px solid currentColor;border-radius:8px}
+  .glt-alm :focus-visible{outline:2px solid currentColor;outline-offset:2px}
+  @media(forced-colors:active){
+    .glt-alm-row,.glt-alm-failed,.glt-alm-preview li{border:1px solid CanvasText}
+  }
+`;
+  var COPY5 = {
+    en: {
+      alarms_title: "Alarms",
+      no_alarms: "No active alarms",
+      state_active: "active",
+      state_returned: "returned",
+      state_acknowledged: "acknowledged",
+      state_indeterminate: "state unknown",
+      state_suppressed: "suppressed",
+      priority_critical: "Critical",
+      priority_warning: "Warning",
+      priority_info: "Information",
+      suppressed_shelved: "shelved",
+      suppressed_maintenance: "in maintenance",
+      suppressed_acknowledged: "acknowledged",
+      suppressed_by: "by",
+      suppressed_until: "until",
+      delivery_failed: "Delivery failed",
+      delivery_none: "No notification targets configured; alarms are annunciated here only",
+      attempts_title: "Delivery attempts",
+      acknowledge: "Acknowledge",
+      shelve: "Shelve",
+      comment: "Comment",
+      shelve_minutes: "Suppress for how many minutes?",
+      shelve_too_long: "Longer than this site allows",
+      confirm: "OK",
+      cancel: "Cancel",
+      links_title: "Context",
+      settings_title: "Alarm settings",
+      setting_default: "default",
+      schedule_title: "Schedules",
+      schedule_preview: "Effective times",
+      schedule_kind_instant: "Runs at a time",
+      schedule_kind_interval: "Operating period",
+      binding_read_only: "Read-only",
+      preview_nonexistent: "does not exist on",
+      preview_nonexistent_tail: "this entry will not run",
+      preview_ambiguous: "occurs twice on",
+      preview_ambiguous_tail: "this entry runs once, at",
+      preview_normal: "runs at"
+    },
+    de: {
+      alarms_title: "Alarme",
+      no_alarms: "Keine aktiven Alarme",
+      state_active: "aktiv",
+      state_returned: "zurückgestellt",
+      state_acknowledged: "quittiert",
+      state_indeterminate: "Zustand unbekannt",
+      state_suppressed: "unterdrückt",
+      priority_critical: "Störung",
+      priority_warning: "Warnung",
+      priority_info: "Hinweis",
+      suppressed_shelved: "geschelft",
+      suppressed_maintenance: "in Wartung",
+      suppressed_acknowledged: "quittiert",
+      suppressed_by: "von",
+      suppressed_until: "bis",
+      delivery_failed: "Zustellung fehlgeschlagen",
+      delivery_none: "Keine Benachrichtigungsziele konfiguriert; Alarme werden nur hier angezeigt",
+      attempts_title: "Zustellversuche",
+      acknowledge: "Quittieren",
+      shelve: "Unterdrücken",
+      comment: "Kommentar",
+      shelve_minutes: "Für wie viele Minuten unterdrücken?",
+      shelve_too_long: "Länger als dieser Standort erlaubt",
+      confirm: "OK",
+      cancel: "Abbrechen",
+      links_title: "Kontext",
+      settings_title: "Alarmeinstellungen",
+      setting_default: "Vorgabe",
+      schedule_title: "Zeitprogramme",
+      schedule_preview: "Wirksame Zeiten",
+      schedule_kind_instant: "Läuft zu einer Zeit",
+      schedule_kind_interval: "Betriebszeit",
+      binding_read_only: "Nur lesbar",
+      preview_nonexistent: "gibt es nicht am",
+      preview_nonexistent_tail: "dieser Eintrag läuft nicht",
+      preview_ambiguous: "kommt zweimal vor am",
+      preview_ambiguous_tail: "dieser Eintrag läuft einmal, um",
+      preview_normal: "läuft um"
+    }
+  };
+  var PRIORITY_SHAPES = { critical: "◆", warning: "▲", info: "●" };
+  function copy(language, key) {
+    const table2 = COPY5[language] || COPY5.en;
+    return table2[key] ?? COPY5.en[key] ?? key;
+  }
+  function element6(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== void 0 && text !== null) node.textContent = String(text);
+    return node;
+  }
+  function priorityOf(row) {
+    return migrateSeverity(row?.priority ?? row?.severity).priority;
+  }
+  var GltAlarmElement = class extends HTMLElement {
+    constructor() {
+      super();
+      this._props = {};
+    }
+    set props(value) {
+      this._props = value ?? {};
+      this.render();
+    }
+    get props() {
+      return this._props;
+    }
+    get language() {
+      return this._props.language === "de" ? "de" : "en";
+    }
+    connectedCallback() {
+      this.classList.add("glt-alm");
+      this.render();
+    }
+    render() {
+      this.textContent = "";
+    }
+  };
+  var GltAlarmList = class extends GltAlarmElement {
+    render() {
+      this.textContent = "";
+      const language = this.language;
+      const alarms = Array.isArray(this._props.alarms) ? this._props.alarms : [];
+      if (alarms.length === 0) {
+        this.append(element6("p", "glt-alm-empty", copy(language, "no_alarms")));
+        return;
+      }
+      if (this._props.targetsConfigured === false) {
+        this.append(element6("p", "glt-alm-meta", copy(language, "delivery_none")));
+      }
+      const list = element6("ul", "glt-alm-list");
+      const ordered = [...alarms].sort((a, b) => priorityRank(priorityOf(a)) - priorityRank(priorityOf(b)));
+      for (const alarm of ordered) list.append(this.row(alarm, language));
+      this.append(list);
+    }
+    row(alarm, language) {
+      const item = element6("li", "glt-alm-row");
+      item.setAttribute("data-alarm", String(alarm.id ?? ""));
+      const priority = priorityOf(alarm);
+      const head = element6("div", "glt-alm-head");
+      const shape = element6("span", "glt-alm-shape", PRIORITY_SHAPES[priority]);
+      shape.setAttribute("data-priority-shape", priority);
+      shape.setAttribute("aria-hidden", "true");
+      head.append(shape);
+      const label = element6("span", "glt-alm-priority", copy(language, `priority_${priority}`));
+      label.setAttribute("data-priority", priority);
+      head.append(label);
+      const suppression = alarm.suppression;
+      const stateKey = suppression ? "state_suppressed" : `state_${alarm.state || "active"}`;
+      const state = element6("span", "glt-alm-meta", copy(language, stateKey));
+      state.setAttribute("data-state", suppression ? "suppressed" : String(alarm.state || "active"));
+      head.append(state);
+      item.append(head);
+      item.append(element6("div", null, alarm.name ?? alarm.id ?? ""));
+      if (suppression) {
+        const reason = SUPPRESSION_REASONS.includes(suppression.reason) ? copy(language, `suppressed_${suppression.reason}`) : String(suppression.reason ?? "");
+        const parts2 = [reason];
+        if (suppression.by) parts2.push(`${copy(language, "suppressed_by")} ${suppression.by}`);
+        if (suppression.until) parts2.push(`${copy(language, "suppressed_until")} ${suppression.until}`);
+        const line = element6("div", "glt-alm-suppressed", parts2.join(" · "));
+        line.setAttribute("data-suppression", String(suppression.reason ?? ""));
+        item.append(line);
+      }
+      const delivery = alarm.delivery ?? alarm.last_delivery;
+      if (delivery && delivery.outcome && delivery.outcome !== "delivered") {
+        const failed = element6(
+          "div",
+          "glt-alm-failed",
+          `${copy(language, "delivery_failed")}: ${delivery.error ?? delivery.outcome}`
+        );
+        failed.setAttribute("data-delivery-failed", String(delivery.outcome));
+        item.append(failed);
+      }
+      return item;
+    }
+  };
+  var GltAlarmDetail = class extends GltAlarmElement {
+    render() {
+      this.textContent = "";
+      const language = this.language;
+      const alarm = this._props.alarm;
+      if (!alarm) {
+        this.append(element6("p", "glt-alm-empty", copy(language, "no_alarms")));
+        return;
+      }
+      this.append(element6("h3", null, alarm.name ?? alarm.id ?? ""));
+      const acknowledgement = alarm.acknowledgement;
+      if (acknowledgement) {
+        const line = element6("p", null, acknowledgement.comment ?? "");
+        line.setAttribute("data-ack-comment", "");
+        this.append(line);
+        this.append(element6(
+          "p",
+          "glt-alm-meta",
+          `${copy(language, "suppressed_by")} ${acknowledgement.by ?? ""} ${acknowledgement.at ?? ""}`
+        ));
+      }
+      const attempts = Array.isArray(alarm.delivery_attempts) ? alarm.delivery_attempts : [];
+      this.append(element6("h4", null, copy(language, "attempts_title")));
+      if (attempts.length === 0) {
+        this.append(element6("p", "glt-alm-meta", copy(language, "delivery_none")));
+      } else {
+        const list = element6("ul", "glt-alm-attempts");
+        for (const attempt of attempts) {
+          const row = element6("li", "glt-alm-meta", [
+            attempt.at,
+            attempt.service,
+            (attempt.target || []).join(", "),
+            attempt.outcome,
+            attempt.error
+          ].filter(Boolean).join(" · "));
+          row.setAttribute("data-attempt", String(attempt.outcome ?? ""));
+          list.append(row);
+        }
+        this.append(list);
+      }
+      const links = alarm.links ?? {};
+      const targets = Object.entries(links).filter(([, value]) => Boolean(value));
+      if (targets.length > 0) {
+        this.append(element6("h4", null, copy(language, "links_title")));
+        const list = element6("ul", "glt-alm-list");
+        for (const [kind, address] of targets) {
+          const anchor = element6("a", null, `${kind}: ${address}`);
+          anchor.setAttribute("data-link", kind);
+          anchor.href = `#${address}`;
+          list.append(element6("li", null)).append(anchor);
+        }
+        this.append(list);
+      }
+    }
+  };
+  var GltAlarmActions = class extends GltAlarmElement {
+    render() {
+      this.textContent = "";
+      const language = this.language;
+      const maximumDays = Number(this._props.shelvingMaximumDays ?? 7);
+      const maximumMinutes = Math.max(1, Math.round(maximumDays * 24 * 60));
+      const form = element6("div", "glt-alm-actions");
+      const comment = element6("label", null, copy(language, "comment"));
+      const commentInput = document.createElement("input");
+      commentInput.type = "text";
+      commentInput.setAttribute("data-ack-comment", "");
+      comment.append(commentInput);
+      form.append(comment);
+      const acknowledge = element6("button", null, copy(language, "acknowledge"));
+      acknowledge.type = "button";
+      acknowledge.setAttribute("data-acknowledge", "");
+      acknowledge.addEventListener("click", () => {
+        this.dispatchEvent(new CustomEvent("glt-acknowledge", {
+          bubbles: true,
+          detail: { alarmId: this._props.alarmId, comment: commentInput.value }
+        }));
+      });
+      form.append(acknowledge);
+      const minutes = element6("label", null, copy(language, "shelve_minutes"));
+      const minutesInput = document.createElement("input");
+      minutesInput.type = "number";
+      minutesInput.min = "1";
+      minutesInput.max = String(maximumMinutes);
+      minutesInput.value = "60";
+      minutesInput.setAttribute("data-shelve-minutes", "");
+      minutes.append(minutesInput);
+      form.append(minutes);
+      const refusal2 = element6("span", "glt-alm-meta", "");
+      refusal2.setAttribute("data-shelve-refusal", "");
+      refusal2.setAttribute("role", "status");
+      refusal2.setAttribute("aria-live", "polite");
+      const shelve = element6("button", null, copy(language, "shelve"));
+      shelve.type = "button";
+      shelve.setAttribute("data-shelve", "");
+      shelve.addEventListener("click", () => {
+        const requested = Number(minutesInput.value);
+        if (!Number.isFinite(requested) || requested < 1 || requested > maximumMinutes) {
+          refusal2.textContent = copy(language, "shelve_too_long");
+          return;
+        }
+        refusal2.textContent = "";
+        this.dispatchEvent(new CustomEvent("glt-shelve", {
+          bubbles: true,
+          detail: { alarmId: this._props.alarmId, minutes: requested }
+        }));
+      });
+      form.append(shelve);
+      form.append(refusal2);
+      this.append(form);
+    }
+  };
+  var GltAlarmSettings = class extends GltAlarmElement {
+    render() {
+      this.textContent = "";
+      const language = this.language;
+      const settings = Array.isArray(this._props.settings) ? this._props.settings : [];
+      this.append(element6("h3", null, copy(language, "settings_title")));
+      if (this._props.targetsConfigured === false) {
+        const line = element6("p", "glt-alm-meta", copy(language, "delivery_none"));
+        line.setAttribute("data-no-targets", "");
+        this.append(line);
+      }
+      const list = element6("ul", "glt-alm-list");
+      for (const setting of settings) {
+        const item = element6("li", "glt-alm-row");
+        item.setAttribute("data-setting", String(setting.key ?? ""));
+        item.append(element6("div", null, setting.label ?? setting.key ?? ""));
+        item.append(element6(
+          "div",
+          "glt-alm-meta",
+          `${setting.value} (${copy(language, "setting_default")}: ${setting.default})`
+        ));
+        item.append(element6("p", null, setting.why ?? ""));
+        list.append(item);
+      }
+      this.append(list);
+      const fixed = element6("p", "glt-alm-meta", this._props.vocabularyNote ?? "");
+      fixed.setAttribute("data-vocabulary-fixed", ALARM_PRIORITIES.join(","));
+      this.append(fixed);
+    }
+  };
+  var GltScheduleEditor = class extends GltAlarmElement {
+    render() {
+      this.textContent = "";
+      const language = this.language;
+      const entries = Array.isArray(this._props.schedules) ? this._props.schedules : [];
+      this.append(element6("h3", null, copy(language, "schedule_title")));
+      const list = element6("ul", "glt-alm-list");
+      for (const entry of entries) {
+        const item = element6("li", "glt-alm-row");
+        item.setAttribute("data-schedule", String(entry.id ?? ""));
+        item.append(element6("div", null, entry.name ?? entry.id ?? ""));
+        const kind = entry.kind === "interval" ? "interval" : "instant";
+        const kindLabel = element6("div", "glt-alm-meta", copy(language, `schedule_kind_${kind}`));
+        kindLabel.setAttribute("data-schedule-kind", kind);
+        item.append(kindLabel);
+        const binding = entry.binding;
+        if (binding) {
+          const line = element6("div", "glt-alm-meta", binding.entity_id ?? "");
+          line.setAttribute("data-binding", String(binding.kind ?? ""));
+          item.append(line);
+          if (binding.writable === false) {
+            const readOnly = element6(
+              "div",
+              "glt-alm-suppressed",
+              `${copy(language, "binding_read_only")}: ${binding.reason ?? ""}`
+            );
+            readOnly.setAttribute("data-binding-read-only", String(binding.reason ?? ""));
+            item.append(readOnly);
+          }
+        }
+        const failures = (entry.history || []).filter(
+          (row) => row.outcome && row.outcome !== "delivered"
+        );
+        for (const failure2 of failures) {
+          const line = element6(
+            "div",
+            "glt-alm-failed",
+            `${failure2.at ?? ""} ${failure2.service ?? ""}: ${failure2.error ?? failure2.outcome}`
+          );
+          line.setAttribute("data-execution-failed", String(failure2.outcome));
+          item.append(line);
+        }
+        list.append(item);
+      }
+      this.append(list);
+    }
+  };
+  var GltSchedulePreview = class extends GltAlarmElement {
+    render() {
+      this.textContent = "";
+      const language = this.language;
+      const entry = this._props.entry;
+      const zone = this._props.timezone;
+      const dates = Array.isArray(this._props.dates) ? this._props.dates : [];
+      this.append(element6("h3", null, copy(language, "schedule_preview")));
+      if (!entry || !zone) return;
+      const list = element6("ul", "glt-alm-preview");
+      for (const date of dates) {
+        const item = element6("li", null);
+        item.setAttribute("data-preview-date", date);
+        let resolution;
+        try {
+          resolution = this._props.resolutions?.[date] ?? resolveEntry(entry, date, zone, {
+            nonexistent: this._props.nonexistent ?? DEFAULT_NONEXISTENT_POLICY,
+            ambiguous: this._props.ambiguous ?? DEFAULT_AMBIGUOUS_POLICY
+          });
+        } catch {
+          item.textContent = `${date}: ?`;
+          list.append(item);
+          continue;
+        }
+        item.setAttribute("data-preview-status", resolution.status);
+        const time = entry.time ?? entry.from ?? "";
+        if (resolution.status === "nonexistent") {
+          item.textContent = `${time} ${copy(language, "preview_nonexistent")} ${date} — ${copy(language, "preview_nonexistent_tail")}`;
+        } else if (resolution.status === "ambiguous") {
+          item.textContent = `${time} ${copy(language, "preview_ambiguous")} ${date} — ${copy(language, "preview_ambiguous_tail")} ${resolution.instants[0] ?? ""}`;
+        } else {
+          item.textContent = `${date}: ${time} ${copy(language, "preview_normal")} ${resolution.instants[0] ?? ""}`;
+        }
+        list.append(item);
+      }
+      this.append(list);
+    }
+  };
+  if (typeof document !== "undefined" && !document.querySelector("style[data-glt-alarms]")) {
+    const style = document.createElement("style");
+    style.dataset.gltAlarms = "1";
+    style.textContent = STYLE6;
+    document.head?.append(style);
+  }
+  for (const priority of ALARM_PRIORITIES) {
+    if (!PRIORITY_SHAPES[priority]) {
+      throw new Error(`alarm priority ${priority} has no non-colour shape`);
+    }
+    for (const language of ["en", "de"]) {
+      if (!COPY5[language][`priority_${priority}`]) {
+        throw new Error(`alarm priority ${priority} has no ${language} label`);
+      }
+    }
+  }
+  for (const reason of SUPPRESSION_REASONS) {
+    for (const language of ["en", "de"]) {
+      if (!COPY5[language][`suppressed_${reason}`]) {
+        throw new Error(`suppression reason ${reason} has no ${language} wording`);
+      }
+    }
+  }
+  for (const [name, constructor] of [
+    ["glt-flow-card-alarm-list", GltAlarmList],
+    ["glt-flow-card-alarm-detail", GltAlarmDetail],
+    ["glt-flow-card-alarm-actions", GltAlarmActions],
+    ["glt-flow-card-alarm-settings", GltAlarmSettings],
+    ["glt-flow-card-schedule-editor", GltScheduleEditor],
+    ["glt-flow-card-schedule-preview", GltSchedulePreview]
   ]) {
     if (!customElements.get(name)) customElements.define(name, constructor);
   }

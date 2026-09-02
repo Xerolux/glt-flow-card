@@ -153,12 +153,25 @@ test("phase-6-alarms [expected-red:phase6-ui] the alarm and schedule surfaces sh
         },
       };
       return {
-        html: detail.innerHTML,
+        // Structure, not substring. Escaped text still *contains* "onerror="
+        // inside `innerHTML` -- as `&lt;img src=x onerror=...&gt;` -- so a
+        // substring search fails a correct implementation. What matters is
+        // whether the browser parsed it as markup: an element that exists, or
+        // an attribute that got attached.
         images: detail.querySelectorAll("img").length,
+        withHandlers: [...detail.querySelectorAll("*")]
+          .filter((node) => [...node.attributes].some((a) => a.name.startsWith("on")))
+          .length,
+        rendered: (detail.querySelector("[data-ack-comment]")?.textContent ?? ""),
       };
     });
-    if (injected.images > 0 || /onerror=/i.test(injected.html)) {
+    if (injected.images > 0 || injected.withHandlers > 0) {
       gaps.push("an acknowledgement comment reached the DOM as markup");
+    }
+    if (!injected.rendered.includes("Quittiert")) {
+      // The other half: escaping must not mean discarding. The operator's words
+      // still have to reach the person reading them.
+      gaps.push("the acknowledgement comment was dropped rather than escaped");
     }
   }
 

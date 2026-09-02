@@ -4,4 +4,5 @@ import "./project-semantics.js";
 import "./project-operations.js";
 import "./project-catalog.js";
 import "./project-designer.js";
+import "./project-alarms.js";
 import "./v1-addons.js";
