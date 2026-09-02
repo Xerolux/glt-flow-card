@@ -187,8 +187,9 @@ def lifecycle_effects(hass: HomeAssistant) -> Generator[LifecycleEffects]:
     original_track_time = integration.async_track_time_change
 
     def register_command(test_hass: HomeAssistant, command: Callable[..., Any]) -> None:
-        schema = getattr(command, "schema", {})
-        command_type = str(schema.get("type", getattr(command, "__name__", "unknown")))
+        command_type = str(
+            getattr(command, "_ws_command", None) or getattr(command, "__name__", "unknown")
+        )
         effects.websocket_commands.append(command_type)
         effects.registered_commands[command.__name__] = command
         original_register(test_hass, command)
