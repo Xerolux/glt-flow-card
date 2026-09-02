@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 2 execution in progress; plans 02-01 through 02-11 complete
-last_updated: "2026-09-02T00:00:00.000Z"
-last_activity: 2026-09-02 -- bounded plan check passed; plans 02-01..02-06 executed; 12 Phase-2 RED sentinels registered, policy matrix GREEN
+stopped_at: Phase 2 execution in progress; plans 02-01 through 02-12 complete
+last_updated: "2026-09-02T05:30:00.000Z"
+last_activity: 2026-09-02 -- plan 02-12 executed; the browser authority reducer, the authority state bar and the separated evidence sections are GREEN
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 30
-  completed_plans: 24
+  completed_plans: 25
   percent: 22
 ---
 
@@ -26,15 +26,20 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 02 (authoritative-policy-controls-collaboration) — EXECUTING
-Plan: 11 of 17 implemented (61 tasks planned)
-Status: every Phase-2 backend gate is GREEN; the browser authority UI remains
-Last activity: 2026-09-02 -- plans 02-01 through 02-11 committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+Plan: 12 of 17 implemented (61 tasks planned)
+Status: every backend gate and the browser authority surface are GREEN; the
+collaboration and configured-control UI remains
+Last activity: 2026-09-02 -- plans 02-01 through 02-12 committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
 
 Progress: [██░░░░░░░░] 22%
 
 ### Phase 2 sentinel state
 
-`npm run test:phase2` reports 9 implemented, 3 controlled RED, 0 broken. Every backend gate is green; only the browser sentinels remain.
+`npm run test:phase2` reports 10 implemented, 2 controlled RED, 0 broken. Every
+backend gate is green, as is the browser authority surface. The
+`phase2-authority-reducers` key still classifies as controlled RED because it
+runs `test/phase2-collaboration.test.mjs` alongside the authority suite, and
+that sentinel belongs to plan 02-13; the authority suite itself passes.
 
 | Sentinel | Owner plan | State |
 |---|---|---|
@@ -47,8 +52,8 @@ Progress: [██░░░░░░░░] 22%
 | phase2-configured-controls | 02-11 | implemented |
 | phase2-control-evidence | 02-11 | implemented |
 | phase2-migration-lifecycle | 02-14 | implemented |
-| phase2-authority-reducers | 02-12 | controlled RED |
-| phase2-ui-fixture-seed | 02-12 | controlled RED |
+| phase2-authority-reducers | 02-12 | controlled RED (blocked by 02-13's collaboration suite) |
+| phase2-ui-fixture-seed | 02-12 | implemented |
 | phase2-ui | 02-13 | controlled RED |
 
 ## Performance Metrics
@@ -165,6 +170,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-09-02T00:00:00.000Z
-Stopped at: Phase 2 execution; plans 02-01 through 02-11 complete and pushed
+Last session: 2026-09-02T05:30:00.000Z
+Stopped at: Phase 2 execution; plans 02-01 through 02-12 complete and pushed
 Resume file: .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md
