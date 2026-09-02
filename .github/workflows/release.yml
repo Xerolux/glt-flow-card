@@ -26,9 +26,10 @@ jobs:
           python-version: "3.13"
       - run: npm ci --ignore-scripts
       - run: npm run verify:provenance
-      - run: npm run verify:release
+      # `verify:release` consumes the stage, so it is created first.
       - run: npm run stage:hacs
       - run: node tools/validate-hacs-staging.mjs
+      - run: npm run verify:release
       - run: npm run test:e2e
       - run: npm run resolve:ha-minimum -- --max-candidates=12
       - run: npm run test:ha-artifacts

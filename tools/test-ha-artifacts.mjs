@@ -27,6 +27,14 @@ const STAGING_MANIFEST = path.join(STAGE_ROOT, "hacs-staging-manifest.json");
 const COMPONENT_ROOT = "custom_components/glt_flow_card";
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/u;
 
+/**
+ * The floor a lane run must clear.
+ *
+ * It is deliberately well below the current suite size: this catches a lane
+ * that collected almost nothing, not a lane that is one test out of date.
+ */
+const MINIMUM_LANE_TESTS = 120;
+
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
@@ -245,12 +253,38 @@ function workspaceMount(workspace) {
   return `type=bind,source=${workspace},target=/workspace`;
 }
 
+/**
+ * Read the pytest summary line and refuse anything but a full clean run.
+ *
+ * A lane that reports "no tests ran" exits 5, but one that collects a handful
+ * of tests because an import quietly failed exits 0 and looks like success.
+ * Requiring a floor on the passed count and zero skips turns both into
+ * failures, which is the whole point of running the suite on a second lane.
+ */
+function assertCompleteRun(output, lane) {
+  const summary = output.split("\n").reverse().find((line) => /\d+ (?:passed|failed|error)/u.test(line));
+  if (!summary) throw new Error(`lane ${lane.tag} produced no pytest summary`);
+  const passed = Number(/(\d+) passed/u.exec(summary)?.[1] ?? 0);
+  const skipped = Number(/(\d+) skipped/u.exec(summary)?.[1] ?? 0);
+  const deselected = Number(/(\d+) deselected/u.exec(summary)?.[1] ?? 0);
+  if (passed < MINIMUM_LANE_TESTS) {
+    throw new Error(
+      `lane ${lane.tag} ran only ${passed} tests; at least ${MINIMUM_LANE_TESTS} are expected. `
+      + "A collection error can pass silently, so a short run is a failure.",
+    );
+  }
+  if (skipped > 0 || deselected > 0) {
+    throw new Error(`lane ${lane.tag} skipped ${skipped} and deselected ${deselected} tests; the lane must run all of them`);
+  }
+  return { passed };
+}
+
 async function executePytest(lane, selectors) {
   const stage = await verifyStagedArtifacts();
   const workspace = await prepareWorkspace(stage);
   try {
     const image = await prepareHarnessImage(lane);
-    docker([
+    const output = docker([
       "run", "--rm", "--network", "none", "--platform", `${lane.os}/${lane.architecture}`,
       "--mount", workspaceMount(workspace),
       "--workdir", "/workspace",
@@ -258,13 +292,19 @@ async function executePytest(lane, selectors) {
       "--env", `GLT_ZIP_SHA256=${stage.zip.sha256}`,
       image,
       "python", "-m", "pytest", ...selectors,
-      "-q", "-s", "--disable-warnings", "--maxfail=1",
-    ]);
+      // `no:cacheprovider`: the container runs as root and the workspace is a
+      // bind mount, so a written .pytest_cache is root-owned on the host and
+      // the cleanup below fails with EACCES. Nothing needs the cache here.
+      "-q", "-s", "--disable-warnings", "--maxfail=1", "-p", "no:cacheprovider",
+    ], { capture: true });
+    process.stdout.write(`${output}\n`);
+    const { passed } = assertCompleteRun(output, lane);
     return {
       architecture: lane.architecture,
       card_sha256: stage.card.sha256,
       digest: lane.digest,
       passed: true,
+      tests_passed: passed,
       staging_manifest_sha256: stage.manifest_sha256,
       tag: lane.tag,
       zip_sha256: stage.zip.sha256,

@@ -39,12 +39,14 @@ jobs:
         with:
           python-version: "3.13"
       - run: npm ci --ignore-scripts
-      - name: Verify deterministic authored and generated release outputs
-        run: npm run verify:release
+      # Stage first: `verify:release` consumes the stage to prove the packages
+      # that will ship are the bytes it just verified. It never creates one.
       - name: Stage local release packages
         run: |
           npm run stage:hacs
           node tools/validate-hacs-staging.mjs
+      - name: Verify deterministic authored and generated release outputs
+        run: npm run verify:release
       - name: JavaScript tests
         run: npm test
       - name: Clean tracked-export gate
