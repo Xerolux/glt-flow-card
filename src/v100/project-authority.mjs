@@ -632,6 +632,22 @@ export function createProjectAuthorityClient(options = {}) {
       }
     },
 
+    /**
+     * Ask the server for a bounded preview of a candidate against the head.
+     *
+     * The browser sends the candidate and the exact revision it believes it is
+     * based on, and the server returns the operations and their dependency
+     * closures. No diff is computed here: a client-side diff is a client-side
+     * opinion about whose work survives.
+     */
+    async mergePreview(candidate, expectedRevision) {
+      return call("glt_flow_card/projects/preview", {
+        lease_token: bearer,
+        expected_revision: expectedRevision,
+        candidate,
+      });
+    },
+
     /** Read the membership inventory the server is willing to disclose. */
     async accessInventory() {
       return call("glt_flow_card/access/get");
