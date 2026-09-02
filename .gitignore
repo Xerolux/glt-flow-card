@@ -7,3 +7,4 @@ build/
 .planning/tmp/
 __pycache__/
 *.py[cod]
+.venv/

@@ -9,6 +9,7 @@ import {
   migrateProjectDocument,
 } from "../src/v100/project-migrations.mjs";
 import { ensureV1, migrateProject } from "../src/v100/core.mjs";
+import { pythonArgs, resolvePython } from "../tools/python-launcher.mjs";
 
 const legacyProject = () => ({
   type: "custom:glt-flow-card",
@@ -90,8 +91,8 @@ test("Python migration result is byte-equivalent to JavaScript", () => {
     result: migrateProjectDocument(request.document, { dryRun: request.options.dry_run }),
   })).join("\n") + "\n";
   const python = spawnSync(
-    "py",
-    ["-3.13", "-m", "custom_components.glt_flow_card.project_migrations", "--json-lines"],
+    resolvePython().command,
+    pythonArgs("-m", "custom_components.glt_flow_card.project_migrations", "--json-lines"),
     { input: requests.map((request) => JSON.stringify(request)).join("\n") + "\n", encoding: "utf8" },
   );
 

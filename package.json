@@ -24,7 +24,7 @@
     "test:migrations": "node --test test/v100-migrations.test.mjs",
     "test:diff": "node --test test/v100-diff.test.mjs",
     "test:bundle": "node --test test/v100-bundle.test.mjs",
-    "test:python": "py -3.13 -m pytest tests/components/glt_flow_card -q",
+    "test:python": "node tools/python-launcher.mjs -m pytest tests/components/glt_flow_card -q",
     "test:e2e": "node tools/run-exact-dist-playwright.mjs",
     "test:e2e:red": "node tools/assert-red.mjs --expected=missing-project-safety-ui -- node tools/run-exact-dist-playwright.mjs --grep=project-safety",
     "stage:hacs": "node tools/stage-hacs-packages.mjs",
