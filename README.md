@@ -273,6 +273,55 @@ cannot disagree, and every state carries a shape and a word as well as a colour.
 1. Copy `dist/glt-flow-card.js` to `config/www/glt-flow-card.js`.
 2. Add `/local/glt-flow-card.js` as a **JavaScript module** under Dashboard resources.
 
+### Runtime operations and drill-down
+
+Phase 4 turns the model into something an operator can work in.
+
+**The object panel is composed on the server.** Every profiled object opens the
+same panel — identity, state, values, runtime counters, quality, alarms,
+controls and trend — without a hand-designed popup per equipment type. The
+control list arrives already filtered: a control you may not execute is
+*absent*, not greyed out, because a disabled control still tells you the control
+exists. The panel carries no domain, service or entity target at all, so nothing
+in the browser holds something it could dispatch directly.
+
+**Operating hours and starts** come from profile-declared datapoints, which is
+why they appear without any history query.
+
+**Trends are not available yet.** The trend region renders a declared
+"unavailable" state. Honest Recorder-backed history — with coverage, gaps and
+provenance — is Phase 7's, and a region that says it has nothing beats one that
+invents content.
+
+**Four command outcomes, kept apart.** *Accepted* means the server wrote it
+down. *Sent* means Home Assistant was asked. Only *Confirmed* means a read-back
+showed the plant actually moved, and it is the only outcome shown as success.
+*No confirmation*, *Effect unknown* and *Failed after dispatch* point you at the
+current state and the trusted audit rather than at a retry button: repairing
+forward is a new, separately authorized command, and a retry beside "effect
+unknown" invites running it twice on plant that may already have moved.
+
+**Deep links and breadcrumbs.** The address in the URL is the whole view state —
+node, time window and selected alarm — so a link reproduces exactly what you were
+looking at. Every link is re-authorized when it is opened, because a URL gets
+pasted into a chat and opened by somebody else. A link you may not follow and one
+that does not exist give the same answer.
+
+**Counts never leak.** A roll-up covers only projects you are a member of,
+totals included, and a count of zero is shown as no count rather than a "0" —
+otherwise an empty view you are allowed to see would be distinguishable from one
+you are not.
+
+**Staleness is visible, permanently.** The view holds the sequence it expects.
+On a gap, a reconnect or a revocation it says it is not live, keeps showing the
+last values it actually observed with their age, and stops accepting input. It
+never fills a gap by interpolating, and it never needs a page reload to recover.
+
+**The legacy operate path is gone.** The old browser-side permission check —
+which granted control to everyone whenever no permission list was configured —
+and the tap action that called a Home Assistant service directly are both
+retired and proven inert.
+
 ## Drag & Drop Designer
 
 The visual editor is now a complete plant designer instead of a form for global options only. Open the card editor in Home Assistant and build the plant directly on the canvas:

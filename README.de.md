@@ -287,6 +287,57 @@ qualifizieren den Zustand, statt ihn zu ersetzen, sodass ein Bediener „In Betr
 Projektionen desselben aufgelösten Werts und können sich daher nicht
 widersprechen, und jeder Zustand trägt Form und Wort zusätzlich zur Farbe.
 
+### Laufzeitbetrieb und Drill-down
+
+Phase 4 macht aus dem Modell etwas, in dem Betreiber arbeiten können.
+
+**Das Objektpanel wird auf dem Server zusammengestellt.** Jedes profilierte
+Objekt öffnet dasselbe Panel — Identität, Zustand, Werte, Betriebszähler,
+Qualität, Alarme, Bedienung und Trend — ohne handgebautes Popup je Anlagentyp.
+Die Bedienliste kommt bereits gefiltert an: eine Bedienung, die Sie nicht
+ausführen dürfen, **fehlt**, sie ist nicht ausgegraut, denn ein deaktivierter
+Schalter verrät weiterhin, dass es ihn gibt. Das Panel enthält weder Domain noch
+Service noch Ziel-Entität, also hält der Browser nichts, was er selbst absenden
+könnte.
+
+**Betriebsstunden und Starts** stammen aus profil-deklarierten Datenpunkten und
+erscheinen deshalb ohne jede Historienabfrage.
+
+**Trends gibt es noch nicht.** Der Trendbereich zeigt einen deklarierten
+"nicht verfügbar"-Zustand. Ehrliche Recorder-Historie — mit Abdeckung, Lücken
+und Herkunft — gehört zu Phase 7, und ein Bereich, der sagt, dass er nichts hat,
+ist besser als einer, der sich etwas ausdenkt.
+
+**Vier getrennte Bedienergebnisse.** *Angenommen* heißt, der Server hat es
+notiert. *Gesendet* heißt, Home Assistant wurde gefragt. Nur *Bestätigt* heißt,
+eine Rückmeldung hat gezeigt, dass sich die Anlage tatsächlich bewegt hat — und
+nur das wird als Erfolg dargestellt. *Keine Bestätigung*, *Wirkung unbekannt*
+und *Nach Absendung fehlgeschlagen* verweisen auf den aktuellen Zustand und das
+vertrauenswürdige Protokoll statt auf einen Wiederholen-Knopf: Nachbessern ist
+ein neuer, separat autorisierter Befehl.
+
+**Deep-Links und Brotkrumen.** Die Adresse in der URL ist der gesamte
+Ansichtszustand — Knoten, Zeitfenster und ausgewählter Alarm. Jeder Link wird
+beim Öffnen neu autorisiert, denn eine URL landet in einem Chat und wird von
+jemand anderem geöffnet. Ein Link, dem Sie nicht folgen dürfen, und einer, der
+nicht existiert, antworten gleich.
+
+**Zählerstände verraten nichts.** Eine Aufsummierung umfasst nur Projekte, in
+denen Sie Mitglied sind, Gesamtwerte eingeschlossen, und eine Null wird gar
+nicht angezeigt — sonst wäre eine leere Ansicht, die Sie sehen dürfen, von einer
+unterscheidbar, die Sie nicht sehen dürfen.
+
+**Veraltete Daten sind dauerhaft sichtbar markiert.** Die Ansicht kennt die
+Sequenz, die sie erwartet. Bei einer Lücke, einer Neuverbindung oder einem
+Entzug meldet sie, dass sie nicht live ist, zeigt die zuletzt tatsächlich
+beobachteten Werte mit ihrem Alter weiter und nimmt keine Eingaben mehr an. Sie
+interpoliert nie und braucht zum Wiederherstellen kein Neuladen der Seite.
+
+**Der alte Bedienpfad ist entfernt.** Die frühere browserseitige
+Berechtigungsprüfung — die jedem die Bedienung erlaubte, sobald gar keine
+Berechtigungsliste konfiguriert war — und die Tap-Aktion, die direkt einen
+Home-Assistant-Service aufrief, sind stillgelegt und nachweislich wirkungslos.
+
 ### HACS
 
 1. HACS → Drei-Punkte-Menü → **Benutzerdefinierte Repositories**.

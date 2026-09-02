@@ -51,7 +51,11 @@ class _ConnectionBudget:
 
     taken: list[float] = field(default_factory=list)
     in_flight: int = 0
-    last_at: float = 0.0
+    #: None rather than 0.0: a monotonic clock legitimately reads 0.0, and
+    #: `if budget.last_at` would then short-circuit and skip the throttle
+    #: entirely. Rare in production, and exactly the kind of latent bug that
+    #: only shows up once something else changes the clock's origin.
+    last_at: float | None = None
 
 
 @dataclass
@@ -72,7 +76,7 @@ class ViewStreamService:
         now = self.monotonic()
         if budget.in_flight >= MAX_SNAPSHOTS_IN_FLIGHT:
             raise SnapshotRefused()
-        if budget.last_at and (now - budget.last_at) < MIN_SNAPSHOT_INTERVAL_SECONDS:
+        if budget.last_at is not None and (now - budget.last_at) < MIN_SNAPSHOT_INTERVAL_SECONDS:
             raise SnapshotRefused()
         budget.taken = [at for at in budget.taken if now - at < SNAPSHOT_WINDOW_SECONDS]
         if len(budget.taken) >= SNAPSHOT_BURST:

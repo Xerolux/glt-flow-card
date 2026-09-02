@@ -12,18 +12,25 @@ passed at the current head.
 
 ## Requirement coverage
 
-| Requirement | Clause | Evidence | Status |
-|---|---|---|---|
-| OPS-02 | A profile-driven object panel opens for every supported equipment type without a hand-designed popup | `py -3.13 -m pytest tests/components/glt_flow_card/test_panels.py -q -x` — one composed model per profile in the corpus, asserted region-by-region | planned |
-| OPS-02 | Standard values, alarms, hours/starts and quality/freshness appear | `py -3.13 -m pytest tests/components/glt_flow_card/test_panels.py -q -x` | planned |
-| OPS-02 | Only permitted controls appear | `py -3.13 -m pytest tests/components/glt_flow_card/test_panels.py tests/components/glt_flow_card/test_panel_enumeration.py -q -x` — seven principals, absence asserted not disablement | planned |
-| OPS-02 | Accepted, readback-confirmed, timed-out and failed are separate outcomes | `node --test test/command-outcome.test.mjs` | planned |
-| OPS-02 | Displayed target and result match the authoritative audit record | `node tools/run-exact-dist-playwright.mjs --grep=phase-4-outcome` | planned |
-| NAV-01 | Portfolio → site → plant → subsystem → equipment → datapoint → alarm → trend navigation | `node --test test/navigation.test.mjs` and `py -3.13 -m pytest tests/components/glt_flow_card/test_navigation.py -q -x` | planned |
-| NAV-01 | Permission-filtered links and breadcrumbs | `py -3.13 -m pytest tests/components/glt_flow_card/test_navigation.py -q -x` | planned |
-| NAV-01 | Breadcrumbs preserve time and alarm context | `node --test test/navigation.test.mjs` — round-trip corpus | planned |
-| NAV-01 | Browser history and deep links | `node tools/run-exact-dist-playwright.mjs --grep=phase-4-navigation` | planned |
-| NAV-01 | No unauthorized aggregate count leaks | `py -3.13 -m pytest tests/components/glt_flow_card/test_navigation_counts.py -q -x` | planned |
+The gate parses this table. Six columns, and the threat cell carries every
+threat the row's command proves, so coverage can be checked against the register
+without the two documents having to word anything identically.
+
+| Requirement | Threats | What is proven | Kind | Command | Status |
+|---|---|---|---|---|---|
+| OPS-02 | T4-01 | The server composes the panel; a forbidden control is absent, not disabled | Companion policy | `py -3.13 -m pytest tests/components/glt_flow_card/test_panels.py -q -x` | ✅ verified |
+| OPS-02 | T4-02 | No panel leaks an object, alarm or dispatch target across the project boundary | Companion policy | `py -3.13 -m pytest tests/components/glt_flow_card/test_panel_enumeration.py -q -x` | ✅ verified |
+| NAV-01 | T4-03, T4-05 | Every level resolves, every denial is opaque, every address is bounded before the walk | Companion policy | `py -3.13 -m pytest tests/components/glt_flow_card/test_navigation.py -q -x` | ✅ verified |
+| NAV-01 | T4-04 | Roll-ups are summed after the project filter, and an authorized zero is absent | Companion policy | `py -3.13 -m pytest tests/components/glt_flow_card/test_navigation_counts.py -q -x` | ✅ verified |
+| NAV-01 | T4-06 | The address is the state; back re-resolves rather than replaying a cached view | Browser reducer | `node --test test/navigation.test.mjs` | ✅ verified |
+| OPS-02 | T4-07 | All nine result states render distinctly; only readback_confirmed is success; no retry | Browser reducer | `node --test test/command-outcome.test.mjs` | ✅ verified |
+| OPS-02 | T4-08 | The displayed target and result match the authoritative audit record | Exact artifact | `node tools/run-exact-dist-playwright.mjs --grep=phase-4-outcome` | ✅ verified |
+| OPS-02 | T4-09 | A gap marks the view stale in one transition and nothing is interpolated | Dual-runtime stream | `node --test test/view-resync.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_view_stream.py -q -x` | ✅ verified |
+| OPS-02 | T4-10 | Snapshot concurrency and resync rate are bounded, and exceeding them answers rate_limited | Companion policy | `py -3.13 -m pytest tests/components/glt_flow_card/test_view_stream.py -q -x` | ✅ verified |
+| OPS-02 | T4-11 | No tap action reaches a service call and no dialog stands in for authorization | Exact artifact | `node tools/run-exact-dist-playwright.mjs --grep=phase-4-legacy-retired` | ✅ verified |
+| OPS-02 | T4-12 | Unload leaves no view budget, subscription or in-flight resync behind | Lifecycle | `py -3.13 -m pytest tests/components/glt_flow_card/test_phase4_lifecycle.py -q -x` | ✅ verified |
+| NAV-01 | T4-13 | The workflow is usable by keyboard in both languages across four layouts | Exact artifact | `node tools/run-exact-dist-playwright.mjs --grep=phase-4-ui` | ✅ verified |
+| OPS-02 | T4-14 | Authored source, generated card, stage, lanes and release evidence agree | Release | `npm run test:phase4:release` | ⏳ planned |
 
 ## Success-criterion coverage
 

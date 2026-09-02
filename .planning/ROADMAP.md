@@ -143,6 +143,25 @@ Plans:
 
 **Known defects closed**: Browser-invented permissions/state, optimistic service success, direct privileged fallbacks, unauthorized aggregate leakage, and prototype-load behavior that token tests never execute.
 **Plans**: 17 plans across 13 dependency-ordered waves
+
+Plans:
+- [ ] 04-01-PLAN.md — Stand up the Phase-4 sentinels, operations corpus and effect ledger.
+- [ ] 04-02-PLAN.md — Specify the panel composition, enumeration and view-stream RED contracts.
+- [ ] 04-03-PLAN.md — Specify the address resolution and aggregate-count RED contracts.
+- [ ] 04-04-PLAN.md — Specify the panel, navigation, outcome, resync and exact-dist UI RED contracts.
+- [ ] 04-05-PLAN.md — Compose the profile-driven object panel on the server.
+- [ ] 04-06-PLAN.md — Implement the sequenced, bounded view stream.
+- [ ] 04-07-PLAN.md — Implement bounded, re-authorized address resolution.
+- [ ] 04-08-PLAN.md — Compute aggregate counts over the authorized scope only.
+- [ ] 04-09-PLAN.md — Make the address the whole navigation state.
+- [ ] 04-10-PLAN.md — Render the server-composed panel without adding browser authority.
+- [ ] 04-11-PLAN.md — Present the nine control states as separated operator outcomes.
+- [ ] 04-12-PLAN.md — Detect sequence gaps honestly and resync without stale-as-live.
+- [ ] 04-13-PLAN.md — Ship the operations surfaces and retire the legacy operate path.
+- [ ] 04-14-PLAN.md — Close the Phase-4 lifecycle and packaging obligations.
+- [ ] 04-15-PLAN.md — Close the exact-dist accessibility and localization matrix.
+- [ ] 04-16-PLAN.md — Document the Phase-4 contract in English and German.
+- [ ] 04-17-PLAN.md — Build the Phase-4 gate and close the phase honestly.
 **UI hint**: yes
 
 ### Phase 5: CAD Engineering & Extension Platform
