@@ -113,6 +113,7 @@ ERROR_CODES = (
     "authority_stale",
     "lease_required",
     "lease_expired",
+    "lease_held",
     "revision_conflict",
     "invalid_input",
     "effect_unknown",
@@ -134,6 +135,7 @@ class RoutePolicy:
     requires_lease: bool
     requires_revision: bool
     state: str
+    any_of: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         assert self.scope in {"component", "project"}, self.route
@@ -155,6 +157,7 @@ def _route(
     lease: bool = False,
     revision: bool = False,
     state: str = "active",
+    any_of: tuple[str, ...] = (),
 ) -> RoutePolicy:
     return RoutePolicy(
         route=route,
@@ -165,6 +168,7 @@ def _route(
         requires_lease=lease,
         requires_revision=revision,
         state=state,
+        any_of=any_of,
     )
 
 
@@ -185,6 +189,14 @@ COMMAND_POLICY_CONTRACT: tuple[RoutePolicy, ...] = (
     # Legacy user-only locks are replaced by connection-bound leases.
     _route("glt_flow_card/projects/lock", None, state="retired"),
     _route("glt_flow_card/projects/unlock", None, state="retired"),
+    # -- leases -----------------------------------------------------------
+    _route("glt_flow_card/leases/acquire", "lease.engineering",
+           any_of=("lease.engineering", "lease.administration")),
+    _route("glt_flow_card/leases/renew", "lease.engineering",
+           any_of=("lease.engineering", "lease.administration")),
+    _route("glt_flow_card/leases/release", "lease.engineering",
+           any_of=("lease.engineering", "lease.administration")),
+    _route("glt_flow_card/leases/status", "project.read"),
     # -- templates --------------------------------------------------------
     _route("glt_flow_card/templates/list", "template.read", scope="component",
            enumeration="filter"),
@@ -255,6 +267,9 @@ def expect_allowed(principal_key: str, policy: RoutePolicy) -> bool:
         return False
     if policy.enumeration == "filter":
         return True
+    # `any_of` governs *admission* to the endpoint; the route then makes the
+    # precise per-purpose decision itself. The probe always sends the route's
+    # primary purpose, so the expectation uses the primary capability.
     if policy.capability is None:
         return False
     return policy.capability in capabilities_for(principal_key)

@@ -23,14 +23,18 @@ pytestmark = [
 
 #: Routes that mutate shared project state. None of them may succeed without a
 #: connection-bound lease, and none of them may leave a trace when refused.
+FORGED_LEASE = "forged-bearer-that-was-never-issued"
+
 MUTATION_REQUESTS: tuple[tuple[str, dict[str, Any]], ...] = (
     (
         "glt_flow_card/projects/preview",
-        {"project_id": "plant-a", "expected_revision": 0, "candidate": {}},
+        {
+            "lease_token": FORGED_LEASE,"project_id": "plant-a", "expected_revision": 0, "candidate": {}},
     ),
     (
         "glt_flow_card/projects/apply",
         {
+            "lease_token": FORGED_LEASE,
             "project_id": "plant-a",
             "preview_id": "any",
             "expected_revision": 0,
@@ -40,13 +44,14 @@ MUTATION_REQUESTS: tuple[tuple[str, dict[str, Any]], ...] = (
     (
         "glt_flow_card/projects/rollback",
         {
+            "lease_token": FORGED_LEASE,
             "project_id": "plant-a",
             "snapshot_id": "sha256:" + "0" * 64,
             "expected_revision": 0,
             "confirmation": "ROLLBACK plant-a",
         },
     ),
-    ("glt_flow_card/projects/delete", {"project_id": "plant-a"}),
+    ("glt_flow_card/projects/delete", {"project_id": "plant-a", "lease_token": FORGED_LEASE}),
 )
 
 
@@ -60,7 +65,7 @@ async def test_shared_mutations_are_refused_without_lease_evidence(
     config_entry: MockConfigEntry,
     phase2_users,
 ) -> None:
-    """A capable engineer still cannot write without a lease, and nothing changes."""
+    """A capable engineer still cannot write with a forged bearer, and nothing changes."""
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
 
@@ -75,7 +80,7 @@ async def test_shared_mutations_are_refused_without_lease_evidence(
     for route, payload in MUTATION_REQUESTS:
         response = await connection.command({"type": route, **payload})
         assert response["success"] is False, route
-        assert response["error"]["code"] == "lease_required", route
+        assert response["error"]["code"] == "lease_expired", route
 
     assert manager.project_repository.list_heads() == before
     await phase2_users.async_close()
@@ -100,9 +105,10 @@ async def test_compatibility_save_is_refused_without_lease_evidence(
         "project": {"id": "plant-a", "config": project()},
         "expected_revision": 0,
         "autosave": False,
+        "lease_token": FORGED_LEASE,
     })
     assert saved["success"] is False
-    assert saved["error"]["code"] == "lease_required"
+    assert saved["error"]["code"] == "lease_expired"
 
     manager = hass.data["glt_flow_card"]["manager"]
     assert manager.project_repository.get_head("plant-a") is None

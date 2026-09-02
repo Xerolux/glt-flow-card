@@ -186,7 +186,8 @@ async def test_expected_red_phase2_policy_matrix(
                 expected = next(e for e in COMMAND_POLICY_CONTRACT if e.route == route)
                 actual = manifest[route]
                 for field in ("scope", "capability", "enumeration", "state",
-                              "requires_lease", "requires_revision", "project_field"):
+                              "requires_lease", "requires_revision", "project_field",
+                              "any_of"):
                     if getattr(actual, field, None) != getattr(expected, field):
                         gaps.append(
                             f"{route}.{field} is {getattr(actual, field, None)!r}, "

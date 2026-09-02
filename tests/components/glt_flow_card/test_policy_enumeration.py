@@ -34,28 +34,41 @@ MISSING_PROJECT_ID = "policy-matrix-does-not-exist"
 #: rather than being rejected by voluptuous before authorization runs.
 ROUTE_PAYLOADS: dict[str, dict[str, Any]] = {
     "glt_flow_card/projects/get": {"project_id": PROJECT_ID},
+    "glt_flow_card/leases/acquire": {"project_id": PROJECT_ID, "purpose": "engineering"},
+    "glt_flow_card/leases/renew": {
+        "project_id": PROJECT_ID, "lease_token": "probe", "purpose": "engineering",
+    },
+    "glt_flow_card/leases/release": {
+        "project_id": PROJECT_ID, "lease_token": "probe", "purpose": "engineering",
+    },
+    "glt_flow_card/leases/status": {"project_id": PROJECT_ID},
     "glt_flow_card/projects/save": {
+        "lease_token": "probe",
         "project": {"id": PROJECT_ID, "config": {}},
         "expected_revision": 0,
     },
     "glt_flow_card/projects/preview": {
+        "lease_token": "probe",
         "project_id": PROJECT_ID,
         "expected_revision": 0,
         "candidate": {},
     },
     "glt_flow_card/projects/apply": {
+        "lease_token": "probe",
         "project_id": PROJECT_ID,
         "preview_id": "probe",
         "expected_revision": 0,
         "selected_ids": [],
     },
     "glt_flow_card/projects/rollback": {
+        "lease_token": "probe",
         "project_id": PROJECT_ID,
         "snapshot_id": "sha256:" + "0" * 64,
         "expected_revision": 0,
         "confirmation": f"ROLLBACK {PROJECT_ID}",
     },
-    "glt_flow_card/projects/delete": {"project_id": PROJECT_ID},
+    "glt_flow_card/projects/delete": {
+        "lease_token": "probe","project_id": PROJECT_ID},
     "glt_flow_card/projects/lock": {"project_id": PROJECT_ID},
     "glt_flow_card/projects/unlock": {"project_id": PROJECT_ID},
     "glt_flow_card/templates/save": {"template": {"id": "probe"}},

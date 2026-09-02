@@ -106,6 +106,7 @@ ERROR_CODES: tuple[str, ...] = (
     "authority_stale",
     "lease_required",
     "lease_expired",
+    "lease_held",
     "revision_conflict",
     "invalid_input",
     "effect_unknown",
@@ -143,6 +144,11 @@ class RoutePolicy:
     requires_revision: bool
     state: str
     rate_class: str = "default"
+    #: When set, holding *any* of these capabilities admits the request. The
+    #: route then does the precise per-purpose check itself. A lease route needs
+    #: this because engineering and membership recovery are different
+    #: capabilities reaching the same endpoint.
+    any_of: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.scope not in {"component", "project"}:
@@ -157,6 +163,9 @@ class RoutePolicy:
             raise ValueError(f"{self.route}: a project-scoped route needs a project field")
         if self.requires_lease and not self.requires_revision:
             raise ValueError(f"{self.route}: a lease-guarded route must also be revisioned")
+        for capability in self.any_of:
+            if capability not in CAPABILITIES:
+                raise ValueError(f"{self.route}: unknown capability {capability!r}")
 
 
 def _route(
@@ -170,6 +179,7 @@ def _route(
     revision: bool = False,
     state: str = "active",
     rate_class: str = "default",
+    any_of: tuple[str, ...] = (),
 ) -> RoutePolicy:
     return RoutePolicy(
         route=route,
@@ -181,6 +191,7 @@ def _route(
         requires_revision=revision,
         state=state,
         rate_class=rate_class,
+        any_of=any_of,
     )
 
 
@@ -202,6 +213,14 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     # Legacy user-only locks are replaced by connection-bound leases (02-08).
     _route("glt_flow_card/projects/lock", None, state="retired"),
     _route("glt_flow_card/projects/unlock", None, state="retired"),
+    # -- leases (02-08) ---------------------------------------------------
+    _route("glt_flow_card/leases/acquire", "lease.engineering", rate_class="lease",
+           any_of=("lease.engineering", "lease.administration")),
+    _route("glt_flow_card/leases/renew", "lease.engineering", rate_class="lease",
+           any_of=("lease.engineering", "lease.administration")),
+    _route("glt_flow_card/leases/release", "lease.engineering", rate_class="lease",
+           any_of=("lease.engineering", "lease.administration")),
+    _route("glt_flow_card/leases/status", "project.read"),
     # -- templates --------------------------------------------------------
     _route("glt_flow_card/templates/list", "template.read", scope="component",
            enumeration="filter"),
@@ -361,11 +380,12 @@ class PolicyCoordinator:
         # A collection is protected by filtering its rows, not by refusing the
         # call: refusing would itself tell an unauthorized caller that rows
         # exist. Every filtered route returns an empty result instead.
-        if (
-            policy.enumeration != "filter"
-            and policy.capability is not None
-            and policy.capability not in capabilities
-        ):
+        admitted = (
+            bool(capabilities & set(policy.any_of))
+            if policy.any_of
+            else policy.capability is None or policy.capability in capabilities
+        )
+        if policy.enumeration != "filter" and not admitted:
             raise PolicyDenied("not_found_or_denied")
 
         return Decision(

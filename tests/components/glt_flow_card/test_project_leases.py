@@ -260,3 +260,132 @@ async def test_expected_red_phase2_leases(
         for gap in gaps:
             print(f"  lease gap: {gap}")
     assert not gaps, "connection-bound engineering leases are unavailable"
+
+
+async def test_lease_lifecycle_over_the_websocket_boundary(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    lifecycle_effects: LifecycleEffects,
+    phase2_users,
+) -> None:
+    """Acquire, renew and release work for the roles that may hold a lease."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    runtime = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id]
+
+    for key in ("viewer", "operator", "engineer", "engineer_two", "admin"):
+        principal = phase2_users.principal(key)
+        await runtime.access.async_assign(
+            project_id=PROJECT_ID, user_id=principal.user_id, role=principal.project_role
+        )
+
+    engineer = await phase2_users.async_connect("engineer")
+    acquired = await engineer.command({
+        "type": "glt_flow_card/leases/acquire",
+        "project_id": PROJECT_ID,
+        "ttl_seconds": 300,
+    })
+    assert acquired["success"] is True
+    first_token = acquired["result"]["lease_token"]
+
+    # A second engineer loses, and learns nothing about the holder.
+    other = await phase2_users.async_connect("engineer_two")
+    contended = await other.command({
+        "type": "glt_flow_card/leases/acquire",
+        "project_id": PROJECT_ID,
+        "ttl_seconds": 300,
+    })
+    assert contended["success"] is False
+    assert contended["error"]["code"] == "lease_held"
+    assert first_token not in json.dumps(contended)
+    for field in FORBIDDEN_DENIAL_FIELDS:
+        assert field not in json.dumps(contended)
+
+    # Reads stay concurrent while one session holds the lease.
+    status = await other.command({
+        "type": "glt_flow_card/leases/status",
+        "project_id": PROJECT_ID,
+    })
+    assert status["success"] is True
+    assert status["result"]["held"] is True
+    assert "owner" not in status["result"]
+
+    renewed = await engineer.command({
+        "type": "glt_flow_card/leases/renew",
+        "project_id": PROJECT_ID,
+        "lease_token": first_token,
+        "ttl_seconds": 300,
+    })
+    assert renewed["success"] is True
+    assert renewed["result"]["lease_token"] != first_token
+
+    stale = await engineer.command({
+        "type": "glt_flow_card/leases/renew",
+        "project_id": PROJECT_ID,
+        "lease_token": first_token,
+        "ttl_seconds": 300,
+    })
+    assert stale["success"] is False
+    assert stale["error"]["code"] == "lease_expired"
+
+    released = await engineer.command({
+        "type": "glt_flow_card/leases/release",
+        "project_id": PROJECT_ID,
+        "lease_token": renewed["result"]["lease_token"],
+    })
+    assert released["success"] is True
+    assert runtime.leases.active_count() == 0
+
+    emit_effects(lifecycle_effects, leases_after=runtime.leases.active_count())
+    await phase2_users.async_close()
+
+
+async def test_only_capable_principals_can_hold_a_lease(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    phase2_users,
+) -> None:
+    """Viewer, Operator and an unassigned user hold no lease at all.
+
+    An unassigned Home Assistant administrator may hold only the membership
+    purpose, which exists so a project cannot be stranded without an admin.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    runtime = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id]
+
+    for key in ("viewer", "operator"):
+        principal = phase2_users.principal(key)
+        await runtime.access.async_assign(
+            project_id=PROJECT_ID, user_id=principal.user_id, role=principal.project_role
+        )
+
+    for key in ("viewer", "operator", "unassigned"):
+        connection = await phase2_users.async_connect(key)
+        response = await connection.command({
+            "type": "glt_flow_card/leases/acquire",
+            "project_id": PROJECT_ID,
+            "ttl_seconds": 300,
+        })
+        assert response["success"] is False, key
+        assert response["error"]["code"] in {"capability_denied", "not_found_or_denied"}, key
+
+    ha_admin = await phase2_users.async_connect("ha_admin")
+    engineering = await ha_admin.command({
+        "type": "glt_flow_card/leases/acquire",
+        "project_id": PROJECT_ID,
+        "purpose": "engineering",
+        "ttl_seconds": 300,
+    })
+    assert engineering["success"] is False
+    assert engineering["error"]["code"] == "capability_denied"
+
+    membership = await ha_admin.command({
+        "type": "glt_flow_card/leases/acquire",
+        "project_id": PROJECT_ID,
+        "purpose": "membership_admin",
+        "ttl_seconds": 300,
+    })
+    assert membership["success"] is True
+    assert membership["result"]["purpose"] == "membership_admin"
+    await phase2_users.async_close()

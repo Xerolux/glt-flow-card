@@ -32,6 +32,17 @@ from .const import (
 )
 from .policy import PolicyCoordinator, PolicyDenied
 from .project_access import ProjectAccessRepository
+from .project_leases import (
+    DEFAULT_TTL_SECONDS,
+    MAX_TTL_SECONDS,
+    MIN_TTL_SECONDS,
+    PURPOSE_CAPABILITY,
+    PURPOSE_ENGINEERING,
+    PURPOSES,
+    LeaseDenied,
+    LeaseInvalid,
+    LeaseRegistry,
+)
 from .project_repository import ProjectRepository
 from .project_transactions import ProjectTransactionCoordinator, TransactionConflict
 
@@ -436,7 +447,7 @@ class CompanionRuntime:
     manager: GltStore
     access: ProjectAccessRepository | None = None
     policy: PolicyCoordinator | None = None
-    leases: Any = None
+    leases: LeaseRegistry | None = None
     generation: int = 0
     available: bool = True
 
@@ -444,9 +455,13 @@ class CompanionRuntime:
         """Hide the runtime before anything it owns is released.
 
         Availability disappears first so no request admitted after this point
-        can observe a half-released runtime.
+        can observe a half-released runtime. Every ephemeral capability dies
+        with the generation, so nothing issued before an unload can be replayed
+        against the next setup.
         """
         self.available = False
+        if self.leases is not None:
+            self.leases.invalidate_generation()
 
     async def async_close(self) -> None:
         """Close the complete entry-owned runtime, tolerating repetition."""
@@ -528,18 +543,13 @@ async def ws_projects_get(hass, connection, msg):
     connection.send_result(msg["id"], project)
 
 
-@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/save", vol.Required("project"): dict, vol.Optional("autosave", default=False): bool, vol.Optional("expected_revision"): int})
+@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/save", vol.Required("project"): dict, vol.Optional("autosave", default=False): bool, vol.Optional("expected_revision"): int, vol.Required("lease_token"): str})
 @websocket_api.async_response
 async def ws_projects_save(hass, connection, msg):
     try:
-        user_id, user_name, is_admin = _user(connection)
+        user_id, user_name, _is_admin = _user(connection)
         project = msg["project"]
         pid = str(project.get("id") or project.get("config", {}).get("project", {}).get("id") or "")
-        existing = _project_for(hass, pid)
-        if existing and not _role_at_least(_project_role(existing, user_id, is_admin), "designer"):
-            raise PermissionError("designer role required")
-        if not existing and not is_admin:
-            raise PermissionError("admin required to create a shared project")
         result = await _manager(hass).save_project(project, msg["autosave"], user_id, msg.get("expected_revision"))
         await _manager(hass).add_audit({"action":"project.save","detail":{"project_id":pid,"revision":result["revision"]}}, user_id, user_name)
         connection.send_result(msg["id"], result)
@@ -556,6 +566,7 @@ async def ws_projects_save(hass, connection, msg):
     vol.Required("project_id"): str,
     vol.Required("expected_revision"): vol.All(int, vol.Range(min=0)),
     vol.Required("candidate"): dict,
+    vol.Required("lease_token"): str,
 })
 @websocket_api.async_response
 async def ws_projects_preview(hass, connection, msg):
@@ -586,6 +597,7 @@ async def ws_projects_preview(hass, connection, msg):
     vol.Required("preview_id"): str,
     vol.Required("expected_revision"): vol.All(int, vol.Range(min=0)),
     vol.Required("selected_ids"): vol.All([str], vol.Length(max=5000)),
+    vol.Required("lease_token"): str,
 })
 @websocket_api.async_response
 async def ws_projects_apply(hass, connection, msg):
@@ -616,6 +628,7 @@ async def ws_projects_apply(hass, connection, msg):
     vol.Required("snapshot_id"): str,
     vol.Required("expected_revision"): vol.All(int, vol.Range(min=0)),
     vol.Required("confirmation"): str,
+    vol.Required("lease_token"): str,
 })
 @websocket_api.async_response
 async def ws_projects_rollback(hass, connection, msg):
@@ -640,7 +653,7 @@ async def ws_projects_rollback(hass, connection, msg):
         connection.send_error(msg["id"], "invalid_snapshot", str(err))
 
 
-@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/delete", vol.Required("project_id"): str})
+@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/delete", vol.Required("project_id"): str, vol.Required("lease_token"): str})
 @websocket_api.async_response
 async def ws_projects_delete(hass, connection, msg):
     try:
@@ -650,29 +663,150 @@ async def ws_projects_delete(hass, connection, msg):
         connection.send_error(msg["id"], "capability_denied", "capability_denied")
 
 
-@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/lock", vol.Required("project_id"): str, vol.Optional("ttl_seconds"): vol.All(int, vol.Range(min=30, max=3600))})
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/projects/lock",
+    vol.Required("project_id"): str,
+    vol.Optional("ttl_seconds"): vol.All(int, vol.Range(min=30, max=3600)),
+})
 @websocket_api.async_response
 async def ws_projects_lock(hass, connection, msg):
-    try:
-        _project, uid, uname, _admin = _require_project_role(hass, connection, msg, "designer")
-        connection.send_result(
-            msg["id"],
-            await _manager(hass).lock_project(
-                msg["project_id"], uid, uname, msg.get("ttl_seconds")
-            ),
-        )
-    except (PermissionError, RuntimeError) as err:
-        connection.send_error(msg["id"], "locked", str(err))
+    """Retired. The policy boundary already answered `feature_unavailable`.
+
+    The route stays registered so an old card receives a stable code instead of
+    an unknown-command error, and so no caller can mistake a persisted
+    user-only lock for a write guard.
+    """
+    connection.send_error(msg["id"], "feature_unavailable", "feature_unavailable")
 
 
-@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/unlock", vol.Required("project_id"): str})
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/projects/unlock",
+    vol.Required("project_id"): str,
+})
 @websocket_api.async_response
 async def ws_projects_unlock(hass, connection, msg):
+    """Retired alongside `projects/lock`; see that handler."""
+    connection.send_error(msg["id"], "feature_unavailable", "feature_unavailable")
+
+
+def _lease_context(hass, connection, msg):
+    """Resolve the exact binding a lease is issued and validated against."""
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    return runtime.leases, {
+        "project_id": decision.project_id,
+        "user_id": decision.actor.user_id,
+        "session_id": str(decision.actor.session_id or decision.actor.connection_id),
+        "access_revision": decision.access_revision,
+    }
+
+
+def _lease_purpose(msg, decision):
+    """Resolve the requested purpose and refuse one the principal cannot hold."""
+    purpose = msg.get("purpose", PURPOSE_ENGINEERING)
+    capability = PURPOSE_CAPABILITY.get(purpose)
+    if capability is None or capability not in decision.capabilities:
+        raise PolicyDenied("capability_denied", {"purpose": purpose})
+    return purpose
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/leases/acquire",
+    vol.Required("project_id"): str,
+    vol.Optional("purpose", default=PURPOSE_ENGINEERING): vol.In(PURPOSES),
+    vol.Optional("ttl_seconds", default=DEFAULT_TTL_SECONDS): vol.All(
+        int, vol.Range(min=MIN_TTL_SECONDS, max=MAX_TTL_SECONDS)
+    ),
+})
+@websocket_api.async_response
+async def ws_leases_acquire(hass, connection, msg):
+    """Grant the one exclusive lease for a project, or refuse anonymously."""
+    registry, context = _lease_context(hass, connection, msg)
     try:
-        _project, uid, _uname, admin = _require_project_role(hass, connection, msg, "designer")
-        connection.send_result(msg["id"], await _manager(hass).unlock_project(msg["project_id"], uid, admin))
-    except PermissionError:
-        connection.send_error(msg["id"], "capability_denied", "capability_denied")
+        purpose = _lease_purpose(msg, msg[DECISION_KEY])
+        lease = registry.acquire(**context, purpose=purpose, ttl_seconds=msg["ttl_seconds"])
+    except PolicyDenied as denied:
+        connection.send_error(msg["id"], denied.code, denied.code)
+        return
+    except LeaseDenied as denied:
+        # The response says a lease is held. It never says by whom.
+        connection.send_error(msg["id"], denied.code, denied.code)
+        return
+    except ValueError:
+        connection.send_error(msg["id"], "invalid_input", "invalid_input")
+        return
+    connection.send_result(msg["id"], {
+        "lease_token": lease.token,
+        "purpose": lease.purpose,
+        "expires_in": lease.expires_in,
+    })
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/leases/renew",
+    vol.Required("project_id"): str,
+    vol.Required("lease_token"): str,
+    vol.Optional("purpose", default=PURPOSE_ENGINEERING): vol.In(PURPOSES),
+    vol.Optional("ttl_seconds", default=DEFAULT_TTL_SECONDS): vol.All(
+        int, vol.Range(min=MIN_TTL_SECONDS, max=MAX_TTL_SECONDS)
+    ),
+})
+@websocket_api.async_response
+async def ws_leases_renew(hass, connection, msg):
+    """Rotate the bearer and extend the lease. The old bearer dies at once."""
+    registry, context = _lease_context(hass, connection, msg)
+    try:
+        purpose = _lease_purpose(msg, msg[DECISION_KEY])
+        lease = registry.renew(
+            token=msg["lease_token"], **context, purpose=purpose, ttl_seconds=msg["ttl_seconds"]
+        )
+    except PolicyDenied as denied:
+        connection.send_error(msg["id"], denied.code, denied.code)
+        return
+    except LeaseInvalid:
+        connection.send_error(msg["id"], "lease_expired", "lease_expired")
+        return
+    except (LeaseDenied, ValueError):
+        connection.send_error(msg["id"], "invalid_input", "invalid_input")
+        return
+    connection.send_result(msg["id"], {
+        "lease_token": lease.token,
+        "purpose": lease.purpose,
+        "expires_in": lease.expires_in,
+    })
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/leases/release",
+    vol.Required("project_id"): str,
+    vol.Required("lease_token"): str,
+    vol.Optional("purpose", default=PURPOSE_ENGINEERING): vol.In(PURPOSES),
+})
+@websocket_api.async_response
+async def ws_leases_release(hass, connection, msg):
+    """Release a lease the caller actually holds."""
+    registry, context = _lease_context(hass, connection, msg)
+    try:
+        purpose = _lease_purpose(msg, msg[DECISION_KEY])
+        registry.release(token=msg["lease_token"], **context, purpose=purpose)
+    except PolicyDenied as denied:
+        connection.send_error(msg["id"], denied.code, denied.code)
+        return
+    except LeaseInvalid:
+        connection.send_error(msg["id"], "lease_expired", "lease_expired")
+        return
+    connection.send_result(msg["id"], {"released": True})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/leases/status",
+    vol.Required("project_id"): str,
+})
+@websocket_api.async_response
+async def ws_leases_status(hass, connection, msg):
+    """Report whether the project is being edited, never by whom."""
+    registry, context = _lease_context(hass, connection, msg)
+    connection.send_result(msg["id"], registry.held_state(context["project_id"]))
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/templates/list"})
@@ -838,7 +972,9 @@ async def ws_audit_list(hass, connection, msg):
 _COMMAND_HANDLERS = (
     ws_projects_list, ws_projects_get, ws_projects_save, ws_projects_preview,
     ws_projects_apply, ws_projects_rollback, ws_projects_delete,
-    ws_projects_lock, ws_projects_unlock, ws_templates_list, ws_templates_save,
+    ws_projects_lock, ws_projects_unlock,
+    ws_leases_acquire, ws_leases_renew, ws_leases_release, ws_leases_status,
+    ws_templates_list, ws_templates_save,
     ws_templates_delete, ws_control_execute, ws_alarms_list, ws_alarms_ack,
     ws_alarms_shelve, ws_work_orders_list, ws_work_orders_save, ws_reports_run,
     ws_reports_list, ws_remote_list, ws_remote_states, ws_remote_control,
@@ -881,12 +1017,23 @@ def _guard_command(command):
             connection.send_error(msg["id"], denied.code, denied.code)
             return None
 
-        if decision.policy.requires_lease and runtime.leases is None:
-            # Leases arrive with plan 02-08. Until then every shared mutation is
-            # unreachable rather than unguarded: a write with no lease evidence
-            # is exactly what COLLAB-01 forbids.
-            connection.send_error(msg["id"], "lease_required", "lease_required")
-            return None
+        if decision.policy.requires_lease:
+            registry = runtime.leases
+            token = msg.get("lease_token")
+            if registry is None or not token:
+                connection.send_error(msg["id"], "lease_required", "lease_required")
+                return None
+            valid = registry.validate(
+                token=str(token),
+                project_id=decision.project_id,
+                user_id=decision.actor.user_id,
+                session_id=str(decision.actor.session_id or decision.actor.connection_id),
+                purpose=PURPOSE_ENGINEERING,
+                access_revision=decision.access_revision,
+            )
+            if not valid:
+                connection.send_error(msg["id"], "lease_expired", "lease_expired")
+                return None
 
         # `ActiveConnection` is slotted, so the decision travels with the
         # already-validated message under a private key instead.
@@ -996,12 +1143,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await manager.async_close()
         raise
 
+    generation = next(_GENERATION)
     runtime = CompanionRuntime(
         entry_id=entry.entry_id,
         manager=manager,
         access=access,
         policy=PolicyCoordinator(access, hass=hass),
-        generation=next(_GENERATION),
+        leases=LeaseRegistry(generation=generation),
+        generation=generation,
     )
     data["runtimes"][entry.entry_id] = runtime
     data["manager"] = manager
