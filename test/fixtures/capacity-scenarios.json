@@ -1,0 +1,50 @@
+{
+  "format": "glt-flow-card-capacity-scenarios",
+  "version": 1,
+  "why": "Committed before anything measures them, so a scenario cannot quietly become whatever happened to be fast. The roadmap's known defect for this phase is a 2,000-object diagnostics micro-test presented as platform capacity; the correction is not a bigger micro-test but scenarios that name what they build and what they measure.",
+  "sizes": [100, 500, 2000],
+  "scenarios": [
+    {
+      "id": "render",
+      "dimension": "render",
+      "builds": "equipment objects with one value field each",
+      "measures": "time to build and render the object set once",
+      "why": "The first screen a person sees. A plant view that takes four seconds to paint is one nobody leaves open."
+    },
+    {
+      "id": "updates",
+      "dimension": "live-updates",
+      "builds": "equipment objects, then one state change per object",
+      "measures": "time to apply a full round of state changes",
+      "why": "A supervision screen is mostly updates. Render cost is paid once; this is paid continuously."
+    },
+    {
+      "id": "routing",
+      "dimension": "routing",
+      "builds": "connected objects with typed ports",
+      "measures": "time to route every declared connection",
+      "why": "Routing is the superlinear step in the designer, and the one a large plant hits first."
+    },
+    {
+      "id": "editing",
+      "dimension": "editing",
+      "builds": "objects, then one move command per object with undo depth",
+      "measures": "time to apply and undo an edit round",
+      "why": "Undo depth is bounded; the cost of an edit must not grow with how much has already been edited."
+    },
+    {
+      "id": "persistence",
+      "dimension": "persistence",
+      "builds": "a project document of the given object count",
+      "measures": "time to serialise, validate and re-parse the document",
+      "why": "Every save pays this, and a save that times out loses work rather than being slow."
+    },
+    {
+      "id": "remote-partial",
+      "dimension": "remote-partial-failure",
+      "builds": "site answers where one site in five is absent",
+      "measures": "time to roll up with completeness stated",
+      "why": "Phase 9's shape, measured: partial answers must not cost more than complete ones, or a failing site slows everyone looking at the portfolio."
+    }
+  ]
+}
