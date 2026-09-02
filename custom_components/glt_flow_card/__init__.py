@@ -383,8 +383,9 @@ class GltStore:
             next_state["acknowledged"] = False
             next_state.pop("shelved_until", None)
         self.data["alarm_state"][key] = next_state
-        self.data["alarm_history"].insert(0, {**deepcopy(next_state), "transition": "active" if active else "normal"})
-        self.data["alarm_history"] = self.data["alarm_history"][:MAX_AUDIT]
+        self.data["alarm_history"] = self._append_history(
+            {**deepcopy(next_state), "transition": "active" if active else "normal"}
+        )
         await self.async_save()
         if active:
             await self._notify_alarm(alarm)
@@ -406,7 +407,11 @@ class GltStore:
         key = f"{project_id}:{alarm_id}"
         state = self.data["alarm_state"].setdefault(key, {"project_id": project_id, "alarm_id": alarm_id})
         state.update({"acknowledged": True, "ack_at": _utc(), "ack_user_id": user_id, "ack_user_name": user_name, "ack_comment": comment})
-        self.data["alarm_history"].insert(0, {**deepcopy(state), "transition": "ack"})
+        # D9: this path inserted with no cap while `alarm_transition` capped at
+        # MAX_AUDIT, so acknowledgement was the unbounded one.
+        self.data["alarm_history"] = self._append_history(
+            {**deepcopy(state), "transition": "ack"}
+        )
         await self.async_save()
         return deepcopy(state)
 
@@ -424,7 +429,25 @@ class GltStore:
             "shelving_maximum_days": int(options.get(
                 "alarm_shelving_maximum_days", alarm_engine.DEFAULT_SHELVING_MAXIMUM_DAYS,
             )),
+            "startup_grace_seconds": int(options.get(
+                "alarm_startup_grace_seconds", alarm_engine.DEFAULT_STARTUP_GRACE_SECONDS,
+            )),
+            "history_bound": int(options.get("alarm_history_bound", MAX_AUDIT)),
+            "schedule_run_retention_days": int(options.get(
+                "schedule_run_retention_days",
+                alarm_engine.DEFAULT_SCHEDULE_RUN_RETENTION_DAYS,
+            )),
         }
+
+    def _append_history(self, row: dict[str, Any]) -> list[dict[str, Any]]:
+        """Append one alarm-history row through the single bounded path.
+
+        Every writer goes through here. A bound applied at two call sites and
+        forgotten at a third is how `ack_alarm` became the unbounded one.
+        """
+        return alarm_engine.append_history(
+            self.data["alarm_history"], row, bound=self.alarm_settings()["history_bound"],
+        )
 
     async def shelve_alarm(
         self, project_id: str, alarm_id: str, minutes: int, user_id: str | None,
@@ -456,8 +479,9 @@ class GltStore:
         state["shelved_by"] = user_id
         # D13: acknowledgement audited and shelving did not, which made the
         # *less* reversible of the two the less auditable.
-        self.data["alarm_history"].insert(0, {**deepcopy(state), "transition": "shelve"})
-        self.data["alarm_history"] = self.data["alarm_history"][:MAX_AUDIT]
+        self.data["alarm_history"] = self._append_history(
+            {**deepcopy(state), "transition": "shelve"}
+        )
         await self.async_save()
         return deepcopy(state)
 
@@ -529,6 +553,19 @@ class GltStore:
         newly-alarmed entity that nothing re-subscribed to is an alarm that
         never fires, which is a worse failure than the full scan this replaces.
         """
+        # Reconciliation runs here because it answers the same question the
+        # index does -- which alarms exist -- and two places asking it is how
+        # they come to disagree.
+        reconciled = alarm_engine.reconcile_alarm_state(
+            self.data["alarm_state"], self.data["projects"],
+        )
+        if reconciled["dropped"]:
+            self.data["alarm_state"] = reconciled["state"]
+            for key in reconciled["dropped"]:
+                self.data["alarm_history"] = self._append_history(
+                    {"alarm_key": key, "transition": "reconciled", "at": _utc()}
+                )
+
         if self._alarm_unsub is not None:
             self._alarm_unsub()
             self._alarm_unsub = None
@@ -742,8 +779,14 @@ class GltStore:
                 except Exception:
                     continue
         if dirty:
-            cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).strftime("%Y-%m-%d")
-            self.data["schedule_runs"] = {k:v for k,v in self.data["schedule_runs"].items() if k.split(":")[-1][:10] >= cutoff}
+            # D8: this derived a date by splitting a composite key whose last
+            # segment is the *minute*, so `"30" >= "2026-08-19"` held forever
+            # and nothing was ever dropped. The prune reads the stored instant.
+            self.data["schedule_runs"] = alarm_engine.prune_schedule_runs(
+                self.data["schedule_runs"],
+                retention_days=self.alarm_settings()["schedule_run_retention_days"],
+                now=datetime.now(timezone.utc),
+            )
             await self.async_save()
 
 

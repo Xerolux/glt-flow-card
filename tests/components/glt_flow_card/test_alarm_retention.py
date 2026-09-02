@@ -32,10 +32,6 @@ from .phase6_red import emit_effects, report
 pytestmark = [
     pytest.mark.enable_socket,
     pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
-    # Deselected from the default suite for the length of the RED wave. The
-    # Phase-6 RED gate selects them explicitly and requires each to fail for
-    # exactly its own named reason. Removed when the sentinel goes GREEN.
-    pytest.mark.expected_red,
 ]
 
 RED_MARKER = (
@@ -133,3 +129,150 @@ async def test_expected_red_phase6_retention(
 
     report(RED_MARKER, retention_gaps(),
            "bounded retention and alarm state reconciliation are unavailable")
+
+
+# ---------------------------------------------------------------------------
+# The behaviour, now that it exists
+# ---------------------------------------------------------------------------
+
+NOW = datetime(2026, 9, 2, 12, 0, tzinfo=timezone.utc)
+
+
+def test_the_prune_actually_drops_entries() -> None:
+    """D8, closed, and measured against the defect it replaces.
+
+    `legacy_prune_drops_nothing()` above still returns True, so this is not
+    comparing the fix against a straw man.
+    """
+    from custom_components.glt_flow_card import alarm_engine
+
+    old = NOW - timedelta(days=40)
+    recent = NOW - timedelta(days=1)
+    runs = {
+        "plant-a:sched-1:old": old.isoformat(),
+        "plant-a:sched-1:recent": recent.isoformat(),
+    }
+    assert legacy_prune_drops_nothing(), "the reproduced defect no longer holds"
+    kept = alarm_engine.prune_schedule_runs(runs, retention_days=14, now=NOW)
+    assert set(kept) == {"plant-a:sched-1:recent"}
+
+
+def test_no_date_is_derived_by_splitting_a_composite_key() -> None:
+    """The key that had to be parsed to be understood was parsed wrongly.
+
+    A run key whose id segments contain colons -- which is what broke the
+    original -- must not confuse the prune at all, because the prune never looks
+    at the key.
+    """
+    from custom_components.glt_flow_card import alarm_engine
+
+    awkward = "plant:a:sched:1:2025-06-01T14:30"
+    runs = {awkward: (NOW - timedelta(days=40)).isoformat()}
+    assert alarm_engine.prune_schedule_runs(runs, retention_days=14, now=NOW) == {}
+
+
+def test_an_unreadable_receipt_is_dropped_rather_than_kept_forever() -> None:
+    from custom_components.glt_flow_card import alarm_engine
+
+    runs = {"plant-a:s:x": "irgendwann", "plant-a:s:y": NOW.isoformat()}
+    assert set(alarm_engine.prune_schedule_runs(runs, retention_days=14, now=NOW)) == {
+        "plant-a:s:y"
+    }
+
+
+def test_the_retention_window_is_configuration() -> None:
+    from custom_components.glt_flow_card import alarm_engine
+
+    assert alarm_engine.DEFAULT_SCHEDULE_RUN_RETENTION_DAYS == 14
+    runs = {"k": (NOW - timedelta(days=40)).isoformat()}
+    assert alarm_engine.prune_schedule_runs(runs, retention_days=14, now=NOW) == {}
+    assert alarm_engine.prune_schedule_runs(runs, retention_days=90, now=NOW) == runs
+
+
+def test_history_stays_bounded_and_drops_the_oldest() -> None:
+    from custom_components.glt_flow_card import alarm_engine
+
+    history: list[dict[str, Any]] = []
+    for index in range(50):
+        history = alarm_engine.append_history(history, {"n": index}, bound=10)
+    assert len(history) == 10
+    assert history[0]["n"] == 49, "the newest row must be first"
+    assert history[-1]["n"] == 40, "the oldest rows must be the ones dropped"
+
+
+async def test_every_history_writer_goes_through_the_bounded_path(
+    hass: HomeAssistant, config_entry: MockConfigEntry,
+) -> None:
+    """D9, closed. Acknowledgement was the unbounded writer.
+
+    Asserted by *exercising* all three paths past the bound, not by reading the
+    source: a fourth writer added later fails this the same way.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager
+
+    manager = _manager(hass)
+    # A small configured bound, not the 5000-row default. The claim is that
+    # every writer respects *the* bound; proving it at 5000 rows across three
+    # writers means fifteen thousand store writes to learn the same thing.
+    manager.effective_options = {**manager.effective_options, "alarm_history_bound": 5}
+    bound = manager.alarm_settings()["history_bound"]
+    assert bound == 5
+
+    for index in range(bound + 3):
+        await manager.ack_alarm("p", f"alm-{index}", "u", "anna", "seen")
+    assert len(manager.data["alarm_history"]) == bound, "ack is the unbounded writer"
+
+    for index in range(bound + 3):
+        await manager.shelve_alarm("p", f"alm-{index}", 60, "anna")
+    assert len(manager.data["alarm_history"]) == bound, "shelve is unbounded"
+
+    alarm = {"id": "alm", "entity": "binary_sensor.x", "active_states": ["on"]}
+    for index in range(bound + 3):
+        await manager.alarm_transition("p", alarm, index % 2 == 0, "on")
+    assert len(manager.data["alarm_history"]) == bound, "transition is unbounded"
+
+
+def test_reconciliation_drops_an_orphan_and_records_it() -> None:
+    """D14, closed. A remapped or deleted alarm left a permanent entry."""
+    from custom_components.glt_flow_card import alarm_engine
+
+    state = {"plant-a:gone": {"active": True}, "plant-a:kept": {"active": True}}
+    projects = {"plant-a": {"id": "plant-a", "config": {"alarms": [{"id": "kept"}]}}}
+    result = alarm_engine.reconcile_alarm_state(state, projects)
+    assert set(result["state"]) == {"plant-a:kept"}
+    assert result["dropped"] == ["plant-a:gone"]
+
+
+def test_a_deleted_project_takes_its_alarm_state_with_it() -> None:
+    from custom_components.glt_flow_card import alarm_engine
+
+    state = {"plant-a:alm": {"active": True}}
+    assert alarm_engine.reconcile_alarm_state(state, {})["dropped"] == ["plant-a:alm"]
+
+
+async def test_reconciliation_runs_from_the_same_place_as_the_index(
+    hass: HomeAssistant, config_entry: MockConfigEntry,
+) -> None:
+    """Both answer 'which alarms exist', and two places asking it disagree."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager
+
+    manager = _manager(hass)
+    manager.data["projects"]["p"] = {
+        "id": "p",
+        "config": {"alarms": [{"id": "kept", "entity": "binary_sensor.x",
+                               "active_states": ["on"]}], "schedules": []},
+    }
+    manager.data["alarm_state"]["p:gone"] = {"project_id": "p", "alarm_id": "gone",
+                                             "active": True}
+    manager.data["alarm_state"]["p:kept"] = {"project_id": "p", "alarm_id": "kept",
+                                             "active": True}
+
+    manager.async_refresh_alarm_subscription()
+
+    assert set(manager.data["alarm_state"]) == {"p:kept"}
+    transitions = [row.get("transition") for row in manager.data["alarm_history"]]
+    assert "reconciled" in transitions, "the orphan was dropped without a record"

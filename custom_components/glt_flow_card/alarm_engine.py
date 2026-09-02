@@ -526,3 +526,96 @@ def watched_entities(projects: dict[str, Any]) -> list[str]:
     a state change on an entity with no alarm reaches no alarm evaluation at all.
     """
     return sorted(rebuild_alarm_index(projects))
+
+
+# ---------------------------------------------------------------------------
+# Retention and reconciliation
+# ---------------------------------------------------------------------------
+
+#: How long a schedule-run receipt is kept, in days.
+#:
+#: Long enough to answer "did last week's setback run", short enough that the
+#: store does not grow without a bound. Configurable, like every Phase-6
+#: retention number.
+DEFAULT_SCHEDULE_RUN_RETENTION_DAYS = 14
+
+
+def prune_schedule_runs(
+    runs: dict[str, Any],
+    *,
+    retention_days: int = DEFAULT_SCHEDULE_RUN_RETENTION_DAYS,
+    now: Any,
+) -> dict[str, Any]:
+    """Return the schedule-run receipts still inside the retention window.
+
+    D8: the previous prune compared `k.split(":")[-1][:10]` against a date, but
+    `run_key` is `f"{project_id}:{sched_id}:{key_minute}"` and `key_minute`
+    itself contains a colon -- so the last segment was the *minute*, and
+    `"30" >= "2026-08-19"` is lexicographically true forever. Nothing was ever
+    dropped.
+
+    The fix is not a better parser. It is to stop deriving a date from a
+    composite key at all: the value is the run's instant, and the prune reads
+    the value. A key that has to be parsed to be understood is a key that will
+    be parsed wrongly.
+    """
+    from datetime import timedelta
+
+    cutoff = now - timedelta(days=int(retention_days))
+    kept: dict[str, Any] = {}
+    for key, value in (runs or {}).items():
+        instant = _parse_instant(value)
+        if instant is None:
+            # An unreadable receipt is dropped rather than kept forever. Keeping
+            # it is how the previous implementation grew without a bound.
+            continue
+        if instant >= cutoff:
+            kept[key] = value
+    return kept
+
+
+def append_history(
+    history: list[dict[str, Any]],
+    row: dict[str, Any],
+    *,
+    bound: int,
+) -> list[dict[str, Any]]:
+    """Return `history` with `row` prepended, trimmed to `bound`.
+
+    D9: `alarm_transition` capped at `MAX_AUDIT` and `ack_alarm` did not, so
+    acknowledgement was the unbounded path. Routing every insertion through one
+    function is what stops the *next* writer forgetting the cap -- the bound
+    cannot be applied at three call sites and remembered at two.
+    """
+    return [row, *(history or [])][: max(0, int(bound))]
+
+
+def reconcile_alarm_state(
+    alarm_state: dict[str, Any],
+    projects: dict[str, Any],
+) -> dict[str, Any]:
+    """Drop state for alarms no project has any more, and say what was dropped.
+
+    D14: `alarm_state` is keyed `f"{project_id}:{alarm_id}"` and nothing
+    reconciled it, so an alarm that was deleted -- or whose id was remapped by
+    the paste remapping in `ports.py` -- left a permanent entry that no project
+    could clear and no surface could show.
+
+    What was dropped is returned rather than discarded. An operator whose
+    acknowledgement vanished with a rename deserves a record of it, and a silent
+    drop is how the orphan got there in the first place.
+    """
+    live = set()
+    for project_id, project in (projects or {}).items():
+        for alarm in ((project.get("config") or {}).get("alarms") or []):
+            if isinstance(alarm, dict) and alarm.get("id") is not None:
+                live.add(f"{project_id}:{alarm.get('id')}")
+
+    kept: dict[str, Any] = {}
+    dropped: list[str] = []
+    for key, row in (alarm_state or {}).items():
+        if key in live:
+            kept[key] = row
+        else:
+            dropped.append(key)
+    return {"state": kept, "dropped": sorted(dropped)}
