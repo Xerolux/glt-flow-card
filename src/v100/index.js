@@ -1,3 +1,6 @@
+import { text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
 import { UNREADABLE, formatDateTime, formatMeasurement, resolveLocale } from "./locale-format.mjs";
 import { VISUAL_STYLES, COMPONENT_PROFILES, SYMBOL_VARIANTS, profileForEquipment, portsForEquipment } from "./catalog.mjs";
 import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignObjects, diagnoseConfig,  energySummary, projectDiff, makeProjectBundle, readProjectBundle, symbolCatalogStats, semanticPath } from "./core.mjs";
@@ -32,6 +35,7 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
   // — which is late enough, because this line has run by then. Sharing one
   // formatter is the point: two formatters is how a screen ends up carrying two
   // date formats, which is exactly the defect 10-05 removed.
+  sdk.text=catalogText; sdk.defaultLanguage="de";
   sdk.formatDateTime=formatDateTime; sdk.formatMeasurement=formatMeasurement;
   sdk.resolveLocale=resolveLocale; sdk.UNREADABLE=UNREADABLE;
   sdk.version="1.0.0"; sdk.ensureV1=ensureV1; sdk.deriveOperationalState=deriveOperationalState; sdk.autoMapEquipment=autoMapEquipment; sdk.smartRoute=smartRoute; sdk.projectDiff=projectDiff; sdk.makeProjectBundle=makeProjectBundle; sdk.readProjectBundle=readProjectBundle; window.GLTFlowCardSDK=sdk;

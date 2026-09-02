@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "168aed1e5dfb21e53c579e789a7707334f7c694e15d2c807d5b0253c4d6ce695",
-      "size": 3083602
+      "sha256": "f68e59033273cae8e8537e32d4d63ae55460609f2d412d1477df0391733c6db6",
+      "size": 3092735
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "168aed1e5dfb21e53c579e789a7707334f7c694e15d2c807d5b0253c4d6ce695",
-      "size": 3083602
+      "sha256": "f68e59033273cae8e8537e32d4d63ae55460609f2d412d1477df0391733c6db6",
+      "size": 3092735
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -138,7 +138,7 @@
   ],
   "build": {
     "commit": "3c0d8a7051e0c667102cb9eaa70f2ce3a80578fb",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -209,8 +209,8 @@
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "cc2f0391769d287984d549d8b8a46e5fccb37096ecd722dbd6cce8bb686db818",
-      "size": 286301
+      "sha256": "4ed36d0dbb2ed66910327e295d833d721272348582cb48295d92e99c86d18e3b",
+      "size": 288871
     },
     {
       "path": "src/v100/alarm-vocabulary.mjs",
@@ -219,13 +219,13 @@
     },
     {
       "path": "src/v100/catalog-de.mjs",
-      "sha256": "d7ef4254299417dc8a6b939b50e62660c67ede8469c024426fa6f1a2d2eabb86",
-      "size": 37237
+      "sha256": "710396ccaccef927a5506c07e82a3ba412a63dc131b8e49135b2a6efe8c37d23",
+      "size": 40360
     },
     {
       "path": "src/v100/catalog-en.mjs",
-      "sha256": "9a77451048097b0db77125b82485e4f7446fd4814fbbef8b43cf98b88b2f1f5f",
-      "size": 34289
+      "sha256": "4bf7aeb0202c3e98827e93b1ccc317a96580609bcf2c842741f030a9c5d0ac2e",
+      "size": 37416
     },
     {
       "path": "src/v100/catalog-lookup.mjs",
@@ -294,8 +294,8 @@
     },
     {
       "path": "src/v100/index.js",
-      "sha256": "2c874308d32249fedd8c44077d3f68df75d1e65eb90e32f49e6a269337c1f0d4",
-      "size": 44982
+      "sha256": "be9319b5a7c9c1d72cfa4f9f22d82a9891fa80f1940f60cf73882ab907d5b153",
+      "size": 45146
     },
     {
       "path": "src/v100/locale-format.mjs",
