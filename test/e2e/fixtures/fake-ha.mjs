@@ -2,6 +2,17 @@ import { expect } from "@playwright/test";
 
 const nodeEffects = new WeakMap();
 
+/**
+ * Seeded sentinels. Nothing the card renders, stores, logs, links or sends may
+ * contain these values, so a leak of an auth token, of another user's identity,
+ * or of a project the viewer may not see is detectable by string search alone.
+ */
+export const SEEDED_SECRETS = Object.freeze({
+  token: "SEEDED-TOKEN-1f4c9a7b2d",
+  currentProject: "SEEDED-PROJECT-83be21d0",
+  otherUser: "SEEDED-OTHER-USER-5ac07e9f",
+});
+
 function isLoopback(url) {
   const parsed = new URL(url);
   return parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost" || parsed.hostname === "[::1]";
@@ -90,18 +101,27 @@ export async function installFakeHomeAssistant(page, options = {}) {
     await route.continue();
   });
 
-  await page.addInitScript(({ states, wsResults, locale }) => {
+  await page.addInitScript(({ states, wsResults, locale, secrets }) => {
     const effects = {
       filesystem: [],
       network: [],
       localStorage: [],
+      sessionStorage: [],
+      indexedDB: [],
+      history: [],
+      clipboard: [],
+      console: [],
+      diagnostics: [],
       websocket: [],
+      websocketRequests: [],
+      subscriptions: [],
       service: [],
       tasks: [],
       listeners: [],
       sessions: [{ kind: "fake-ha", id: "exact-dist" }],
     };
     Object.defineProperty(window, "__gltEffects", { value: effects });
+    Object.defineProperty(window, "__gltSeededSecrets", { value: secrets });
     const control = { mode: "normal" };
     Object.defineProperty(window, "__fakeHaControl", { value: control });
 
@@ -152,7 +172,64 @@ export async function installFakeHomeAssistant(page, options = {}) {
           effects.localStorage.push(effect);
           prohibited("localStorage", effect);
         }
+        if (this === window.sessionStorage) {
+          const effect = { method, args: args.map(String) };
+          effects.sessionStorage.push(effect);
+          prohibited("sessionStorage", effect);
+        }
         return nativeMethod.apply(this, args);
+      };
+    }
+
+    if (window.indexedDB) {
+      const nativeIndexedDbOpen = window.indexedDB.open.bind(window.indexedDB);
+      window.indexedDB.open = (name, version) => {
+        const effect = { name: String(name), version: version ?? null };
+        effects.indexedDB.push(effect);
+        prohibited("indexedDB", effect);
+        return nativeIndexedDbOpen(name, version);
+      };
+    }
+
+    for (const method of ["pushState", "replaceState"]) {
+      const nativeHistory = history[method].bind(history);
+      history[method] = (state, title, url) => {
+        effects.history.push({ method, url: url === undefined ? null : String(url) });
+        return nativeHistory(state, title, url);
+      };
+    }
+
+    if (navigator.clipboard) {
+      for (const method of ["writeText", "write"]) {
+        const nativeClipboard = navigator.clipboard[method];
+        if (typeof nativeClipboard !== "function") continue;
+        navigator.clipboard[method] = (...args) => {
+          const effect = { method, value: String(args[0] ?? "") };
+          effects.clipboard.push(effect);
+          return nativeClipboard.apply(navigator.clipboard, args);
+        };
+      }
+    }
+
+    for (const level of ["log", "info", "warn", "error", "debug"]) {
+      const nativeConsole = console[level].bind(console);
+      console[level] = (...args) => {
+        effects.console.push({ level, text: args.map((value) => {
+          try {
+            return typeof value === "string" ? value : JSON.stringify(value);
+          } catch {
+            return String(value);
+          }
+        }).join(" ") });
+        return nativeConsole(...args);
+      };
+    }
+
+    const nativeCreateObjectURL = URL.createObjectURL?.bind(URL);
+    if (nativeCreateObjectURL) {
+      URL.createObjectURL = (blob) => {
+        effects.diagnostics.push({ kind: "object-url", type: blob?.type ?? null, size: blob?.size ?? null });
+        return nativeCreateObjectURL(blob);
       };
     }
 
@@ -170,6 +247,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
 
     const callWS = async (message) => {
       effects.websocket.push(structuredClone(message));
+      effects.websocketRequests.push({ type: String(message?.type ?? ""), body: structuredClone(message) });
       if (control.mode === "unavailable" && message.type.startsWith("glt_flow_card/")) {
         throw Object.assign(new Error("Companion unavailable"), { code: "unavailable" });
       }
@@ -191,7 +269,12 @@ export async function installFakeHomeAssistant(page, options = {}) {
     };
     const subscribe = async (callback, message) => {
       effects.listeners.push(structuredClone(message));
-      return () => effects.listeners.push({ ...structuredClone(message), unsubscribed: true });
+      const record = { type: String(message?.type ?? ""), body: structuredClone(message), active: true };
+      effects.subscriptions.push(record);
+      return () => {
+        record.active = false;
+        effects.listeners.push({ ...structuredClone(message), unsubscribed: true });
+      };
     };
 
     window.__fakeHass = {
@@ -220,6 +303,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
     },
     wsResults: defaultWsResults,
     locale: options.locale ?? "en",
+    secrets: { ...SEEDED_SECRETS, ...(options.secrets ?? {}) },
   });
 }
 
@@ -229,11 +313,85 @@ export async function readEffectLedger(page) {
   return { ...browser, blockedNetwork: [...node.blockedNetwork] };
 }
 
+/**
+ * Search every declared browser sink for the seeded sentinels and return the
+ * exact sinks that leaked. An empty array is the only acceptable result.
+ */
+export async function scanSeededSecrets(page) {
+  const ledger = await readEffectLedger(page);
+  const sinks = await page.evaluate(() => {
+    const collectDom = () => {
+      const parts = [];
+      const walk = (root) => {
+        for (const element of root.querySelectorAll("*")) {
+          for (const attribute of element.attributes ?? []) {
+            parts.push(attribute.value);
+          }
+          if (element.shadowRoot) walk(element.shadowRoot);
+        }
+        parts.push(root.textContent ?? "");
+      };
+      walk(document);
+      return parts.join("\n");
+    };
+    const storage = (store) => {
+      try {
+        return Object.entries({ ...store }).map(([key, value]) => `${key}=${value}`).join("\n");
+      } catch {
+        return "";
+      }
+    };
+    return {
+      dom: collectDom(),
+      url: `${window.location.href}`,
+      title: document.title,
+      localStorage: storage(window.localStorage),
+      sessionStorage: storage(window.sessionStorage),
+    };
+  });
+  const searchable = {
+    ...sinks,
+    console: JSON.stringify(ledger.console ?? []),
+    clipboard: JSON.stringify(ledger.clipboard ?? []),
+    history: JSON.stringify(ledger.history ?? []),
+    diagnostics: JSON.stringify(ledger.diagnostics ?? []),
+    websocketRequests: JSON.stringify(ledger.websocketRequests ?? []),
+    subscriptions: JSON.stringify(ledger.subscriptions ?? []),
+    network: JSON.stringify(ledger.network ?? []),
+  };
+  const seeded = await page.evaluate(() => structuredClone(window.__gltSeededSecrets));
+  const leaks = [];
+  for (const [sink, content] of Object.entries(searchable)) {
+    for (const [name, value] of Object.entries(seeded ?? {})) {
+      if (typeof content === "string" && content.includes(value)) {
+        leaks.push({ sink, secret: name });
+      }
+    }
+  }
+  return leaks;
+}
+
+/**
+ * Render one line of effect-ledger evidence with a task-specific prefix so a
+ * controlled RED run can prove the ledger executed before the sentinel failed.
+ */
+export function formatEffectLedger(prefix, effects) {
+  const counts = Object.fromEntries(
+    Object.entries(effects)
+      .filter(([, value]) => Array.isArray(value))
+      .map(([key, value]) => [key, value.length]),
+  );
+  return `${prefix}${JSON.stringify(counts)}`;
+}
+
 export async function expectNoProhibitedEffects(page) {
   const effects = await readEffectLedger(page);
   expect(effects.blockedNetwork, "non-loopback browser requests").toEqual([]);
   expect(effects.network, "non-loopback fetch/XHR requests").toEqual([]);
   expect(effects.localStorage, "unexpected localStorage writes").toEqual([]);
+  expect(effects.sessionStorage, "unexpected sessionStorage writes").toEqual([]);
+  expect(effects.indexedDB, "unexpected IndexedDB usage").toEqual([]);
   expect(effects.service, "unexpected Home Assistant service calls").toEqual([]);
+  expect(await scanSeededSecrets(page), "seeded secrets found in a browser sink").toEqual([]);
   return effects;
 }
