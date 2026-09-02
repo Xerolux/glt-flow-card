@@ -129,3 +129,99 @@ test("[expected-red:phase5-ports] an impossible connection is refused with a rea
   }
   assert.deepEqual(gaps, [], "typed ports with explained refusal are unavailable");
 });
+
+// -- Beyond the sentinel ----------------------------------------------------
+// The sentinel proves the refusal exists. These prove it is neither vacuous
+// nor over-eager, and that a malformed port is treated as a bug in the code
+// rather than as a mistake in somebody's diagram.
+
+const { checkCompatibility, REFUSAL_REASONS, endpointKey } =
+  await import(MODULE_URL.href);
+
+test("every declared reason is reachable, so none is decoration", () => {
+  const reached = new Set();
+  const cases = [
+    [port("a"), port("a")],
+    [port("a"), port("b", { direction: "in", kind: "power" })],
+    [port("a"), port("b", { direction: "in", medium: "air" })],
+    [port("a"), port("b", { direction: "out" })],
+  ];
+  for (const [source, target] of cases) {
+    reached.add(checkCompatibility(source, target, []).reason);
+  }
+  reached.add(checkCompatibility(port("a"), port("b", { direction: "in" }),
+    [{ from_port: "a", to_port: "b" }]).reason);
+  reached.add(checkCompatibility(port("a", { multiplicity: "one" }),
+    port("b", { direction: "in" }), [{ from_port: "a", to_port: "z" }]).reason);
+  assert.deepEqual([...reached].sort(), [...REFUSAL_REASONS].sort());
+});
+
+test("the CAD corpus's refused pair is refused for the medium and nothing else", () => {
+  // eq-chiller/p-out to eq-radiator/p-in: both process, pointing the right
+  // way, geometrically trivial. A refusal naming anything but the medium has
+  // found a different bug than the one it thinks it has found.
+  const chiller = { id: "p-out", equipment: "eq-chiller", medium: "cooling_flow",
+    direction: "out", side: "right", kind: "process", multiplicity: "one" };
+  const radiator = { id: "p-in", equipment: "eq-radiator", medium: "heating_flow",
+    direction: "in", side: "left", kind: "process", multiplicity: "one" };
+  const result = checkCompatibility(chiller, radiator, []);
+  assert.equal(result.compatible, false);
+  assert.equal(result.reason, "medium_mismatch");
+  assert.deepEqual(result.detail, { source: "cooling_flow", target: "heating_flow" });
+});
+
+test("an endpoint is the pair, so a shared profile does not collide", () => {
+  // Two pumps share profile-source, so both carry a port called `p-out`.
+  const first = { ...port("p-out"), equipment: "eq-source-a" };
+  const second = { ...port("p-out"), equipment: "eq-source-b", direction: "in" };
+  assert.notEqual(endpointKey(first), endpointKey(second));
+  assert.equal(checkCompatibility(first, second, []).compatible, true);
+  // Without the equipment they are the same endpoint, and joining a port to
+  // itself is the refusal that says so.
+  assert.equal(
+    checkCompatibility(port("p-out"), port("p-out", { direction: "in" }), []).reason,
+    "self_connection",
+  );
+});
+
+test("a bidirectional port may give or receive, but not against the arrow", () => {
+  const both = (extra) => port("x", { direction: "bidirectional", ...extra });
+  assert.equal(checkCompatibility(both({ id: "a" }), port("b", { direction: "in" }), []).compatible, true);
+  assert.equal(checkCompatibility(port("a"), both({ id: "b" }), []).compatible, true);
+  assert.equal(checkCompatibility(both({ id: "a" }), both({ id: "b" }), []).compatible, true);
+  assert.equal(
+    checkCompatibility(port("a", { direction: "in" }), both({ id: "b" }), []).reason,
+    "direction_conflict",
+  );
+});
+
+test("a many port takes more connections; a one port takes exactly one", () => {
+  const existing = [{ from_port: "a", to_port: "z" }, { from_port: "a", to_port: "y" }];
+  assert.equal(checkCompatibility(port("a"), port("b", { direction: "in" }), existing).compatible, true);
+  assert.equal(
+    checkCompatibility(port("a"), port("b", { direction: "in", multiplicity: "one" }),
+      [{ from_port: "q", to_port: "b" }]).detail.role,
+    "target",
+  );
+});
+
+test("a malformed port throws rather than being refused", () => {
+  // A refusal is a statement about a diagram. An unknown kind is a statement
+  // about the code, and dressing it as a refusal would send an engineer to
+  // look for a mistake they did not make.
+  for (const [broken, expected] of [
+    [port("a", { kind: "plumbing" }), /unknown port kind/],
+    [port("a", { multiplicity: "several" }), /unknown multiplicity/],
+    [port("a", { direction: "sideways" }), /unknown direction/],
+    [port("a", { side: "diagonal" }), /unknown side/],
+    [{ medium: "hydronic", kind: "process", multiplicity: "one", direction: "out" }, /no id/],
+  ]) {
+    assert.throws(() => checkCompatibility(broken, port("b", { direction: "in" }), []), expected);
+  }
+});
+
+test("a result is frozen, so a caller cannot rewrite a refusal into an approval", () => {
+  const refusal = checkCompatibility(port("a"), port("b", { direction: "out" }), []);
+  assert.throws(() => { refusal.compatible = true; }, TypeError);
+  assert.equal(Object.isFrozen(refusal.detail), true);
+});
