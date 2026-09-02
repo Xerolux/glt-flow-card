@@ -1,16 +1,16 @@
 /**
  * Run the repository's regression suites.
  *
- * `npm test` is the signal that a change broke something. It must therefore not
- * include the Phase-2 product-completeness sentinels: those assert behavior that
- * does not exist yet, deliberately, and they stay red until their owning plan
- * lands. Leaving them here would keep the check red for the whole phase and hide
- * every real regression behind them.
+ * `npm test` is the signal that a change broke something, so a suite belongs
+ * here from the moment its behavior exists. A product-completeness sentinel
+ * whose owning plan has not landed does not: it is red on purpose, and leaving
+ * it here would hide every real regression behind it. `PHASE_GATE_SUITES` is
+ * that exclusion list, and it empties as each plan lands.
  *
- * They are not skipped. `npm run test:phase2` runs every one of them through
- * `tools/assert-red.mjs`, which passes only when each reaches exactly its named
- * missing behavior and fails when anything else about the run is broken - a
- * stricter check than a bare pass/fail, not a weaker one.
+ * An excluded suite is never skipped. `npm run test:phase2` runs every sentinel
+ * through `tools/assert-red.mjs`, which passes only when each reaches exactly
+ * its named missing behavior and fails when anything else about the run is
+ * broken - a stricter check than a bare pass/fail, not a weaker one.
  */
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
@@ -19,13 +19,12 @@ import { fileURLToPath } from "node:url";
 const TEST_DIR = fileURLToPath(new URL("../test", import.meta.url));
 
 /**
- * Suites owned by `npm run test:phase2` rather than by the regression run.
- * Each is a controlled-RED sentinel registered in `tools/assert-red.mjs`.
+ * Suites still owned by `npm run test:phase2` rather than by the regression run.
+ *
+ * Empty since plan 02-13: both Phase-2 browser sentinels are green, so they are
+ * regression tests now and run here as well as in the phase gate.
  */
-const PHASE_GATE_SUITES = new Set([
-  "phase2-authority.test.mjs",
-  "phase2-collaboration.test.mjs",
-]);
+const PHASE_GATE_SUITES = new Set();
 
 const suites = readdirSync(TEST_DIR)
   .filter((name) => name.endsWith(".test.mjs"))

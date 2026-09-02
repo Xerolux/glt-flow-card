@@ -23544,6 +23544,21 @@ ${entityId}`)) return;
           return dispatch({ type: "telemetry/page-failed", code: error?.code });
         }
       },
+      /**
+       * Ask the server for a bounded preview of a candidate against the head.
+       *
+       * The browser sends the candidate and the exact revision it believes it is
+       * based on, and the server returns the operations and their dependency
+       * closures. No diff is computed here: a client-side diff is a client-side
+       * opinion about whose work survives.
+       */
+      async mergePreview(candidate, expectedRevision) {
+        return call("glt_flow_card/projects/preview", {
+          lease_token: bearer,
+          expected_revision: expectedRevision,
+          candidate
+        });
+      },
       /** Read the membership inventory the server is willing to disclose. */
       async accessInventory() {
         return call("glt_flow_card/access/get");
@@ -23569,6 +23584,490 @@ ${entityId}`)) return;
         if (typeof unsubscribe === "function") unsubscribe();
         unsubscribe = null;
         dispatch({ type: "companion/disconnected" });
+      }
+    };
+  }
+
+  // src/v100/project-collaboration.mjs
+  var CONFLICT_CHOICES = Object.freeze([
+    "refresh",
+    "merge-preview",
+    "retry-with-fresh-lease",
+    "discard"
+  ]);
+  var CANDIDATE_PRESERVING = Object.freeze(/* @__PURE__ */ new Set([
+    "lease/expired",
+    "lease/lost",
+    "companion/disconnected",
+    "conflict/detected",
+    "role/revoked",
+    "merge/failed",
+    "merge/blocked-overlap",
+    "authority/stale",
+    "authority/rejected",
+    "authority/incompatible",
+    "authority/sequence-gap"
+  ]));
+  var MERGE_STATES = Object.freeze([
+    "idle",
+    "requested",
+    "ready",
+    "blocked",
+    "failed",
+    "applied"
+  ]);
+  function revision(value) {
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+  function initialCollaborationState() {
+    return {
+      lease: null,
+      candidate: null,
+      revisions: { base: null, current: null, candidate: null },
+      conflict: null,
+      merge: { state: "idle", preview: null, selected: [], locked: [], reason: null },
+      receipt: null,
+      error: null,
+      announcement: null
+    };
+  }
+  function mergeClosure(preview, requested) {
+    const selected = /* @__PURE__ */ new Set();
+    const locked = /* @__PURE__ */ new Set();
+    for (const id of requested ?? []) {
+      const closure = preview?.closures?.[id];
+      for (const operation2 of closure?.selected ?? [id]) {
+        selected.add(operation2);
+        if (operation2 !== id) locked.add(operation2);
+      }
+    }
+    return { selected: [...selected].sort(), locked: [...locked].sort() };
+  }
+  function conflictChoices(state) {
+    if (!state?.conflict) return [];
+    return CONFLICT_CHOICES.filter(
+      (choice) => choice !== "merge-preview" || state.merge.preview !== null || state.merge.state === "ready"
+    );
+  }
+  function collaborationReducer(state, action) {
+    const current = state ?? initialCollaborationState();
+    const type = String(action?.type ?? "");
+    const next = {
+      ...current,
+      revisions: { ...current.revisions },
+      merge: { ...current.merge }
+    };
+    if (CANDIDATE_PRESERVING.has(type)) {
+      if (next.candidate) next.candidate = { ...next.candidate, preserved: true };
+      if (type === "conflict/detected") {
+        next.conflict = {
+          code: "revision_conflict",
+          base: revision(action.base) ?? current.revisions.base,
+          current: revision(action.current)
+        };
+        next.revisions.current = revision(action.current) ?? next.revisions.current;
+      }
+      if (type === "merge/failed" || type === "merge/blocked-overlap") {
+        next.merge = {
+          ...next.merge,
+          state: type === "merge/failed" ? "failed" : "blocked",
+          reason: type === "merge/failed" ? action.code ?? "effect_unknown" : "overlap"
+        };
+      }
+      if (type === "lease/expired" || type === "lease/lost") next.lease = null;
+      next.announcement = { level: "assertive", code: type.replace("/", "_").replace("-", "_") };
+      return next;
+    }
+    switch (type) {
+      case "candidate/changed": {
+        const base = revision(action.baseRevision) ?? current.revisions.current;
+        next.candidate = {
+          project: action.candidate ?? null,
+          dirty: true,
+          preserved: false,
+          baseRevision: base
+        };
+        next.revisions.base = base;
+        next.revisions.candidate = revision(action.candidate?.project?.revision) ?? base;
+        next.error = null;
+        return next;
+      }
+      case "candidate/discarded": {
+        next.candidate = null;
+        next.conflict = null;
+        next.merge = { state: "idle", preview: null, selected: [], locked: [], reason: null };
+        next.revisions = { ...next.revisions, base: null, candidate: null };
+        next.announcement = { level: "polite", code: "candidate_discarded" };
+        return next;
+      }
+      case "commit/confirmed": {
+        const receipt = action.receipt ?? {};
+        next.candidate = null;
+        next.conflict = null;
+        next.merge = { state: "applied", preview: null, selected: [], locked: [], reason: null };
+        next.receipt = { revision: revision(receipt.revision), digest: receipt.digest ?? null };
+        next.revisions = {
+          base: revision(receipt.revision),
+          current: revision(receipt.revision),
+          candidate: null
+        };
+        next.error = null;
+        next.announcement = { level: "polite", code: "commit_confirmed" };
+        return next;
+      }
+      case "merge/requested": {
+        next.merge = { ...next.merge, state: "requested", reason: null };
+        return next;
+      }
+      case "merge/preview": {
+        next.merge = {
+          state: "ready",
+          preview: action.preview ?? null,
+          selected: [],
+          locked: [],
+          reason: null
+        };
+        next.announcement = { level: "polite", code: "merge_ready" };
+        return next;
+      }
+      case "merge/selected": {
+        const { selected, locked } = mergeClosure(next.merge.preview, action.ids);
+        next.merge = { ...next.merge, selected, locked };
+        return next;
+      }
+      case "lease/acquired":
+      case "lease/renewed": {
+        const ttl = Number.isFinite(action.lease?.expires_in) ? Math.floor(action.lease.expires_in) : null;
+        if (ttl === null || ttl <= 0) {
+          next.error = { code: "invalid_input" };
+          return next;
+        }
+        const now = Number.isFinite(action.now) ? action.now : 0;
+        next.lease = { state: "held-self", purpose: "engineering", ttlSeconds: ttl, expiresAt: now + ttl };
+        next.announcement = { level: "polite", code: type === "lease/acquired" ? "lease_acquired" : "lease_renewed" };
+        return next;
+      }
+      case "lease/released": {
+        next.lease = null;
+        next.announcement = { level: "polite", code: "lease_released" };
+        return next;
+      }
+      case "lease/held-elsewhere": {
+        next.lease = { state: "held-other", purpose: "engineering" };
+        next.error = { code: "lease_held" };
+        return next;
+      }
+      case "revision/observed": {
+        next.revisions.current = revision(action.revision) ?? next.revisions.current;
+        return next;
+      }
+      case "conflict/resolved": {
+        next.conflict = null;
+        return next;
+      }
+      case "error/denied": {
+        next.error = { code: action.code ?? "effect_unknown" };
+        if (next.candidate) next.candidate = { ...next.candidate, preserved: true };
+        return next;
+      }
+      default:
+        return current;
+    }
+  }
+  function createCollaborationController(options = {}) {
+    const client = options.client ?? null;
+    const onChange = typeof options.onChange === "function" ? options.onChange : () => {
+    };
+    const clock = typeof options.clock === "function" ? options.clock : () => Date.now() / 1e3;
+    let state = initialCollaborationState();
+    const dispatch = (action) => {
+      state = collaborationReducer(state, { now: clock(), ...action });
+      onChange(state);
+      return state;
+    };
+    const denial = (error) => {
+      const code = error?.code ?? "effect_unknown";
+      if (code === "lease_expired" || code === "lease_required") return dispatch({ type: "lease/expired" });
+      if (code === "lease_held") return dispatch({ type: "lease/held-elsewhere" });
+      if (code === "authority_stale") return dispatch({ type: "authority/stale" });
+      if (code === "not_loaded") return dispatch({ type: "companion/disconnected" });
+      return dispatch({ type: "error/denied", code });
+    };
+    return {
+      get state() {
+        return state;
+      },
+      setCandidate(candidate, baseRevision) {
+        return dispatch({ type: "candidate/changed", candidate, baseRevision });
+      },
+      discard() {
+        return dispatch({ type: "candidate/discarded" });
+      },
+      async acquire(ttlSeconds = 300) {
+        try {
+          const authority = await client.acquireLease("engineering", ttlSeconds);
+          return dispatch({ type: "lease/acquired", lease: { expires_in: authority.lease?.ttlSeconds ?? ttlSeconds } });
+        } catch (error) {
+          return denial(error);
+        }
+      },
+      async renew(ttlSeconds = 300) {
+        try {
+          await client.renewLease(ttlSeconds);
+          return dispatch({ type: "lease/renewed", lease: { expires_in: ttlSeconds } });
+        } catch (error) {
+          return denial(error);
+        }
+      },
+      async release() {
+        try {
+          await client.releaseLease();
+          return dispatch({ type: "lease/released" });
+        } catch (error) {
+          return denial(error);
+        }
+      },
+      /**
+       * Apply the current candidate at its exact expected revision.
+       *
+       * A revision conflict is a normal outcome, not an error to retry: it means
+       * somebody else committed, and the user decides what happens next.
+       */
+      async apply() {
+        const candidate = state.candidate;
+        if (!candidate) return state;
+        try {
+          const result2 = await client.apply(candidate.project, state.revisions.base);
+          return dispatch({
+            type: "commit/confirmed",
+            receipt: { revision: result2?.revision ?? null, digest: result2?.digest ?? null }
+          });
+        } catch (error) {
+          if (error?.code === "revision_conflict") {
+            return dispatch({
+              type: "conflict/detected",
+              base: state.revisions.base,
+              current: client.state?.revision ?? null
+            });
+          }
+          return denial(error);
+        }
+      },
+      /** Ask the server for a merge preview; the browser computes no diff. */
+      async previewMerge() {
+        dispatch({ type: "merge/requested" });
+        try {
+          const preview = await client.mergePreview(state.candidate?.project, state.revisions.base);
+          if (preview?.overlap?.length) {
+            return dispatch({ type: "merge/blocked-overlap", paths: preview.overlap });
+          }
+          return dispatch({ type: "merge/preview", preview });
+        } catch (error) {
+          return dispatch({ type: "merge/failed", code: error?.code ?? "effect_unknown" });
+        }
+      },
+      select(ids) {
+        return dispatch({ type: "merge/selected", ids });
+      },
+      /** Choose one recovery path. There is no overwrite branch to choose. */
+      recover(choice) {
+        if (!CONFLICT_CHOICES.includes(choice)) return state;
+        if (choice === "discard") return dispatch({ type: "candidate/discarded" });
+        if (choice === "merge-preview") return this.previewMerge();
+        if (choice === "retry-with-fresh-lease") return this.acquire();
+        return client.refresh().then(
+          (authority) => dispatch({ type: "revision/observed", revision: authority?.revision }),
+          (error) => denial(error)
+        );
+      }
+    };
+  }
+
+  // src/v100/configured-control.mjs
+  var CONTROL_RESULT_STATES = Object.freeze([
+    "accepted",
+    "dispatched",
+    "readback_confirmed",
+    "timed_out",
+    "denied",
+    "failed_before_dispatch",
+    "failed_after_dispatch",
+    "result_unknown",
+    "cancelled_before_dispatch"
+  ]);
+  var CONTROL_SUCCESS_STATES = Object.freeze(["readback_confirmed"]);
+  var CONTROL_TERMINAL_STATES = Object.freeze([
+    "readback_confirmed",
+    "timed_out",
+    "denied",
+    "failed_before_dispatch",
+    "failed_after_dispatch",
+    "result_unknown",
+    "cancelled_before_dispatch"
+  ]);
+  var CONTROL_UNKNOWN_STATES = Object.freeze([
+    "timed_out",
+    "result_unknown",
+    "failed_after_dispatch"
+  ]);
+  var FORBIDDEN_REQUEST_FIELDS = Object.freeze([
+    "domain",
+    "service",
+    "entity_id",
+    "device_id",
+    "area_id",
+    "target",
+    "service_data",
+    "context",
+    "user_id"
+  ]);
+  function initialControlState() {
+    return {
+      phase: "idle",
+      controlId: null,
+      preview: null,
+      result: null,
+      correlationId: null,
+      error: null,
+      announcement: null
+    };
+  }
+  function isControlSuccess(state) {
+    return CONTROL_SUCCESS_STATES.includes(state);
+  }
+  function isControlUnknown(state) {
+    return CONTROL_UNKNOWN_STATES.includes(state);
+  }
+  function reduceControlEvidence(state, action) {
+    const current = state ?? initialControlState();
+    const type = String(action?.type ?? "");
+    const next = { ...current };
+    switch (type) {
+      case "control/selected": {
+        next.phase = "ready";
+        next.controlId = action.controlId ?? null;
+        next.preview = null;
+        next.result = null;
+        next.correlationId = null;
+        next.error = null;
+        return next;
+      }
+      case "control/preview": {
+        next.phase = "confirm";
+        next.preview = action.preview ?? null;
+        next.error = null;
+        return next;
+      }
+      case "control/cancelled": {
+        next.phase = "ready";
+        next.preview = null;
+        next.result = "cancelled_before_dispatch";
+        next.announcement = { level: "polite", code: "cancelled_before_dispatch" };
+        return next;
+      }
+      case "control/pending": {
+        next.phase = "pending";
+        next.result = null;
+        next.correlationId = action.correlationId ?? null;
+        return next;
+      }
+      case "control/result": {
+        const result2 = String(action.state ?? "");
+        if (!CONTROL_RESULT_STATES.includes(result2)) {
+          next.phase = "result";
+          next.result = "result_unknown";
+          next.announcement = { level: "assertive", code: "result_unknown" };
+          return next;
+        }
+        next.phase = CONTROL_TERMINAL_STATES.includes(result2) ? "result" : "pending";
+        next.result = result2;
+        next.correlationId = action.correlationId ?? next.correlationId;
+        next.announcement = {
+          level: isControlSuccess(result2) ? "polite" : "assertive",
+          code: result2
+        };
+        return next;
+      }
+      case "control/denied": {
+        next.phase = "result";
+        next.result = "denied";
+        next.error = { code: action.code ?? "effect_unknown" };
+        next.announcement = { level: "assertive", code: "denied" };
+        return next;
+      }
+      default:
+        return current;
+    }
+  }
+  function createConfiguredControlClient(options = {}) {
+    const hass = options.hass ?? null;
+    const projectId = options.projectId ?? null;
+    const onChange = typeof options.onChange === "function" ? options.onChange : () => {
+    };
+    let state = initialControlState();
+    const dispatch = (action) => {
+      state = reduceControlEvidence(state, action);
+      onChange(state);
+      return state;
+    };
+    const bounded = (input) => {
+      const payload = {};
+      for (const [key, value] of Object.entries(input ?? {})) {
+        if (FORBIDDEN_REQUEST_FIELDS.includes(key)) continue;
+        payload[key] = value;
+      }
+      return payload;
+    };
+    const call = async (type, payload) => {
+      if (!hass?.callWS) throw Object.assign(new Error("not_loaded"), { code: "not_loaded" });
+      return hass.callWS({ type, project_id: projectId, ...payload });
+    };
+    return {
+      get state() {
+        return state;
+      },
+      select(controlId) {
+        return dispatch({ type: "control/selected", controlId });
+      },
+      cancel() {
+        return dispatch({ type: "control/cancelled" });
+      },
+      /** Ask the server what this control would do. Nothing is dispatched. */
+      async preview(controlId, input, expectedRevision) {
+        try {
+          const preview = await call("glt_flow_card/controls/preview", {
+            control_id: controlId,
+            expected_revision: expectedRevision,
+            input: bounded(input)
+          });
+          return dispatch({ type: "control/preview", preview });
+        } catch (error) {
+          return dispatch({ type: "control/denied", code: error?.code });
+        }
+      },
+      /**
+       * Execute once.
+       *
+       * Whatever comes back - confirmed, timed out, unknown - is reported as it
+       * is. This function is the only dispatch path in the module, and it is
+       * never called by anything but a person pressing the confirmation.
+       */
+      async execute(controlId, input, expectedRevision) {
+        dispatch({ type: "control/pending" });
+        try {
+          const result2 = await call("glt_flow_card/controls/execute", {
+            control_id: controlId,
+            expected_revision: expectedRevision,
+            input: bounded(input)
+          });
+          return dispatch({
+            type: "control/result",
+            state: result2?.state,
+            correlationId: result2?.correlation_id
+          });
+        } catch (error) {
+          return dispatch({ type: "control/denied", code: error?.code });
+        }
       }
     };
   }
@@ -23753,7 +24252,63 @@ ${entityId}`)) return;
         lease_released: "Editing lease released.",
         lease_held: "Another session is editing.",
         evidence_page_failed: "The next evidence page could not be loaded."
-      }
+      },
+      leaseHeading: "Engineering lease",
+      acquireLease: "Acquire editing lease",
+      renewLease: "Renew editing lease",
+      releaseLease: "Release editing lease",
+      leaseAcquiring: "Requesting exclusive editing lease",
+      leaseExpiresIn: "Expires in {seconds}s",
+      leaseRenewDue: "Renewal is due. Renew before the lease expires.",
+      checkLease: "Check lease availability",
+      candidateHeading: "Unsaved candidate",
+      candidateStates: {
+        none: "No unsaved changes",
+        dirty: "Unsaved changes in this session",
+        preserved: "Unsaved changes kept in memory",
+        applied: "Applied"
+      },
+      revisionTriplet: "Base {base} · Current {current} · Candidate {candidate}",
+      conflictHeading: "Save blocked — a newer revision exists",
+      conflictBody: "Revision {base} is no longer current; revision {current} is active. Your candidate is kept in memory. Nothing was overwritten.",
+      conflictChoices: {
+        refresh: "Refresh from the server",
+        "merge-preview": "Preview a merge",
+        "retry-with-fresh-lease": "Retry with a fresh lease",
+        discard: "Discard my changes"
+      },
+      mergeStates: {
+        idle: "No merge preview requested.",
+        requested: "Requesting merge preview",
+        ready: "Merge preview ready. Select the changes to keep.",
+        blocked: "The same paths changed on both sides. Choose a different recovery.",
+        failed: "The merge preview failed. Your candidate is unchanged.",
+        applied: "Merge applied"
+      },
+      discardHeading: "Discard unsaved changes",
+      discardBody: "Discard the unsaved changes in this session? They cannot be recovered afterwards.",
+      cancelDiscard: "Keep my changes",
+      controlHeading: "Configured control",
+      controlPreview: "Preview control",
+      controlConfirmHeading: "Confirm configured control",
+      controlConfirmBody: "Run “{label}”? The Companion resolves the effect from the current project head; this card sends only the control name and the declared input.",
+      controlEffect: "Resolved effect",
+      controlTarget: "Target",
+      controlCancel: "Cancel control",
+      controlRun: "Run control",
+      controlStates: {
+        accepted: "Accepted and recorded. Not yet dispatched.",
+        dispatched: "Dispatched to Home Assistant. Not yet confirmed.",
+        readback_confirmed: "Confirmed by readback.",
+        timed_out: "Timed out. The effect is unknown — check the current state and the trusted audit.",
+        denied: "Denied.",
+        failed_before_dispatch: "Failed before dispatch. Nothing was sent.",
+        failed_after_dispatch: "Failed after dispatch. The effect is unknown — check the current state and the trusted audit.",
+        result_unknown: "The result is unknown — check the current state and the trusted audit before acting again.",
+        cancelled_before_dispatch: "Cancelled. Nothing was sent."
+      },
+      controlCorrelation: "Correlation ID",
+      controlNoRetry: "This card never repeats a control by itself. Decide again if the plant must move."
     },
     de: {
       title: "Projektsicherheit",
@@ -23933,7 +24488,63 @@ ${entityId}`)) return;
         lease_released: "Bearbeitungslease freigegeben.",
         lease_held: "Eine andere Sitzung bearbeitet gerade.",
         evidence_page_failed: "Die nächste Nachweisseite konnte nicht geladen werden."
-      }
+      },
+      leaseHeading: "Bearbeitungslease",
+      acquireLease: "Bearbeitungslease anfordern",
+      renewLease: "Bearbeitungslease verlängern",
+      releaseLease: "Bearbeitungslease freigeben",
+      leaseAcquiring: "Exklusives Bearbeitungslease wird angefordert",
+      leaseExpiresIn: "Läuft in {seconds}s ab",
+      leaseRenewDue: "Die Verlängerung ist fällig. Verlängern Sie vor Ablauf des Leases.",
+      checkLease: "Lease-Verfügbarkeit prüfen",
+      candidateHeading: "Ungespeicherter Entwurf",
+      candidateStates: {
+        none: "Keine ungespeicherten Änderungen",
+        dirty: "Ungespeicherte Änderungen in dieser Sitzung",
+        preserved: "Ungespeicherte Änderungen im Speicher erhalten",
+        applied: "Übernommen"
+      },
+      revisionTriplet: "Basis {base} · Aktuell {current} · Entwurf {candidate}",
+      conflictHeading: "Speichern blockiert — es existiert eine neuere Revision",
+      conflictBody: "Revision {base} ist nicht mehr aktuell; Revision {current} ist aktiv. Ihr Entwurf bleibt im Speicher erhalten. Es wurde nichts überschrieben.",
+      conflictChoices: {
+        refresh: "Vom Server aktualisieren",
+        "merge-preview": "Zusammenführung als Vorschau",
+        "retry-with-fresh-lease": "Mit neuem Lease erneut versuchen",
+        discard: "Meine Änderungen verwerfen"
+      },
+      mergeStates: {
+        idle: "Keine Zusammenführungsvorschau angefordert.",
+        requested: "Zusammenführungsvorschau wird angefordert",
+        ready: "Zusammenführungsvorschau bereit. Wählen Sie die zu behaltenden Änderungen.",
+        blocked: "Dieselben Pfade wurden auf beiden Seiten geändert. Wählen Sie eine andere Wiederherstellung.",
+        failed: "Die Zusammenführungsvorschau ist fehlgeschlagen. Ihr Entwurf bleibt unverändert.",
+        applied: "Zusammenführung übernommen"
+      },
+      discardHeading: "Ungespeicherte Änderungen verwerfen",
+      discardBody: "Die ungespeicherten Änderungen dieser Sitzung verwerfen? Sie können danach nicht wiederhergestellt werden.",
+      cancelDiscard: "Änderungen behalten",
+      controlHeading: "Konfigurierte Steuerung",
+      controlPreview: "Steuerung als Vorschau",
+      controlConfirmHeading: "Konfigurierte Steuerung bestätigen",
+      controlConfirmBody: "„{label}“ ausführen? Der Companion löst die Wirkung aus dem aktuellen Projektstand auf; diese Karte sendet nur den Steuerungsnamen und die deklarierte Eingabe.",
+      controlEffect: "Aufgelöste Wirkung",
+      controlTarget: "Ziel",
+      controlCancel: "Steuerung abbrechen",
+      controlRun: "Steuerung ausführen",
+      controlStates: {
+        accepted: "Angenommen und protokolliert. Noch nicht abgesetzt.",
+        dispatched: "An Home Assistant abgesetzt. Noch nicht bestätigt.",
+        readback_confirmed: "Durch Rücklesung bestätigt.",
+        timed_out: "Zeitüberschreitung. Die Wirkung ist unbekannt — prüfen Sie den aktuellen Zustand und das vertrauenswürdige Auditprotokoll.",
+        denied: "Abgelehnt.",
+        failed_before_dispatch: "Vor dem Absetzen fehlgeschlagen. Es wurde nichts gesendet.",
+        failed_after_dispatch: "Nach dem Absetzen fehlgeschlagen. Die Wirkung ist unbekannt — prüfen Sie den aktuellen Zustand und das vertrauenswürdige Auditprotokoll.",
+        result_unknown: "Das Ergebnis ist unbekannt — prüfen Sie den aktuellen Zustand und das vertrauenswürdige Auditprotokoll, bevor Sie erneut handeln.",
+        cancelled_before_dispatch: "Abgebrochen. Es wurde nichts gesendet."
+      },
+      controlCorrelation: "Korrelations-ID",
+      controlNoRetry: "Diese Karte wiederholt eine Steuerung niemals von selbst. Entscheiden Sie erneut, wenn sich die Anlage bewegen soll."
     }
   };
   function projectSafetyLocale(hass, documentLanguage = "en") {
@@ -24110,9 +24721,9 @@ ${entityId}`)) return;
         const lease = leaseChipState(state, affordances);
         chips.push(chip("✎", `${t("editing")}: ${t("leaseStates")[lease]}`, lease));
       }
-      const revision = state.revision === null || state.revision === void 0 ? "—" : String(state.revision);
+      const revision2 = state.revision === null || state.revision === void 0 ? "—" : String(state.revision);
       const expected = state.expectedRevision === null || state.expectedRevision === void 0 ? null : String(state.expectedRevision);
-      chips.push(chip("#", expected ? `${t("currentRevision")} ${revision} · ${t("expectedRevision")} ${expected}` : `${t("currentRevision")} ${revision}`, "revision"));
+      chips.push(chip("#", expected ? `${t("currentRevision")} ${revision2} · ${t("expectedRevision")} ${expected}` : `${t("currentRevision")} ${revision2}`, "revision"));
       this._row.replaceChildren(...chips);
       const reason = shared && !sharedWritable(state) ? state.readOnlyReason : null;
       const blocking = Boolean(reason) && BANNER_REASONS.has(reason);
@@ -24195,11 +24806,253 @@ ${entityId}`)) return;
       }));
     }
   };
+  var GltSurfaceElement = class extends HTMLElement {
+    constructor() {
+      super();
+      this._copy = (key) => key;
+      this._props = {};
+    }
+    connectedCallback() {
+      this.paint();
+    }
+    set copy(value) {
+      if (typeof value !== "function") return;
+      this._copy = value;
+      this.paint();
+    }
+    set props(value) {
+      this._props = value ?? {};
+      this.paint();
+    }
+    get props() {
+      return this._props;
+    }
+    paint() {
+      if (this.isConnected) this.replaceChildren(...this.render());
+    }
+    render() {
+      return [];
+    }
+  };
+  var GltLeaseControl = class extends GltSurfaceElement {
+    render() {
+      const t = this._copy;
+      const { authority, collaboration, affordances, onAcquire, onRenew, onRelease, onDiscard } = this._props;
+      if (!authority || !collaboration) return [];
+      const section = element("section", "glt-safe-section");
+      section.append(element("h4", "", t("leaseHeading")));
+      const lease = collaboration.lease || authority.lease;
+      const chipState = leaseChipState(authority, affordances);
+      const summary = element("div", "glt-safe-authority");
+      summary.append(chip("✎", t("leaseStates")[chipState], chipState));
+      if (lease?.expiresAt !== void 0 && lease?.state === "held-self") {
+        const remaining = Math.max(0, Math.round(lease.expiresAt - authority.observedAt));
+        summary.append(chip("⏱", t("leaseExpiresIn", { seconds: remaining }), "revision"));
+      }
+      const candidate = collaboration.candidate;
+      const candidateState = !candidate ? "none" : candidate.preserved ? "preserved" : "dirty";
+      summary.append(chip("✱", t("candidateStates")[candidateState], candidateState));
+      const revisions = collaboration.revisions;
+      summary.append(chip("#", t("revisionTriplet", {
+        base: revisions.base ?? "—",
+        current: revisions.current ?? authority.revision ?? "—",
+        candidate: revisions.candidate ?? "—"
+      }), "revision"));
+      section.append(summary);
+      const actions = element("div", "glt-safe-actions");
+      if (affordances.canAcquireLease) {
+        const acquire = button(t("acquireLease"), "glt-safe-btn primary");
+        acquire.addEventListener("click", () => onAcquire?.());
+        actions.append(acquire);
+      }
+      if (affordances.canRenewLease) {
+        const renew = button(t("renewLease"));
+        renew.addEventListener("click", () => onRenew?.());
+        const release = button(t("releaseLease"));
+        release.addEventListener("click", () => onRelease?.());
+        actions.append(renew, release);
+      }
+      if (candidate) {
+        const discard = button(t("conflictChoices").discard);
+        discard.addEventListener("click", () => onDiscard?.());
+        actions.append(discard);
+      }
+      if (actions.childElementCount > 0) section.append(actions);
+      if (chipState === "heldOther") {
+        section.append(element("p", "glt-safe-help", t("leaseStates").heldOther));
+      }
+      return [section];
+    }
+  };
+  var GltConflictRecovery = class extends GltSurfaceElement {
+    render() {
+      const t = this._copy;
+      const { collaboration, onChoose } = this._props;
+      const conflict = collaboration?.conflict;
+      if (!conflict) return [];
+      const section = element("section", "glt-safe-section");
+      section.setAttribute("role", "group");
+      section.append(
+        element("h4", "", t("conflictHeading")),
+        element("p", "", t("conflictBody", {
+          base: conflict.base ?? "—",
+          current: conflict.current ?? "—"
+        })),
+        element("p", "glt-safe-help", t("mergeStates")[collaboration.merge.state])
+      );
+      const actions = element("div", "glt-safe-actions");
+      for (const choice of conflictChoices(collaboration)) {
+        const node = button(t("conflictChoices")[choice], choice === "discard" ? "glt-safe-btn" : "glt-safe-btn primary");
+        node.addEventListener("click", () => onChoose?.(choice));
+        actions.append(node);
+      }
+      section.append(actions);
+      return [section];
+    }
+  };
+  var GltControlConfirm = class extends GltSurfaceElement {
+    render() {
+      const t = this._copy;
+      const { control: control2, onConfirm, onCancel } = this._props;
+      if (!control2 || control2.phase === "idle") return [];
+      const section = element("section", "glt-safe-section");
+      section.setAttribute("role", "group");
+      section.append(element("h4", "", t("controlConfirmHeading")));
+      const preview = control2.preview;
+      if (preview) {
+        section.append(element("p", "", t("controlConfirmBody", { label: preview.label ?? control2.controlId })));
+        const table2 = element("table", "glt-safe-table");
+        const body = element("tbody");
+        for (const [label, value] of [
+          [t("controlEffect"), preview.summary ?? "—"],
+          [t("controlTarget"), JSON.stringify(preview.target ?? {})]
+        ]) {
+          const row = element("tr");
+          const key = element("th", "", label);
+          const cell = element("td", "glt-safe-code", value);
+          cell.dataset.label = label;
+          row.append(key, cell);
+          body.append(row);
+        }
+        table2.append(body);
+        section.append(table2);
+      }
+      if (control2.phase === "confirm") {
+        const actions = element("div", "glt-safe-actions");
+        const cancel2 = button(t("controlCancel"));
+        cancel2.addEventListener("click", () => onCancel?.());
+        const run = button(t("controlRun"), "glt-safe-btn primary");
+        run.addEventListener("click", () => onConfirm?.());
+        actions.append(cancel2, run);
+        section.append(actions);
+        queueMicrotask(() => cancel2.focus());
+      }
+      if (control2.result) {
+        const kind = isControlSuccess(control2.result) ? "pass" : isControlUnknown(control2.result) ? "fail" : "info";
+        section.append(status(kind, t("controlStates")[control2.result]));
+        if (control2.correlationId) {
+          section.append(element("p", "glt-safe-code", `${t("controlCorrelation")} ${control2.correlationId}`));
+        }
+        if (isControlUnknown(control2.result)) {
+          section.append(element("p", "glt-safe-help", t("controlNoRetry")));
+        }
+      }
+      if (control2.error) {
+        section.append(element(
+          "p",
+          "glt-safe-help",
+          t("errorCodes")[control2.error.code] || t("errorCodes").effect_unknown
+        ));
+      }
+      return [section];
+    }
+  };
   if (!customElements.get("glt-flow-card-authority-bar")) {
     customElements.define("glt-flow-card-authority-bar", GltAuthorityBar);
   }
   if (!customElements.get("glt-flow-card-project-authority")) {
     customElements.define("glt-flow-card-project-authority", GltProjectAuthority);
+  }
+  var GltEvidenceView = class extends GltSurfaceElement {
+    _row(kind, row) {
+      const t = this._copy;
+      const cells = kind === "trusted" ? [
+        ["auditAt", row.at],
+        ["auditActor", row.actor ?? row.user_id ?? "—"],
+        ["auditEvent", row.action ?? "—"],
+        ["auditResult", row.result ?? row.state ?? "—"],
+        ["auditCorrelation", row.correlation_id ?? "—"]
+      ] : [
+        ["telemetryReceived", row.at],
+        ["telemetryCategory", row.payload?.category ?? "—"],
+        ["telemetryPayload", JSON.stringify(row.payload ?? {}).slice(0, 200)]
+      ];
+      const node = element("tr");
+      for (const [key, value] of cells) {
+        const cell = element("td", "", value === void 0 || value === null ? "—" : String(value));
+        cell.dataset.label = t(key);
+        node.append(cell);
+      }
+      return node;
+    }
+    render() {
+      const t = this._copy;
+      const { kind, page, onNext, onExport } = this._props;
+      if (!page) return [];
+      const trusted = kind === "trusted";
+      const section = element("section", "glt-safe-section");
+      const title = t(trusted ? "trustedAudit" : "clientTelemetry");
+      const heading = element("h4", "", title);
+      const label = element("span", "glt-safe-provenance", t(trusted ? "serverAuthored" : "notEvidence"));
+      heading.append(label);
+      section.setAttribute("aria-label", `${title} — ${label.textContent}`);
+      section.append(heading);
+      if (page.stale) section.append(status("fail", t("rowsStale")));
+      if (page.error) {
+        section.append(element(
+          "p",
+          "glt-safe-help",
+          t("errorCodes")[page.error.code] || t("errorCodes").effect_unknown
+        ));
+      }
+      if (page.rows.length === 0) {
+        section.append(element("p", "glt-safe-help", t(trusted ? "trustedEmpty" : "telemetryEmpty")));
+        return [section];
+      }
+      const table2 = element("table", "glt-safe-table");
+      const header = element("thead");
+      const headRow = element("tr");
+      const columns = trusted ? ["auditAt", "auditActor", "auditEvent", "auditResult", "auditCorrelation"] : ["telemetryReceived", "telemetryCategory", "telemetryPayload"];
+      for (const key of columns) headRow.append(element("th", "", t(key)));
+      header.append(headRow);
+      const body = element("tbody");
+      for (const row of page.rows) body.append(this._row(kind, row));
+      table2.append(header, body);
+      section.append(table2);
+      const actions = element("div", "glt-safe-actions");
+      if (page.hasMore) {
+        const next = button(t("loadNext"));
+        next.addEventListener("click", () => onNext?.(page.cursor));
+        actions.append(next);
+      }
+      const download = button(t(trusted ? "exportTrusted" : "exportTelemetry"));
+      download.addEventListener("click", () => onExport?.(page.rows));
+      actions.append(download);
+      section.append(actions);
+      return [section];
+    }
+  };
+  if (!customElements.get("glt-flow-card-evidence-view")) {
+    customElements.define("glt-flow-card-evidence-view", GltEvidenceView);
+  }
+  if (!customElements.get("glt-flow-card-lease-control")) {
+    customElements.define("glt-flow-card-lease-control", GltLeaseControl);
+  }
+  if (!customElements.get("glt-flow-card-conflict-recovery")) {
+    customElements.define("glt-flow-card-conflict-recovery", GltConflictRecovery);
+  }
+  if (!customElements.get("glt-flow-card-control-confirm")) {
+    customElements.define("glt-flow-card-control-confirm", GltControlConfirm);
   }
   function projectAuthority(editor, type, payload) {
     if (!editor._hass?.callWS) return Promise.reject(Object.assign(new Error("Companion unavailable"), { code: "unavailable" }));
@@ -24474,16 +25327,43 @@ ${entityId}`)) return;
       copyFor(editor, "leaseStates")[leaseChipState(authority, affordances)],
       `${copyFor(editor, "currentRevision")} ${authority.revision ?? project.revision ?? 0}`
     ));
+    const controls = Array.isArray(editor._config?.controls) ? editor._config.controls : [];
     if (affordances.canReadProject) {
       grid.append(card(
         copyFor(editor, "controlPolicy"),
-        copyFor(editor, "controlsVisible", {
-          count: Array.isArray(editor._config?.controls) ? editor._config.controls.length : 0
-        }),
+        copyFor(editor, "controlsVisible", { count: controls.length }),
         copyFor(editor, "serverNormalization")
       ));
     }
     content.append(grid);
+    if (affordances.canExecuteControl && controls.length > 0 && state.controlClient) {
+      const section = element("section", "glt-safe-section");
+      section.append(element("h4", "", copyFor(editor, "controlHeading")));
+      const actions2 = element("div", "glt-safe-actions");
+      for (const control2 of controls) {
+        if (!control2?.id) continue;
+        const preview = button(`${copyFor(editor, "controlPreview")} — ${control2.label || control2.id}`);
+        preview.addEventListener("click", () => {
+          state.controlClient.select(control2.id);
+          state.controlClient.preview(control2.id, {}, authority.revision ?? project.revision ?? 0);
+        });
+        actions2.append(preview);
+      }
+      section.append(actions2);
+      content.append(section);
+      const confirm2 = document.createElement("glt-flow-card-control-confirm");
+      confirm2.copy = (key, values) => copyFor(editor, key, values);
+      confirm2.props = {
+        control: state.control,
+        onCancel: () => state.controlClient.cancel(),
+        onConfirm: () => state.controlClient.execute(
+          state.control.controlId,
+          {},
+          authority.revision ?? project.revision ?? 0
+        )
+      };
+      content.append(confirm2);
+    }
     const actions = element("div", "glt-safe-actions");
     const validate = button(copyFor(editor, "validate"), "glt-safe-btn primary");
     validate.addEventListener("click", () => {
@@ -24546,8 +25426,34 @@ ${entityId}`)) return;
       queueMicrotask(() => validate.click());
     }
   }
+  function renderCollaboration(editor, state, content) {
+    const controller = state.collaborationController;
+    if (!controller) return;
+    const copy = (key, values) => copyFor(editor, key, values);
+    const lease = document.createElement("glt-flow-card-lease-control");
+    lease.copy = copy;
+    lease.props = {
+      authority: state.authority,
+      collaboration: state.collaboration,
+      affordances: authorityAffordances(state.authority),
+      onAcquire: () => controller.acquire(),
+      onRenew: () => controller.renew(),
+      onRelease: () => controller.release(),
+      onDiscard: () => controller.discard()
+    };
+    content.append(lease);
+    if (!state.collaboration.conflict) return;
+    const recovery = document.createElement("glt-flow-card-conflict-recovery");
+    recovery.copy = copy;
+    recovery.props = {
+      collaboration: state.collaboration,
+      onChoose: (choice) => controller.recover(choice)
+    };
+    content.append(recovery);
+  }
   function renderMigration(editor, state, content) {
     content.append(element("h3", "", copyFor(editor, "tabs")[2]));
+    renderCollaboration(editor, state, content);
     const workflow = element("ol", "glt-safe-stepper");
     workflow.setAttribute("aria-label", "Migration workflow");
     for (const [index, label] of copyFor(editor, "workflow").entries()) {
@@ -24805,71 +25711,20 @@ ${entityId}`)) return;
     anchor.click();
     URL.revokeObjectURL(url);
   }
-  function evidenceRow(editor, kind, row) {
-    const cells = kind === "trusted" ? [
-      ["auditAt", row.at],
-      ["auditActor", row.actor ?? row.user_id ?? "—"],
-      ["auditEvent", row.action ?? "—"],
-      ["auditResult", row.result ?? row.state ?? "—"],
-      ["auditCorrelation", row.correlation_id ?? "—"]
-    ] : [
-      ["telemetryReceived", row.at],
-      ["telemetryCategory", row.payload?.category ?? "—"],
-      ["telemetryPayload", JSON.stringify(row.payload ?? {}).slice(0, 200)]
-    ];
-    const node = element("tr");
-    for (const [key, value] of cells) {
-      const cell = element("td", "", value === void 0 || value === null ? "—" : String(value));
-      cell.dataset.label = copyFor(editor, key);
-      node.append(cell);
-    }
-    return node;
-  }
-  function evidenceSection(editor, state, kind) {
+  function evidenceView(editor, state, kind) {
     const trusted = kind === "trusted";
-    const page = trusted ? state.authority.evidence : state.authority.telemetry;
-    const section = element("section", "glt-safe-section");
-    const heading = element("h4", "", copyFor(editor, trusted ? "trustedAudit" : "clientTelemetry"));
-    const label = element("span", "glt-safe-provenance", copyFor(editor, trusted ? "serverAuthored" : "notEvidence"));
-    heading.append(label);
-    section.setAttribute("aria-label", `${copyFor(editor, trusted ? "trustedAudit" : "clientTelemetry")} — ${label.textContent}`);
-    section.append(heading);
-    if (page.stale) section.append(status("fail", copyFor(editor, "rowsStale")));
-    if (page.error) {
-      section.append(element(
-        "p",
-        "glt-safe-help",
-        copyFor(editor, "errorCodes")[page.error.code] || copyFor(editor, "errorCodes").effect_unknown
-      ));
-    }
-    if (page.rows.length === 0) {
-      section.append(element("p", "glt-safe-help", copyFor(editor, trusted ? "trustedEmpty" : "telemetryEmpty")));
-      return section;
-    }
-    const table2 = element("table", "glt-safe-table");
-    const header = element("thead");
-    const headRow = element("tr");
-    const columns = trusted ? ["auditAt", "auditActor", "auditEvent", "auditResult", "auditCorrelation"] : ["telemetryReceived", "telemetryCategory", "telemetryPayload"];
-    for (const key of columns) headRow.append(element("th", "", copyFor(editor, key)));
-    header.append(headRow);
-    const body = element("tbody");
-    for (const row of page.rows) body.append(evidenceRow(editor, kind, row));
-    table2.append(header, body);
-    section.append(table2);
-    const actions = element("div", "glt-safe-actions");
-    if (page.hasMore) {
-      const next = button(copyFor(editor, "loadNext"));
-      next.addEventListener("click", () => {
+    const node = document.createElement("glt-flow-card-evidence-view");
+    node.copy = (key, values) => copyFor(editor, key, values);
+    node.props = {
+      kind,
+      page: trusted ? state.authority.evidence : state.authority.telemetry,
+      onNext: (cursor) => {
         const load = trusted ? state.client?.evidencePage : state.client?.telemetryPage;
-        load?.call(state.client, { cursor: page.cursor, append: true });
-      });
-      actions.append(next);
-    }
-    const download = button(copyFor(editor, trusted ? "exportTrusted" : "exportTelemetry"));
-    download.addEventListener("click", () => exportEvidence(kind, page.rows));
-    actions.append(download);
-    section.append(actions);
-    return section;
+        load?.call(state.client, { cursor, append: true });
+      },
+      onExport: (rows) => exportEvidence(kind, rows)
+    };
+    return node;
   }
   function renderEvidence(editor, state, content) {
     content.append(element("h3", "", copyFor(editor, "releaseEvidence")));
@@ -24886,7 +25741,7 @@ ${entityId}`)) return;
       state.client.evidencePage();
       state.client.telemetryPage();
     }
-    content.append(evidenceSection(editor, state, "trusted"), evidenceSection(editor, state, "telemetry"));
+    content.append(evidenceView(editor, state, "trusted"), evidenceView(editor, state, "telemetry"));
   }
   function openProjectSafety(editor, trigger) {
     editor.shadowRoot.querySelector(".glt-safe-modal")?.remove();
@@ -24908,7 +25763,11 @@ ${entityId}`)) return;
       client: null,
       accessSurface: false,
       access: { loading: false, inventory: null, error: null, pending: null, busy: false, notice: null, lastCode: null },
-      evidenceRequested: false
+      evidenceRequested: false,
+      collaboration: initialCollaborationState(),
+      collaborationController: null,
+      control: initialControlState(),
+      controlClient: null
     };
     const modal = element("div", "glt-safe-modal");
     const dialog = element("section", "glt-safe-dialog");
@@ -25016,6 +25875,23 @@ ${entityId}`)) return;
     });
     state.client = authority.connect({ hass: editor._hass, projectId: project.id });
     state.authority = authority.authorityState;
+    if (state.client) {
+      state.collaborationController = createCollaborationController({
+        client: state.client,
+        onChange: (next) => {
+          state.collaboration = next;
+          state.render();
+        }
+      });
+      state.controlClient = createConfiguredControlClient({
+        hass: editor._hass,
+        projectId: project.id,
+        onChange: (next) => {
+          state.control = next;
+          state.render();
+        }
+      });
+    }
     state.render();
     state.client?.refresh().catch(() => {
     });

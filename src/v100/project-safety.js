@@ -7,6 +7,17 @@ import {
   initialAuthorityState,
   sharedWritable,
 } from "./project-authority.mjs";
+import {
+  createCollaborationController,
+  conflictChoices,
+  initialCollaborationState,
+} from "./project-collaboration.mjs";
+import {
+  createConfiguredControlClient,
+  initialControlState,
+  isControlSuccess,
+  isControlUnknown,
+} from "./configured-control.mjs";
 import { projectSafetyCopy, projectSafetyLocale } from "./project-safety-i18n.mjs";
 
 const Editor = customElements.get("glt-flow-card-editor");
@@ -320,11 +331,300 @@ class GltProjectAuthority extends HTMLElement {
   }
 }
 
+/**
+ * Shared plumbing for the Phase-2 surface elements.
+ *
+ * Each one takes its whole input in a single `props` assignment and repaints
+ * once, so a half-updated surface - new revision, old lease - cannot be shown
+ * even for one frame.
+ */
+class GltSurfaceElement extends HTMLElement {
+  constructor() {
+    super();
+    this._copy = (key) => key;
+    this._props = {};
+  }
+
+  connectedCallback() {
+    this.paint();
+  }
+
+  set copy(value) {
+    if (typeof value !== "function") return;
+    this._copy = value;
+    this.paint();
+  }
+
+  set props(value) {
+    this._props = value ?? {};
+    this.paint();
+  }
+
+  get props() {
+    return this._props;
+  }
+
+  paint() {
+    if (this.isConnected) this.replaceChildren(...this.render());
+  }
+
+  render() {
+    return [];
+  }
+}
+
+/** Acquire, renew, release and describe the one exclusive engineering lease. */
+class GltLeaseControl extends GltSurfaceElement {
+  render() {
+    const t = this._copy;
+    const { authority, collaboration, affordances, onAcquire, onRenew, onRelease, onDiscard } = this._props;
+    if (!authority || !collaboration) return [];
+    const section = element("section", "glt-safe-section");
+    section.append(element("h4", "", t("leaseHeading")));
+
+    const lease = collaboration.lease || authority.lease;
+    const chipState = leaseChipState(authority, affordances);
+    const summary = element("div", "glt-safe-authority");
+    summary.append(chip("✎", t("leaseStates")[chipState], chipState));
+    if (lease?.expiresAt !== undefined && lease?.state === "held-self") {
+      const remaining = Math.max(0, Math.round(lease.expiresAt - authority.observedAt));
+      summary.append(chip("⏱", t("leaseExpiresIn", { seconds: remaining }), "revision"));
+    }
+    const candidate = collaboration.candidate;
+    const candidateState = !candidate ? "none" : candidate.preserved ? "preserved" : "dirty";
+    summary.append(chip("✱", t("candidateStates")[candidateState], candidateState));
+    const revisions = collaboration.revisions;
+    summary.append(chip("#", t("revisionTriplet", {
+      base: revisions.base ?? "—",
+      current: revisions.current ?? authority.revision ?? "—",
+      candidate: revisions.candidate ?? "—",
+    }), "revision"));
+    section.append(summary);
+
+    const actions = element("div", "glt-safe-actions");
+    // A viewer or operator never sees a disabled lease button: an affordance
+    // they can never use is only a way to make them feel refused.
+    if (affordances.canAcquireLease) {
+      const acquire = button(t("acquireLease"), "glt-safe-btn primary");
+      acquire.addEventListener("click", () => onAcquire?.());
+      actions.append(acquire);
+    }
+    if (affordances.canRenewLease) {
+      const renew = button(t("renewLease"));
+      renew.addEventListener("click", () => onRenew?.());
+      const release = button(t("releaseLease"));
+      release.addEventListener("click", () => onRelease?.());
+      actions.append(renew, release);
+    }
+    if (candidate) {
+      const discard = button(t("conflictChoices").discard);
+      discard.addEventListener("click", () => onDiscard?.());
+      actions.append(discard);
+    }
+    if (actions.childElementCount > 0) section.append(actions);
+
+    if (chipState === "heldOther") {
+      section.append(element("p", "glt-safe-help", t("leaseStates").heldOther));
+    }
+    return [section];
+  }
+}
+
+/** Non-destructive two-session recovery. There is no overwrite path. */
+class GltConflictRecovery extends GltSurfaceElement {
+  render() {
+    const t = this._copy;
+    const { collaboration, onChoose } = this._props;
+    const conflict = collaboration?.conflict;
+    if (!conflict) return [];
+    const section = element("section", "glt-safe-section");
+    section.setAttribute("role", "group");
+    section.append(
+      element("h4", "", t("conflictHeading")),
+      element("p", "", t("conflictBody", {
+        base: conflict.base ?? "—",
+        current: conflict.current ?? "—",
+      })),
+      element("p", "glt-safe-help", t("mergeStates")[collaboration.merge.state]),
+    );
+    const actions = element("div", "glt-safe-actions");
+    for (const choice of conflictChoices(collaboration)) {
+      const node = button(t("conflictChoices")[choice], choice === "discard"
+        ? "glt-safe-btn"
+        : "glt-safe-btn primary");
+      node.addEventListener("click", () => onChoose?.(choice));
+      actions.append(node);
+    }
+    section.append(actions);
+    return [section];
+  }
+}
+
+/**
+ * Confirm one configured control and report its authoritative result.
+ *
+ * The effect summary is the server's own, rendered read-only. There is no
+ * retry action anywhere in this element, in any result state.
+ */
+class GltControlConfirm extends GltSurfaceElement {
+  render() {
+    const t = this._copy;
+    const { control, onConfirm, onCancel } = this._props;
+    if (!control || control.phase === "idle") return [];
+    const section = element("section", "glt-safe-section");
+    section.setAttribute("role", "group");
+    section.append(element("h4", "", t("controlConfirmHeading")));
+
+    const preview = control.preview;
+    if (preview) {
+      section.append(element("p", "", t("controlConfirmBody", { label: preview.label ?? control.controlId })));
+      const table = element("table", "glt-safe-table");
+      const body = element("tbody");
+      for (const [label, value] of [
+        [t("controlEffect"), preview.summary ?? "—"],
+        [t("controlTarget"), JSON.stringify(preview.target ?? {})],
+      ]) {
+        const row = element("tr");
+        const key = element("th", "", label);
+        const cell = element("td", "glt-safe-code", value);
+        cell.dataset.label = label;
+        row.append(key, cell);
+        body.append(row);
+      }
+      table.append(body);
+      section.append(table);
+    }
+
+    if (control.phase === "confirm") {
+      const actions = element("div", "glt-safe-actions");
+      const cancel = button(t("controlCancel"));
+      cancel.addEventListener("click", () => onCancel?.());
+      const run = button(t("controlRun"), "glt-safe-btn primary");
+      run.addEventListener("click", () => onConfirm?.());
+      actions.append(cancel, run);
+      section.append(actions);
+      // The safe choice takes focus, never the one that moves plant.
+      queueMicrotask(() => cancel.focus());
+    }
+
+    if (control.result) {
+      const kind = isControlSuccess(control.result) ? "pass" : isControlUnknown(control.result) ? "fail" : "info";
+      section.append(status(kind, t("controlStates")[control.result]));
+      if (control.correlationId) {
+        section.append(element("p", "glt-safe-code", `${t("controlCorrelation")} ${control.correlationId}`));
+      }
+      if (isControlUnknown(control.result)) {
+        section.append(element("p", "glt-safe-help", t("controlNoRetry")));
+      }
+    }
+    if (control.error) {
+      section.append(element("p", "glt-safe-help",
+        t("errorCodes")[control.error.code] || t("errorCodes").effect_unknown));
+    }
+    return [section];
+  }
+}
+
 if (!customElements.get("glt-flow-card-authority-bar")) {
   customElements.define("glt-flow-card-authority-bar", GltAuthorityBar);
 }
 if (!customElements.get("glt-flow-card-project-authority")) {
   customElements.define("glt-flow-card-project-authority", GltProjectAuthority);
+}
+/**
+ * One evidence stream, with its own heading, query, pagination and export.
+ *
+ * The two streams never share a filter, a cursor, a total or a style, and the
+ * untrusted one carries its label permanently rather than only while empty. A
+ * failed next page keeps the rows already on screen and marks them stale:
+ * dropping them would hide history the user was authorized to see.
+ */
+class GltEvidenceView extends GltSurfaceElement {
+  _row(kind, row) {
+    const t = this._copy;
+    const cells = kind === "trusted"
+      ? [
+          ["auditAt", row.at],
+          ["auditActor", row.actor ?? row.user_id ?? "—"],
+          ["auditEvent", row.action ?? "—"],
+          ["auditResult", row.result ?? row.state ?? "—"],
+          ["auditCorrelation", row.correlation_id ?? "—"],
+        ]
+      : [
+          ["telemetryReceived", row.at],
+          ["telemetryCategory", row.payload?.category ?? "—"],
+          ["telemetryPayload", JSON.stringify(row.payload ?? {}).slice(0, 200)],
+        ];
+    const node = element("tr");
+    for (const [key, value] of cells) {
+      const cell = element("td", "", value === undefined || value === null ? "—" : String(value));
+      cell.dataset.label = t(key);
+      node.append(cell);
+    }
+    return node;
+  }
+
+  render() {
+    const t = this._copy;
+    const { kind, page, onNext, onExport } = this._props;
+    if (!page) return [];
+    const trusted = kind === "trusted";
+    const section = element("section", "glt-safe-section");
+    const title = t(trusted ? "trustedAudit" : "clientTelemetry");
+    const heading = element("h4", "", title);
+    const label = element("span", "glt-safe-provenance", t(trusted ? "serverAuthored" : "notEvidence"));
+    heading.append(label);
+    section.setAttribute("aria-label", `${title} — ${label.textContent}`);
+    section.append(heading);
+
+    if (page.stale) section.append(status("fail", t("rowsStale")));
+    if (page.error) {
+      section.append(element("p", "glt-safe-help",
+        t("errorCodes")[page.error.code] || t("errorCodes").effect_unknown));
+    }
+    if (page.rows.length === 0) {
+      section.append(element("p", "glt-safe-help", t(trusted ? "trustedEmpty" : "telemetryEmpty")));
+      return [section];
+    }
+
+    const table = element("table", "glt-safe-table");
+    const header = element("thead");
+    const headRow = element("tr");
+    const columns = trusted
+      ? ["auditAt", "auditActor", "auditEvent", "auditResult", "auditCorrelation"]
+      : ["telemetryReceived", "telemetryCategory", "telemetryPayload"];
+    for (const key of columns) headRow.append(element("th", "", t(key)));
+    header.append(headRow);
+    const body = element("tbody");
+    for (const row of page.rows) body.append(this._row(kind, row));
+    table.append(header, body);
+    section.append(table);
+
+    const actions = element("div", "glt-safe-actions");
+    if (page.hasMore) {
+      const next = button(t("loadNext"));
+      next.addEventListener("click", () => onNext?.(page.cursor));
+      actions.append(next);
+    }
+    const download = button(t(trusted ? "exportTrusted" : "exportTelemetry"));
+    download.addEventListener("click", () => onExport?.(page.rows));
+    actions.append(download);
+    section.append(actions);
+    return [section];
+  }
+}
+
+if (!customElements.get("glt-flow-card-evidence-view")) {
+  customElements.define("glt-flow-card-evidence-view", GltEvidenceView);
+}
+if (!customElements.get("glt-flow-card-lease-control")) {
+  customElements.define("glt-flow-card-lease-control", GltLeaseControl);
+}
+if (!customElements.get("glt-flow-card-conflict-recovery")) {
+  customElements.define("glt-flow-card-conflict-recovery", GltConflictRecovery);
+}
+if (!customElements.get("glt-flow-card-control-confirm")) {
+  customElements.define("glt-flow-card-control-confirm", GltControlConfirm);
 }
 
 function projectAuthority(editor, type, payload) {
@@ -651,16 +951,47 @@ function renderOverview(editor, state, content) {
 
   // A control count the user is not authorized to see is absent, not redacted:
   // a redacted placeholder still answers "there is something here".
+  const controls = Array.isArray(editor._config?.controls) ? editor._config.controls : [];
   if (affordances.canReadProject) {
     grid.append(card(
       copyFor(editor, "controlPolicy"),
-      copyFor(editor, "controlsVisible", {
-        count: Array.isArray(editor._config?.controls) ? editor._config.controls.length : 0,
-      }),
+      copyFor(editor, "controlsVisible", { count: controls.length }),
       copyFor(editor, "serverNormalization"),
     ));
   }
   content.append(grid);
+
+  if (affordances.canExecuteControl && controls.length > 0 && state.controlClient) {
+    const section = element("section", "glt-safe-section");
+    section.append(element("h4", "", copyFor(editor, "controlHeading")));
+    const actions = element("div", "glt-safe-actions");
+    for (const control of controls) {
+      if (!control?.id) continue;
+      // The request names the control and nothing else: no domain, service or
+      // target field exists here to be edited or smuggled.
+      const preview = button(`${copyFor(editor, "controlPreview")} — ${control.label || control.id}`);
+      preview.addEventListener("click", () => {
+        state.controlClient.select(control.id);
+        state.controlClient.preview(control.id, {}, authority.revision ?? project.revision ?? 0);
+      });
+      actions.append(preview);
+    }
+    section.append(actions);
+    content.append(section);
+
+    const confirm = document.createElement("glt-flow-card-control-confirm");
+    confirm.copy = (key, values) => copyFor(editor, key, values);
+    confirm.props = {
+      control: state.control,
+      onCancel: () => state.controlClient.cancel(),
+      onConfirm: () => state.controlClient.execute(
+        state.control.controlId,
+        {},
+        authority.revision ?? project.revision ?? 0,
+      ),
+    };
+    content.append(confirm);
+  }
 
   const actions = element("div", "glt-safe-actions");
   const validate = button(copyFor(editor, "validate"), "glt-safe-btn primary");
@@ -728,8 +1059,38 @@ function renderValidation(editor, state, content) {
   }
 }
 
+/** The engineering lease bar and, on a conflict, the recovery panel. */
+function renderCollaboration(editor, state, content) {
+  const controller = state.collaborationController;
+  if (!controller) return;
+  const copy = (key, values) => copyFor(editor, key, values);
+
+  const lease = document.createElement("glt-flow-card-lease-control");
+  lease.copy = copy;
+  lease.props = {
+    authority: state.authority,
+    collaboration: state.collaboration,
+    affordances: authorityAffordances(state.authority),
+    onAcquire: () => controller.acquire(),
+    onRenew: () => controller.renew(),
+    onRelease: () => controller.release(),
+    onDiscard: () => controller.discard(),
+  };
+  content.append(lease);
+
+  if (!state.collaboration.conflict) return;
+  const recovery = document.createElement("glt-flow-card-conflict-recovery");
+  recovery.copy = copy;
+  recovery.props = {
+    collaboration: state.collaboration,
+    onChoose: (choice) => controller.recover(choice),
+  };
+  content.append(recovery);
+}
+
 function renderMigration(editor, state, content) {
   content.append(element("h3", "", copyFor(editor, "tabs")[2]));
+  renderCollaboration(editor, state, content);
   const workflow = element("ol", "glt-safe-stepper");
   workflow.setAttribute("aria-label", "Migration workflow");
   for (const [index, label] of copyFor(editor, "workflow").entries()) {
@@ -991,83 +1352,20 @@ function exportEvidence(kind, rows) {
   URL.revokeObjectURL(url);
 }
 
-function evidenceRow(editor, kind, row) {
-  const cells = kind === "trusted"
-    ? [
-        ["auditAt", row.at],
-        ["auditActor", row.actor ?? row.user_id ?? "—"],
-        ["auditEvent", row.action ?? "—"],
-        ["auditResult", row.result ?? row.state ?? "—"],
-        ["auditCorrelation", row.correlation_id ?? "—"],
-      ]
-    : [
-        ["telemetryReceived", row.at],
-        ["telemetryCategory", row.payload?.category ?? "—"],
-        ["telemetryPayload", JSON.stringify(row.payload ?? {}).slice(0, 200)],
-      ];
-  const node = element("tr");
-  for (const [key, value] of cells) {
-    const cell = element("td", "", value === undefined || value === null ? "—" : String(value));
-    cell.dataset.label = copyFor(editor, key);
-    node.append(cell);
-  }
-  return node;
-}
-
-/**
- * One evidence stream, with its own heading, query, pagination and export.
- *
- * The two sections never share a filter, a cursor, a total or a style, and the
- * untrusted one carries its label permanently rather than only while empty.
- */
-function evidenceSection(editor, state, kind) {
+function evidenceView(editor, state, kind) {
   const trusted = kind === "trusted";
-  const page = trusted ? state.authority.evidence : state.authority.telemetry;
-  const section = element("section", "glt-safe-section");
-  const heading = element("h4", "", copyFor(editor, trusted ? "trustedAudit" : "clientTelemetry"));
-  const label = element("span", "glt-safe-provenance", copyFor(editor, trusted ? "serverAuthored" : "notEvidence"));
-  heading.append(label);
-  section.setAttribute("aria-label", `${copyFor(editor, trusted ? "trustedAudit" : "clientTelemetry")} — ${label.textContent}`);
-  section.append(heading);
-
-  if (page.stale) section.append(status("fail", copyFor(editor, "rowsStale")));
-  if (page.error) {
-    section.append(element("p", "glt-safe-help",
-      copyFor(editor, "errorCodes")[page.error.code] || copyFor(editor, "errorCodes").effect_unknown));
-  }
-
-  if (page.rows.length === 0) {
-    section.append(element("p", "glt-safe-help", copyFor(editor, trusted ? "trustedEmpty" : "telemetryEmpty")));
-    return section;
-  }
-
-  const table = element("table", "glt-safe-table");
-  const header = element("thead");
-  const headRow = element("tr");
-  const columns = trusted
-    ? ["auditAt", "auditActor", "auditEvent", "auditResult", "auditCorrelation"]
-    : ["telemetryReceived", "telemetryCategory", "telemetryPayload"];
-  for (const key of columns) headRow.append(element("th", "", copyFor(editor, key)));
-  header.append(headRow);
-  const body = element("tbody");
-  for (const row of page.rows) body.append(evidenceRow(editor, kind, row));
-  table.append(header, body);
-  section.append(table);
-
-  const actions = element("div", "glt-safe-actions");
-  if (page.hasMore) {
-    const next = button(copyFor(editor, "loadNext"));
-    next.addEventListener("click", () => {
+  const node = document.createElement("glt-flow-card-evidence-view");
+  node.copy = (key, values) => copyFor(editor, key, values);
+  node.props = {
+    kind,
+    page: trusted ? state.authority.evidence : state.authority.telemetry,
+    onNext: (cursor) => {
       const load = trusted ? state.client?.evidencePage : state.client?.telemetryPage;
-      load?.call(state.client, { cursor: page.cursor, append: true });
-    });
-    actions.append(next);
-  }
-  const download = button(copyFor(editor, trusted ? "exportTrusted" : "exportTelemetry"));
-  download.addEventListener("click", () => exportEvidence(kind, page.rows));
-  actions.append(download);
-  section.append(actions);
-  return section;
+      load?.call(state.client, { cursor, append: true });
+    },
+    onExport: (rows) => exportEvidence(kind, rows),
+  };
+  return node;
 }
 
 function renderEvidence(editor, state, content) {
@@ -1086,7 +1384,7 @@ function renderEvidence(editor, state, content) {
     state.client.evidencePage();
     state.client.telemetryPage();
   }
-  content.append(evidenceSection(editor, state, "trusted"), evidenceSection(editor, state, "telemetry"));
+  content.append(evidenceView(editor, state, "trusted"), evidenceView(editor, state, "telemetry"));
 }
 
 function openProjectSafety(editor, trigger) {
@@ -1110,6 +1408,10 @@ function openProjectSafety(editor, trigger) {
     accessSurface: false,
     access: { loading: false, inventory: null, error: null, pending: null, busy: false, notice: null, lastCode: null },
     evidenceRequested: false,
+    collaboration: initialCollaborationState(),
+    collaborationController: null,
+    control: initialControlState(),
+    controlClient: null,
   };
   const modal = element("div", "glt-safe-modal");
   const dialog = element("section", "glt-safe-dialog");
@@ -1223,6 +1525,23 @@ function openProjectSafety(editor, trigger) {
   });
   state.client = authority.connect({ hass: editor._hass, projectId: project.id });
   state.authority = authority.authorityState;
+  if (state.client) {
+    state.collaborationController = createCollaborationController({
+      client: state.client,
+      onChange: (next) => {
+        state.collaboration = next;
+        state.render();
+      },
+    });
+    state.controlClient = createConfiguredControlClient({
+      hass: editor._hass,
+      projectId: project.id,
+      onChange: (next) => {
+        state.control = next;
+        state.render();
+      },
+    });
+  }
   state.render();
   state.client?.refresh().catch(() => {
     // The client has already made shared mode read-only with a stable reason.

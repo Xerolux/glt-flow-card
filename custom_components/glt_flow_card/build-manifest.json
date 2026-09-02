@@ -32,13 +32,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "729c7017f0ee860b6d8847e2b64b44ae3e782282244411880c8faad116c1304c",
-      "size": 1162175
+      "sha256": "9507d213563446e9b1cb338a9a081839a7163e82bc867bf3653cbae0ef707dd5",
+      "size": 1196959
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "729c7017f0ee860b6d8847e2b64b44ae3e782282244411880c8faad116c1304c",
-      "size": 1162175
+      "sha256": "9507d213563446e9b1cb338a9a081839a7163e82bc867bf3653cbae0ef707dd5",
+      "size": 1196959
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -77,7 +77,7 @@
     }
   ],
   "build": {
-    "commit": "41b4b3ce83e110b1e5b9bee092ed9de1ef319ed1",
+    "commit": "6b05c8670486c4add45083f7592a3535cbfa22f6",
     "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
@@ -152,6 +152,11 @@
       "size": 10677
     },
     {
+      "path": "src/v100/configured-control.mjs",
+      "sha256": "424f36d8e293b009b6bb6d72e5c3fd492cc4a592de2362c580b2eb6513a475e5",
+      "size": 7898
+    },
+    {
       "path": "src/v100/core.mjs",
       "sha256": "992b9f14730f547e3ebb63b134caa47d03957c67642cd1d35422c401f88e8024",
       "size": 22633
@@ -173,13 +178,18 @@
     },
     {
       "path": "src/v100/project-authority.mjs",
-      "sha256": "0b21ed7aa8148ffc58abe69981a67ff2a367d823a5e5f9c53e0bafa932ea1014",
-      "size": 24804
+      "sha256": "6ec509d6337ddea9c7de4d8fb6a9f750964ce8288d5a3003d839f73bda8fa7a8",
+      "size": 25400
     },
     {
       "path": "src/v100/project-bundle.mjs",
       "sha256": "72f33850ffe01ef301caf8d766a1f94326582f091ce65ef759fb905b4c4dec22",
       "size": 23825
+    },
+    {
+      "path": "src/v100/project-collaboration.mjs",
+      "sha256": "978f43e22f246ae397a48bb86cfd57b873b4d2cb78f66643dde8503b5eb17306",
+      "size": 12919
     },
     {
       "path": "src/v100/project-contract.mjs",
@@ -198,13 +208,13 @@
     },
     {
       "path": "src/v100/project-safety-i18n.mjs",
-      "sha256": "f6e49e56b299dc2af379da94f096c20255af017f4d52136096e33d0970987a87",
-      "size": 21580
+      "sha256": "2edc8dcab256fa06fff65bf17fb048535f8f114d00e5c91cd7cb9281542265b7",
+      "size": 28200
     },
     {
       "path": "src/v100/project-safety.js",
-      "sha256": "105eed03d1861447efddb7c4ffcfbb8a4a2affff61a14742fce94ffdda4e8987",
-      "size": 57005
+      "sha256": "27a2547f7fbefd8dd45c6021e7ee42b3e3e52288fa3d0d20bcbfe643ea118f6f",
+      "size": 68371
     },
     {
       "path": "src/v100/v1-addons.js",
