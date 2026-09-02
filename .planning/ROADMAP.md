@@ -367,7 +367,7 @@ Plans:
 
 **Known defects closed**: Hardcoded/incomplete locale behavior, CSS-only or token-only accessibility claims, a 2,000-object diagnostics micro-test presented as platform capacity, absence of real Python/browser/security tests, unproven HA compatibility, and release copies that can drift from reviewed source.
 **Research flag**: Derive numeric capacity budgets from representative hardware and finalize the evidence/claim publication format before release.
-**Plans**: TBD
+**Plans**: 15 across 7 waves — see `.planning/phases/10-usability-release-evidence/`.
 **UI hint**: yes
 
 ## Requirement Coverage
