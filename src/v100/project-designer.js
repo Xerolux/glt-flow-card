@@ -23,6 +23,7 @@
  * should not.
  */
 
+import { statusColourStyles } from "./status-colours.mjs";
 import { defineElement } from "./element-registry.mjs";
 import { hasWording, template as catalogTemplate, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
@@ -35,7 +36,7 @@ import {
   DEFAULT_CLEARANCE, DEFAULT_SPACING, createRouter, relevantObstacles, routeNetwork, routePath,
 } from "./routing.mjs";
 
-const STYLE = `
+const STYLE = `${statusColourStyles()}
   .glt-des{font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;display:block;max-width:100%}
   .glt-des,.glt-des *{min-width:0;overflow-wrap:anywhere}
   .glt-des-bar{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0}
@@ -43,16 +44,16 @@ const STYLE = `
   .glt-des-grid{display:grid;gap:4px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin:4px 0;padding:0;list-style:none}
   .glt-des-cell{display:grid;gap:2px;min-height:44px;padding:8px;border:1px solid currentColor;border-radius:8px}
   .glt-des-cell[aria-selected="true"]{outline:2px solid currentColor;outline-offset:2px}
-  .glt-des-meta{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad)}
+  .glt-des-meta{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--glt-muted,#5f7288)}
   .glt-des-keys{margin:4px 0;padding:0;list-style:none;display:grid;gap:2px}
   .glt-des-key{display:flex;flex-wrap:wrap;gap:8px}
   .glt-des-kbd{font:700 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;border:1px solid currentColor;border-radius:4px;padding:0 6px}
   .glt-des-live{min-height:44px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:4px 12px;border:1px solid currentColor;border-radius:8px}
-  .glt-des-live[data-tone="error"]{color:#ff4f4f}
+  .glt-des-live[data-tone="error"]{color:var(--glt-error,#b3261e)}
   .glt-des-list{margin:0;padding:0;list-style:none;display:grid;gap:4px}
   .glt-des-item{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-height:44px;padding:4px 8px;border:1px solid currentColor;border-radius:8px}
   .glt-des-map{display:block;border:1px solid currentColor;border-radius:8px}
-  .glt-des-empty{color:var(--mut,#8198ad);font-style:italic}
+  .glt-des-empty{color:var(--glt-muted,#5f7288);font-style:italic}
   .glt-des :focus-visible{outline:2px solid currentColor;outline-offset:2px}
   @media(forced-colors:active){
     .glt-des-cell,.glt-des-item,.glt-des-live,.glt-des-map,.glt-des-kbd{border:1px solid CanvasText}
@@ -286,7 +287,10 @@ class GltDesignerCanvas extends GltDesignerElement {
     this.append(live);
 
     const grid = element("ul", "glt-des-grid");
-    grid.setAttribute("role", "grid");
+    // `role="grid"` promises rows. An empty state placed inside one is announced
+    // as a row that is not a row, so the role is applied only when there are
+    // cells and the empty state is a sibling paragraph instead.
+    if (objects.length > 0) grid.setAttribute("role", "grid");
     for (const [index, item] of objects.entries()) {
       const cell = element("li", "glt-des-cell");
       cell.setAttribute("role", "gridcell");
@@ -299,10 +303,10 @@ class GltDesignerCanvas extends GltDesignerElement {
       cell.addEventListener("focus", () => { this._focused = item.id; });
       grid.append(cell);
     }
-    if (objects.length === 0) {
-      grid.append(element("li", "glt-des-empty", textFor(language, "nothing_selected")));
-    }
     this.append(grid);
+    if (objects.length === 0) {
+      this.append(element("p", "glt-des-empty", textFor(language, "nothing_selected")));
+    }
 
     this.append(this._help(language));
   }

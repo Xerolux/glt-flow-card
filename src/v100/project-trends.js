@@ -57,6 +57,7 @@ const KEYS = Object.freeze({
   "coverage": "trends.coverage",
   "instantColumn": "trends.instant_column",
   "report_name": "trends.report_name",
+  "seriesColumn": "trends.series_column",
   "report_period": "trends.report_period",
   "report_schedule": "trends.report_schedule",
   "tableLabel": "trends.table_label",
@@ -264,7 +265,14 @@ class TrendTable extends HTMLElement {
     const head = document.createElement("tr");
     table.append(head);
     append(head, "th", text("instantColumn", language), { scope: "col" });
-    for (const entry of series) append(head, "th", entry.label ?? "");
+    for (const [index, entry] of series.entries()) {
+      // A blank header is a column a reader cannot name, and every cell beneath
+      // it is announced with no context. A series with no label gets its
+      // position, which is at least true.
+      const label = (entry.label ?? "").trim();
+      append(head, "th", label === "" ? text("seriesColumn", language, { index: index + 1 }) : label,
+        { scope: "col" });
+    }
 
     const instants = [...new Set(series.flatMap((entry) =>
       (entry.points ?? []).map((point) => point.at)))].sort();

@@ -13,6 +13,7 @@
  * silent no-op, is the version of this feature that does not work.
  */
 
+import { statusColourStyles } from "./status-colours.mjs";
 import { defineElement } from "./element-registry.mjs";
 import { hasWording, template as catalogTemplate, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
@@ -25,7 +26,7 @@ import {
 import { symbolCatalogStats } from "./core.mjs";
 import { PORT_KINDS, REFUSAL_REASONS } from "./ports.mjs";
 
-const STYLE = `
+const STYLE = `${statusColourStyles()}
   .glt-cat{font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;display:block;max-width:100%}
   .glt-cat,.glt-cat *{min-width:0;overflow-wrap:anywhere}
   .glt-cat-head{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;padding:4px 0}
@@ -37,12 +38,12 @@ const STYLE = `
   .glt-cat-card{display:grid;gap:4px;padding:8px;border:1px solid currentColor;border-radius:8px}
   .glt-cat-card svg{width:48px;height:48px}
   .glt-cat-name{font-weight:700}
-  .glt-cat-meta{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad)}
-  .glt-cat-empty{color:var(--mut,#8198ad);font-style:italic;padding:8px 0}
+  .glt-cat-meta{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--glt-muted,#5f7288)}
+  .glt-cat-empty{color:var(--glt-muted,#5f7288);font-style:italic;padding:8px 0}
   .glt-cat-port{display:grid;gap:4px;padding:8px;border:1px solid currentColor;border-radius:8px}
   .glt-cat-row{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
   .glt-cat-glyph{font:700 14px/1 ui-monospace,SFMono-Regular,Consolas,monospace}
-  .glt-cat-refusal{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;min-height:44px;padding:4px 12px;border:1px solid currentColor;border-radius:8px;font-weight:700;color:#ff4f4f}
+  .glt-cat-refusal{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;min-height:44px;padding:4px 12px;border:1px solid currentColor;border-radius:8px;font-weight:700;color:var(--glt-error,#b3261e)}
   .glt-cat :focus-visible{outline:2px solid currentColor;outline-offset:2px}
   @media(forced-colors:active){
     .glt-cat-card,.glt-cat-port,.glt-cat-refusal,.glt-cat-count{border:1px solid CanvasText}

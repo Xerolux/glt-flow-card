@@ -477,6 +477,25 @@ test("phase-5-catalog every state is legible in every style, and by more than co
   const contrast = await page.evaluate((states) => {
     const badge = document.createElement("glt-flow-card-state-badge");
     document.body.append(badge);
+    /**
+     * The colour actually painted behind an element.
+     *
+     * `getComputedStyle(document.body).backgroundColor` was `rgba(0,0,0,0)` —
+     * transparent — and the caller parsed it as black. Every state colour was
+     * therefore measured against a ground the page never paints, which made a
+     * bright colour on a white screen look compliant and a dark one look
+     * broken. A transparent background is not black; it is whatever is behind
+     * it, and at the top of the page that is the canvas.
+     */
+    const effectiveBackground = (start) => {
+      for (let node = start; node; node = node.parentElement) {
+        const colour = getComputedStyle(node).backgroundColor;
+        const parts = (colour.match(/[\d.]+/gu) ?? []).map(Number);
+        if (parts.length < 4 || parts[3] > 0) return colour;
+      }
+      return "rgb(255, 255, 255)";
+    };
+
     const readings = [];
     for (const state of states) {
       badge.props = { resolved: { state, labels: { en: state, de: state }, modes: [], evidence: [] } };
@@ -485,7 +504,7 @@ test("phase-5-catalog every state is legible in every style, and by more than co
       readings.push({
         state,
         colour: style.color,
-        background: getComputedStyle(document.body).backgroundColor,
+        background: effectiveBackground(node),
         text: (badge.textContent ?? "").trim(),
         symbol: node.dataset?.stateSymbol ?? "",
       });

@@ -7,22 +7,23 @@
  * well as a colour. A surface that cannot explain itself has to be trusted, and
  * removing blind trust is the whole point of the phase.
  */
+import { statusColourStyles } from "./status-colours.mjs";
 import { defineElement } from "./element-registry.mjs";
 import { SEMANTIC_LEVELS, semanticPath } from "./semantic-model.mjs";
 import { stateProjection } from "./equipment-state.mjs";
 
-const STYLE = `
+const STYLE = `${statusColourStyles()}
   .glt-sem-tree{margin:0;padding:0;list-style:none;font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif}
   .glt-sem-node{display:flex;align-items:center;gap:8px;min-height:44px;padding:4px 8px;border-radius:8px}
-  .glt-sem-level{font:700 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad);text-transform:uppercase;letter-spacing:.06em}
-  .glt-sem-invalid{color:#ff4f4f;font-weight:700}
-  .glt-sem-path{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad);overflow-wrap:anywhere}
+  .glt-sem-level{font:700 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--glt-muted,#5f7288);text-transform:uppercase;letter-spacing:.06em}
+  .glt-sem-invalid{color:var(--glt-error,#b3261e);font-weight:700}
+  .glt-sem-path{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--glt-muted,#5f7288);overflow-wrap:anywhere}
   .glt-sem-row{display:flex;gap:8px;align-items:baseline;padding:4px 0}
-  .glt-sem-source{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad)}
+  .glt-sem-source{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--glt-muted,#5f7288)}
   .glt-sem-badge{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 12px;border:1px solid currentColor;border-radius:999px;font:700 12px/1.4 inherit}
-  .glt-sem-badge[data-tone="critical"]{color:#ff4f4f}.glt-sem-badge[data-tone="caution"]{color:#ff9f1c}
-  .glt-sem-badge[data-tone="positive"]{color:#31d879}.glt-sem-badge[data-tone="info"]{color:#36c7ff}
-  .glt-sem-badge[data-tone="neutral"]{color:var(--mut,#8198ad)}
+  .glt-sem-badge[data-tone="critical"]{color:var(--glt-error,#b3261e)}.glt-sem-badge[data-tone="caution"]{color:var(--glt-warning,#8a5200)}
+  .glt-sem-badge[data-tone="positive"]{color:var(--glt-success,#0b6b38)}.glt-sem-badge[data-tone="info"]{color:var(--glt-info,#0f6d99)}
+  .glt-sem-badge[data-tone="neutral"]{color:var(--glt-muted,#5f7288)}
   .glt-sem-reasons{margin:4px 0 0;padding-left:20px;font:12px/1.4 inherit}
   .glt-sem-weak{font-style:italic}
   @media(forced-colors:active){.glt-sem-badge{border:1px solid CanvasText}}

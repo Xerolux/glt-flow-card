@@ -113,6 +113,7 @@ try {
     "test/e2e/project-assets.spec.mjs",
     "test/e2e/project-sites.spec.mjs",
     "test/e2e/product-a11y.spec.mjs",
+    "test/e2e/product-axe.spec.mjs",
   ];
   // The list above is explicit so the run order is stated rather than inherited
   // from directory order. Explicit lists drift: a spec added to `test/e2e/` and

@@ -11,6 +11,7 @@
  * because a hidden staleness indicator is indistinguishable from a fresh view.
  */
 
+import { statusColourStyles } from "./status-colours.mjs";
 import { defineElement } from "./element-registry.mjs";
 import { hasWording, template as catalogTemplate, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
@@ -19,7 +20,7 @@ import "./catalog-en.mjs";
 import { presentOutcome } from "./command-outcome.mjs";
 import { reducePanel } from "./panel-model.mjs";
 
-const STYLE = `
+const STYLE = `${statusColourStyles()}
   .glt-ops{font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;display:block;max-width:100%}
   /* German is materially longer than English, and the narrow layout is 320px.
      Wrapping is the default here rather than an afterthought; nothing in this
@@ -27,11 +28,11 @@ const STYLE = `
   .glt-ops,.glt-ops *{min-width:0;overflow-wrap:anywhere}
   .glt-ops-region{padding:8px 0;border-top:1px solid var(--brd,#1e3346)}
   .glt-ops-region:first-child{border-top:0}
-  .glt-ops-kind{font:700 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad);text-transform:uppercase;letter-spacing:.06em}
+  .glt-ops-kind{font:700 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--glt-muted,#5f7288);text-transform:uppercase;letter-spacing:.06em}
   .glt-ops-values{margin:4px 0 0;padding:0;list-style:none;display:grid;gap:4px}
   .glt-ops-value{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
-  .glt-ops-unit{color:var(--mut,#8198ad);font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
-  .glt-ops-empty{color:var(--mut,#8198ad);font-style:italic}
+  .glt-ops-unit{color:var(--glt-muted,#5f7288);font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
+  .glt-ops-empty{color:var(--glt-muted,#5f7288);font-style:italic}
   .glt-ops-crumbs{display:flex;flex-wrap:wrap;gap:4px;margin:0;padding:0;list-style:none}
   .glt-ops-crumb{display:inline-flex;align-items:center;min-height:44px;gap:4px}
   .glt-ops-crumb a{color:inherit}
@@ -40,17 +41,21 @@ const STYLE = `
   .glt-ops-item{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:44px;padding:4px 8px;border-radius:8px}
   .glt-ops-count{font:700 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;border:1px solid currentColor;border-radius:999px;padding:2px 8px}
   .glt-ops-outcome{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:44px;padding:4px 12px;border:1px solid currentColor;border-radius:8px;font-weight:700}
-  .glt-ops-outcome[data-tone="success"]{color:#31d879}
-  .glt-ops-outcome[data-tone="warning"]{color:#ff9f1c}
-  .glt-ops-outcome[data-tone="error"]{color:#ff4f4f}
-  .glt-ops-outcome[data-tone="neutral"]{color:var(--mut,#8198ad)}
+  .glt-ops-outcome[data-tone="success"]{color:var(--glt-success,#0b6b38)}
+  .glt-ops-outcome[data-tone="warning"]{color:var(--glt-warning,#8a5200)}
+  .glt-ops-outcome[data-tone="error"]{color:var(--glt-error,#b3261e)}
+  .glt-ops-outcome[data-tone="neutral"]{color:var(--glt-muted,#5f7288)}
   .glt-ops-mark{font:700 14px/1 ui-monospace,SFMono-Regular,Consolas,monospace}
   .glt-ops-stale{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:44px;padding:4px 12px;border:1px solid currentColor;border-radius:8px}
-  .glt-ops-stale[data-status="live"]{color:#31d879}
-  .glt-ops-stale[data-status="resyncing"]{color:#36c7ff}
-  .glt-ops-stale[data-status="stale"]{color:#ff9f1c}
-  .glt-ops-stale[data-status="unavailable"]{color:#ff4f4f}
-  .glt-ops-dim{opacity:.6}
+  .glt-ops-stale[data-status="live"]{color:var(--glt-success,#0b6b38)}
+  .glt-ops-stale[data-status="resyncing"]{color:var(--glt-info,#0f6d99)}
+  .glt-ops-stale[data-status="stale"]{color:var(--glt-warning,#8a5200)}
+  .glt-ops-stale[data-status="unavailable"]{color:var(--glt-error,#b3261e)}
+  /* Dimming was 60 % opacity, which took a 6.39:1 warning colour down to
+     2.73:1 — the strip that says "this view is not live" was the least legible
+     thing on the screen. Staleness is carried by the mark, the word and the
+     border; it does not need to be carried by being harder to read. */
+  .glt-ops-dim{font-style:italic}
   .glt-ops :focus-visible{outline:2px solid currentColor;outline-offset:2px}
   @media(forced-colors:active){
     .glt-ops-outcome,.glt-ops-stale,.glt-ops-count{border:1px solid CanvasText}

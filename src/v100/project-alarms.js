@@ -27,6 +27,7 @@
  * writes it and another reads it.
  */
 
+import { statusColourStyles } from "./status-colours.mjs";
 import { defineElement } from "./element-registry.mjs";
 import { hasWording, text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
@@ -44,7 +45,7 @@ import {
   resolveEntry,
 } from "./schedule-time.mjs";
 
-const STYLE = `
+const STYLE = `${statusColourStyles()}
   .glt-alm{font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;display:block;max-width:100%}
   .glt-alm,.glt-alm *{min-width:0;overflow-wrap:anywhere}
   .glt-alm-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
@@ -52,10 +53,10 @@ const STYLE = `
   .glt-alm-head{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
   .glt-alm-shape{font:700 14px/1 ui-monospace,SFMono-Regular,Consolas,monospace}
   .glt-alm-priority{font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:12px}
-  .glt-alm-meta{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad)}
+  .glt-alm-meta{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--glt-muted,#5f7288)}
   .glt-alm-suppressed{font-style:italic}
   .glt-alm-failed{font-weight:700;border:1px solid currentColor;border-radius:8px;padding:2px 8px;display:inline-block}
-  .glt-alm-empty{color:var(--mut,#8198ad);font-style:italic;padding:8px 0}
+  .glt-alm-empty{color:var(--glt-muted,#5f7288);font-style:italic;padding:8px 0}
   .glt-alm-actions{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0}
   .glt-alm-actions button{min-height:44px;border:1px solid currentColor;border-radius:8px;background:transparent;color:inherit;padding:0 12px;cursor:pointer}
   .glt-alm label{display:inline-flex;flex-direction:column;gap:2px;font:12px/1.4 inherit}

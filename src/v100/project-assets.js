@@ -50,7 +50,20 @@ const LANGUAGES = ["de", "en"];
  */
 const KEYS = Object.freeze({
   "attachmentLimits": "assets.attachment_limits",
+  "column_declared_in": "assets.column_declared_in",
+  "column_diagnosis": "assets.column_diagnosis",
+  "column_evidence": "assets.column_evidence",
+  "column_note": "assets.column_note",
+  "column_provenance": "assets.column_provenance",
+  "column_reference": "assets.column_reference",
+  "column_slot": "assets.column_slot",
+  "column_tick": "assets.column_tick",
+  "column_value": "assets.column_value",
   "diagnosis.duplicate_binding": "assets.diagnosis_duplicate_binding",
+  "field_asset": "assets.field_asset",
+  "field_note": "assets.field_note",
+  "field_reason": "assets.field_reason",
+  "field_title": "assets.field_title",
   "diagnosis.missing": "assets.diagnosis_missing",
   "diagnosis.present": "assets.diagnosis_present",
   "diagnosis.registered_not_loaded": "assets.diagnosis_registered_not_loaded",
@@ -205,8 +218,11 @@ class ScenarioTable extends HTMLElement {
     const table = append(this, "table", null, { "data-scenario": "" });
     const head = append(table, "thead");
     const headRow = append(head, "tr");
-    for (const label of ["Tick", "Slot", language === "de" ? "Wert" : "Value", ""]) {
-      append(headRow, "th", label, { scope: "col" });
+    // The fourth column held the provenance marker under a blank header, so
+    // every cell in it was announced with no context — and the first three were
+    // German or English by inline conditional rather than by catalog.
+    for (const column of ["tick", "slot", "value", "provenance"]) {
+      append(headRow, "th", text(`column_${column}`, language), { scope: "col" });
     }
     const body = append(table, "tbody");
     for (const entry of trace) {
@@ -246,8 +262,8 @@ class CommissioningTable extends HTMLElement {
 
     const table = append(this, "table", null, { "data-commissioning": "" });
     const headRow = append(append(table, "thead"), "tr");
-    for (const label of ["Referenz", "Deklariert in", "Diagnose", "Nachweis", "Hinweis"]) {
-      append(headRow, "th", label, { scope: "col" });
+    for (const column of ["reference", "declared_in", "diagnosis", "evidence", "note"]) {
+      append(headRow, "th", text(`column_${column}`, language), { scope: "col" });
     }
     const body = append(table, "tbody");
     for (const finding of findings) {
@@ -314,15 +330,10 @@ class WorkOrderForm extends HTMLElement {
   set props({ limits = null, language = "de" }) {
     this.replaceChildren();
     const form = append(this, "form", null, { "data-work-order-form": "" });
-    for (const [field, label] of [
-      ["title", language === "de" ? "Aufgabe" : "Task"],
-      ["asset", language === "de" ? "Anlagenobjekt" : "Asset"],
-      ["note", language === "de" ? "Notiz" : "Note"],
-      ["reason", language === "de" ? "Begründung" : "Reason"],
-    ]) {
+    for (const field of ["title", "asset", "note", "reason"]) {
       const wrapper = append(form, "p");
       const id = `glt-wo-${field}`;
-      append(wrapper, "label", label, { for: id });
+      append(wrapper, "label", text(`field_${field}`, language), { for: id });
       append(wrapper, "input", null, { "data-field": field, id, name: field, type: "text" });
     }
     if (limits) {
