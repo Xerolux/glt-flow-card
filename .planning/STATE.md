@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 7 planned; 20 plans and the roadmap entry pushed, execution not started
-last_updated: "2026-09-02T17:00:00.000Z"
-last_activity: 2026-09-02 -- Phase 7 planned: source audit (24 defects), context, research resolved by executing against the vendored Recorder, patterns, 23 threats, validation map, UI contract and 20 plans; two defects found while auditing were fixed rather than deferred
+stopped_at: Phase 7 closed; 20 of 20 plans implemented, 22 of 23 threats verified
+last_updated: "2026-09-02T19:00:00.000Z"
+last_activity: 2026-09-02 -- Phase 7 executed and closed: honest Recorder-backed history with coverage and gaps, local-calendar periods proven against the vendored Home Assistant, two meter models kept apart, unit refusal over conversion, reproducible reports and six surfaces; T7-22 caught the phase repeating Phase 6's reachable-not-reached defect and it was fixed
 progress:
   total_phases: 10
-  completed_phases: 5
-  total_plans: 84
-  completed_plans: 95
-  percent: 50
+  completed_phases: 6
+  total_plans: 124
+  completed_plans: 124
+  percent: 60
 ---
 
 # Project State
@@ -25,41 +25,66 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 
 ## Current Position
 
-Phase: 07 (trends-energy-reports) — PLANNED, execution not started
-Plan: 0 of 20 implemented (20 plans across 5 waves)
+Phase: 07 (trends-energy-reports) — CLOSED
+Plan: 20 of 20 implemented (20 plans across 5 waves)
 
-Phase 6 is complete: 20 of 20 plans implemented, 20 of 21 threats verified.
-Status: closed and summarised in `06-SUMMARY.md`. Twenty of the twenty-one
-threats are `verified`, each by running its own owner command at head rather
-than by inferring one row from another's result. All fourteen audited defects
-are closed.
+Phase 7 is complete: 20 of 20 plans implemented, 22 of 23 threats verified.
+Status: closed and summarised in `07-SUMMARY.md`. Each verified row was marked
+from its own owner command run at head, including the pairs and triples that
+name the same command.
 
-Phases 2 through 6 are executed. T6-21, T5-16, T4-14, T3-14 and T2-16 all stay
-`planned`: each is owned by the composed `test:phaseN:release` leaf, whose
-`test:ha-artifacts` leg probes `docker info` for all twelve bounded lane
+**T7-22 earned its place in the register.** It was written to make "prove the
+retirement is *reached*" blocking rather than habitual, because Phase 6 shipped
+that defect one layer out from where its own register drew the line. It then
+caught Phase 7 doing the same thing: the trend surfaces rendered a confident
+zero because only the panel fetched anything, and `_seriesFor` still called the
+retired `aggregateSeries`, putting an epoch-aligned bucket on screen at every
+plain render. An artifact grep passed throughout. Fixed in 07-19 and
+mutation-verified in both directions; `aggregateSeries` then lost its last
+reference and the bundler dropped it entirely.
+
+Three of the four history routes shipped in 07-08 as shells that queried
+nothing. `history/statistics` was filled in 07-18. `history/coverage` and
+`history/export` remain shells answering a stated `unavailable`, left open
+deliberately: coverage needs the period's expected instants, and that grid's
+bucket step is a decision wanting a corpus behind it — inferring it from the
+rows that came back is the defect `expected_instants` exists to prevent.
+
+Phases 2 through 7 are executed. T7-23, T6-21, T5-16, T4-14, T3-14 and T2-16
+all stay `planned`: each is owned by the composed `test:phaseN:release` leaf,
+whose `test:ha-artifacts` leg probes `docker info` for all twelve bounded lane
 candidates and this environment has no Docker engine.
 
-A second, independent environment limit is now recorded: every composed
-`test:phaseN` gate recurses to Phase 1's `F-01`, whose
-`verify-provenance.mjs --online` leg needs `api.github.com`, and the egress
-proxy answers `403` for that host while `registry.npmjs.org` answers `200`. The
-gate fails closed rather than skipping, which is what a provenance check that
-cannot reach its source should do.
+**Four independent environment limits are now recorded, and one correction.**
+Phase 6 found two and had recorded one; Phase 7 found four:
 
-Two defects found while auditing the surfaces for Phase 7 were fixed rather
-than deferred, and both are the same shape -- reachable is not reached, and a
-passing assertion is not evidence unless something exercised it. Alarm state was
-fetched only by the panel that displayed it, so the toolbar badge, the per-site
-count and the report's Status column reported a confident zero until an operator
-opened the modal. And a Phase-4 retirement test queried for a card the harness
-never mounts, got null, and asserted an empty effect ledger produced by nothing
-having run.
+1. The container's browser build is revision 1194 while `@playwright/test`
+   1.62.1 expects 1234, so the bare exact-dist command cannot launch a browser.
+   The rows rest on the `PLAYWRIGHT_CHROMIUM_EXECUTABLE` override that
+   `playwright.config.mjs` documents for exactly this, under which all 61 tests
+   pass. The phase gate's F7-04, which does not set it, fails.
+2. **The Phase-6 record was wrong and is corrected.** GitHub API access is not
+   blocked at the host: `api.github.com/rate_limit` answers **200**. What fails
+   is every third-party repository endpoint F-01 needs — all five provenance
+   sources return 403 with "GitHub access to this repository is not enabled for
+   this session". This blocks F-01 and every gate recursing into it. Attaching
+   five third-party repositories with credentials to satisfy a provenance check
+   would be a disproportionate permission change and was not done.
+3. No Docker engine, which is what blocks T7-23 here.
+4. In CI, T7-23's leaf fails for a *different* reason: Home Assistant 2026.9.0
+   was published while `pytest-homeassistant-custom-component` 0.13.362 still
+   pins `homeassistant==2026.9.0b6`. Not this branch's failure; no resolver
+   change was pushed for it.
 
-Next: Phase 7 execution from `07-01-PLAN.md`, plus the outstanding review passes
-for Phases 2-6 and Phase 1's consolidated verification.
-Last activity: 2026-09-02 -- Phase 7 planning committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+Next: Phase 8, plus the outstanding review passes for Phases 2-7 and Phase 1's
+consolidated verification.
+Last activity: 2026-09-02 -- Phase 7 executed and closed on `claude/chatgpt-continuation-hi3y86` (PR #3)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 60%
+
+### Phase 7 sentinel state
+
+`node tools/phase7-red-gate.mjs` reports 11 implemented, 0 controlled RED, 0 broken.
 
 ### Phase 6 sentinel state
 

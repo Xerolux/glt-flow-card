@@ -14,7 +14,7 @@ Milestone v1.1 hardens the existing Platform 1.0 surface as ten dependency-order
 - [ ] **Phase 4: Runtime Operations & Drill-Down** - Deliver profile-driven plant operation with confirmed commands and permission-safe contextual navigation.
 - [ ] **Phase 5: CAD Engineering & Extension Platform** - Deliver the verified catalog, typed connectivity, deterministic routing, transactional CAD, and declarative SDK.
 - [ ] **Phase 6: Alarms, Notifications & Schedules** - Make time-sensitive operational workflows authoritative, restart-safe, observable, and timezone-correct.
-- [ ] **Phase 7: Trends, Energy & Reproducible Reports** - Turn Recorder data into honest trends, unit-safe energy views, and matching period reports.
+- [x] **Phase 7: Trends, Energy & Reproducible Reports** - Turn Recorder data into honest trends, unit-safe energy views, and matching period reports.
 - [ ] **Phase 8: Safe Simulation, Commissioning & Assets** - Support pre-commissioning scenarios, read-only diagnostics, and bounded maintenance workflows without plant-write risk.
 - [ ] **Phase 9: Failure-Isolated Multi-Site Supervision** - Supervise authorized remote Home Assistant sites without credential exposure, policy bypass, or global failure.
 - [ ] **Phase 10: Product-Wide Usability & Release Evidence** - Close localization, accessibility, capacity, compatibility, and exact-artifact release evidence across all workflows.
@@ -261,26 +261,26 @@ Plans:
 **Known defects closed**: KPI-snapshot-only reports, omission of alarm and maintenance content, in-memory utility behavior presented as a historian, missing-as-zero analytics, unbounded exports, and Recorder API behavior untested against Home Assistant.
 **Research flag**: RESOLVED 2026-09-02 — see `07-RESEARCH.md`. HA 2026.2.3 already resolves `day`, `week`, `month` and `year` on local-midnight boundaries in the configured timezone (measured: 23- and 25-hour days, 743- and 745-hour months for Europe/Berlin), `change` is reset-aware over the Recorder's reset-corrected running sum, and `year` is reachable only through `recorder/statistic_during_period`'s calendar spec. Three traps recorded with owners: a window starting before a statistic exists reports the whole accumulated total as the first period's consumption; gaps are omitted from results rather than emitted; and `mean_type` CIRCULAR exists. Nothing in the Recorder API bounds a raw query, so bounds are ours and belong server-side.
 Plans:
-- [ ] 07-01-PLAN.md — Stand up the Phase-7 gate, the query-dimension effect ledger and the Recorder fixture corpus.
-- [ ] 07-02-PLAN.md — Close the measured-value shape and the period vocabulary in both runtimes.
-- [ ] 07-03-PLAN.md — Introduce schema 6 and the sequential 5-6 migration.
-- [ ] 07-04-PLAN.md — Specify the history route, bounds, coverage and replay RED contracts.
-- [ ] 07-05-PLAN.md — Specify the period, energy, report and rendering RED contracts.
-- [ ] 07-06-PLAN.md — Resolve named periods on local-calendar boundaries.
-- [ ] 07-07-PLAN.md — Prove both runtimes resolve periods identically.
-- [ ] 07-08-PLAN.md — Give history its own routes, authorization, filtering and audit.
-- [ ] 07-09-PLAN.md — Bound every query dimension and refuse past the bound.
-- [ ] 07-10-PLAN.md — Carry coverage and gaps with every series.
-- [ ] 07-11-PLAN.md — Make replay read the record, not the present.
-- [ ] 07-12-PLAN.md — Difference counters and integrate rates over resolved periods.
-- [ ] 07-13-PLAN.md — Validate units and state exclusions before arithmetic.
-- [ ] 07-14-PLAN.md — Record what a report run was computed from.
-- [ ] 07-15-PLAN.md — Execute report schedules through the Phase-6 runner.
-- [ ] 07-16-PLAN.md — Derive screen, CSV and print from one model.
-- [ ] 07-17-PLAN.md — Retire the six browser evaluators reachable and inert.
-- [ ] 07-18-PLAN.md — Ship the trend and report surfaces.
-- [ ] 07-19-PLAN.md — Prove every retired value is reached, not merely reachable.
-- [ ] 07-20-PLAN.md — Build out the Phase-7 gate and close the phase honestly.
+- [x] 07-01-PLAN.md — Stand up the Phase-7 gate, the query-dimension effect ledger and the Recorder fixture corpus.
+- [x] 07-02-PLAN.md — Close the measured-value shape and the period vocabulary in both runtimes.
+- [x] 07-03-PLAN.md — Introduce schema 6 and the sequential 5-6 migration.
+- [x] 07-04-PLAN.md — Specify the history route, bounds, coverage and replay RED contracts.
+- [x] 07-05-PLAN.md — Specify the period, energy, report and rendering RED contracts.
+- [x] 07-06-PLAN.md — Resolve named periods on local-calendar boundaries.
+- [x] 07-07-PLAN.md — Prove both runtimes resolve periods identically.
+- [x] 07-08-PLAN.md — Give history its own routes, authorization, filtering and audit.
+- [x] 07-09-PLAN.md — Bound every query dimension and refuse past the bound.
+- [x] 07-10-PLAN.md — Carry coverage and gaps with every series.
+- [x] 07-11-PLAN.md — Make replay read the record, not the present.
+- [x] 07-12-PLAN.md — Difference counters and integrate rates over resolved periods.
+- [x] 07-13-PLAN.md — Validate units and state exclusions before arithmetic.
+- [x] 07-14-PLAN.md — Record what a report run was computed from.
+- [x] 07-15-PLAN.md — Execute report schedules through the Phase-6 runner.
+- [x] 07-16-PLAN.md — Derive screen, CSV and print from one model.
+- [x] 07-17-PLAN.md — Retire the six browser evaluators reachable and inert.
+- [x] 07-18-PLAN.md — Ship the trend and report surfaces.
+- [x] 07-19-PLAN.md — Prove every retired value is reached, not merely reachable.
+- [x] 07-20-PLAN.md — Build out the Phase-7 gate and close the phase honestly.
 **UI hint**: yes
 
 ### Phase 8: Safe Simulation, Commissioning & Assets
