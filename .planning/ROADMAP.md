@@ -9,14 +9,14 @@ Milestone v1.1 hardens the existing Platform 1.0 surface as ten dependency-order
 **Phase Numbering:** Integer phases are planned milestone work; decimal phases are reserved for urgent insertions.
 
 - [x] **Phase 1: Trusted Contract & Release Foundation** - Make project data, Companion lifecycle, migrations, and shipped artifacts safe and reproducible. (completed 2026-09-01)
-- [ ] **Phase 2: Authoritative Policy, Controls & Collaboration** - Enforce server-owned permissions, exact control targets, trustworthy audit, and conflict-safe shared editing.
-- [ ] **Phase 3: Semantic Equipment & Provenance** - Establish stable semantics, profiles, mapping, provenance, and deterministic operational state.
-- [ ] **Phase 4: Runtime Operations & Drill-Down** - Deliver profile-driven plant operation with confirmed commands and permission-safe contextual navigation.
-- [ ] **Phase 5: CAD Engineering & Extension Platform** - Deliver the verified catalog, typed connectivity, deterministic routing, transactional CAD, and declarative SDK.
-- [ ] **Phase 6: Alarms, Notifications & Schedules** - Make time-sensitive operational workflows authoritative, restart-safe, observable, and timezone-correct.
+- [x] **Phase 2: Authoritative Policy, Controls & Collaboration** - Enforce server-owned permissions, exact control targets, trustworthy audit, and conflict-safe shared editing.
+- [x] **Phase 3: Semantic Equipment & Provenance** - Establish stable semantics, profiles, mapping, provenance, and deterministic operational state.
+- [x] **Phase 4: Runtime Operations & Drill-Down** - Deliver profile-driven plant operation with confirmed commands and permission-safe contextual navigation.
+- [x] **Phase 5: CAD Engineering & Extension Platform** - Deliver the verified catalog, typed connectivity, deterministic routing, transactional CAD, and declarative SDK.
+- [x] **Phase 6: Alarms, Notifications & Schedules** - Make time-sensitive operational workflows authoritative, restart-safe, observable, and timezone-correct.
 - [x] **Phase 7: Trends, Energy & Reproducible Reports** - Turn Recorder data into honest trends, unit-safe energy views, and matching period reports.
 - [x] **Phase 8: Safe Simulation, Commissioning & Assets** - Support pre-commissioning scenarios, read-only diagnostics, and bounded maintenance workflows without plant-write risk.
-- [ ] **Phase 9: Failure-Isolated Multi-Site Supervision** - Supervise authorized remote Home Assistant sites without credential exposure, policy bypass, or global failure.
+- [x] **Phase 9: Failure-Isolated Multi-Site Supervision** - Supervise authorized remote Home Assistant sites without credential exposure, policy bypass, or global failure.
 - [ ] **Phase 10: Product-Wide Usability & Release Evidence** - Close localization, accessibility, capacity, compatibility, and exact-artifact release evidence across all workflows.
 
 ## Phase Details
@@ -393,18 +393,28 @@ Every v1.1 requirement has exactly one primary owner. Cross-cutting gates in lat
 
 **Execution Order:** Phases execute in numeric order from 1 through 10.
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Trusted Contract & Release Foundation | 13/13 | Complete   | 2026-09-01 |
-| 2. Authoritative Policy, Controls & Collaboration | 0/17 | Planned; paused before implementation | - |
-| 3. Semantic Equipment & Provenance | 0/TBD | Not started | - |
-| 4. Runtime Operations & Drill-Down | 0/TBD | Not started | - |
-| 5. CAD Engineering & Extension Platform | 0/TBD | Not started | - |
-| 6. Alarms, Notifications & Schedules | 0/TBD | Not started | - |
-| 7. Trends, Energy & Reproducible Reports | 0/TBD | Not started | - |
-| 8. Safe Simulation, Commissioning & Assets | 0/TBD | Not started | - |
-| 9. Failure-Isolated Multi-Site Supervision | 0/TBD | Not started | - |
-| 10. Product-Wide Usability & Release Evidence | 0/TBD | Not started | - |
+| Phase | Plans Complete | Threats verified | Status | Completed |
+|-------|----------------|------------------|--------|-----------|
+| 1. Trusted Contract & Release Foundation | 13/13 | 10/10 rows, F-01 blocked | Complete | 2026-09-01 |
+| 2. Authoritative Policy, Controls & Collaboration | 17/17 | 15/16 (T2-16 blocked) | Complete | 2026-09-01 |
+| 3. Semantic Equipment & Provenance | 17/17 | 13/14 (T3-14 blocked) | Complete | 2026-09-01 |
+| 4. Runtime Operations & Drill-Down | 17/17 | 13/14 (T4-14 blocked) | Complete | 2026-09-02 |
+| 5. CAD Engineering & Extension Platform | 20/20 | 15/16 (T5-16 blocked) | Complete | 2026-09-02 |
+| 6. Alarms, Notifications & Schedules | 20/20 | 20/21 (T6-21 blocked) | Complete | 2026-09-02 |
+| 7. Trends, Energy & Reproducible Reports | 20/20 | 22/23 (T7-23 blocked) | Complete | 2026-09-02 |
+| 8. Safe Simulation, Commissioning & Assets | 16/16 | 24/25 (T8-25 blocked) | Complete | 2026-09-02 |
+| 9. Failure-Isolated Multi-Site Supervision | 12/12 | 19/20 (T9-20 blocked) | Complete | 2026-09-02 |
+| 10. Product-Wide Usability & Release Evidence | 0/TBD | - | Not started | - |
+
+**Every blocked row is the same row.** Each phase's `test:phaseN:release` leaf
+runs `test:ha-artifacts`, which probes `docker info` across twelve bounded lane
+candidates; this environment has no Docker engine. Each is recorded with its
+exact failure output in its own register, and none is marked from its parts
+passing separately.
+
+Phases 3 and 4 have no per-plan summaries; their registers and phase summaries
+carry the evidence. That gap is tracked in the close-out work rather than
+papered over here.
 
 ---
 *Roadmap created: 2026-08-31 for milestone v1.1 Production-Ready GLT Platform*

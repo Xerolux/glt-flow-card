@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 7 closed; 20 of 20 plans implemented, 22 of 23 threats verified
-last_updated: "2026-09-02T19:00:00.000Z"
-last_activity: 2026-09-02 -- Phase 7 executed and closed: honest Recorder-backed history with coverage and gaps, local-calendar periods proven against the vendored Home Assistant, two meter models kept apart, unit refusal over conversion, reproducible reports and six surfaces; T7-22 caught the phase repeating Phase 6's reachable-not-reached defect and it was fixed
+stopped_at: Phase 9 closed; 12 of 12 plans implemented, 19 of 20 threats verified
+last_updated: "2026-09-02T23:30:00.000Z"
+last_activity: 2026-09-02 -- Phase 9 executed and closed: partial is an answer that says it is partial, unreachability belongs to the site rather than to an entity, one bounded request per site under a total deadline the request owns, a two-half destination check that also holds at connect time, closed failure reasons with a searched-for credential sentinel, remote routes reusing local authority, and no retry beside an unknown effect
 progress:
   total_phases: 10
-  completed_phases: 6
-  total_plans: 124
-  completed_plans: 124
-  percent: 60
+  completed_phases: 9
+  total_plans: 152
+  completed_plans: 152
+  percent: 90
 ---
 
 # Project State
@@ -21,66 +21,81 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-31)
 
 **Core value:** Operators and engineers can safely understand, operate, engineer, and diagnose a real building plant from one trustworthy Home Assistant interface.
-**Current focus:** Phase 07 — trends-energy-reports
+**Current focus:** Phase 10 — product-wide usability and release evidence
 
 ## Current Position
 
-Phase: 07 (trends-energy-reports) — CLOSED
-Plan: 20 of 20 implemented (20 plans across 5 waves)
+Phase: 09 (multi-site-supervision) — CLOSED
+Plan: 12 of 12 implemented (12 plans across 6 waves)
 
-Phase 7 is complete: 20 of 20 plans implemented, 22 of 23 threats verified.
-Status: closed and summarised in `07-SUMMARY.md`. Each verified row was marked
-from its own owner command run at head, including the pairs and triples that
-name the same command.
+Phases 1 through 9 are executed and closed. Phase 10 is the remaining phase and
+has no planning artifacts yet.
 
-**T7-22 earned its place in the register.** It was written to make "prove the
-retirement is *reached*" blocking rather than habitual, because Phase 6 shipped
-that defect one layer out from where its own register drew the line. It then
-caught Phase 7 doing the same thing: the trend surfaces rendered a confident
-zero because only the panel fetched anything, and `_seriesFor` still called the
-retired `aggregateSeries`, putting an epoch-aligned bucket on screen at every
-plain render. An artifact grep passed throughout. Fixed in 07-19 and
-mutation-verified in both directions; `aggregateSeries` then lost its last
-reference and the bundler dropped it entirely.
+### Phase 9, in one paragraph
 
-Three of the four history routes shipped in 07-08 as shells that queried
-nothing. `history/statistics` was filled in 07-18. `history/coverage` and
-`history/export` remain shells answering a stated `unavailable`, left open
-deliberately: coverage needs the period's expected instants, and that grid's
-bucket step is a decision wanting a corpus behind it — inferring it from the
-rows that came back is the defect `expected_instants` exists to prevent.
+Phase 9's characteristic defect is **an answer that is incomplete and does not
+say so** — a portfolio view of five sites where one did not respond, rendered as
+a portfolio view of five sites. A silent site contributed zero, `unavailable`
+was written as an entity state for entities nobody could ask, any URL was
+accepted for an authenticated server-side request, `str(err)` returned internal
+host and port to the browser, `remote/states` checked nothing at all, and a
+remote timeout was reported as a failure with a retry beside it. All of those
+are closed; `09-SUMMARY.md` carries the detail and the limits.
 
-Phases 2 through 7 are executed. T7-23, T6-21, T5-16, T4-14, T3-14 and T2-16
-all stay `planned`: each is owned by the composed `test:phaseN:release` leaf,
-whose `test:ha-artifacts` leg probes `docker info` for all twelve bounded lane
-candidates and this environment has no Docker engine.
+### The blocked row, in every phase
 
-**Four independent environment limits are now recorded, and one correction.**
-Phase 6 found two and had recorded one; Phase 7 found four:
+T9-20, T8-25, T7-23, T6-21, T5-16, T4-14, T3-14 and T2-16 all stay `planned`.
+Each is owned by the composed `test:phaseN:release` leaf, whose
+`test:ha-artifacts` leg probes `docker info` for all twelve bounded lane
+candidates, and this environment has no Docker engine. Each is recorded with its
+exact failure output rather than its likely cause, and none is marked from its
+parts passing separately.
 
-1. The container's browser build is revision 1194 while `@playwright/test`
-   1.62.1 expects 1234, so the bare exact-dist command cannot launch a browser.
-   The rows rest on the `PLAYWRIGHT_CHROMIUM_EXECUTABLE` override that
-   `playwright.config.mjs` documents for exactly this, under which all 61 tests
-   pass. The phase gate's F7-04, which does not set it, fails.
-2. **The Phase-6 record was wrong and is corrected.** GitHub API access is not
-   blocked at the host: `api.github.com/rate_limit` answers **200**. What fails
-   is every third-party repository endpoint F-01 needs — all five provenance
-   sources return 403 with "GitHub access to this repository is not enabled for
-   this session". This blocks F-01 and every gate recursing into it. Attaching
-   five third-party repositories with credentials to satisfy a provenance check
-   would be a disproportionate permission change and was not done.
-3. No Docker engine, which is what blocks T7-23 here.
-4. In CI, T7-23's leaf fails for a *different* reason: Home Assistant 2026.9.0
-   was published while `pytest-homeassistant-custom-component` 0.13.362 still
-   pins `homeassistant==2026.9.0b6`. Not this branch's failure; no resolver
-   change was pushed for it.
+### Environment limits, current as of Phase 9
 
-Next: Phase 8, plus the outstanding review passes for Phases 2-7 and Phase 1's
-consolidated verification.
-Last activity: 2026-09-02 -- Phase 7 executed and closed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+1. **The browser revision mismatch is now handled in the product's own config,
+   not by hand.** The container ships Chromium 1194 while `@playwright/test`
+   1.62.1 expects 1234. `playwright.config.mjs` prefers the pinned revision and
+   uses it silently; only when it is absent from disk does it substitute an
+   installed sibling, and it prints the substitution. The Phase-9 gate's F9-04
+   therefore passes without `PLAYWRIGHT_CHROMIUM_EXECUTABLE` being set, which
+   the Phase-7 gate's F7-04 could not.
+2. GitHub API access is not blocked at the host: `api.github.com/rate_limit`
+   answers 200. What fails is every third-party repository endpoint F-01 needs —
+   all five provenance sources return 403 with "GitHub access to this repository
+   is not enabled for this session". This blocks F-01 and every gate recursing
+   into it. Attaching five third-party repositories with credentials to satisfy
+   a provenance check would be a disproportionate permission change and was not
+   made.
+3. No Docker engine, which is what blocks the release leaf in every phase.
+4. In CI, that leaf fails for a *different* reason: Home Assistant 2026.9.0 was
+   published while `pytest-homeassistant-custom-component` 0.13.362 still pins
+   `homeassistant==2026.9.0b6`. Not this branch's failure; which release the
+   product certifies against is a product decision, so no resolver change was
+   pushed. Diagnosed once on PR #3 with a proposed patch.
 
-Progress: [██████░░░░] 60%
+### Outstanding, and not hidden
+
+- **Phase 10** is unplanned. It owns I18N-01, A11Y-01 and TEST-01 — the
+  evidence-linked claim registry, package checksums, and capacity scenarios with
+  recorded budgets. Several phases defer measured numbers to it explicitly.
+- **Phases 3 and 4 have no per-plan summaries.** Their registers and phase
+  summaries carry the evidence; the summaries are missing, and that is a real
+  gap rather than a formatting one.
+- **Review passes for Phases 2 through 9** and Phase 1's consolidated
+  verification are outstanding.
+- `REQUIREMENTS.md` traceability still reads "Pending" for completed phases.
+
+Next: Phase 10 planning and execution, then the close-out above.
+Last activity: 2026-09-02 -- Phase 9 executed and closed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+
+Progress: [█████████░] 90%
+
+### Phase 9 register
+
+19 of 20 rows verified, each from its own owner command run at head; where five
+rows name one command, that command was run five times. T9-20 blocked, recorded
+with its exact failure.
 
 ### Phase 7 sentinel state
 
