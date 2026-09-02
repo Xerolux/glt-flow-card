@@ -1,3 +1,4 @@
+import { UNREADABLE, formatDateTime, formatMeasurement, resolveLocale } from "./locale-format.mjs";
 import { VISUAL_STYLES, COMPONENT_PROFILES, SYMBOL_VARIANTS, profileForEquipment, portsForEquipment } from "./catalog.mjs";
 import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignObjects, diagnoseConfig,  energySummary, projectDiff, makeProjectBundle, readProjectBundle, symbolCatalogStats, semanticPath } from "./core.mjs";
 
@@ -26,6 +27,13 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
   const sdk = window.GLTFlowCardSDK || { symbols:new Map(), profiles:new Map(), panels:new Map(), migrations:[], languages:new Map() };
   sdk.registerSymbol = (s)=>sdk.symbols.set(s.id,s); sdk.registerProfile=(p)=>sdk.profiles.set(p.id,p); sdk.registerPanel=(p)=>sdk.panels.set(p.id,p); sdk.registerMigration=(m)=>sdk.migrations.push(m); sdk.registerLanguage=(id,d)=>sdk.languages.set(id,d);
   for(const s of SYMBOL_VARIANTS)sdk.registerSymbol(s); for(const p of COMPONENT_PROFILES)sdk.registerProfile(p); for(const [id,d] of Object.entries(LANG))sdk.registerLanguage(id,d);
+  // The legacy base is concatenated *before* this bundle and is a plain IIFE, so
+  // it cannot import. It reads the formatter off the SDK at render time instead
+  // — which is late enough, because this line has run by then. Sharing one
+  // formatter is the point: two formatters is how a screen ends up carrying two
+  // date formats, which is exactly the defect 10-05 removed.
+  sdk.formatDateTime=formatDateTime; sdk.formatMeasurement=formatMeasurement;
+  sdk.resolveLocale=resolveLocale; sdk.UNREADABLE=UNREADABLE;
   sdk.version="1.0.0"; sdk.ensureV1=ensureV1; sdk.deriveOperationalState=deriveOperationalState; sdk.autoMapEquipment=autoMapEquipment; sdk.smartRoute=smartRoute; sdk.projectDiff=projectDiff; sdk.makeProjectBundle=makeProjectBundle; sdk.readProjectBundle=readProjectBundle; window.GLTFlowCardSDK=sdk;
 
   const STYLES = `

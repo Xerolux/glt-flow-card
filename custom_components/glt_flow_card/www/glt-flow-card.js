@@ -159,14 +159,33 @@
     return Number.isFinite(parsed) ? parsed : null;
   }
 
-  function formatDateTime(value, locale = "de-DE") {
-    try {
-      return new Intl.DateTimeFormat(locale, {
-        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"
-      }).format(new Date(value));
-    } catch (_err) {
-      return new Date(value).toLocaleString();
-    }
+  /**
+   * What a formatter shows when it cannot format.
+   *
+   * The previous version fell back to `new Date(value).toLocaleString()` — the
+   * *viewer's* locale — so one screen could carry two date formats and nothing
+   * said which was which. `03/09` and `09/03` are the same instant written two
+   * ways. A refusal is legible; a silently reformatted timestamp is not.
+   */
+  const UNREADABLE_TEXT = "—";
+
+  /**
+   * The shared formatters, read off the SDK at call time.
+   *
+   * This file is concatenated before the v1 bundle and is a plain IIFE, so it
+   * cannot import. Reading at call time is late enough, and sharing one
+   * formatter is the whole point: two formatters is how the two date formats
+   * appeared in the first place.
+   */
+  function sharedFormat() {
+    return window.GLTFlowCardSDK ?? null;
+  }
+
+  function formatDateTime(value, locale) {
+    const sdk = sharedFormat();
+    if (!sdk?.formatDateTime) return UNREADABLE_TEXT;
+    const formatted = sdk.formatDateTime(value, locale);
+    return formatted === sdk.UNREADABLE ? UNREADABLE_TEXT : formatted;
   }
 
   function normalizeConfig(raw) {
@@ -316,8 +335,17 @@
       });
     }
 
+    /**
+     * The locale to format in — from Home Assistant, never from the browser.
+     *
+     * `navigator.language` is what the *reader's* machine is set to, which on a
+     * shared control-room workstation is whoever installed it. Mixing it with
+     * the configured language is how one screen ends up carrying two formats,
+     * and the hardcoded `"de-DE"` was a locale the installation never chose.
+     * Returning nothing makes the formatters refuse, which is visible.
+     */
     _locale() {
-      return this._hass?.locale?.language || navigator.language || "de-DE";
+      return this._hass?.locale?.language || null;
     }
 
     _currentView() {
@@ -400,7 +428,10 @@
       const unit = field.unit !== undefined ? field.unit : this._unit(field);
       if (number !== null) {
         const decimals = field.decimals ?? (Math.abs(number) < 100 ? 1 : 0);
-        return `${number.toLocaleString(this._locale(), { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}${unit ? ` ${unit}` : ""}`;
+        const sdk = sharedFormat();
+        if (!sdk?.formatMeasurement) return UNREADABLE_TEXT;
+        const formatted = sdk.formatMeasurement(number, unit, this._locale(), { decimals });
+        return formatted === sdk.UNREADABLE ? UNREADABLE_TEXT : formatted;
       }
       return String(raw);
     }
@@ -5617,6 +5648,63 @@
       ucs2length.code = 'require("ajv/dist/runtime/ucs2length").default';
     }
   });
+
+  // src/v100/locale-format.mjs
+  var UNIT_SEPARATOR = " ";
+  var UNREADABLE = Symbol.for("glt.unreadable");
+  var PLURAL_CATEGORIES = Object.freeze([
+    "zero",
+    "one",
+    "two",
+    "few",
+    "many",
+    "other"
+  ]);
+  function resolveLocale(configured) {
+    if (typeof configured !== "string" || configured.trim() === "") return null;
+    try {
+      return new Intl.Locale(configured).toString();
+    } catch {
+      return null;
+    }
+  }
+  function formatDateTime(value, configured, timeZone = void 0) {
+    const locale = resolveLocale(configured);
+    if (!locale) return UNREADABLE;
+    const instant = new Date(value);
+    if (Number.isNaN(instant.getTime())) return UNREADABLE;
+    try {
+      return new Intl.DateTimeFormat(locale, {
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        month: "2-digit",
+        timeZone,
+        year: "numeric"
+      }).format(instant);
+    } catch {
+      return UNREADABLE;
+    }
+  }
+  function formatNumber(value, configured, { decimals = void 0 } = {}) {
+    const locale = resolveLocale(configured);
+    if (!locale) return UNREADABLE;
+    const number = Number(value);
+    if (!Number.isFinite(number)) return UNREADABLE;
+    try {
+      return new Intl.NumberFormat(locale, decimals === void 0 ? {} : {
+        maximumFractionDigits: decimals,
+        minimumFractionDigits: decimals
+      }).format(number);
+    } catch {
+      return UNREADABLE;
+    }
+  }
+  function formatMeasurement(value, unit, configured, options = {}) {
+    const number = formatNumber(value, configured, options);
+    if (number === UNREADABLE) return UNREADABLE;
+    return unit ? `${number}${UNIT_SEPARATOR}${unit}` : number;
+  }
 
   // src/v100/catalog-lookup.mjs
   var CATALOGS = /* @__PURE__ */ new Map();
@@ -61178,6 +61266,10 @@
     for (const s of SYMBOL_VARIANTS) sdk.registerSymbol(s);
     for (const p of COMPONENT_PROFILES) sdk.registerProfile(p);
     for (const [id, d] of Object.entries(LANG)) sdk.registerLanguage(id, d);
+    sdk.formatDateTime = formatDateTime;
+    sdk.formatMeasurement = formatMeasurement;
+    sdk.resolveLocale = resolveLocale;
+    sdk.UNREADABLE = UNREADABLE;
     sdk.version = "1.0.0";
     sdk.ensureV1 = ensureV1;
     sdk.deriveOperationalState = deriveOperationalState;
