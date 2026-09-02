@@ -376,8 +376,88 @@ Der Designer bietet außerdem **Live-Vorschau** sowie eine **Lovelace-YAML-Ansic
 
 ## Erweiterte Symbolbibliothek
 
-Die Palette enthält mehr als 50 auswählbare Bausteine und Varianten für Heizung, Hydraulik, RLT/Lüftung, Kälte, Energie, Sensorik und allgemeine Anlagen: Wärmepumpen, Speicher, Heizkreise, Pumpen, 2-/3-Wege-Ventile, Mischventile, Wärmetauscher, Verteiler, Ausdehnungsgefäße, RLT-Zentralen, Ventilatoren, Luftklappen, Filter, Heiz-/Kühlregister, Kältemaschinen, PV, Batterie, Netz, Zähler, Raum- und Prozesssensoren sowie eigene Bilder/SVGs.
+**456 Varianten** aus **76 Basissymbolen** in **6 Stilen**, über Heizung,
+Hydraulik, RLT, Kälte, Energie, Sensorik, Elektro und Brandschutz.
 
+Diese Zahl ist gemessen, nicht behauptet. `catalog-evidence.json` entsteht,
+indem jede Variante tatsächlich gezeichnet und das Ergebnis gehasht wird, und
+der Generator schreibt die Datei gar nicht erst, wenn ein Symbol nichts
+zeichnet, zwei Basissymbole dieselbe Geometrie liefern oder zwei Stile denselben
+Token-Satz tragen. Ein Test verlangt, dass die Zahl in dieser README und die
+Zahl im Nachweis dieselbe ist.
+
+Ein Kreuzprodukt aus zwei Achsen ergibt nur dann unterschiedliche Varianten,
+wenn beide Achsen unterschiedlich sind. Diese Prüfung ist der Grund, warum drei
+Basissymbole, die überhaupt nichts zeichneten — und neun weitere, die sich die
+Zeichnung eines anderen Symbols teilten — jetzt behoben statt mitgezählt sind.
+
+Eigene Bilder und SVGs bleiben optional.
+
+## Typisierte Ports und begründete Ablehnungen
+
+Ein Port trägt Medium, Richtung, Seite, Art (`process`, `signal`, `power`) und
+Vielfachheit (`one`, `many`). Eine unmögliche Verbindung wird mit einem Grund
+aus einer geschlossenen Menge abgelehnt — `kind_mismatch`, `medium_mismatch`,
+`direction_conflict`, `multiplicity_exceeded`, `self_connection`,
+`duplicate_connection` — in Worten, neben den beiden Ports.
+
+Anders als eine Rechteverweigerung ist eine technische Ablehnung erklärend. Eine
+Rechteverweigerung ist absichtlich stumm, weil der Aufrufer nicht erfahren soll,
+was existiert; hier liegt die Zeichnung bereits vor dem Ingenieur, und das
+Verschweigen des Grundes schützt nichts.
+
+Eine Verbindung meint ein Paar aus Bauteil *und* Port, ein geteiltes Profil
+macht aus zwei Pumpen also nicht denselben Endpunkt. Die Geometrie wird aus dem
+aufgelösten Port abgeleitet: ein Bauteil zu verschieben bewegt den Endpunkt und
+ändert nie, welcher Port gemeint ist. Ein Endpunkt, der sich nicht mehr auflösen
+lässt, wird gemeldet und nie stillschweigend neu angehängt.
+
+## Routing
+
+Deterministisch: dieselbe Zeichnung wird in dieselben Bytes geroutet, ohne Uhr,
+ohne Zufall, ohne Iteration über eine ungeordnete Sammlung. Ein Pixel bewegt ein
+Segment, weil innenliegende Ecken auf das Zeichenraster einrasten, während die
+Ports ihre exakten Positionen behalten.
+
+Keine Route läuft durch Anlagentechnik. Findet sich keine, wird das Paar
+ausdrücklich abgelehnt — `obstructed`, `detour_exceeded`, `scene_too_complex`,
+`degenerate_endpoints` — und eine Ablehnung trägt keinen Pfad, sodass niemand sie
+versehentlich zeichnet. Vorher gab ein blockiertes Paar den ersten Kandidaten
+zurück: einen Pfad *durch* das Hindernis, still als Route ausgegeben.
+
+Neu-Routen ist lokal aus Bauart statt aus Optimierung: eine Route wird gegen die
+Hindernisse in ihrer Nähe gerechnet, transitiv gefunden, ein entferntes war also
+nie eine Eingabe. Über vierzig Routen rechnet eine Verschiebung eine neu. Die
+Schranken sind in Segmenten und Routen angegeben, nie in Millisekunden.
+
+## Erweiterungen
+
+Ein Erweiterungspaket fügt Symbole, Profile, Vorlagen, Deskriptoren und
+Übersetzungen hinzu. Es fügt keinen Code hinzu: ein Beitrag ist **Daten**, die
+von Erstanbieter-Code interpretiert werden, und es wird kein beigesteuertes
+JavaScript geladen, ausgewertet oder ausgeführt — in keinem Realm.
+
+Nicht auszuführen ist notwendig und nicht hinreichend, deshalb wird
+beigesteuertes Markup mit einer Positivliste von Elementen und Attributen
+geprüft statt mit einer Sperrliste. Eine Sperrliste ist das Versprechen, an
+alles gedacht zu haben, und die Liste der Dinge, an die niemand gedacht hat, ist
+genau die, auf die es ankommt.
+
+**Was das ausschließt**, ausgesprochen statt stillschweigend: jeden Beitrag,
+dessen Aussehen berechnet statt beschrieben wird — eine Füllstandsanzeige nach
+der Kennlinie eines Herstellers, ein Widget, das Entitäten nach einer Regel
+zusammenfasst, die die Karte nicht kennt, ein Renderer, der abhängig von Werten
+anders zeichnet als die deklarativen Ausdrücke der Karte. Jede Berechnung muss
+sich im Vokabular ausdrücken lassen, das die Karte definiert. Das Vokabular kann
+wachsen; eine wirklich neue Art von Berechnung braucht ein Erstanbieter-Release,
+kein Fremdpaket.
+
+Die Installation ist lokal und ganz oder gar nicht: Manifest geprüft, jeder
+Konflikt geprüft, jede Schranke durchgesetzt — und erst dann geschrieben, sodass
+nach einer gescheiterten Installation nichts herauszufinden bleibt. Der Prüfer
+existiert in JavaScript und in Python und erreicht nachweislich über einen
+gemeinsamen Korpus dieselben Urteile, denn eine Regel, die es nur im Browser
+gibt, ist eine Regel, die der Server nicht durchsetzt.
 
 ## Engineering Workspace 0.4
 

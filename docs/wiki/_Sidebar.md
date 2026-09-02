@@ -4,6 +4,7 @@
 - [Platform 1.0](Platform-v1)
 - [Installation](Installation)
 - [Drag-&-Drop Designer](Designer)
+- [Erweiterungen](Extensions)
 - [YAML, Projekte & Versionen](YAML-Projects)
 - [Symbole, Gruppen & Routing](Symbols-Routing)
 - [Alarme & Bedienung](Alarms-Controls)

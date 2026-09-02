@@ -175,3 +175,56 @@ test("a symbol rendered in one style is not the same bytes as in another", () =>
   const rendered = VISUAL_STYLES.map((style) => renderVariant("boiler", style.id));
   assert.equal(new Set(rendered).size, rendered.length);
 });
+
+test("the documented catalog count is the one the evidence proves", async () => {
+  // Documentation drifts silently. Every place the number appears is bound to
+  // the generated manifest here, so a symbol added without regenerating fails
+  // in the Node suite rather than shipping a README that overstates.
+  const evidence = JSON.parse(await readFile(EVIDENCE_URL, "utf8"));
+  const documents = [
+    "../README.md", "../README.de.md", "../docs/wiki/Symbols-Routing.md",
+  ];
+  for (const relative of documents) {
+    const text = await readFile(new URL(relative, import.meta.url), "utf8");
+    const counts = [...text.matchAll(/\*\*(\d+)\s+(?:variants|Varianten)\*\*/gu)]
+      .map((match) => Number(match[1]));
+    assert.ok(counts.length > 0, `${relative} states no catalog count`);
+    for (const count of counts) {
+      assert.equal(count, evidence.variant_count, `${relative} overstates the catalog`);
+    }
+    const bases = [...text.matchAll(/\*\*(\d+)\s+(?:base symbols|Basissymbolen)\*\*/gu)]
+      .map((match) => Number(match[1]));
+    for (const count of bases) {
+      assert.equal(count, evidence.base_symbol_count, `${relative} misstates the base count`);
+    }
+  }
+});
+
+test("the extension documentation states the foreclosure, not only the guarantee", async () => {
+  // "No contributed code executes" is the guarantee. On its own it reads as a
+  // feature. What an integrator needs is what it costs them, so both languages
+  // have to name it.
+  for (const [relative, marker] of [
+    ["../README.md", "forecloses"],
+    ["../README.de.md", "ausschließt"],
+    ["../docs/wiki/Extensions.md", "Was das ausschließt"],
+  ]) {
+    const text = await readFile(new URL(relative, import.meta.url), "utf8");
+    assert.ok(text.includes(marker), `${relative} does not state what the SDK forecloses`);
+  }
+});
+
+test("no document still describes the retired router or the editor dialogs", async () => {
+  const stale = [
+    [/Beim Verschieben der Bauteile wird die Route neu berechnet\./u, "the full-sweep reroute"],
+    [/mehr als 50 Komponenten/iu, "the pre-Phase-5 catalog size"],
+    [/more than 50 components/iu, "the pre-Phase-5 catalog size"],
+  ];
+  for (const relative of ["../README.md", "../README.de.md",
+    "../docs/wiki/Symbols-Routing.md", "../docs/wiki/Designer.md"]) {
+    const text = await readFile(new URL(relative, import.meta.url), "utf8");
+    for (const [pattern, what] of stale) {
+      assert.ok(!pattern.test(text), `${relative} still describes ${what}`);
+    }
+  }
+});

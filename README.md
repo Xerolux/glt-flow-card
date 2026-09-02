@@ -349,8 +349,87 @@ The designer also includes a **live preview** and a **Lovelace YAML drawer with 
 
 ## Extended symbol library
 
-The palette contains more than 50 components and variants across heating, hydraulics, AHU/ventilation, cooling, energy, sensors and generic plant objects, while custom images/SVGs remain optional.
+**456 variants** from **76 base symbols** in **6 styles**, across heating,
+hydraulics, air handling, refrigeration, energy, instrumentation, electrical and
+fire safety.
 
+That number is measured, not claimed. `catalog-evidence.json` is produced by
+actually rendering every variant and digesting the result, and the generator
+refuses to write the file at all if a symbol draws nothing, two base symbols
+produce identical geometry, or two styles carry identical tokens. A test
+requires the number in this README and the number in the evidence to be the same
+number.
+
+A cross product of two axes is a set of distinct variants only if both axes are
+distinct. That check is why three base symbols that drew nothing at all — and
+nine more that shared another symbol's drawing — are now fixed rather than
+counted.
+
+Custom images and SVGs remain optional.
+
+## Typed ports and explained refusals
+
+A port carries a medium, a direction, a side, a kind (`process`, `signal`,
+`power`) and a multiplicity (`one`, `many`). A connection that cannot exist is
+refused with a reason from a closed set — `kind_mismatch`, `medium_mismatch`,
+`direction_conflict`, `multiplicity_exceeded`, `self_connection`,
+`duplicate_connection` — shown in words next to the two ports.
+
+Unlike a permission denial, an engineering refusal is explanatory. A permission
+denial is deliberately opaque because the caller must not learn what exists;
+here the drawing is already open in front of the engineer, and withholding the
+reason protects nothing.
+
+A connection means a pair of equipment *and* port, so a shared profile does not
+make two pumps the same endpoint. Geometry is derived from the resolved port, so
+moving equipment moves the endpoint and never changes which port is meant. An
+endpoint that no longer resolves is reported, never silently reattached.
+
+## Routing
+
+Deterministic: the same diagram routes to the same bytes, with no clock, no
+randomness and no iteration over an unordered collection. A one-pixel move
+rewrites one segment, because interior turns snap to the drawing grid while
+ports keep their exact positions.
+
+No route enters plant. Where none can be found, the pair is refused explicitly —
+`obstructed`, `detour_exceeded`, `scene_too_complex`, `degenerate_endpoints` —
+and a refusal carries no path, so nobody can draw one by accident. Previously a
+blocked pair returned the first candidate: a path *through* the obstacle, handed
+back silently as though it were a route.
+
+Rerouting is local by construction rather than by optimisation: a route is
+computed against the obstacles near it, found transitively, so a distant one was
+never an input. Over forty routes, one move recomputes one. The bounds are
+stated in segments and routes, never in milliseconds.
+
+## Extensions
+
+An extension pack adds symbols, profiles, templates, descriptors and
+translations. It does not add code: a contribution is **data**, interpreted by
+first-party code, and no contributed JavaScript is loaded, evaluated or executed
+in any realm.
+
+Not executing is necessary and not sufficient, so contributed markup is policed
+by an allowlist of elements and attributes rather than a denylist. A denylist is
+a promise to have thought of everything, and the list of things nobody thought
+of is exactly the list that matters.
+
+**What this forecloses**, stated rather than left implicit: any contribution
+whose appearance is *computed* rather than described — a level indicator driven
+by a vendor's own characteristic curve, a widget combining entities under a rule
+the card does not already implement, a renderer that draws differently depending
+on values beyond the declarative expressions the card defines. Every computation
+must be expressible in the vocabulary the card defines. That vocabulary can
+grow; a genuinely new kind of computation needs a first-party release, not a
+third-party pack.
+
+Installation is local and all-or-nothing: the manifest is validated, every
+conflict is checked and every bound enforced before anything is written, so a
+failed install leaves nothing to work out. The validator exists in both
+JavaScript and Python, proven to reach identical verdicts over a shared corpus,
+because a rule that exists only in the browser is a rule the server does not
+enforce.
 
 ## Engineering Workspace 0.4
 
