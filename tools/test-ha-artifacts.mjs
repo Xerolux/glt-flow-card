@@ -6,6 +6,7 @@ import {
   cp,
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   rm,
   writeFile,
@@ -155,6 +156,71 @@ def test_exact_staged_zip_card_and_build_identity() -> None:
 `;
 }
 
+/**
+ * Markers on a file whose tests are *meant* to fail right now.
+ *
+ * Two exist, and both mark harness self-tests rather than tests of the product:
+ *
+ *   - `expected_red`, on a controlled-RED sentinel whose owning plan has not
+ *     landed. It specifies behaviour that does not exist yet;
+ *   - `escaping_notification`, on a test that deliberately reaches outside the
+ *     notification fixture so another test can run it as a subprocess and
+ *     assert that the ledger failed it.
+ *
+ * The discriminator is deliberately the **marker** and not the sentinel's name.
+ * Matching `test_expected_red_*` would remove every phase's sentinel file --
+ * twenty-eight of them, most long since green and carrying the lane's real
+ * coverage. A marker is added when a sentinel is written and removed by the
+ * plan that makes it pass, which is exactly the lifecycle this needs to track.
+ */
+const DELIBERATE_FAILURE_MARKERS = [
+  /@?pytest\.mark\.expected_red\b/,
+  /@?pytest\.mark\.escaping_notification\b/,
+];
+
+/**
+ * Remove deliberately-failing tests from the lane's copy of the test tree.
+ *
+ * The lane's job is to prove that the *exact staged artifact* behaves
+ * correctly. A sentinel for unbuilt behaviour, or a test written to fail so
+ * that another test can observe the failure, is the opposite: running either
+ * here reports the artifact as broken when it is precisely as built.
+ *
+ * They are **removed**, not deselected. `assertCleanRun` refuses a lane that
+ * deselected anything -- "the lane must run all of them" -- and that rule is
+ * right, because a lane that can deselect can hide a real failure behind a
+ * marker. So the file never reaches the workspace, and every test the lane does
+ * collect still runs.
+ *
+ * The count is reported and bounded: if this ever removed most of the suite,
+ * `MINIMUM_LANE_TESTS` catches it downstream, and the printed list says exactly
+ * what was left out.
+ */
+async function removeDeliberateFailures(testsRoot) {
+  const removed = [];
+  const walk = async (directory) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full);
+        continue;
+      }
+      if (!entry.name.startsWith("test_") || !entry.name.endsWith(".py")) continue;
+      const source = await readFile(full, "utf8");
+      if (!DELIBERATE_FAILURE_MARKERS.some((marker) => marker.test(source))) continue;
+      await rm(full);
+      removed.push(path.relative(testsRoot, full));
+    }
+  };
+  await walk(testsRoot);
+  if (removed.length > 0) {
+    process.stdout.write(
+      `lane excludes ${removed.length} deliberately-failing file(s): ${removed.join(", ")}\n`,
+    );
+  }
+  return removed;
+}
+
 async function prepareWorkspace(stage) {
   const workspace = await mkdtemp(path.join(os.tmpdir(), "glt-ha-artifacts-"));
   const component = path.join(workspace, COMPONENT_ROOT);
@@ -162,6 +228,7 @@ async function prepareWorkspace(stage) {
   await writeFile(path.join(workspace, "custom_components/__init__.py"), "", "utf8");
   await extractVerifiedZip(stage, component);
   await cp(path.join(ROOT, "tests"), path.join(workspace, "tests"), { recursive: true });
+  await removeDeliberateFailures(path.join(workspace, "tests"));
   const conftestPath = path.join(workspace, "tests/components/glt_flow_card/conftest.py");
   const conftest = await readFile(conftestPath, "utf8");
   const normalizedConftest = conftest.replace(

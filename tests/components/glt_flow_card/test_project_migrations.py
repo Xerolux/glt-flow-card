@@ -133,12 +133,16 @@ def test_the_migrations_field_lists_and_schema_5_declare_the_same_fields() -> No
     import json
     from pathlib import Path
 
+    import custom_components.glt_flow_card as component
     from custom_components.glt_flow_card.project_migrations import SCHEMA_MIRRORED_FIELDS
 
-    root = Path(__file__).resolve().parents[3]
-    schema = json.loads(
-        (root / "schemas" / "project" / "5.schema.json").read_text(encoding="utf-8")
-    )
+    # Resolved from the *component package*, not from the repository root. The
+    # HA lane installs the staged component into a workspace that has no
+    # top-level `schemas/` directory -- the schemas ship inside the component --
+    # so a repo-relative path passes here and fails there, which is precisely
+    # the divergence the lane exists to catch.
+    schemas = Path(component.__file__).resolve().parent / "schemas" / "project"
+    schema = json.loads((schemas / "5.schema.json").read_text(encoding="utf-8"))
     for shape, fields in SCHEMA_MIRRORED_FIELDS.items():
         declared = sorted(schema["$defs"][shape]["properties"])
         assert sorted(fields) == declared, shape
