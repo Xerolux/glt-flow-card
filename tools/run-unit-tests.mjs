@@ -40,7 +40,8 @@ const PHASE_GATE_SUITES = new Set([
   // still run: `npm run test:phase7:quick` puts it through
   // `tools/assert-red.mjs`, which requires it to reach exactly its named
   // missing behaviour and fails when anything else about the run is broken.
-  "replay-truth.test.mjs",
+  // replay-truth.test.mjs removed by plan 07-11: replay reads the record and an
+  // entity with no history is a stated unknown, so it is a regression suite now.
   // period-parity.test.mjs removed by plan 07-07: both runtimes now resolve
   // every corpus entry to identical canonical bytes, so it is a regression
   // suite rather than a sentinel.
