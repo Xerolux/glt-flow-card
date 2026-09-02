@@ -198,3 +198,167 @@ async def test_a_route_with_no_recorder_states_it_rather_than_returning_empty(
     assert statistics["result"]["gaps"], (
         "seven missing days produced no gap: the route did not ask the Recorder"
     )
+
+
+async def test_coverage_answers_from_the_period_grid_rather_than_from_the_rows(
+    hass, config_entry, phase2_users,
+):
+    """`history/coverage` measures the answer against the window that was asked for.
+
+    Both this route and `history/export` shipped in 07-08 as shells returning a
+    hard-coded empty result, and Phase 7 closed with them still shells because
+    the grid they need is a decision rather than a derivation. 07-21 made that
+    decision; this is the assertion that it reached the route.
+
+    The discriminating value is `expected`. A shell cannot produce it, and
+    neither can an implementation that infers the grid from what came back --
+    the Recorder omits an empty period entirely, so a month with nine missing
+    days returns 22 rows and an inferred grid calls that a complete month.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager, _runtime_for
+
+    manager = _manager(hass)
+    manager.data["projects"]["coverage-live"] = {
+        "id": "coverage-live",
+        "config": {"timezone": "Europe/Berlin", "trend": {}},
+    }
+    runtime = _runtime_for(hass)
+    await runtime.access.async_assign(
+        project_id="coverage-live",
+        user_id=phase2_users.principal("viewer").user_id,
+        role="viewer",
+    )
+
+    connection = await phase2_users.async_connect("viewer")
+    response = await connection.command({
+        "type": "glt_flow_card/history/coverage",
+        "project_id": "coverage-live",
+        "entity_ids": ["sensor.a"],
+        "period": "day",
+    })
+    assert response["success"] is True
+    result = response["result"]
+    assert result["step"] == "hour", "a day is measured in hourly buckets"
+    assert result["expected"] in (23, 24, 25), (
+        f"a day resolved to {result['expected']} hourly buckets; only 23, 24 and 25 are possible"
+    )
+    assert result["period"]["timezone"] == "Europe/Berlin", (
+        "the period was resolved in the wrong timezone -- the project declares Europe/Berlin"
+    )
+    # No Recorder here, so nothing came back and the whole window is the gap.
+    assert result["source"] == "unavailable"
+    assert result["coverage"] == 0
+    assert result["gaps"], "a window with nothing behind it reported no gap"
+
+
+async def test_coverage_refuses_an_unknown_period_rather_than_defaulting(
+    hass, config_entry, phase2_users,
+):
+    """A coverage figure for "sometimes" would silently be a figure for today."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager, _runtime_for
+
+    _manager(hass).data["projects"]["coverage-live"] = {
+        "id": "coverage-live", "config": {"timezone": "Europe/Berlin", "trend": {}},
+    }
+    runtime = _runtime_for(hass)
+    await runtime.access.async_assign(
+        project_id="coverage-live",
+        user_id=phase2_users.principal("viewer").user_id,
+        role="viewer",
+    )
+    connection = await phase2_users.async_connect("viewer")
+    response = await connection.command({
+        "type": "glt_flow_card/history/coverage",
+        "project_id": "coverage-live",
+        "entity_ids": ["sensor.a"],
+        "period": "sometimes",
+    })
+    assert response["success"] is False
+    assert response["error"]["code"] == "unknown_period"
+
+
+async def test_export_is_a_separate_capability_from_reading(
+    hass, config_entry, phase2_users,
+):
+    """Whoever may read the plant's history is not automatically whoever may export it.
+
+    A viewer holds `history.read` and not `history.export`, so the export is
+    refused outright rather than filtered. Unlike a listing there is no honest
+    partial answer to an export: half a month of data carried out of the
+    building under a name that says "March" is worse than a refusal.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager, _runtime_for
+
+    _manager(hass).data["projects"]["export-live"] = {
+        "id": "export-live", "config": {"timezone": "Europe/Berlin", "trend": {}},
+    }
+    runtime = _runtime_for(hass)
+    await runtime.access.async_assign(
+        project_id="export-live",
+        user_id=phase2_users.principal("viewer").user_id,
+        role="viewer",
+    )
+    viewer = await phase2_users.async_connect("viewer")
+    refused = await viewer.command({
+        "type": "glt_flow_card/history/export",
+        "project_id": "export-live",
+        "entity_ids": ["sensor.a"],
+        "period": "day",
+    })
+    assert refused["success"] is False, "a viewer exported history without history.export"
+    # `not_found_or_denied`, not `not_permitted`, and the difference is the
+    # point: the route enumerates `opaque`, so the refusal deliberately does not
+    # distinguish "there is no such project" from "you may not export it". A
+    # caller who learns which of the two applies has learned that the project
+    # exists. The generic guard denies before the handler runs, which is why the
+    # handler's own capability check is a backstop rather than the live path.
+    assert refused["error"]["code"] == "not_found_or_denied"
+
+
+async def test_an_export_states_what_would_be_needed_to_reproduce_it(
+    hass, config_entry, phase2_users,
+):
+    """An export that cannot be interpreted later is a file, not evidence.
+
+    The shipped export wrote the value being rendered at that moment, with no
+    period, no aggregate, no bounds and no timezone. A month later nobody could
+    say what it was a export *of*.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    from custom_components.glt_flow_card import _manager, _runtime_for
+
+    _manager(hass).data["projects"]["export-live"] = {
+        "id": "export-live",
+        "config": {"timezone": "Europe/Berlin", "trend": {}, "historian": {"deadband": 0.5}},
+    }
+    runtime = _runtime_for(hass)
+    await runtime.access.async_assign(
+        project_id="export-live",
+        user_id=phase2_users.principal("admin").user_id,
+        role="admin",
+    )
+    admin = await phase2_users.async_connect("admin")
+    response = await admin.command({
+        "type": "glt_flow_card/history/export",
+        "project_id": "export-live",
+        "entity_ids": ["sensor.a"],
+        "period": "day",
+    })
+    assert response["success"] is True
+    provenance = response["result"]["provenance"]
+    for field in ("aggregate", "bounds", "deadband", "end", "period", "start", "step", "timezone"):
+        assert field in provenance, f"an export omitted {field}, so it cannot be reproduced"
+    assert provenance["timezone"] == "Europe/Berlin"
+    assert provenance["deadband"] == 0.5, (
+        "the export did not state the deadband that thinned it"
+    )
+    # The grid travels with the rows so a cell is filled only from a sample
+    # inside its own interval, never from a borrowed neighbour.
+    assert response["result"]["expected_instants"], "an export carried no grid"

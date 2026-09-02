@@ -182,6 +182,77 @@ export function resolve(spec, { now, timezone }) {
   };
 }
 
+/**
+ * Which bucket a named window is measured in. Mirrored from the Companion, not
+ * derived, so a divergence fails the parity test rather than drifting.
+ *
+ * The window and the bucket are different things. A month at daily resolution
+ * has 28-31 buckets; the same month hourly has 743, 744 or 745. Neither is
+ * derivable from the other without saying which resolution was meant.
+ */
+export const BUCKET_STEPS = Object.freeze({
+  "day": "hour",
+  "day-previous": "hour",
+  "rolling-24h": "hour",
+  "week-mon": "day",
+  "week-sun": "day",
+  "month": "day",
+  "month-previous": "day",
+  "year": "month",
+  "year-previous": "month",
+});
+
+/** A bound on the grid, so a stepping bug fails instead of spinning. */
+const MAX_BUCKETS = 10_000;
+
+/** Return the bucket step a named window is measured in, or refuse. */
+export function bucketFor(spec) {
+  const step = BUCKET_STEPS[spec];
+  if (!step) throw new Error(`unknown_period: ${JSON.stringify(spec)}`);
+  return step;
+}
+
+/**
+ * Return the bucket boundaries a named window *should* produce.
+ *
+ * Each step is taken in the model it belongs to. An hour is added in absolute
+ * time, because an hour is an hour on both sides of a transition and only its
+ * wall-clock label moves — which is why a 23-hour day yields 23 hourly instants
+ * and a 25-hour day yields 25. A day and a month are stepped on the local
+ * calendar, because a constant 86 400 000 ms would produce a 24-hour day where
+ * the calendar says 23.
+ *
+ * For display only, like the rest of this module: the Companion computes the
+ * grid a query is actually measured against.
+ */
+export function expectedInstants(spec, { now, timezone }) {
+  const step = bucketFor(spec);
+  const resolved = resolve(spec, { now, timezone });
+  let cursorMs = Date.parse(resolved.start);
+  const endMs = Date.parse(resolved.end);
+
+  const instants = [];
+  while (cursorMs < endMs) {
+    instants.push(canonicalInstant(cursorMs, timezone));
+    if (instants.length > MAX_BUCKETS) {
+      throw new Error(`bucket grid exceeded ${MAX_BUCKETS} steps for ${JSON.stringify(spec)}`);
+    }
+    if (step === "hour") {
+      cursorMs += 3_600_000;
+    } else if (step === "day") {
+      cursorMs = instantOfLocal(addDays(localDate(cursorMs, timezone), 1), timezone);
+    } else {
+      cursorMs = instantOfLocal(addMonths(localDate(cursorMs, timezone), 1), timezone);
+    }
+  }
+  return instants;
+}
+
+/** Return the canonical bytes both runtimes must agree on for one grid. */
+export function canonicalGrid(spec, instants) {
+  return JSON.stringify({ count: instants.length, instants, spec });
+}
+
 /** Return the canonical bytes both runtimes must agree on. */
 export function canonical(resolved) {
   const sorted = Object.fromEntries(Object.keys(resolved).sort().map((key) => [key, resolved[key]]));

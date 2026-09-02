@@ -2297,6 +2297,19 @@ def _history_bounds_for(hass, project_id: str) -> dict:
     return history_bounds.resolve_bounds(trend)
 
 
+def _site_timezone(hass, project_id: str) -> str:
+    """Return the timezone a period is resolved in, for one project.
+
+    The project's own timezone where it declares one, and Home Assistant's
+    otherwise. Never the browser's: a browser in a different zone from the plant
+    is normal, and a period resolved there answers for the wrong midnight. Phase
+    6 established this for the schedule preview and the reason is unchanged.
+    """
+    project = _manager(hass).data["projects"].get(project_id) or {}
+    declared = (project.get("config") or {}).get("timezone")
+    return str(declared or getattr(hass.config, "time_zone", "") or "UTC")
+
+
 def _history_window_hours(msg) -> float:
     """Return the requested window in hours, or zero when it is unparseable."""
     start = str(msg.get("start_time") or "")
@@ -2500,27 +2513,90 @@ async def ws_history_coverage(hass, connection, msg):
     fetching everything and counting would be the bound it exists to avoid.
     """
     decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
     project_id = decision.project_id
+    permitted = runtime.policy.visible_projects(connection, [project_id], "history.read")
+    if not permitted:
+        connection.send_result(msg["id"], {"coverage": 0, "gaps": [], "source": "unavailable"})
+        return
+
+    # Resolved here, in the site timezone, and never in the browser: a browser in
+    # a different zone from the plant is normal, and resolving there would answer
+    # for the browser's zone. Same rule as the schedule preview.
+    period = str(msg["period"] or "day")
+    try:
+        expected = period_resolution.expected_instants(
+            period,
+            now=dt_util.utcnow().isoformat(),
+            timezone=_site_timezone(hass, project_id),
+        )
+        window = period_resolution.resolve(
+            period,
+            now=dt_util.utcnow().isoformat(),
+            timezone=_site_timezone(hass, project_id),
+        )
+    except ValueError as error:
+        # Refused rather than defaulted. A coverage figure for "sometimes" would
+        # silently be a coverage figure for today.
+        connection.send_error(msg["id"], "unknown_period", str(error))
+        return
+
+    bounds = _history_bounds_for(hass, project_id)
+    decision_on_bounds = history_bounds.decide_query({
+        "contract": "statistics",
+        "entities": len(list(msg["entity_ids"] or [])),
+        "window_hours": window["span_hours"],
+    }, bounds)
+    if decision_on_bounds["outcome"] == "refuse":
+        connection.send_error(
+            msg["id"],
+            decision_on_bounds["reason"],
+            f"{decision_on_bounds['reason']}: {decision_on_bounds['detail']}",
+        )
+        return
+
+    request = recorder_query.build_request(
+        end=window["end"], entity_ids=msg["entity_ids"], period=period, start=window["start"],
+    )
+    answer, query_error = await _ask_recorder(hass, request)
+    shaped = recorder_query.shape_answer(
+        request["contract"], answer, error=query_error, expected_instants=expected,
+    )
+    built = series_coverage.build_series(shaped)
     await _audit_history(
         hass, connection, "glt_flow_card/history/coverage",
-        contract="statistics", msg=msg, project_id=project_id, rows=0,
+        contract=decision_on_bounds["source"] or "statistics", msg=msg,
+        project_id=project_id, rows=0,
     )
-    # Stated `unavailable` rather than a fabricated answer. Resolving coverage
-    # needs the period's expected instants -- the grid the window *should* have
-    # produced -- and that grid has no owner yet: its bucket step is a decision
-    # with a corpus behind it, because inferring it from the rows that came back
-    # is the defect `expected_instants` exists to prevent. Until that lands this
-    # route says it has no answer, which is the one thing it must never get
-    # wrong.
-    connection.send_result(msg["id"], {"coverage": 0, "gaps": [], "source": "unavailable"})
+    # The values are deliberately not returned. This route answers "is there
+    # anything there?", which an operator asks *before* committing to a query,
+    # and answering it by fetching everything and counting would be the bound it
+    # exists to avoid.
+    connection.send_result(msg["id"], {
+        "coverage": built.get("coverage", 0),
+        "expected": len(expected),
+        "gaps": built.get("gaps") or [],
+        "period": window,
+        "source": (
+            decision_on_bounds["source"]
+            if decision_on_bounds["outcome"] == "downgrade"
+            else built.get("source", "unavailable")
+        ),
+        "step": period_resolution.bucket_for(period),
+    })
 
 
 @websocket_api.websocket_command({
     vol.Required("type"): "glt_flow_card/history/export",
     vol.Optional("project_id", default=""): str,
     vol.Optional("entity_ids", default=list): [str],
+    vol.Optional("period", default="day"): str,
     vol.Optional("start_time", default=""): str,
     vol.Optional("end_time", default=""): str,
+    # Recorded in the audit row so the site can say what shape left the
+    # building, never used to render here: the model is returned and the three
+    # renderings all derive from it, because deriving one from another's
+    # serialisation is the defect 07-16 closed.
     vol.Optional("format", default="csv"): str,
 })
 @websocket_api.async_response
@@ -2532,17 +2608,104 @@ async def ws_history_export(hass, connection, msg):
     the audit row is what lets the site say afterwards what left and how much.
     """
     decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
     project_id = decision.project_id
-    rows = []
+    # A backstop, not the live path. The route declares `history.export` and
+    # enumerates `opaque`, so the generic guard denies an unauthorized caller
+    # before this handler runs -- with `not_found_or_denied`, which deliberately
+    # does not distinguish "no such project" from "not allowed", because a
+    # caller who learns which one applies has learned the project exists.
+    #
+    # It stays because the cost of being wrong here is history leaving the
+    # building. Unlike a listing there is no honest partial answer to an export:
+    # half a month carried out under a name that says "March" is worse than a
+    # refusal.
+    permitted = runtime.policy.visible_projects(connection, [project_id], "history.export")
+    if not permitted:
+        connection.send_error(
+            msg["id"], "not_permitted", "not_permitted: history.export is required to export history",
+        )
+        return
+
+    period = str(msg["period"] or "day")
+    timezone = _site_timezone(hass, project_id)
+    try:
+        window = period_resolution.resolve(
+            period, now=dt_util.utcnow().isoformat(), timezone=timezone,
+        )
+        expected = period_resolution.expected_instants(
+            period, now=dt_util.utcnow().isoformat(), timezone=timezone,
+        )
+    except ValueError as error:
+        connection.send_error(msg["id"], "unknown_period", str(error))
+        return
+
+    start = str(msg["start_time"] or window["start"])
+    end = str(msg["end_time"] or window["end"])
+    bounds = _history_bounds_for(hass, project_id)
+    decision_on_bounds = history_bounds.decide_query({
+        "contract": "raw",
+        "entities": len(list(msg["entity_ids"] or [])),
+        "window_hours": _history_window_hours({"start_time": start, "end_time": end}),
+    }, bounds)
+    if decision_on_bounds["outcome"] == "refuse":
+        connection.send_error(
+            msg["id"],
+            decision_on_bounds["reason"],
+            f"{decision_on_bounds['reason']}: {decision_on_bounds['detail']}",
+        )
+        return
+
+    request = recorder_query.build_request(
+        end=end, entity_ids=msg["entity_ids"], period=period, start=start,
+    )
+    answer, query_error = await _ask_recorder(hass, request)
+    shaped = recorder_query.shape_answer(
+        request["contract"], answer, error=query_error, expected_instants=expected,
+    )
+    built = series_coverage.build_series(shaped)
+    capped = history_bounds.cap_rows(built.get("points") or [], bounds)
+    rows = capped["rows"]
+
+    # Audited with the row count *before* the result is sent, so a site can say
+    # afterwards what left the building and how much of it. An export that
+    # failed to audit must not be an export that happened.
     await _audit_history(
         hass, connection, "glt_flow_card/history/export",
-        contract="raw", msg=msg, project_id=project_id, rows=len(rows),
+        contract=decision_on_bounds["source"] or "raw", msg=msg,
+        project_id=project_id, rows=len(rows),
     )
     connection.send_result(msg["id"], {
-        "coverage": 0,
+        "coverage": built.get("coverage", 0),
+        # The grid, so the browser fills a cell only from a sample inside that
+        # interval and leaves an explicit blank otherwise. Without it the
+        # renderer would have to guess where a row belongs, which is the
+        # nearest-neighbour defect that wrote a sample from hours away into
+        # this minute's row.
+        "expected_instants": expected,
+        "gaps": built.get("gaps") or [],
+        # Everything needed to interpret or reproduce this later. An export that
+        # does not state its aggregate, bounds, deadband, period and timezone
+        # cannot be read a month from now, let alone re-run.
+        "provenance": {
+            "aggregate": request["contract"],
+            "bounds": {"max_entities": bounds.get("max_entities"), "max_rows": bounds.get("max_rows"),
+                       "max_window_hours": bounds.get("max_window_hours")},
+            "deadband": ((_manager(hass).data["projects"].get(project_id) or {}).get("config") or {})
+                        .get("historian", {}).get("deadband", 0),
+            "end": end,
+            "period": period,
+            "start": start,
+            "step": period_resolution.bucket_for(period),
+            "timezone": timezone,
+        },
         "rows": rows,
-        "source": "unavailable",
-        "truncated": False,
+        "source": (
+            decision_on_bounds["source"]
+            if decision_on_bounds["outcome"] == "downgrade"
+            else built.get("source", "unavailable")
+        ),
+        "truncated": capped["capped"],
     })
 
 

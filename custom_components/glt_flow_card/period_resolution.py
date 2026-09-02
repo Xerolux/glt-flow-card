@@ -192,6 +192,92 @@ def canonical(resolved: dict[str, Any]) -> str:
     return json.dumps(resolved, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
 
 
+#: Which bucket a named window is measured in. Closed, and a table rather than
+#: a computation, because this is the decision Phase 7 deliberately left open
+#: instead of half-building.
+#:
+#: The window and the bucket are different things, and conflating them is how a
+#: grid gets invented. A month asked for at daily resolution has 28 to 31
+#: buckets; the same month asked for hourly has 743, 744 or 745. Neither number
+#: is derivable from the other without saying which resolution was meant.
+#:
+#: Deriving the grid from the rows that came *back* is the defect
+#: ``expected_instants`` exists to prevent: the Recorder omits an empty period
+#: entirely, so a month with nine missing days returns 22 rows and a grid built
+#: from them says the month had 22 days and full coverage.
+BUCKET_STEPS: dict[str, str] = {
+    "day": "hour",
+    "day-previous": "hour",
+    "rolling-24h": "hour",
+    "week-mon": "day",
+    "week-sun": "day",
+    "month": "day",
+    "month-previous": "day",
+    "year": "month",
+    "year-previous": "month",
+}
+
+#: The three step models. An hour is a *duration*; a day and a month are
+#: *calendar* steps. That distinction is the whole content of this module and it
+#: is why the grid cannot be `range(0, n)` over a constant.
+BUCKET_MODELS: tuple[str, ...] = ("hour", "day", "month")
+
+#: A bound on the grid itself. The largest legitimate grid here is a year of
+#: months (12) or a fall-back day of hours (25), so anything approaching this is
+#: a stepping bug that would otherwise spin.
+MAX_BUCKETS = 10_000
+
+
+def bucket_for(spec: str) -> str:
+    """Return the bucket step a named window is measured in, or refuse."""
+    if spec not in BUCKET_STEPS:
+        raise ValueError(f"unknown_period: {spec!r}")
+    return BUCKET_STEPS[spec]
+
+
+def expected_instants(spec: str, *, now: str, timezone: str) -> list[str]:
+    """Return the bucket boundaries a named window *should* produce.
+
+    This is the grid the answer is measured against: what came back is compared
+    to what was asked for, and the difference is the coverage. It is computed
+    from the period, never from the response.
+
+    Each step is taken in the model that step belongs to. An hour is added in
+    UTC, because an hour is an hour on both sides of a transition and only its
+    wall-clock label moves -- which is exactly why a 23-hour day yields 23
+    hourly instants and a 25-hour day yields 25. A day and a month are stepped
+    on the calendar and handed back to the zone, because adding a timedelta to
+    an aware datetime is wall-clock arithmetic that keeps the original offset
+    and would produce a 24-hour day where the calendar says 23.
+    """
+    step = bucket_for(spec)
+    zone = _zone(timezone)
+    resolved = resolve(spec, now=now, timezone=timezone)
+    cursor = datetime.fromisoformat(resolved["start"]).astimezone(zone)
+    finish = datetime.fromisoformat(resolved["end"]).astimezone(zone)
+
+    instants: list[str] = []
+    while cursor < finish:
+        instants.append(canonical_instant(cursor, zone))
+        if len(instants) > MAX_BUCKETS:
+            raise ValueError(f"bucket grid exceeded {MAX_BUCKETS} steps for {spec!r}")
+        if step == "hour":
+            cursor = (cursor.astimezone(_timezone.utc) + timedelta(hours=1)).astimezone(zone)
+        elif step == "day":
+            cursor = _local_midnight(cursor.date() + timedelta(days=1), zone)
+        else:
+            cursor = _local_midnight(_add_months(cursor.date(), 1), zone)
+    return instants
+
+
+def canonical_grid(spec: str, instants: list[str]) -> str:
+    """Return the canonical bytes both runtimes must agree on for one grid."""
+    return json.dumps(
+        {"count": len(instants), "instants": instants, "spec": spec},
+        ensure_ascii=False, separators=(",", ":"), sort_keys=True,
+    )
+
+
 def contract_for_spec(spec: str) -> str:
     """Return which Recorder contract answers this spec, or refuse."""
     if spec not in SPECS:
