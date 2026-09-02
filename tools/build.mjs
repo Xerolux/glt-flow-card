@@ -128,6 +128,24 @@ function git(args) {
 }
 
 function buildIdentity(sourcePaths) {
+  /*
+   * The manifest records the latest commit that touched a canonical source, so
+   * a rebuild anywhere reproduces the same bytes. A shallow clone cannot answer
+   * that question: git attributes every file to the single commit it has, so
+   * `git log` silently returns the head SHA instead. Fabricating provenance is
+   * worse than failing, because the wrong value only surfaces later as an
+   * artifact-equality failure somewhere else.
+   */
+  const shallow = git(["rev-parse", "--is-shallow-repository"]) === "true";
+  const reachable = Number(git(["rev-list", "--count", "HEAD"]) || "0");
+  if (shallow && reachable <= 1) {
+    throw new Error(
+      "build identity requires git history: this checkout has a single reachable "
+      + "commit, so git attributes every source file to it and the recorded commit "
+      + "would be the head SHA rather than the last commit that touched a canonical "
+      + "source. Check out with fetch-depth: 0.",
+    );
+  }
   const commit = git(["log", "-1", "--format=%H", "--", ...sourcePaths]) || "WORKTREE";
   const dirty = Boolean(git(["status", "--porcelain=v1", "--untracked-files=all", "--", ...sourcePaths]));
   return { commit, dirty };
