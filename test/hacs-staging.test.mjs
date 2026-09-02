@@ -41,6 +41,7 @@ const COMPONENT_FILES = [
   "panels.py",
   "provenance.py",
   "sdk_manifest.py",
+  "sdk_registry.py",
   "semantic_model.py",
   "view_stream.py",
   "trusted_evidence.py",

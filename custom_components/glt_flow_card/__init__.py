@@ -9,7 +9,8 @@ import asyncio
 import itertools
 from collections.abc import Mapping
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import json
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any
@@ -63,6 +64,7 @@ from .project_access import AccessConflict, ProjectAccessRepository
 from .navigation import portfolio as roll_up_portfolio, resolve_address
 from .panels import addressable_objects, compose_panel
 from .provenance import ProvenanceService
+from .sdk_registry import InstallRefused, SdkRegistry, visible_packs
 from .view_stream import SnapshotRefused, ViewStreamService
 from .policy import ROLES
 from .project_leases import (
@@ -544,6 +546,9 @@ class CompanionRuntime:
     control_rates: ControlRateLimiter | None = None
     provenance: ProvenanceService | None = None
     views: ViewStreamService | None = None
+    #: One registry per project. Keyed rather than shared, so a listing
+    #: cannot reach a project the caller never opened.
+    extensions: dict[str, SdkRegistry] = field(default_factory=dict)
     generation: int = 0
     available: bool = True
 
@@ -567,6 +572,12 @@ class CompanionRuntime:
             # Snapshot budgets are per connection and per generation. A budget
             # surviving an unload would let a pre-reload client keep spending.
             self.views.clear()
+        # Installed packs belong to the runtime that validated them. Carrying
+        # them across a reload would mean a pack accepted under one project
+        # schema version surviving into an installation running another.
+        for registry in self.extensions.values():
+            registry.clear()
+        self.extensions.clear()
 
     async def async_close(self) -> None:
         """Close the complete entry-owned runtime, tolerating repetition."""
@@ -1668,6 +1679,91 @@ async def ws_audit_list(hass, connection, msg):
     connection.send_result(msg["id"], rows)
 
 
+def _send_install_refusal(connection, msg, refused: InstallRefused) -> None:
+    """Report a refused installation inside the declared error vocabulary.
+
+    The registry's own reason codes are not added to ERROR_CODES. That set is
+    the contract's closed vocabulary, and every code in it is one a client is
+    expected to branch on; a code per installation mishap would widen the
+    contract for detail that belongs in the message. So the wire code is
+    `invalid_input` and the reason and its detail travel in the body, where the
+    extension manager reads them to name both packs and the contested id.
+    """
+    connection.send_error(msg["id"], "invalid_input", json.dumps({
+        "reason": refused.code, "detail": refused.detail,
+    }, sort_keys=True))
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/extensions/list",
+})
+@websocket_api.async_response
+async def ws_extensions_list(hass, connection, msg):
+    """Every installed pack in the projects this principal may open.
+
+    Filtered rather than denied, for the same reason the portfolio roll-up is:
+    an unassigned principal receives an empty list, which is exactly what an
+    installation holding no packs would return, so a listing cannot be used to
+    learn that a project exists.
+    """
+    runtime = _runtime_for(hass)
+    visible = set(runtime.policy.visible_projects(
+        connection, [head["id"] for head in _manager(hass).projects()],
+    ))
+    connection.send_result(msg["id"], visible_packs(runtime.extensions, visible))
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/extensions/install",
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("manifest", default=dict): dict,
+})
+@websocket_api.async_response
+async def ws_extensions_install(hass, connection, msg):
+    """Install one pack against one project, all or nothing.
+
+    The project is re-checked here even though the route carries a write
+    capability: the capability says this principal may install *somewhere*, and
+    only this check says where. A component-scoped route that took a project id
+    on trust would be a write into any project whose id the caller could guess.
+    """
+    runtime = _runtime_for(hass)
+    # The route is project-scoped, so policy has already resolved the project
+    # and answered missing and unauthorized identically. Reading the id back
+    # off the decision rather than off the message is what makes that true:
+    # a handler that re-read msg["project_id"] could act on an id policy never
+    # approved.
+    project_id = msg[DECISION_KEY].project_id
+    registry = runtime.extensions.setdefault(project_id, SdkRegistry(project_id))
+    try:
+        result = registry.install(msg["manifest"])
+    except InstallRefused as refused:
+        _send_install_refusal(connection, msg, refused)
+        return
+    connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/extensions/remove",
+    vol.Optional("project_id", default=""): str,
+    vol.Optional("namespace", default=""): str,
+})
+@websocket_api.async_response
+async def ws_extensions_remove(hass, connection, msg):
+    """Remove one pack from one project."""
+    runtime = _runtime_for(hass)
+    project_id = msg[DECISION_KEY].project_id
+    registry = runtime.extensions.get(project_id)
+    try:
+        if registry is None:
+            raise InstallRefused("pack_not_installed", {"namespace": msg["namespace"]})
+        result = registry.remove(msg["namespace"])
+    except InstallRefused as refused:
+        _send_install_refusal(connection, msg, refused)
+        return
+    connection.send_result(msg["id"], result)
+
+
 _COMMAND_HANDLERS = (
     ws_projects_list, ws_projects_get, ws_projects_save, ws_projects_preview,
     ws_projects_apply, ws_projects_rollback, ws_projects_delete,
@@ -1683,6 +1779,7 @@ _COMMAND_HANDLERS = (
     ws_alarms_shelve, ws_work_orders_list, ws_work_orders_save, ws_reports_run,
     ws_reports_list, ws_remote_list, ws_remote_states, ws_remote_control,
     ws_audit_add, ws_audit_list,
+    ws_extensions_list, ws_extensions_install, ws_extensions_remove,
 )
 
 

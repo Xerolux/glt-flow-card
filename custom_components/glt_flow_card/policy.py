@@ -277,6 +277,19 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/remote/states", "remote.read", scope="component",
            state="deferred"),
     _route("glt_flow_card/remote/control", "remote.control", state="deferred"),
+    # -- extensions (05-17) ------------------------------------------------
+    # Component-scoped and filtered, for the same reason the portfolio is: an
+    # unassigned caller sees an empty list, which is what an installation with
+    # no packs would also give, so a listing cannot be used to learn that a
+    # project exists.
+    _route("glt_flow_card/extensions/list", "template.read", scope="component",
+           enumeration="filter"),
+    # Installing changes what every reader of the project sees, so it needs a
+    # write capability, and it is project-scoped: policy resolves the project
+    # from the request and answers missing and unauthorized identically, which
+    # is a guarantee the handler cannot forget to repeat.
+    _route("glt_flow_card/extensions/install", "template.write"),
+    _route("glt_flow_card/extensions/remove", "template.write"),
     # -- audit ------------------------------------------------------------
     # Client-authored trusted audit is retired; 02-10 owns bounded telemetry.
     _route("glt_flow_card/audit/add", None, scope="component", state="retired"),
