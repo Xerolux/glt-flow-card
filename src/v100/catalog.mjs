@@ -1,5 +1,8 @@
 /* GLT Flow Card Platform 1.0 component and visual catalog */
 
+import { pair as catalogPair } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
 export const VISUAL_STYLES = [
   { id: "neo2030", label: "Neo 2030" },
   { id: "clean", label: "Clean" },
@@ -245,14 +248,14 @@ export const SYMBOL_GEOMETRY = new Map([
  * "fire" must not depend on how the label is spelled this release.
  */
 export const DOMAINS = Object.freeze([
-  { id: "heating", category: "Heizung", label: { de: "Heizung", en: "Heating" } },
-  { id: "hydraulics", category: "Hydraulik", label: { de: "Hydraulik", en: "Hydraulics" } },
-  { id: "air", category: "RLT", label: { de: "RLT", en: "Air handling" } },
-  { id: "refrigeration", category: "Kälte", label: { de: "Kälte", en: "Refrigeration" } },
-  { id: "energy", category: "Energie", label: { de: "Energie", en: "Energy" } },
-  { id: "instrumentation", category: "Sensorik", label: { de: "Sensorik", en: "Instrumentation" } },
-  { id: "electrical", category: "Elektro", label: { de: "Elektro", en: "Electrical" } },
-  { id: "fire", category: "Brandschutz", label: { de: "Brandschutz", en: "Fire safety" } },
+  { id: "heating", category: "Heizung", label: catalogPair("symbols.label") },
+  { id: "hydraulics", category: "Hydraulik", label: catalogPair("symbols.label_hydraulik") },
+  { id: "air", category: "RLT", label: catalogPair("symbols.label_rlt") },
+  { id: "refrigeration", category: "Kälte", label: catalogPair("symbols.label_k_lte") },
+  { id: "energy", category: "Energie", label: catalogPair("symbols.label_energie") },
+  { id: "instrumentation", category: "Sensorik", label: catalogPair("symbols.label_sensorik") },
+  { id: "electrical", category: "Elektro", label: catalogPair("symbols.label_elektro") },
+  { id: "fire", category: "Brandschutz", label: catalogPair("symbols.label_brandschutz") },
 ]);
 
 const DOMAIN_BY_CATEGORY = new Map(DOMAINS.map((domain) => [domain.category, domain.id]));

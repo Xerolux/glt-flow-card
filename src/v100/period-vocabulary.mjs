@@ -30,6 +30,9 @@
  * instantaneous samples is dimensionally meaningless (D11).
  */
 
+import { pair as catalogPair } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
 /** The period names a caller may ask for. Closed. */
 export const PERIOD_NAMES = Object.freeze(["day", "week", "month", "year", "custom"]);
 
@@ -84,62 +87,35 @@ export const REFUSAL_REASONS = Object.freeze([
  */
 export const LABELS = Object.freeze({
   aggregate: {
-    change: { de: "Verbrauch", en: "Consumption" },
-    max: { de: "Maximum", en: "Maximum" },
-    mean: { de: "Mittelwert", en: "Mean" },
-    none: { de: "Alle Messwerte", en: "Every sample" },
-    min: { de: "Minimum", en: "Minimum" },
-    state: { de: "Zählerstand", en: "Meter reading" },
+    change: catalogPair("period.change"),
+    max: catalogPair("period.max"),
+    mean: catalogPair("period.mean"),
+    none: catalogPair("period.none"),
+    min: catalogPair("period.min"),
+    state: catalogPair("period.state"),
   },
   period: {
-    custom: { de: "Freier Zeitraum", en: "Custom range" },
-    day: { de: "Tag", en: "Day" },
-    month: { de: "Monat", en: "Month" },
-    week: { de: "Woche", en: "Week" },
-    year: { de: "Jahr", en: "Year" },
+    custom: catalogPair("period.custom"),
+    day: catalogPair("period.day"),
+    month: catalogPair("period.month"),
+    week: catalogPair("period.week"),
+    year: catalogPair("period.year"),
   },
   refusal: {
-    circular_mean_required: {
-      de: "Diese Größe ist eine Richtung — ein arithmetischer Mittelwert wäre falsch.",
-      en: "This quantity is a direction — an arithmetic mean would be wrong.",
-    },
-    entities_exceed_limit: {
-      de: "Die Abfrage nennt mehr Entitäten, als der Standort erlaubt.",
-      en: "The query names more entities than the site permits.",
-    },
-    incompatible_unit: {
-      de: "Einheit und Preis passen nicht zusammen — nicht verrechenbar.",
-      en: "The unit and the price do not match — they cannot be combined.",
-    },
-    outside_statistic_coverage: {
-      de: "Dieser Zeitraum liegt vor dem ersten aufgezeichneten Wert.",
-      en: "This period lies before the first recorded value.",
-    },
-    undeclared_meter_model: {
-      de: "Für diesen Zähler ist nicht festgelegt, ob er zählt oder misst.",
-      en: "This meter does not declare whether it counts or measures.",
-    },
-    unknown_aggregate: {
-      de: "Diese Auswertung ist nicht bekannt.",
-      en: "That aggregate is not known.",
-    },
-    unknown_period: {
-      de: "Dieser Zeitraum ist nicht bekannt.",
-      en: "That period is not known.",
-    },
-    unknown_source: {
-      de: "Diese Quelle ist nicht bekannt.",
-      en: "That source is not known.",
-    },
-    window_exceeds_limit: {
-      de: "Der Zeitraum ist länger, als für Rohwerte erlaubt ist.",
-      en: "The window is longer than raw values permit.",
-    },
+    circular_mean_required: catalogPair("period.circular_mean_required"),
+    entities_exceed_limit: catalogPair("period.entities_exceed_limit"),
+    incompatible_unit: catalogPair("period.incompatible_unit"),
+    outside_statistic_coverage: catalogPair("period.outside_statistic_coverage"),
+    undeclared_meter_model: catalogPair("period.undeclared_meter_model"),
+    unknown_aggregate: catalogPair("period.unknown_aggregate"),
+    unknown_period: catalogPair("period.unknown_period"),
+    unknown_source: catalogPair("period.unknown_source"),
+    window_exceeds_limit: catalogPair("period.window_exceeds_limit"),
   },
   source: {
-    raw: { de: "aus Rohwerten", en: "from raw values" },
-    statistics: { de: "aus Langzeitstatistik", en: "from long-term statistics" },
-    unavailable: { de: "nicht abrufbar", en: "unavailable" },
+    raw: catalogPair("period.raw"),
+    statistics: catalogPair("period.statistics"),
+    unavailable: catalogPair("period.unavailable"),
   },
 });
 

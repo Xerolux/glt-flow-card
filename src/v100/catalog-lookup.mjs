@@ -162,6 +162,32 @@ export function template(key, language) {
   return value;
 }
 
+/**
+ * One key's wording in every registered language, as a `{de, en, …}` object.
+ *
+ * The shape the vocabularies used to declare inline. They are read by code that
+ * hands the whole pair to a caller — a fingerprint, a label resolver, a
+ * cross-runtime comparison — so the pair is what they need back. The wording
+ * itself now comes from the catalog, which is the part that had to change: a
+ * pair written inline is a locale that cannot be added as data.
+ *
+ * Frozen, because a caller that mutates one would be editing the catalog.
+ */
+export function pair(key) {
+  const value = {};
+  for (const [language, table] of CATALOGS) {
+    const wording = table.get(key);
+    if (wording === undefined) {
+      throw new Error(`catalog: ${JSON.stringify(key)} has no ${language} wording`);
+    }
+    value[language] = wording;
+  }
+  if (Object.keys(value).length === 0) {
+    throw new Error(`catalog: no catalog is registered, so ${JSON.stringify(key)} has no wording`);
+  }
+  return Object.freeze(value);
+}
+
 /** Whether a key exists at all. For tests and sweeps, never as a fallback guard. */
 export function hasKey(key) {
   return DECLARED_KEYS.has(key);

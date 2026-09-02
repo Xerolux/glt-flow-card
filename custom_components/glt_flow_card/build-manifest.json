@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "fac8f067bc84b9cab8409dd4fcf6a0f45db8a8aa901411b31d15e7f7b5396963",
-      "size": 3052652
+      "sha256": "f269ab60f90b4dd79bb61554412636cf8cc735876fb39efe9e47971c3ab71736",
+      "size": 3056580
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "fac8f067bc84b9cab8409dd4fcf6a0f45db8a8aa901411b31d15e7f7b5396963",
-      "size": 3052652
+      "sha256": "f269ab60f90b4dd79bb61554412636cf8cc735876fb39efe9e47971c3ab71736",
+      "size": 3056580
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -138,7 +138,7 @@
   ],
   "build": {
     "commit": "8a3ba9b64e40c831947e466feb89e9b9198cfbca",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -219,23 +219,23 @@
     },
     {
       "path": "src/v100/catalog-de.mjs",
-      "sha256": "9b2476ba91585109c64fb74ac0874397d8e9a5ab2f8629e4637d377da3a34986",
-      "size": 27398
+      "sha256": "22fac767efb08d8216c5cc6dbc9bda842e50a29ddd2336b6b62192104bb34efa",
+      "size": 29803
     },
     {
       "path": "src/v100/catalog-en.mjs",
-      "sha256": "189c48fcc1eb5e5fc4f79e0b7b14058b9058c3d38553b4fabcfbe0cdce924457",
-      "size": 24611
+      "sha256": "113862814d14bc29b2a6ce94407ece6578c2b17f0e033c5dcc0d61584a9cdefc",
+      "size": 26915
     },
     {
       "path": "src/v100/catalog-lookup.mjs",
-      "sha256": "14e03e46902c4ed8c1fb5e42240314c67c0f61683a13d8ef04a81237c6c8d940",
-      "size": 7412
+      "sha256": "70dfbf412a28e4febfd7d6d44cfb969370fa5803f18e8cd4b4f95e6b3dc32c2b",
+      "size": 8428
     },
     {
       "path": "src/v100/catalog.mjs",
-      "sha256": "b4c2eab569a3be10925671c8dfab8e45942706859917410b82690cd92c7666d3",
-      "size": 33674
+      "sha256": "07e505c46c351c4a0b519017c2816783e0f0adccff3645a4697fb0cda44d94e1",
+      "size": 33783
     },
     {
       "path": "src/v100/command-outcome.mjs",
@@ -284,8 +284,8 @@
     },
     {
       "path": "src/v100/equipment-state.mjs",
-      "sha256": "1fdc750a6f976cb4096981a9048219a8cfa8dac50f0709b6e76da7c755db524f",
-      "size": 5759
+      "sha256": "845c55249deb90c2189fdd615efb6f182a76aaab6f9337cab6e71a749d397681",
+      "size": 5767
     },
     {
       "path": "src/v100/index.js",
@@ -319,8 +319,8 @@
     },
     {
       "path": "src/v100/period-vocabulary.mjs",
-      "sha256": "705639b4a16851cba4d89d3c9230267b0cce9f2c29165cf694cdb3d5a9d6acab",
-      "size": 9582
+      "sha256": "29ad69e29054a8fcc313c773993178751c1b2fdf284ba85e02c82119117498a0",
+      "size": 8713
     },
     {
       "path": "src/v100/ports.mjs",
@@ -409,8 +409,8 @@
     },
     {
       "path": "src/v100/replay-truth.mjs",
-      "sha256": "d89135eec79ff887f5f11dc6965556527ed830f7e2651739d788d7cc0e710f48",
-      "size": 4390
+      "sha256": "3c4eac962c11a213eaad6e4241dbe31a0528f170235eea0c011116f6da3115f5",
+      "size": 4370
     },
     {
       "path": "src/v100/report-renderings.mjs",

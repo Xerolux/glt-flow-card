@@ -17,6 +17,9 @@
  * unknown.
  */
 
+import { pair as catalogPair } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
 /** Where a replayed value came from. Closed. */
 export const REPLAY_SOURCES = Object.freeze(["recorded", "unknown"]);
 
@@ -28,18 +31,9 @@ export const REPLAY_REASONS = Object.freeze([
 ]);
 
 const REASON_LABELS = Object.freeze({
-  before_first_sample: {
-    de: "Vor dem ersten aufgezeichneten Wert",
-    en: "Before the first recorded value",
-  },
-  no_recorded_history: {
-    de: "Keine Historie aufgezeichnet",
-    en: "No history recorded",
-  },
-  outside_loaded_window: {
-    de: "Außerhalb des geladenen Zeitraums",
-    en: "Outside the loaded window",
-  },
+  before_first_sample: catalogPair("replay.before_first_sample"),
+  no_recorded_history: catalogPair("replay.no_recorded_history"),
+  outside_loaded_window: catalogPair("replay.outside_loaded_window"),
 });
 
 for (const reason of REPLAY_REASONS) {

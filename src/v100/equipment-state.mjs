@@ -11,6 +11,9 @@
  * everything else.
  */
 
+import { pair as catalogPair } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
 /** The precedence, highest first. Order is the contract. */
 export const STATE_PRECEDENCE = Object.freeze([
   "communication_error",
@@ -40,22 +43,22 @@ export const MODE_QUALIFIERS = Object.freeze(["auto", "remote"]);
 
 /** German and English labels. Every state has both before the phase closes. */
 const LABELS = Object.freeze({
-  communication_error: { en: "Communication error", de: "Kommunikationsfehler" },
-  invalid: { en: "Invalid value", de: "Ungültiger Wert" },
-  stale: { en: "Value not current", de: "Wert nicht aktuell" },
-  fault: { en: "Fault", de: "Störung" },
-  interlock: { en: "Interlocked", de: "Verriegelt" },
-  locked: { en: "Locked", de: "Gesperrt" },
-  maintenance: { en: "Maintenance", de: "Wartung" },
-  local: { en: "Local control", de: "Vor-Ort-Bedienung" },
-  manual: { en: "Manual", de: "Handbetrieb" },
-  command_failed: { en: "Command failed", de: "Befehl fehlgeschlagen" },
-  command_pending: { en: "Command pending", de: "Befehl läuft" },
-  warning: { en: "Warning", de: "Warnung" },
-  running: { en: "Running", de: "In Betrieb" },
-  standby: { en: "Standby", de: "Bereitschaft" },
-  off: { en: "Off", de: "Aus" },
-  unknown: { en: "Unknown", de: "Unbekannt" },
+  communication_error: catalogPair("equipment.communication_error"),
+  invalid: catalogPair("equipment.invalid"),
+  stale: catalogPair("equipment.stale"),
+  fault: catalogPair("equipment.fault"),
+  interlock: catalogPair("equipment.interlock"),
+  locked: catalogPair("equipment.locked"),
+  maintenance: catalogPair("equipment.maintenance"),
+  local: catalogPair("equipment.local"),
+  manual: catalogPair("equipment.manual"),
+  command_failed: catalogPair("equipment.command_failed"),
+  command_pending: catalogPair("equipment.command_pending"),
+  warning: catalogPair("equipment.warning"),
+  running: catalogPair("equipment.running"),
+  standby: catalogPair("equipment.standby"),
+  off: catalogPair("equipment.off"),
+  unknown: catalogPair("equipment.unknown"),
 });
 
 /**
