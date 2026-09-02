@@ -136,10 +136,17 @@ Entitäten, Vertragsart, Abdeckung und Lücken fest, und seine Kennungen leiten
 sich aus dem Inhalt ab statt aus der Uhr. Zeitpläne werden beim Speichern
 geprüft und laufen über denselben Runner wie die Anlagenzeitprogramme.
 
-**Was es nicht tut:** `history/coverage` und `history/export` antworten
-`unavailable` — die Fähigkeitsgrenze und die Audit-Zeile stehen, die Antworten
-nicht. CSV-Download und Druck/PDF im Browser sind entfernt: Sie schrieben den
-gerade gerenderten Wert, ohne Zeitraum und ohne Abdeckung.
+**Das Raster wird nie aus der Antwort abgeleitet.** Ein Fenster sagt, welcher
+Ausschnitt gemeint ist; die Schrittweite sagt, worin er gemessen wird, und
+keines folgt aus dem anderen — der Oktober 2027 hat 31 Tagesabschnitte und 745
+Stunden. Da der Recorder einen leeren Zeitraum ganz weglässt, meldete ein aus
+den zurückgekommenen Zeilen gebautes Raster einen Monat mit neun fehlenden
+Tagen als vollständigen 22-Tage-Monat.
+
+**Was es nicht tut:** CSV-Download und Druck/PDF im Browser sind entfernt — sie
+schrieben den gerade gerenderten Wert, ohne Zeitraum und ohne Abdeckung. Der
+Export liefert jetzt das Modell, und alle drei Darstellungen leiten daraus ab
+statt auseinander.
 
 > Für sichere Bedienungen, geräteübergreifende Projekte, Alarme, Zeitprogramme, Audit, Locks und Remote-Home-Assistant wird der **GLT Flow Card Companion** empfohlen. Die reine Dashboard-Card bleibt weiterhin ohne Backend nutzbar.
 

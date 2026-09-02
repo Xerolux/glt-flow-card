@@ -74,6 +74,30 @@ statt dass man ihr vertrauen müsste, es zu lassen.
 `recorder/statistic_during_period` erreichbar — wer nur den ersten Befehl liest,
 schließt fälschlich, das Produkt müsse Jahre selbst aggregieren.
 
+### Das Raster: Fenster und Eimer sind zweierlei
+
+Ein Zeitraum sagt, *welcher* Ausschnitt gemeint ist. Die Schrittweite sagt, in
+welchen Abschnitten er gemessen wird. Beides ist nicht auseinander ableitbar:
+
+| Fenster | Schritt | Anzahl |
+|---|---|---|
+| Tag, gleitende 24 h | Stunde | 23, 24 oder 25 |
+| Woche | Tag | 7 |
+| Monat | Tag | 28–31 |
+| Jahr | Monat | 12 |
+
+Der Oktober 2027 hat **31 Tagesabschnitte** und **745 Stunden**. Keine der
+beiden Zahlen folgt aus der anderen.
+
+**Das Raster wird nie aus der Antwort abgeleitet.** Der Recorder lässt einen
+leeren Zeitraum ganz weg — ein aus den zurückgekommenen Zeilen gebautes Raster
+meldete einen Monat, in dem an neun Tagen nichts aufgezeichnet wurde, als
+vollständigen 22-Tage-Monat. Genau dagegen gibt es die erwarteten Zeitpunkte.
+
+Eine gleitende 24-Stunden-Spanne bleibt auch am Umstellungstag 24 Stunden lang,
+weil sie eine *Dauer* ist. Ein Kalendertag ist es nicht. Dass diese beiden
+Antworten auseinandergehen, ist richtig und kein Fehler.
+
 ## Zwei Zählermodelle, nie ineinander umgerechnet
 
 Das ist die Intervall-und-Zeitpunkt-Regel der Zeitprogramme in neuem Gewand.
@@ -144,12 +168,8 @@ erreichbar ist, wird einmal pro Intervall gefragt statt einmal pro Bild.
 
 ## Was es (noch) nicht gibt
 
-- **`history/coverage` und `history/export` antworten `unavailable`.** Die
-  Abdeckungsroute braucht das Raster erwarteter Zeitpunkte, und dessen
-  Schrittweite ist eine Entscheidung, die einen Prüfkorpus verlangt — sie aus
-  den zurückgekommenen Zeilen abzuleiten ist genau der Fehler, den erwartete
-  Zeitpunkte verhindern sollen. Beide Routen sagen, dass sie keine Antwort
-  haben; das ist das Einzige, was sie nie falsch machen dürfen.
 - **CSV-Download und Druck/PDF im Browser** sind entfernt. Sie schrieben den
-  gerade gerenderten Wert, ohne Zeitraum und ohne Abdeckung.
+  gerade gerenderten Wert, ohne Zeitraum und ohne Abdeckung. Der Export liefert
+  jetzt das Modell; die drei Darstellungen leiten alle daraus ab, keine aus der
+  Serialisierung einer anderen.
 - **Gemessene Kapazität** bei sehr großen Anlagen steht aus (Phase 10).

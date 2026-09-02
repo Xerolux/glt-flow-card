@@ -128,10 +128,16 @@ entities, contract, coverage and gaps, and its ids derive from content rather
 than the clock. Schedules are validated when saved and executed by the same
 runner the plant schedules use.
 
-**What this does not do:** `history/coverage` and `history/export` answer
-`unavailable` — the capability boundary and audit row stand, the answers do
-not. Browser-side CSV download and print/PDF are removed: they wrote the value
-being rendered at that moment, with no period and no coverage.
+**The grid is never derived from the answer.** A window says which slice is
+meant; the bucket step says what it is measured in, and neither follows from
+the other — October 2027 is 31 daily buckets and 745 hours. Since the Recorder
+omits an empty period entirely, a grid built from the rows that came back would
+report a month missing nine days as a complete 22-day month.
+
+**What this does not do:** browser-side CSV download and print/PDF are removed
+— they wrote the value being rendered at that moment, with no period and no
+coverage. Export now returns the model, and all three renderings derive from it
+rather than from each other's serialisation.
 
 > The **GLT Flow Card Companion** is recommended for secure controls, cross-device projects, alarms, schedules, audit, locks and remote Home Assistant sites. The dashboard card still works standalone.
 
