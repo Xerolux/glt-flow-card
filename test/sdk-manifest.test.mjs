@@ -13,6 +13,7 @@
  * denylist is a promise to have thought of everything.
  */
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const MODULE_URL = new URL("../src/v100/sdk-manifest.mjs", import.meta.url);
@@ -127,4 +128,100 @@ test("[expected-red:phase5-sdk] a contribution cannot carry executable content",
     for (const gap of gaps) console.log(`  sdk gap: ${gap}`);
   }
   assert.deepEqual(gaps, [], "the data-only contribution format is unavailable");
+});
+
+// -- Beyond the sentinel ----------------------------------------------------
+// The sentinel proves the six hostile shapes it names are refused. These prove
+// the allowlist is an allowlist — that a harmless element outside it is refused
+// too — and that the bounds run before anything is interpreted.
+
+const sdk = await import(MODULE_URL.href);
+
+test("an element outside the allowlist is refused even when it is harmless", () => {
+  // The point of an allowlist is that it does not need to have heard of the
+  // thing it refuses. `feGaussianBlur` draws nothing dangerous; it is refused
+  // because nobody decided it was safe, which is the whole mechanism.
+  for (const element of ["feGaussianBlur", "animate", "set", "style", "use", "marker"]) {
+    const errors = sdk.validateMarkup(`<svg><${element}/></svg>`);
+    assert.ok(errors.some((error) => error.code === "unknown_element"), element);
+  }
+  assert.deepEqual(sdk.validateMarkup("<svg><circle r='1'/></svg>"), []);
+});
+
+test("an attribute outside the allowlist is refused on an allowed element", () => {
+  const errors = sdk.validateMarkup('<svg><circle r="1" style="fill:red" tabindex="0"/></svg>');
+  const refused = errors.filter((error) => error.code === "unknown_attribute")
+    .map((error) => error.detail.attribute);
+  assert.deepEqual(refused.sort(), ["style", "tabindex"]);
+});
+
+test("data- attributes pass, because a pack must be able to label its own parts", () => {
+  assert.deepEqual(sdk.validateMarkup('<svg><g data-part="rotor"><circle r="1"/></g></svg>'), []);
+});
+
+test("bounds are enforced before parse, not after", () => {
+  // Each of these refuses on a measurement of the input, and the proof is that
+  // the refusal is the only error: nothing downstream ran to add a second one.
+  const oversized = sdk.validateManifest("x".repeat(sdk.MANIFEST_LIMITS.max_bytes + 1));
+  assert.deepEqual(oversized.errors.map((error) => error.code), ["manifest_too_large"]);
+
+  const wide = sdk.validateMarkup(`<svg>${"<circle r='1'/>".repeat(4000)}</svg>`);
+  assert.deepEqual(wide.map((error) => error.code), ["markup_too_large"]);
+
+  let deep = "<circle r='1'/>";
+  for (let level = 0; level < sdk.MANIFEST_LIMITS.max_markup_depth + 2; level += 1) {
+    deep = `<g>${deep}</g>`;
+  }
+  assert.ok(sdk.validateMarkup(`<svg>${deep}</svg>`).some((e) => e.code === "markup_too_deep"));
+});
+
+test("a doctype is refused outright, so entity expansion never starts", () => {
+  const errors = sdk.validateMarkup('<!DOCTYPE svg [<!ENTITY lol "ha">]><svg><circle r="1"/></svg>');
+  assert.deepEqual(errors.map((error) => error.code), ["doctype_declaration"]);
+});
+
+test("a scheme hidden behind entities or whitespace is still that scheme", () => {
+  for (const value of [
+    "javascript:alert(1)", "java&#115;cript:alert(1)", "  java\tscript:alert(1)",
+    "JaVaScRiPt:alert(1)", "vbscript:msgbox(1)",
+  ]) {
+    const errors = sdk.validateMarkup(`<svg><a href="${value}"><circle r="1"/></a></svg>`);
+    assert.ok(errors.some((error) => error.code === "javascript_url"), value);
+  }
+  // A data URL is not a JavaScript URL, and saying so would send a pack author
+  // looking for script they did not write.
+  const data = sdk.validateMarkup('<svg><image href="data:text/html,x"/></svg>');
+  assert.ok(data.some((error) => error.code === "data_url"));
+});
+
+test("a fragment reference is the one reference that reaches nothing", () => {
+  assert.deepEqual(
+    sdk.validateMarkup('<svg><defs><linearGradient id="g"><stop offset="0"/></linearGradient></defs>'
+      + '<circle r="1" fill="url(#g)"/></svg>'),
+    [],
+  );
+  assert.ok(sdk.validateMarkup('<svg><circle r="1" fill="url(//evil.invalid/g)"/></svg>')
+    .some((error) => error.code === "external_reference"));
+});
+
+test("attributes are checked even on an element that is already refused", () => {
+  // Telling a pack author only that `a` is not allowed teaches them to reach
+  // for an element that is, with the same URL still in it.
+  const errors = sdk.validateMarkup('<svg><a href="javascript:x" onload="y"><circle r="1"/></a></svg>');
+  const codes = new Set(errors.map((error) => error.code));
+  assert.ok(codes.has("unknown_element"));
+  assert.ok(codes.has("javascript_url"));
+  assert.ok(codes.has("event_handler_attribute"));
+});
+
+test("nothing in this module executes, imports, or fetches anything", async () => {
+  // The structural half of T5-12: the source cannot reach an evaluator, so a
+  // contribution has nowhere to become code even if the validator were wrong.
+  const source = await readFile(new URL("../src/v100/sdk-manifest.mjs", import.meta.url), "utf8");
+  for (const forbidden of [
+    /\beval\s*\(/, /new\s+Function\s*\(/, /\bimport\s*\(/, /\bfetch\s*\(/,
+    /innerHTML/, /insertAdjacentHTML/, /createElement\s*\(/, /new\s+Worker\s*\(/,
+  ]) {
+    assert.ok(!forbidden.test(source), `sdk-manifest.mjs reaches ${forbidden}`);
+  }
 });
