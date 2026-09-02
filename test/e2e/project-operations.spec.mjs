@@ -237,8 +237,19 @@ test("phase-4-legacy-retired no tap action can reach a service call", async ({ p
   // permission list was configured at all.
   await mount(page);
   const reached = await page.evaluate(async () => {
-    const card = document.querySelector("glt-flow-card");
-    if (!card) return "no-card";
+    // The harness page defines the elements and mounts nothing, so this must
+    // build the card itself. It used to `querySelector` for one, find null and
+    // return "no-card" -- and the assertion below passed on an empty ledger
+    // because nothing had run. A test that proves no service call was made by
+    // never making one proves nothing at all.
+    const card = document.createElement("glt-flow-card");
+    card.setConfig({
+      type: "custom:glt-flow-card",
+      title: "Anlage",
+      equipment: [{ id: "e1", name: "Pumpe", entity: "switch.seeded", tap_action: "toggle" }],
+    });
+    document.body.append(card);
+    card.hass = window.__fakeHass;
     const tap = card._tapEntity ?? card.__tapEntity;
     if (typeof tap !== "function") return "no-tap";
     try {
@@ -248,6 +259,10 @@ test("phase-4-legacy-retired no tap action can reach a service call", async ({ p
     }
     return "completed";
   });
+  expect(
+    reached,
+    "the retired tap path was never actually invoked, so the empty effect ledger below would prove nothing",
+  ).toMatch(/^(completed|refused: )/);
   const ledger = await readEffectLedger(page);
   expect(
     ledger.service,
