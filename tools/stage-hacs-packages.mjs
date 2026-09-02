@@ -46,9 +46,11 @@ const COMPONENT_FILES = [
   "schemas/bundle-manifest.schema.json",
   "schemas/diff-policy.json",
   "schemas/limits.json",
+  "schemas/vocabularies.json",
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",
+  "schemas/project/3.schema.json",
   "strings.json",
   "translations/de.json",
   "translations/en.json",
@@ -59,9 +61,11 @@ const GENERATED_COMPONENT_ARTIFACTS = new Set([
   "schemas/bundle-manifest.schema.json",
   "schemas/diff-policy.json",
   "schemas/limits.json",
+  "schemas/vocabularies.json",
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",
+  "schemas/project/3.schema.json",
   "www/glt-flow-card.js",
 ]);
 const FIXED_ZIP_DATE = new Date(Date.UTC(1980, 0, 1, 0, 0, 0));

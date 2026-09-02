@@ -38,9 +38,11 @@ const COMPONENT_FILES = [
   "schemas/bundle-manifest.schema.json",
   "schemas/diff-policy.json",
   "schemas/limits.json",
+  "schemas/vocabularies.json",
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",
+  "schemas/project/3.schema.json",
   "strings.json",
   "translations/de.json",
   "translations/en.json",
@@ -57,9 +59,11 @@ const BUILD_ARTIFACT_PATHS = new Map([
   ["schemas/bundle-manifest.schema.json", `${COMPONENT_ROOT}/schemas/bundle-manifest.schema.json`],
   ["schemas/diff-policy.json", `${COMPONENT_ROOT}/schemas/diff-policy.json`],
   ["schemas/limits.json", `${COMPONENT_ROOT}/schemas/limits.json`],
+  ["schemas/vocabularies.json", `${COMPONENT_ROOT}/schemas/vocabularies.json`],
   ["schemas/project/0.schema.json", `${COMPONENT_ROOT}/schemas/project/0.schema.json`],
   ["schemas/project/1.schema.json", `${COMPONENT_ROOT}/schemas/project/1.schema.json`],
   ["schemas/project/2.schema.json", `${COMPONENT_ROOT}/schemas/project/2.schema.json`],
+  ["schemas/project/3.schema.json", `${COMPONENT_ROOT}/schemas/project/3.schema.json`],
 ]);
 const FIXED_ZIP_TIME = new Date("1980-01-01T00:00:00.000Z").getTime();
 

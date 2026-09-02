@@ -40,9 +40,11 @@ const COMPONENT_FILES = [
   "schemas/bundle-manifest.schema.json",
   "schemas/diff-policy.json",
   "schemas/limits.json",
+  "schemas/vocabularies.json",
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",
+  "schemas/project/3.schema.json",
   "strings.json",
   "translations/de.json",
   "translations/en.json",
@@ -355,6 +357,38 @@ test("category layout version hash and archive mutations are rejected", async ()
     const result = runValidator(mutationRoot);
     assert.notEqual(result.status, 0, `${mutation.name} unexpectedly passed`);
     assert.match(`${result.stdout}\n${result.stderr}`, new RegExp(mutation.expected), mutation.name);
+  }
+});
+
+test("every generated Companion schema is packaged for HACS", async () => {
+  // The Python module guard below did not cover schemas, and that gap shipped:
+  // schema 3 and the vocabulary file reached the repository and the build but
+  // not the HACS stage, so `project_contract.py` raised FileNotFoundError at
+  // import inside the Home Assistant lanes - after every local gate had passed,
+  // because the stager and the validator shared the same incomplete list.
+  const schemaRoot = path.join(ROOT, "custom_components/glt_flow_card/schemas");
+  const authored = [];
+  const walk = async (directory, prefix) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) await walk(path.join(directory, entry.name), relative);
+      else if (entry.name.endsWith(".json")) authored.push(`schemas/${relative}`);
+    }
+  };
+  await walk(schemaRoot, "");
+  assert.ok(authored.length >= 6, "the component ships no schemas, which cannot be right");
+
+  const stagerSource = await readFile(path.join(ROOT, "tools/stage-hacs-packages.mjs"), "utf8");
+  const validatorSource = await readFile(path.join(ROOT, "tools/validate-hacs-staging.mjs"), "utf8");
+  for (const schemaPath of authored.sort()) {
+    assert.ok(
+      stagerSource.includes(`"${schemaPath}"`),
+      `${schemaPath} is not staged by tools/stage-hacs-packages.mjs`,
+    );
+    assert.ok(
+      validatorSource.includes(`"${schemaPath}"`),
+      `${schemaPath} is not expected by tools/validate-hacs-staging.mjs`,
+    );
   }
 });
 
