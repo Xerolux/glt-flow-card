@@ -36,6 +36,8 @@ from .const import (
     SAFE_SERVICE_DOMAINS,
     STORE_KEY,
     STORE_VERSION,
+    LEGACY_AUDIT_LABEL,
+    migrate_options,
     normalize_options,
 )
 from .policy import (
@@ -193,11 +195,39 @@ class GltStore:
             "locks": {}, "schedule_runs": {},
         }.items():
             self.data.setdefault(key, default)
+        self._migrate_legacy_authority()
         await self.project_repository.async_initialize()
         await self.project_transactions.async_recover()
         self.data["projects"] = {
             project["id"]: project for project in self.project_repository.list_heads()
         }
+
+    def _migrate_legacy_authority(self) -> None:
+        """Retire persisted legacy authority without creating any new authority.
+
+        Legacy locks were rows in a file; Phase-2 leases are ephemeral,
+        connection-bound capabilities. A persisted lock therefore cannot become
+        a lease - there is no connection to bind it to and nobody is holding it
+        - so it is dropped. The alternative, minting a lease for whoever the
+        file names, would hand an absent browser an exclusive editor on upgrade.
+
+        Legacy audit rows are kept and labelled instead of deleted: throwing
+        away a site's history would be its own kind of dishonesty. The label
+        makes them unmistakable for Phase-2 trusted evidence, which is authored
+        by the server and lives in a different store entirely.
+
+        Both steps are idempotent: a second load finds no locks to drop and no
+        unlabelled rows to label.
+        """
+        if self.data.get("locks"):
+            self.data["locks"] = {}
+        events = self.data.get("audit")
+        if not isinstance(events, list):
+            return
+        for event in events:
+            if isinstance(event, dict) and event.get("provenance") != LEGACY_AUDIT_LABEL:
+                event["provenance"] = LEGACY_AUDIT_LABEL
+                event["trusted"] = False
 
     async def async_save(self) -> None:
         legacy_payload = deepcopy(self.data)
@@ -1535,7 +1565,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return True
 
     pending = data["pending_options"].get(entry.entry_id)
-    options = pending or normalize_options(dict(entry.options))
+    # `migrate_options` rather than `normalize_options`: an installation whose
+    # stored lock TTL predates the Phase-2 window keeps its intent (clamped to
+    # the nearest bound) instead of being silently reset to the default.
+    options = pending or migrate_options(dict(entry.options))
     if pending is None and dict(entry.options) != options:
         hass.config_entries.async_update_entry(entry, options=options)
 

@@ -7,6 +7,7 @@ imported candidate - and only into roles that the legacy block already implied.
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -78,11 +79,35 @@ def test_lease_ttl_window_tightens_the_legacy_lock_range() -> None:
     """The legacy 30-3600s lock range does not survive the upgrade."""
     from custom_components.glt_flow_card.const import OPTION_SPECS
 
-    legacy_default, legacy_min, legacy_max = OPTION_SPECS["default_lock_ttl"]
-    assert legacy_min < LEASE_TTL_MIN or legacy_max > LEASE_TTL_MAX, (
-        "this test is only meaningful while the legacy range is still wider"
-    )
-    assert LEASE_TTL_MIN <= legacy_default <= LEASE_TTL_MAX
+    default, minimum, maximum = OPTION_SPECS["default_lock_ttl"]
+    assert (minimum, maximum) == (LEASE_TTL_MIN, LEASE_TTL_MAX)
+    assert default == 300
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        (30, LEASE_TTL_MIN),      # below the window: clamped up, not reset
+        (3600, LEASE_TTL_MAX),    # above it: clamped down, intent preserved
+        (120, 120),               # already inside it: untouched
+        ("not-an-int", 300),      # malformed: the default, the only safe answer
+    ],
+)
+def test_option_migration_clamps_instead_of_resetting(stored: Any, expected: int) -> None:
+    """A deliberate legacy choice becomes the nearest legal one, idempotently."""
+    from custom_components.glt_flow_card.const import migrate_options
+
+    once = migrate_options({"default_lock_ttl": stored})
+    assert once["default_lock_ttl"] == expected
+    assert migrate_options(once) == once
+
+
+def test_lease_registry_and_options_share_one_window() -> None:
+    """Two copies of a bound are one edit away from drifting apart."""
+    from custom_components.glt_flow_card import const, project_leases
+
+    assert project_leases.MIN_TTL_SECONDS is const.LEASE_TTL_MIN_SECONDS
+    assert project_leases.MAX_TTL_SECONDS is const.LEASE_TTL_MAX_SECONDS
 
 
 def test_legacy_audit_label_cannot_be_mistaken_for_trusted_history() -> None:
@@ -145,3 +170,68 @@ async def migration_gaps(hass: HomeAssistant) -> list[str]:
     if hasattr(repository, "async_bootstrap_from_candidate"):
         gaps.append("an imported candidate can bootstrap the ACL")
     return gaps
+
+
+async def test_legacy_locks_are_retired_without_becoming_leases(
+    hass: HomeAssistant,
+    config_entry: Any,
+    lifecycle_effects: Any,
+) -> None:
+    """A persisted lock is dropped, never minted into an exclusive lease.
+
+    Turning a row in a file into a lease would hand an absent browser the one
+    exclusive editor on upgrade, with nobody present to release it.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    manager = hass.data["glt_flow_card"]["manager"]
+    runtime = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id]
+
+    manager.data["locks"] = {"legacy-plant": {"user_id": "user-designer", "expires": "2099-01-01T00:00:00+00:00"}}
+    manager.data["audit"] = [{"id": "legacy-1", "action": "project.save", "user_id": "user-designer"}]
+    manager._migrate_legacy_authority()
+
+    assert manager.data["locks"] == {}
+    assert runtime.leases.diagnostics()["active_leases"] == 0
+    row = manager.data["audit"][0]
+    assert row["provenance"] == LEGACY_AUDIT_LABEL
+    assert row["trusted"] is False
+
+    # Idempotent: a second load finds nothing left to change.
+    before = json.dumps(manager.data["audit"], sort_keys=True)
+    manager._migrate_legacy_authority()
+    assert json.dumps(manager.data["audit"], sort_keys=True) == before
+    assert manager.data["locks"] == {}
+
+
+async def test_a_legacy_client_cannot_reach_a_privileged_route(
+    hass: HomeAssistant,
+    config_entry: Any,
+    phase2_users,
+) -> None:
+    """An old card's routes answer `feature_unavailable`, never a fallback.
+
+    A card built before Phase 2 knows nothing about leases or revisions. It must
+    not be given a privileged path that skips them; it gets the read-only shell.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    await hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id].access.async_assign(
+        project_id="legacy-plant", user_id=phase2_users.principal("engineer").user_id, role="engineer"
+    )
+    connection = await phase2_users.async_connect("engineer")
+    for message in (
+        {"type": "glt_flow_card/projects/lock", "project_id": "legacy-plant"},
+        {"type": "glt_flow_card/projects/unlock", "project_id": "legacy-plant"},
+        {
+            "type": "glt_flow_card/control/execute",
+            "project_id": "legacy-plant",
+            "entity_id": "switch.pump_1",
+            "domain": "switch",
+            "service": "turn_on",
+        },
+    ):
+        response = await connection.command(message)
+        assert response["success"] is False
+        assert response["error"]["code"] == "feature_unavailable", message["type"]
+    await phase2_users.async_close()

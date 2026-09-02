@@ -103,6 +103,106 @@ async def test_a_late_callback_is_recorded_and_never_revives_the_runtime(
     emit_effects(lifecycle_effects, stage="late-callback")
 
 
+async def test_unload_releases_live_leases_cursors_and_subscriptions(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    lifecycle_effects: LifecycleEffects,
+    phase2_users,
+) -> None:
+    """Unloading with resources genuinely in use still ends at zero.
+
+    An unload that is only ever tested from an idle runtime proves nothing: the
+    interesting failure is the one where somebody is holding something.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    runtime = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id]
+    engineer = phase2_users.principal("engineer")
+    await runtime.access.async_assign(
+        project_id="lifecycle-plant", user_id=engineer.user_id, role="engineer"
+    )
+    connection = await phase2_users.async_connect("engineer")
+    acquired = await connection.command({
+        "type": "glt_flow_card/leases/acquire",
+        "project_id": "lifecycle-plant",
+        "ttl_seconds": 300,
+    })
+    assert acquired["success"] is True
+    assert runtime.leases.diagnostics()["active_leases"] == 1
+    emit_effects(lifecycle_effects, stage="in-use")
+
+    assert await hass.config_entries.async_unload(config_entry.entry_id)
+    await hass.async_block_till_done()
+    emit_effects(lifecycle_effects, stage="unloaded-in-use")
+    assert lifecycle_effects.phase2_resource_total() == 0
+    await phase2_users.async_close()
+
+
+async def test_a_ghost_command_after_unload_is_refused_with_no_effect(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    lifecycle_effects: LifecycleEffects,
+    phase2_users,
+) -> None:
+    """The commands stay registered after unload; the runtime does not.
+
+    Home Assistant registers WebSocket commands once per process, so an unloaded
+    entry cannot unregister them. The boundary must therefore refuse by itself
+    rather than relying on the handler being gone.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    connection = await phase2_users.async_connect("engineer")
+    assert await hass.config_entries.async_unload(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    for message in (
+        {"type": "glt_flow_card/capabilities/get", "project_id": "lifecycle-plant"},
+        {"type": "glt_flow_card/leases/acquire", "project_id": "lifecycle-plant", "ttl_seconds": 300},
+        {"type": "glt_flow_card/evidence/list", "project_id": "lifecycle-plant"},
+    ):
+        response = await connection.command(message)
+        assert response["success"] is False
+        assert response["error"]["code"] == "not_loaded", message["type"]
+
+    assert lifecycle_effects.snapshot()["service_attempts"] == 0
+    assert lifecycle_effects.phase2_resource_total() == 0
+    await phase2_users.async_close()
+
+
+async def test_a_failed_reload_restores_options_without_reviving_authority(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    lifecycle_effects: LifecycleEffects,
+) -> None:
+    """Rejected options leave the previous safe runtime, at a new generation.
+
+    Restoring the previous *options* must not restore the previous *authority*:
+    a lease or cursor issued before the failed reload has to be dead, or a
+    failed configuration change becomes a way to resurrect a capability.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    before = _generation(hass, config_entry)
+    previous = dict(hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id].manager.effective_options)
+
+    hass.config_entries.async_update_entry(
+        config_entry, options={**previous, "default_lock_ttl": "not-an-int"}
+    )
+    await hass.async_block_till_done()
+
+    runtime = hass.data["glt_flow_card"]["runtimes"].get(config_entry.entry_id)
+    assert runtime is not None
+    assert runtime.manager.effective_options == previous
+    assert _generation(hass, config_entry) >= before
+    assert lifecycle_effects.snapshot()["service_attempts"] == 0
+
+
+def _generation(hass: HomeAssistant, entry: MockConfigEntry) -> int:
+    runtime = hass.data["glt_flow_card"]["runtimes"].get(entry.entry_id)
+    return getattr(runtime, "generation", 0)
+
+
 async def lifecycle_gaps(hass: HomeAssistant) -> list[str]:
     """Return every unmet Phase-2 lifecycle guarantee."""
     gaps: list[str] = []

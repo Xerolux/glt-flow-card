@@ -20,12 +20,14 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from .const import DEFAULT_LOCK_TTL, LEASE_TTL_MAX_SECONDS, LEASE_TTL_MIN_SECONDS
+
 #: Accepted lease TTLs. The legacy 30-3600s lock range is deliberately not
-#: carried over: a 30-second lease cannot survive a real edit, and a one-hour
-#: lease strands a project for an hour after a browser closes.
-MIN_TTL_SECONDS = 60
-MAX_TTL_SECONDS = 900
-DEFAULT_TTL_SECONDS = 300
+#: carried over. `const` owns the window so the options schema and this registry
+#: cannot drift apart.
+MIN_TTL_SECONDS = LEASE_TTL_MIN_SECONDS
+MAX_TTL_SECONDS = LEASE_TTL_MAX_SECONDS
+DEFAULT_TTL_SECONDS = DEFAULT_LOCK_TTL
 
 #: Purposes a lease may be issued for.
 PURPOSE_ENGINEERING = "engineering"
