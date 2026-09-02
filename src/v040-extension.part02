@@ -79,6 +79,50 @@
     @media(max-width:800px){.glt4-entity-row{grid-template-columns:1fr}.glt4-dialog{width:98vw}}
   `;
 
+  /**
+   * Confirm a destructive editor step through the Phase-2 element.
+   *
+   * `window.confirm` is a browser-owned authority prompt: the kiosk's key
+   * handling cannot reach it, no stylesheet can make it legible in forced
+   * colours, and the effect ledger that proves this card asks for nothing it
+   * should not cannot observe it. Phase 4 deliberately left these for Phase 5;
+   * this is the replacement, and it is the same element every control
+   * confirmation already uses, so the safe choice takes focus in one place.
+   */
+  function editorConfirm(editor, message, onConfirm) {
+    const root = editor.shadowRoot;
+    root.querySelector("glt-flow-card-control-confirm")?.remove();
+    const node = document.createElement("glt-flow-card-control-confirm");
+    node.dataset.editorConfirm = "1";
+    node.copy = (key) => (key === "controlConfirmHeading" ? message : key);
+    root.appendChild(node);
+    node.props = {
+      control: { phase: "confirm", controlId: "editor", preview: { label: message, summary: message } },
+      onConfirm: () => { node.remove(); onConfirm(); },
+      onCancel: () => node.remove(),
+    };
+  }
+
+  /**
+   * Say why nothing happened, inside the editor.
+   *
+   * `alert` has the same problems as `confirm` and one more: it is modal, so a
+   * refusal that could have been a sentence next to the button becomes a
+   * blocking interruption the operator has to dismiss before they can look at
+   * what they got wrong.
+   */
+  function editorNotice(editor, message) {
+    const root = editor.shadowRoot;
+    root.querySelector("[data-editor-notice]")?.remove();
+    const strip = document.createElement("div");
+    strip.dataset.editorNotice = "1";
+    strip.setAttribute("role", "status");
+    strip.setAttribute("aria-live", "polite");
+    strip.className = "glt4-notice";
+    strip.textContent = message;
+    (root.querySelector(".glt4-body") || root).appendChild(strip);
+  }
+
   function modal(editor, title, html) {
     editor.shadowRoot.querySelector(".glt4-modal")?.remove();
     const shell = document.createElement("div");

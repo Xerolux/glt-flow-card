@@ -4653,7 +4653,7 @@
     .glt4-btn{height:31px;border:1px solid var(--b);background:var(--bg);border-radius:8px;padding:0 9px;color:var(--mut);font-size:9px;font-weight:750;cursor:pointer}
     .glt4-btn:hover,.glt4-btn.on{color:var(--e);border-color:color-mix(in srgb,var(--e) 55%,var(--b));background:var(--eb)}
     .glt4-spacer{flex:1}.glt4-readonly{padding:7px 10px;background:#f59e0b18;color:#b45309;font-size:9px;font-weight:700;border-bottom:1px solid #f59e0b44}
-    .glt4-modal{position:fixed;inset:0;z-index:10000;background:#020617b8;display:grid;place-items:center;padding:22px}.glt4-dialog{width:min(920px,96vw);max-height:90vh;overflow:auto;border:1px solid var(--b);border-radius:16px;background:var(--bg);color:var(--tx);box-shadow:0 24px 70px #02061788}
+    .glt4-notice{margin-top:10px;padding:10px 12px;border:1px solid currentColor;border-radius:10px;min-height:44px;display:flex;align-items:center;gap:8px}.glt4-modal{position:fixed;inset:0;z-index:10000;background:#020617b8;display:grid;place-items:center;padding:22px}.glt4-dialog{width:min(920px,96vw);max-height:90vh;overflow:auto;border:1px solid var(--b);border-radius:16px;background:var(--bg);color:var(--tx);box-shadow:0 24px 70px #02061788}
     .glt4-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--b);background:var(--bg)}.glt4-head b{font-size:13px}.glt4-body{padding:14px}.glt4-close{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--mut);cursor:pointer}
     .glt4-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}.glt4-card{padding:11px;border:1px solid var(--b);border-radius:12px;background:color-mix(in srgb,var(--bg) 97%,#64748b 3%)}.glt4-card b{display:block;font-size:11px}.glt4-card small{display:block;margin-top:3px;color:var(--mut);font-size:8px}.glt4-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
     .glt4-input,.glt4-select,.glt4-textarea{width:100%;border:1px solid var(--b);border-radius:9px;background:var(--bg);color:var(--tx);padding:8px;font-size:10px}.glt4-textarea{min-height:360px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;line-height:1.45;resize:vertical}
@@ -4664,6 +4664,50 @@
     .glt4-entity-row{display:grid;grid-template-columns:1fr 130px 90px 32px;gap:6px;align-items:center;margin-bottom:7px}.glt4-entity-row ha-entity-picker{min-width:0}
     @media(max-width:800px){.glt4-entity-row{grid-template-columns:1fr}.glt4-dialog{width:98vw}}
   `;
+    /**
+     * Confirm a destructive editor step through the Phase-2 element.
+     *
+     * `window.confirm` is a browser-owned authority prompt: the kiosk's key
+     * handling cannot reach it, no stylesheet can make it legible in forced
+     * colours, and the effect ledger that proves this card asks for nothing it
+     * should not cannot observe it. Phase 4 deliberately left these for Phase 5;
+     * this is the replacement, and it is the same element every control
+     * confirmation already uses, so the safe choice takes focus in one place.
+     */
+    function editorConfirm(editor, message, onConfirm) {
+      const root = editor.shadowRoot;
+      root.querySelector("glt-flow-card-control-confirm")?.remove();
+      const node = document.createElement("glt-flow-card-control-confirm");
+      node.dataset.editorConfirm = "1";
+      node.copy = (key) => (key === "controlConfirmHeading" ? message : key);
+      root.appendChild(node);
+      node.props = {
+        control: { phase: "confirm", controlId: "editor", preview: { label: message, summary: message } },
+        onConfirm: () => { node.remove(); onConfirm(); },
+        onCancel: () => node.remove(),
+      };
+    }
+
+    /**
+     * Say why nothing happened, inside the editor.
+     *
+     * `alert` has the same problems as `confirm` and one more: it is modal, so a
+     * refusal that could have been a sentence next to the button becomes a
+     * blocking interruption the operator has to dismiss before they can look at
+     * what they got wrong.
+     */
+    function editorNotice(editor, message) {
+      const root = editor.shadowRoot;
+      root.querySelector("[data-editor-notice]")?.remove();
+      const strip = document.createElement("div");
+      strip.dataset.editorNotice = "1";
+      strip.setAttribute("role", "status");
+      strip.setAttribute("aria-live", "polite");
+      strip.className = "glt4-notice";
+      strip.textContent = message;
+      (root.querySelector(".glt4-body") || root).appendChild(strip);
+    }
+
     function modal(editor, title, html) {
       editor.shadowRoot.querySelector(".glt4-modal")?.remove();
       const shell = document.createElement("div");
@@ -4716,12 +4760,13 @@
         await store.audit("project.load", { id: p.id, name: p.name });
         m.remove();
       });
-      m.querySelectorAll("[data-delete]").forEach((b) => b.onclick = async () => {
-        if (!confirm("Projekt wirklich l\xF6schen?")) return;
-        await store.deleteProject(b.dataset.delete);
-        await store.audit("project.delete", { id: b.dataset.delete });
-        m.remove();
-        showProjects(editor);
+      m.querySelectorAll("[data-delete]").forEach((b) => b.onclick = () => {
+        editorConfirm(editor, "Projekt wirklich l\xF6schen?", async () => {
+          await store.deleteProject(b.dataset.delete);
+          await store.audit("project.delete", { id: b.dataset.delete });
+          m.remove();
+          showProjects(editor);
+        });
       });
       m.querySelectorAll("[data-versions]").forEach((b) => b.onclick = async () => {
         const p = await store.getProject(b.dataset.versions);
@@ -4778,7 +4823,7 @@
       const m = modal(editor, "Vorlagen & Bauteil-Templates", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Auswahl als Vorlage speichern</button></div><div class="glt4-grid">${all.map((t) => `<div class="glt4-card"><b>${esc(t.name)}</b><small>${esc(t.kind || "equipment")}${t.updated ? ` \xB7 ${esc(t.updated)}` : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-apply="${esc(t.id)}">Einf\xFCgen</button>${t.id.startsWith("builtin-") ? "" : `<button class="glt4-btn glt4-danger" data-del="${esc(t.id)}">L\xF6schen</button>`}</div></div>`).join("")}</div>`);
       m.querySelector("[data-save]").onclick = async () => {
         const obj = editor._obj?.();
-        if (!obj) return alert("Zuerst ein Bauteil, Datenpunkt, Pfad oder KPI ausw\xE4hlen.");
+        if (!obj) return editorNotice(editor, "Zuerst ein Bauteil, Datenpunkt, Pfad oder KPI ausw\xE4hlen.");
         const name = prompt("Vorlagenname", obj.name || obj.label || obj.id);
         if (!name) return;
         const t = { id: slug(name) + "-" + Date.now().toString(36), name, kind: editor._sel.k, object: clone(obj) };
@@ -4828,7 +4873,7 @@
           const [kind, id] = key.split(":");
           return { kind, id };
         });
-        if (members.length < 2) return alert("Mindestens zwei Elemente per Strg/Shift ausw\xE4hlen.");
+        if (members.length < 2) return editorNotice(editor, "Mindestens zwei Elemente per Strg/Shift ausw\xE4hlen.");
         const name = prompt("Gruppenname", "Unteranlage");
         if (!name) return;
         editor._remember?.();
@@ -4859,7 +4904,7 @@
           return { kind: r.kind, object: clone(arr.find((x) => x.id === r.id)) };
         }).filter((x) => x.object);
         await editorStore(editor).saveTemplate({ id: `group-${g.id}-${Date.now().toString(36)}`, name: g.name, kind: "group", objects });
-        alert("Unteranlage als Vorlage gespeichert.");
+        editorNotice(editor, "Unteranlage als Vorlage gespeichert.");
       });
     }
     function showAutoRoute(editor) {
@@ -5154,19 +5199,17 @@
       const site = this._glt4Site || "all";
       return site === "all" || !item.site || item.site === site;
     };
-    const originalTap = Card.prototype._tapEntity;
+    // Retired (04-13, applied to the shipped bytes in 05-14). The original
+    // override was two browser-invented authorizations in a row: a role check
+    // the browser had no business making, and a window.confirm standing in for
+    // one. Both are gone, and with them the call through to the base tap, which
+    // reached hass.callService directly. The surviving operate path is the
+    // server-composed panel, whose controls the Companion has already
+    // authorized. This stays reachable, and inert, so the effect ledger can
+    // prove no tap action produces a service call.
     Card.prototype._tapEntity = function(entityId) {
-      if (!canOperate(this._config, this._hass)) {
-        alert("F\xFCr Bedienungen ist mindestens die Rolle Operator erforderlich.");
-        this._glt4Store?.audit("control.blocked", { entity_id: entityId });
-        return;
-      }
-      if (this._config.permissions?.confirm_controls !== false && !confirm(`Entit\xE4t bedienen?
-${entityId}`)) return;
-      const result = originalTap.call(this, entityId);
-      this._glt4Store = this._glt4Store || new ProjectStore(this._hass);
-      this._glt4Store.audit("control.execute", { entity_id: entityId });
-      return result;
+      this._glt4Store?.audit("control.blocked", { entity_id: entityId, reason: "legacy_tap_retired" });
+      return undefined;
     };
     function runtimeStore(card) {
       card._glt4Store = card._glt4Store || new ProjectStore(card._hass);

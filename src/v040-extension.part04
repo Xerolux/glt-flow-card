@@ -1,7 +1,7 @@
     };
     m.querySelectorAll("[data-select]").forEach((b)=>b.onclick=()=>{ const g=groups.find(x=>x.id===b.dataset.select); editor._glt4Multi=new Set((g?.members||[]).map(x=>`${x.kind}:${x.id}`)); editor._glt4ActiveGroup=g?.id; editor._render(); m.remove(); });
     m.querySelectorAll("[data-delete]").forEach((b)=>b.onclick=()=>{ editor._remember?.(); editor._config.groups=groups.filter(x=>x.id!==b.dataset.delete); editor._emit(); editor._render(); m.remove(); });
-    m.querySelectorAll("[data-template]").forEach((b)=>b.onclick=async()=>{ const g=groups.find(x=>x.id===b.dataset.template); if(!g)return; const objects=(g.members||[]).map((r)=>{const arr=r.kind==="equipment"?editor._config.equipment:r.kind==="datapoint"?editor._config.datapoints:r.kind==="path"?editor._config.paths:editor._config.kpis;return {kind:r.kind,object:clone(arr.find(x=>x.id===r.id))};}).filter(x=>x.object); await editorStore(editor).saveTemplate({id:`group-${g.id}-${Date.now().toString(36)}`,name:g.name,kind:"group",objects}); alert("Unteranlage als Vorlage gespeichert."); });
+    m.querySelectorAll("[data-template]").forEach((b)=>b.onclick=async()=>{ const g=groups.find(x=>x.id===b.dataset.template); if(!g)return; const objects=(g.members||[]).map((r)=>{const arr=r.kind==="equipment"?editor._config.equipment:r.kind==="datapoint"?editor._config.datapoints:r.kind==="path"?editor._config.paths:editor._config.kpis;return {kind:r.kind,object:clone(arr.find(x=>x.id===r.id))};}).filter(x=>x.object); await editorStore(editor).saveTemplate({id:`group-${g.id}-${Date.now().toString(36)}`,name:g.name,kind:"group",objects}); editorNotice(editor, "Unteranlage als Vorlage gespeichert."); });
   }
 
   function showAutoRoute(editor) {
