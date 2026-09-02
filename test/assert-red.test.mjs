@@ -73,7 +73,7 @@ test("registry binds one marker, evidence prefix and naming-rule identity per ke
     // to phase2- when only Phase 2 used the helpers; Phases 3 and 4 use the
     // same ones, so an entry that quietly stopped conforming would have gone
     // unnoticed.
-    if (!/^phase[234]-/.test(key)) continue;
+    if (!/^phase[2345]-/.test(key)) continue;
     if (entry.runtime === "python") {
       assert.ok(
         entry.identity.endsWith(`::test_expected_red_${key.replaceAll("-", "_")}`),
@@ -89,6 +89,7 @@ test("registry binds one marker, evidence prefix and naming-rule identity per ke
   assert.equal(countFor("phase2-"), 12, "all twelve Phase-2 registry entries exist");
   assert.equal(countFor("phase3-"), 7, "all seven Phase-3 registry entries exist");
   assert.equal(countFor("phase4-"), 10, "all ten Phase-4 registry entries exist");
+  assert.equal(countFor("phase5-"), 10, "all ten Phase-5 registry entries exist");
 });
 
 test("accepts the exact named sentinel with its effect-ledger evidence", () => {

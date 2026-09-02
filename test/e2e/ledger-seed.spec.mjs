@@ -102,6 +102,36 @@ test("phase-4-ledger-seed every effect carries an origin", async ({ page }) => {
   }
 });
 
+test("phase-5-ledger-seed a seeded script insertion is recorded and refused", async ({ page }) => {
+  await mount(page);
+  const outcome = await page.evaluate(() => {
+    const refusals = [];
+    for (const tag of ["script", "iframe"]) {
+      try {
+        document.body.appendChild(document.createElement(tag));
+      } catch (error) {
+        refusals.push(error.message);
+      }
+    }
+    return { refusals, recorded: window.__gltEffects.scriptInsertion };
+  });
+  expect(outcome.refusals).toHaveLength(2);
+  for (const message of outcome.refusals) {
+    expect(message).toMatch(/PROHIBITED_EFFECT\[scriptInsertion\]/);
+  }
+  expect(outcome.recorded.map((entry) => entry.tag)).toEqual(["script", "iframe"]);
+});
+
+test("phase-5-ledger-seed a clean run reports zero executable insertion", async ({
+  page,
+}) => {
+  await mount(page);
+  const ledger = await readEffectLedger(page);
+  for (const kind of ["scriptInsertion"]) {
+    expect(ledger[kind], `${kind} must be empty on a clean run`).toEqual([]);
+  }
+});
+
 test("phase-4-ledger-seed a clean run reports zero for every Phase-4 capability", async ({
   page,
 }) => {

@@ -232,6 +232,57 @@ export const EXPECTED_RED = Object.freeze(Object.fromEntries([
     "complete exact-dist Phase-4 UI is unavailable",
     "PHASE4_UI_EFFECTS ",
   ),
+  // -- Phase 5 -----------------------------------------------------------
+  browserEntry(
+    "phase5-catalog",
+    "generated catalog evidence is unavailable",
+    "PHASE5_CATALOG_EFFECTS ",
+  ),
+  browserEntry(
+    "phase5-ports",
+    "typed ports with explained refusal are unavailable",
+    "PHASE5_PORT_EFFECTS ",
+  ),
+  browserEntry(
+    "phase5-port-identity",
+    "stable endpoint identity is unavailable",
+    "PHASE5_IDENTITY_EFFECTS ",
+  ),
+  browserEntry(
+    "phase5-routing-determinism",
+    "deterministic routing is unavailable",
+    "PHASE5_ROUTING_EFFECTS ",
+  ),
+  browserEntry(
+    "phase5-routing-geometry",
+    "obstacle-aware routing geometry is unavailable",
+    "PHASE5_GEOMETRY_EFFECTS ",
+  ),
+  browserEntry(
+    "phase5-routing-incremental",
+    "bounded incremental rerouting is unavailable",
+    "PHASE5_INCREMENTAL_EFFECTS ",
+  ),
+  browserEntry(
+    "phase5-designer",
+    "transactional designer commands are unavailable",
+    "PHASE5_DESIGNER_EFFECTS ",
+  ),
+  browserEntry(
+    "phase5-clipboard",
+    "id-remapping cross-project paste is unavailable",
+    "PHASE5_CLIPBOARD_EFFECTS ",
+  ),
+  browserEntry(
+    "phase5-sdk",
+    "the data-only contribution format is unavailable",
+    "PHASE5_SDK_EFFECTS ",
+  ),
+  browserEntry(
+    "phase5-ui",
+    "complete exact-dist Phase-5 UI is unavailable",
+    "PHASE5_UI_EFFECTS ",
+  ),
 ]));
 
 const HARNESS_FAILURES = [

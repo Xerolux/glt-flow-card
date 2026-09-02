@@ -118,6 +118,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
       service: [],
       api: [],
       dialogs: [],
+      scriptInsertion: [],
       tasks: [],
       listeners: [],
       sessions: [{ kind: "fake-ha", id: "exact-dist" }],
@@ -297,6 +298,43 @@ export async function installFakeHomeAssistant(page, options = {}) {
       if (/v040|legacy|base/.test(source)) return "legacy";
       return "card";
     };
+
+    // Phase 5 forbids a contribution from becoming code. Only part of that is
+    // observable at runtime, and it is worth being exact about which part.
+    //
+    // `eval` and the Function constructor are NOT hooked here, and must not be:
+    // Playwright's own page.evaluate runs through `eval`, so a guard on it
+    // refuses the test harness before it can refuse anything else. That was
+    // tried; it failed every test in this file at once.
+    //
+    // What is hooked is inserting an executable node -- script, iframe, object,
+    // embed -- which is the path a contribution would actually have to take.
+    // The rest is prevented structurally rather than observed: the manifest
+    // validator allowlists elements and attributes, so a contribution never
+    // carries a string that reaches an interpreter, and no contributed path is
+    // ever handed to import(). The format is the prevention; this ledger is the
+    // check that the format was not bypassed.
+    //
+    // Armed only once the page is up: the harness itself inserts the script that
+    // loads the card, and refusing that never lets the page exist.
+    const armed = () => window.__exactDistReady === true;
+
+    for (const method of ["appendChild", "insertBefore", "append", "prepend"]) {
+      const target = method in Node.prototype ? Node.prototype : Element.prototype;
+      const native = target[method];
+      if (typeof native !== "function") continue;
+      target[method] = function insertionGuard(...nodes) {
+        for (const node of nodes) {
+          const tag = node?.tagName?.toLowerCase?.();
+          if (tag === "script" || tag === "iframe" || tag === "object" || tag === "embed") {
+            const effect = { method, tag, origin: attribute() };
+            effects.scriptInsertion.push(effect);
+            if (armed()) prohibited("scriptInsertion", effect);
+          }
+        }
+        return native.apply(this, nodes);
+      };
+    }
 
     // The legacy card reaches the Recorder through hass.callApi. It did not
     // exist on this shim at all, so such a call threw a TypeError and was
