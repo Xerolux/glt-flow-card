@@ -1,0 +1,332 @@
+{
+  "entries": [
+    {
+      "end": "2027-11-01T00:00:00+01:00",
+      "now": "2027-10-31T12:00:00+01:00",
+      "probe": "fall-back",
+      "span_hours": 25.0,
+      "spec": "day",
+      "start": "2027-10-31T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-10-31T00:00:00+02:00",
+      "now": "2027-10-31T12:00:00+01:00",
+      "probe": "fall-back",
+      "span_hours": 24.0,
+      "spec": "day-previous",
+      "start": "2027-10-30T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-11-01T00:00:00+01:00",
+      "now": "2027-10-31T12:00:00+01:00",
+      "probe": "fall-back",
+      "span_hours": 745.0,
+      "spec": "month",
+      "start": "2027-10-01T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-10-01T00:00:00+02:00",
+      "now": "2027-10-31T12:00:00+01:00",
+      "probe": "fall-back",
+      "span_hours": 720.0,
+      "spec": "month-previous",
+      "start": "2027-09-01T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-10-31T12:00:00+01:00",
+      "now": "2027-10-31T12:00:00+01:00",
+      "probe": "fall-back",
+      "span_hours": 24.0,
+      "spec": "rolling-24h",
+      "start": "2027-10-30T13:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-11-01T00:00:00+01:00",
+      "now": "2027-10-31T12:00:00+01:00",
+      "probe": "fall-back",
+      "span_hours": 169.0,
+      "spec": "week-mon",
+      "start": "2027-10-25T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-11-07T00:00:00+01:00",
+      "now": "2027-10-31T12:00:00+01:00",
+      "probe": "fall-back",
+      "span_hours": 169.0,
+      "spec": "week-sun",
+      "start": "2027-10-31T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2028-01-01T00:00:00+01:00",
+      "now": "2027-10-31T12:00:00+01:00",
+      "probe": "fall-back",
+      "span_hours": 8760.0,
+      "spec": "year",
+      "start": "2027-01-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-01-01T00:00:00+01:00",
+      "now": "2027-10-31T12:00:00+01:00",
+      "probe": "fall-back",
+      "span_hours": 8760.0,
+      "spec": "year-previous",
+      "start": "2026-01-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-06-16T00:00:00+02:00",
+      "now": "2027-06-15T12:00:00+02:00",
+      "probe": "ordinary-summer",
+      "span_hours": 24.0,
+      "spec": "day",
+      "start": "2027-06-15T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-06-15T00:00:00+02:00",
+      "now": "2027-06-15T12:00:00+02:00",
+      "probe": "ordinary-summer",
+      "span_hours": 24.0,
+      "spec": "day-previous",
+      "start": "2027-06-14T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-07-01T00:00:00+02:00",
+      "now": "2027-06-15T12:00:00+02:00",
+      "probe": "ordinary-summer",
+      "span_hours": 720.0,
+      "spec": "month",
+      "start": "2027-06-01T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-06-01T00:00:00+02:00",
+      "now": "2027-06-15T12:00:00+02:00",
+      "probe": "ordinary-summer",
+      "span_hours": 744.0,
+      "spec": "month-previous",
+      "start": "2027-05-01T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-06-15T12:00:00+02:00",
+      "now": "2027-06-15T12:00:00+02:00",
+      "probe": "ordinary-summer",
+      "span_hours": 24.0,
+      "spec": "rolling-24h",
+      "start": "2027-06-14T12:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-06-21T00:00:00+02:00",
+      "now": "2027-06-15T12:00:00+02:00",
+      "probe": "ordinary-summer",
+      "span_hours": 168.0,
+      "spec": "week-mon",
+      "start": "2027-06-14T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-06-20T00:00:00+02:00",
+      "now": "2027-06-15T12:00:00+02:00",
+      "probe": "ordinary-summer",
+      "span_hours": 168.0,
+      "spec": "week-sun",
+      "start": "2027-06-13T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2028-01-01T00:00:00+01:00",
+      "now": "2027-06-15T12:00:00+02:00",
+      "probe": "ordinary-summer",
+      "span_hours": 8760.0,
+      "spec": "year",
+      "start": "2027-01-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-01-01T00:00:00+01:00",
+      "now": "2027-06-15T12:00:00+02:00",
+      "probe": "ordinary-summer",
+      "span_hours": 8760.0,
+      "spec": "year-previous",
+      "start": "2026-01-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-11-16T00:00:00+01:00",
+      "now": "2027-11-15T09:30:00+01:00",
+      "probe": "ordinary-winter",
+      "span_hours": 24.0,
+      "spec": "day",
+      "start": "2027-11-15T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-11-15T00:00:00+01:00",
+      "now": "2027-11-15T09:30:00+01:00",
+      "probe": "ordinary-winter",
+      "span_hours": 24.0,
+      "spec": "day-previous",
+      "start": "2027-11-14T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-12-01T00:00:00+01:00",
+      "now": "2027-11-15T09:30:00+01:00",
+      "probe": "ordinary-winter",
+      "span_hours": 720.0,
+      "spec": "month",
+      "start": "2027-11-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-11-01T00:00:00+01:00",
+      "now": "2027-11-15T09:30:00+01:00",
+      "probe": "ordinary-winter",
+      "span_hours": 745.0,
+      "spec": "month-previous",
+      "start": "2027-10-01T00:00:00+02:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-11-15T09:30:00+01:00",
+      "now": "2027-11-15T09:30:00+01:00",
+      "probe": "ordinary-winter",
+      "span_hours": 24.0,
+      "spec": "rolling-24h",
+      "start": "2027-11-14T09:30:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-11-22T00:00:00+01:00",
+      "now": "2027-11-15T09:30:00+01:00",
+      "probe": "ordinary-winter",
+      "span_hours": 168.0,
+      "spec": "week-mon",
+      "start": "2027-11-15T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-11-21T00:00:00+01:00",
+      "now": "2027-11-15T09:30:00+01:00",
+      "probe": "ordinary-winter",
+      "span_hours": 168.0,
+      "spec": "week-sun",
+      "start": "2027-11-14T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2028-01-01T00:00:00+01:00",
+      "now": "2027-11-15T09:30:00+01:00",
+      "probe": "ordinary-winter",
+      "span_hours": 8760.0,
+      "spec": "year",
+      "start": "2027-01-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-01-01T00:00:00+01:00",
+      "now": "2027-11-15T09:30:00+01:00",
+      "probe": "ordinary-winter",
+      "span_hours": 8760.0,
+      "spec": "year-previous",
+      "start": "2026-01-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-03-29T00:00:00+02:00",
+      "now": "2027-03-28T12:00:00+02:00",
+      "probe": "spring-forward",
+      "span_hours": 23.0,
+      "spec": "day",
+      "start": "2027-03-28T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-03-28T00:00:00+01:00",
+      "now": "2027-03-28T12:00:00+02:00",
+      "probe": "spring-forward",
+      "span_hours": 24.0,
+      "spec": "day-previous",
+      "start": "2027-03-27T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-04-01T00:00:00+02:00",
+      "now": "2027-03-28T12:00:00+02:00",
+      "probe": "spring-forward",
+      "span_hours": 743.0,
+      "spec": "month",
+      "start": "2027-03-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-03-01T00:00:00+01:00",
+      "now": "2027-03-28T12:00:00+02:00",
+      "probe": "spring-forward",
+      "span_hours": 672.0,
+      "spec": "month-previous",
+      "start": "2027-02-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-03-28T12:00:00+02:00",
+      "now": "2027-03-28T12:00:00+02:00",
+      "probe": "spring-forward",
+      "span_hours": 24.0,
+      "spec": "rolling-24h",
+      "start": "2027-03-27T11:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-03-29T00:00:00+02:00",
+      "now": "2027-03-28T12:00:00+02:00",
+      "probe": "spring-forward",
+      "span_hours": 167.0,
+      "spec": "week-mon",
+      "start": "2027-03-22T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-04-04T00:00:00+02:00",
+      "now": "2027-03-28T12:00:00+02:00",
+      "probe": "spring-forward",
+      "span_hours": 167.0,
+      "spec": "week-sun",
+      "start": "2027-03-28T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2028-01-01T00:00:00+01:00",
+      "now": "2027-03-28T12:00:00+02:00",
+      "probe": "spring-forward",
+      "span_hours": 8760.0,
+      "spec": "year",
+      "start": "2027-01-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "end": "2027-01-01T00:00:00+01:00",
+      "now": "2027-03-28T12:00:00+02:00",
+      "probe": "spring-forward",
+      "span_hours": 8760.0,
+      "spec": "year-previous",
+      "start": "2026-01-01T00:00:00+01:00",
+      "timezone": "Europe/Berlin"
+    }
+  ],
+  "format": "glt-flow-card-phase7-period-corpus",
+  "home_assistant": "homeassistant 2026.2.3",
+  "note": "regenerate with node tools/python-launcher.mjs tools/research/phase7-generate-period-corpus.py",
+  "version": 1
+}

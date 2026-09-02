@@ -114,6 +114,13 @@ export async function installFakeHomeAssistant(page, options = {}) {
       diagnostics: [],
       websocket: [],
       websocketRequests: [],
+      // Phase 7's query dimension. The browser must issue no Recorder request of
+      // its own -- `callApi` is already refused above -- so what this records is
+      // the *routed* reads: which contract the card asked the Companion for, how
+      // many entities it named and how long a window it wanted. A bound the
+      // product declares and the browser ignores is decoration, and it is
+      // decoration that passes every assertion about the response.
+      recorderQueries: [],
       subscriptions: [],
       service: [],
       api: [],
@@ -251,6 +258,18 @@ export async function installFakeHomeAssistant(page, options = {}) {
     const callWS = async (message) => {
       effects.websocket.push(structuredClone(message));
       effects.websocketRequests.push({ type: String(message?.type ?? ""), body: structuredClone(message) });
+      const routed = String(message?.type ?? "");
+      if (routed.startsWith("glt_flow_card/history/")) {
+        const entities = message?.entity_ids ?? message?.statistic_ids ?? message?.entity_id;
+        const start = Date.parse(message?.start_time ?? "");
+        const end = Date.parse(message?.end_time ?? "") || Date.now();
+        effects.recorderQueries.push({
+          contract: routed.slice("glt_flow_card/history/".length),
+          entities: Array.isArray(entities) ? entities.length : entities ? 1 : 0,
+          period: message?.period ?? null,
+          windowSeconds: Number.isFinite(start) ? Math.max(0, (end - start) / 1000) : null,
+        });
+      }
       if (bridge && typeof window[bridge] === "function") {
         const response = await window[bridge](structuredClone(message));
         if (response && response.error) {

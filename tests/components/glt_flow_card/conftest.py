@@ -361,3 +361,28 @@ def assert_entry_state(config_entry: MockConfigEntry) -> Callable[[ConfigEntrySt
         assert config_entry.state is expected
 
     return assert_state
+
+
+@pytest.fixture
+def recorder_ledger() -> Generator[Any]:
+    """Record every Recorder query and fail the test if one escaped its bound.
+
+    Phase 7's subject is a read that is *intended*, so neither the Phase-2 rule
+    (zero unintended effects) nor the Phase-6 one (no real recipient) settles the
+    question. A suite can assert everything it meant to and still have queried
+    somebody's live database, or have asked for a year of raw states while the
+    product claims a bound.
+
+    The containment check runs in **teardown**, after the test body has finished,
+    so a test that did either of those fails even when every one of its own
+    assertions passed. A test that legitimately needs a larger bound raises it on
+    the ledger explicitly, which makes the exception visible in the test rather
+    than invisible in the harness.
+    """
+    from .recorder_factory import RecorderLedger
+
+    ledger = RecorderLedger()
+    yield ledger
+    # Teardown, not the test body: this is what turns a passing test that
+    # reached a live Recorder, or quietly exceeded a bound, into a failing one.
+    ledger.assert_contained()
