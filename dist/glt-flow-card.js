@@ -4653,7 +4653,7 @@
     .glt4-btn{height:31px;border:1px solid var(--b);background:var(--bg);border-radius:8px;padding:0 9px;color:var(--mut);font-size:9px;font-weight:750;cursor:pointer}
     .glt4-btn:hover,.glt4-btn.on{color:var(--e);border-color:color-mix(in srgb,var(--e) 55%,var(--b));background:var(--eb)}
     .glt4-spacer{flex:1}.glt4-readonly{padding:7px 10px;background:#f59e0b18;color:#b45309;font-size:9px;font-weight:700;border-bottom:1px solid #f59e0b44}
-    .glt4-modal{position:fixed;inset:0;z-index:10000;background:#020617b8;display:grid;place-items:center;padding:22px}.glt4-dialog{width:min(920px,96vw);max-height:90vh;overflow:auto;border:1px solid var(--b);border-radius:16px;background:var(--bg);color:var(--tx);box-shadow:0 24px 70px #02061788}
+    .glt4-notice{margin-top:10px;padding:10px 12px;border:1px solid currentColor;border-radius:10px;min-height:44px;display:flex;align-items:center;gap:8px}.glt4-modal{position:fixed;inset:0;z-index:10000;background:#020617b8;display:grid;place-items:center;padding:22px}.glt4-dialog{width:min(920px,96vw);max-height:90vh;overflow:auto;border:1px solid var(--b);border-radius:16px;background:var(--bg);color:var(--tx);box-shadow:0 24px 70px #02061788}
     .glt4-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--b);background:var(--bg)}.glt4-head b{font-size:13px}.glt4-body{padding:14px}.glt4-close{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--mut);cursor:pointer}
     .glt4-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}.glt4-card{padding:11px;border:1px solid var(--b);border-radius:12px;background:color-mix(in srgb,var(--bg) 97%,#64748b 3%)}.glt4-card b{display:block;font-size:11px}.glt4-card small{display:block;margin-top:3px;color:var(--mut);font-size:8px}.glt4-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
     .glt4-input,.glt4-select,.glt4-textarea{width:100%;border:1px solid var(--b);border-radius:9px;background:var(--bg);color:var(--tx);padding:8px;font-size:10px}.glt4-textarea{min-height:360px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;line-height:1.45;resize:vertical}
@@ -4664,6 +4664,50 @@
     .glt4-entity-row{display:grid;grid-template-columns:1fr 130px 90px 32px;gap:6px;align-items:center;margin-bottom:7px}.glt4-entity-row ha-entity-picker{min-width:0}
     @media(max-width:800px){.glt4-entity-row{grid-template-columns:1fr}.glt4-dialog{width:98vw}}
   `;
+    /**
+     * Confirm a destructive editor step through the Phase-2 element.
+     *
+     * `window.confirm` is a browser-owned authority prompt: the kiosk's key
+     * handling cannot reach it, no stylesheet can make it legible in forced
+     * colours, and the effect ledger that proves this card asks for nothing it
+     * should not cannot observe it. Phase 4 deliberately left these for Phase 5;
+     * this is the replacement, and it is the same element every control
+     * confirmation already uses, so the safe choice takes focus in one place.
+     */
+    function editorConfirm(editor, message, onConfirm) {
+      const root = editor.shadowRoot;
+      root.querySelector("glt-flow-card-control-confirm")?.remove();
+      const node = document.createElement("glt-flow-card-control-confirm");
+      node.dataset.editorConfirm = "1";
+      node.copy = (key) => (key === "controlConfirmHeading" ? message : key);
+      root.appendChild(node);
+      node.props = {
+        control: { phase: "confirm", controlId: "editor", preview: { label: message, summary: message } },
+        onConfirm: () => { node.remove(); onConfirm(); },
+        onCancel: () => node.remove(),
+      };
+    }
+
+    /**
+     * Say why nothing happened, inside the editor.
+     *
+     * `alert` has the same problems as `confirm` and one more: it is modal, so a
+     * refusal that could have been a sentence next to the button becomes a
+     * blocking interruption the operator has to dismiss before they can look at
+     * what they got wrong.
+     */
+    function editorNotice(editor, message) {
+      const root = editor.shadowRoot;
+      root.querySelector("[data-editor-notice]")?.remove();
+      const strip = document.createElement("div");
+      strip.dataset.editorNotice = "1";
+      strip.setAttribute("role", "status");
+      strip.setAttribute("aria-live", "polite");
+      strip.className = "glt4-notice";
+      strip.textContent = message;
+      (root.querySelector(".glt4-body") || root).appendChild(strip);
+    }
+
     function modal(editor, title, html) {
       editor.shadowRoot.querySelector(".glt4-modal")?.remove();
       const shell = document.createElement("div");
@@ -4716,12 +4760,13 @@
         await store.audit("project.load", { id: p.id, name: p.name });
         m.remove();
       });
-      m.querySelectorAll("[data-delete]").forEach((b) => b.onclick = async () => {
-        if (!confirm("Projekt wirklich l\xF6schen?")) return;
-        await store.deleteProject(b.dataset.delete);
-        await store.audit("project.delete", { id: b.dataset.delete });
-        m.remove();
-        showProjects(editor);
+      m.querySelectorAll("[data-delete]").forEach((b) => b.onclick = () => {
+        editorConfirm(editor, "Projekt wirklich l\xF6schen?", async () => {
+          await store.deleteProject(b.dataset.delete);
+          await store.audit("project.delete", { id: b.dataset.delete });
+          m.remove();
+          showProjects(editor);
+        });
       });
       m.querySelectorAll("[data-versions]").forEach((b) => b.onclick = async () => {
         const p = await store.getProject(b.dataset.versions);
@@ -4778,7 +4823,7 @@
       const m = modal(editor, "Vorlagen & Bauteil-Templates", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Auswahl als Vorlage speichern</button></div><div class="glt4-grid">${all.map((t) => `<div class="glt4-card"><b>${esc(t.name)}</b><small>${esc(t.kind || "equipment")}${t.updated ? ` \xB7 ${esc(t.updated)}` : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-apply="${esc(t.id)}">Einf\xFCgen</button>${t.id.startsWith("builtin-") ? "" : `<button class="glt4-btn glt4-danger" data-del="${esc(t.id)}">L\xF6schen</button>`}</div></div>`).join("")}</div>`);
       m.querySelector("[data-save]").onclick = async () => {
         const obj = editor._obj?.();
-        if (!obj) return alert("Zuerst ein Bauteil, Datenpunkt, Pfad oder KPI ausw\xE4hlen.");
+        if (!obj) return editorNotice(editor, "Zuerst ein Bauteil, Datenpunkt, Pfad oder KPI ausw\xE4hlen.");
         const name = prompt("Vorlagenname", obj.name || obj.label || obj.id);
         if (!name) return;
         const t = { id: slug(name) + "-" + Date.now().toString(36), name, kind: editor._sel.k, object: clone(obj) };
@@ -4828,7 +4873,7 @@
           const [kind, id] = key.split(":");
           return { kind, id };
         });
-        if (members.length < 2) return alert("Mindestens zwei Elemente per Strg/Shift ausw\xE4hlen.");
+        if (members.length < 2) return editorNotice(editor, "Mindestens zwei Elemente per Strg/Shift ausw\xE4hlen.");
         const name = prompt("Gruppenname", "Unteranlage");
         if (!name) return;
         editor._remember?.();
@@ -4859,7 +4904,7 @@
           return { kind: r.kind, object: clone(arr.find((x) => x.id === r.id)) };
         }).filter((x) => x.object);
         await editorStore(editor).saveTemplate({ id: `group-${g.id}-${Date.now().toString(36)}`, name: g.name, kind: "group", objects });
-        alert("Unteranlage als Vorlage gespeichert.");
+        editorNotice(editor, "Unteranlage als Vorlage gespeichert.");
       });
     }
     function showAutoRoute(editor) {
@@ -5154,19 +5199,17 @@
       const site = this._glt4Site || "all";
       return site === "all" || !item.site || item.site === site;
     };
-    const originalTap = Card.prototype._tapEntity;
+    // Retired (04-13, applied to the shipped bytes in 05-14). The original
+    // override was two browser-invented authorizations in a row: a role check
+    // the browser had no business making, and a window.confirm standing in for
+    // one. Both are gone, and with them the call through to the base tap, which
+    // reached hass.callService directly. The surviving operate path is the
+    // server-composed panel, whose controls the Companion has already
+    // authorized. This stays reachable, and inert, so the effect ledger can
+    // prove no tap action produces a service call.
     Card.prototype._tapEntity = function(entityId) {
-      if (!canOperate(this._config, this._hass)) {
-        alert("F\xFCr Bedienungen ist mindestens die Rolle Operator erforderlich.");
-        this._glt4Store?.audit("control.blocked", { entity_id: entityId });
-        return;
-      }
-      if (this._config.permissions?.confirm_controls !== false && !confirm(`Entit\xE4t bedienen?
-${entityId}`)) return;
-      const result = originalTap.call(this, entityId);
-      this._glt4Store = this._glt4Store || new ProjectStore(this._hass);
-      this._glt4Store.audit("control.execute", { entity_id: entityId });
-      return result;
+      this._glt4Store?.audit("control.blocked", { entity_id: entityId, reason: "legacy_tap_retired" });
+      return undefined;
     };
     function runtimeStore(card) {
       card._glt4Store = card._glt4Store || new ProjectStore(card._hass);
@@ -33644,6 +33687,7 @@ ${entityId}`)) return;
   .glt-v1-state{position:absolute;right:7px;top:7px;z-index:5;padding:3px 6px;border-radius:999px;font-size:8px;font-weight:850;border:1px solid var(--glt-border);background:color-mix(in srgb,var(--card-background-color) 92%,transparent);text-transform:uppercase;letter-spacing:.04em}
   .glt-v1-state.running,.glt-v1-state.auto,.glt-v1-state.remote{color:#22c55e;border-color:#22c55e66}.glt-v1-state.warning,.glt-v1-state.maintenance,.glt-v1-state.local,.glt-v1-state.manual{color:#f59e0b;border-color:#f59e0b66}.glt-v1-state.fault,.glt-v1-state.comm-error,.glt-v1-state.command-failed,.glt-v1-state.interlock,.glt-v1-state.locked{color:#ef4444;border-color:#ef444466}.glt-v1-state.stale,.glt-v1-state.invalid,.glt-v1-state.unknown{color:#94a3b8}
   .glt-v1-control-btn{position:absolute;right:7px;bottom:7px;z-index:8;width:26px;height:26px;border-radius:8px;border:1px solid var(--glt-border);background:var(--card-background-color);color:var(--glt-accent);cursor:pointer;display:grid;place-items:center;font-size:12px}
+  .glt-v1-notice{margin-top:10px;padding:10px 12px;border:1px solid currentColor;border-radius:10px;min-height:44px;display:flex;align-items:center;gap:8px}
   .glt-v1-modal{position:fixed;inset:0;z-index:12000;background:#020617bd;display:grid;place-items:center;padding:20px}.glt-v1-dialog{width:min(1080px,97vw);max-height:92vh;overflow:auto;border:1px solid var(--glt-border,var(--divider-color));border-radius:16px;background:var(--card-background-color,#fff);color:var(--primary-text-color);box-shadow:0 30px 90px #0008}.glt-v1-head{position:sticky;top:0;z-index:4;display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid var(--glt-border,var(--divider-color));background:var(--card-background-color,#fff)}.glt-v1-body{padding:14px}.glt-v1-close,.glt-v1-btn{border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:transparent;color:var(--primary-text-color);padding:7px 9px;font-size:9px;font-weight:750;cursor:pointer}.glt-v1-close{border:0;font-size:15px}.glt-v1-btn.primary{color:#fff;background:#0b83cc;border-color:#1fb4ff}.glt-v1-btn.warn{color:#dc2626}.glt-v1-actions{display:flex;gap:6px;flex-wrap:wrap}.glt-v1-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.glt-v1-card{border:1px solid var(--glt-border,var(--divider-color));border-radius:11px;padding:10px;background:color-mix(in srgb,var(--card-background-color) 96%,#64748b 4%)}.glt-v1-card b{display:block;font-size:11px}.glt-v1-card small{display:block;color:var(--secondary-text-color);margin-top:3px;font-size:8px}.glt-v1-table{width:100%;border-collapse:collapse;font-size:9px}.glt-v1-table th,.glt-v1-table td{padding:7px;border-bottom:1px solid var(--glt-border,var(--divider-color));text-align:left;vertical-align:top}.glt-v1-input,.glt-v1-select,.glt-v1-text{width:100%;padding:7px;border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:var(--card-background-color);color:var(--primary-text-color);font-size:9px}.glt-v1-text{min-height:100px}.glt-v1-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:5px 8px;border-bottom:1px solid var(--b,var(--divider-color));background:color-mix(in srgb,var(--bg,var(--card-background-color)) 96%,#0ea5e9 4%)}.glt-v1-toolbar button{height:29px;border:1px solid var(--b,var(--divider-color));border-radius:7px;background:transparent;color:var(--mut,var(--secondary-text-color));font-size:8px;font-weight:760;padding:0 8px;cursor:pointer}.glt-v1-toolbar button:hover{color:var(--e,#0ea5e9);border-color:#0ea5e966}.glt-v1-minimap{position:absolute;right:12px;bottom:12px;width:180px;height:110px;border:1px solid var(--b);border-radius:9px;background:#07131fe6;z-index:50;overflow:hidden;pointer-events:none}.glt-v1-miniitem{position:absolute;background:#2aaeff66;border:1px solid #4bc6ff88;border-radius:2px}.glt-v1-layer-hidden{display:none!important}.glt-v1-layer-locked{pointer-events:none!important;opacity:.65}.glt-v1-breadcrumbs{display:flex;gap:5px;align-items:center;padding:5px 14px;font-size:9px;color:var(--secondary-text-color);border-bottom:1px solid var(--glt-border)}.glt-v1-breadcrumbs button{border:0;background:transparent;color:var(--glt-accent);cursor:pointer;font-size:9px}.glt-v1-quality.good{color:#22c55e}.glt-v1-quality.uncertain{color:#f59e0b}.glt-v1-quality.bad{color:#ef4444}
   body.glt-v1-kiosk .header,body.glt-v1-kiosk app-toolbar{display:none!important}@media(min-width:1800px){.glt-v1-dialog{width:min(1320px,96vw)}}`;
     function addStyle(root) {
@@ -33652,6 +33696,17 @@ ${entityId}`)) return;
       st2.dataset.gltV1 = "1";
       st2.textContent = STYLES;
       root?.appendChild(st2);
+    }
+    function notice(owner, message) {
+      const root = owner.shadowRoot || owner;
+      root.querySelector("[data-glt-notice]")?.remove();
+      const strip = document.createElement("div");
+      strip.dataset.gltNotice = "1";
+      strip.setAttribute("role", "status");
+      strip.setAttribute("aria-live", "polite");
+      strip.className = "glt-v1-notice";
+      strip.textContent = String(message);
+      (root.querySelector(".glt-v1-modal .glt-v1-body") || root).appendChild(strip);
     }
     function modal(owner, title, html) {
       const root = owner.shadowRoot || owner;
@@ -33684,91 +33739,12 @@ ${entityId}`)) return;
         return null;
       }
     }
-    async function executeControl(card2, item, command, value) {
-      const cfg = ensureV1(card2._config), id = entityId(item.control_entity || item.entity);
-      if (!id) return;
-      if (!canOperate(cfg, card2._hass)) return alert("Mindestens Operator-Berechtigung erforderlich.");
-      const domain = id.split(".")[0];
-      let service = "toggle", data = { entity_id: id };
-      if (command === "on") service = "turn_on";
-      else if (command === "off") service = "turn_off";
-      else if (command === "number") {
-        service = "set_value";
-        data.value = Number(value);
-      } else if (command === "select") {
-        service = "select_option";
-        data.option = value;
-      } else if (command === "set_temperature") {
-        service = "set_temperature";
-        data.temperature = Number(value);
-      }
-      ;
-      if (cfg.permissions.confirm_controls !== false && !confirm(`${item.name || id}: ${command}?`)) return;
-      try {
-        if (cfg.security.server_enforced) {
-          await ws(card2, "control/execute", { project_id: projectId(cfg), entity_id: id, domain, service, service_data: data });
-        } else {
-          if (!cfg.security.allowed_service_domains.includes(domain)) throw new Error(`Domain ${domain} nicht erlaubt`);
-          await card2._hass.callService(domain, service, data);
-        }
-        await audit(card2, "control.execute", { equipment_id: item.id, entity_id: id, command, value });
-      } catch (err) {
-        alert(err?.message || String(err));
-      }
+    async function executeControl(card2, item, command, _value) {
+      const id = entityId(item?.control_entity || item?.entity);
+      await audit(card2, "control.blocked", { equipment_id: item?.id, entity_id: id, command, reason: "legacy_execute_retired" });
+      notice(card2, "Bedienung läuft über die vom Server zusammengestellte Objektbedienung.");
+      return void 0;
     }
-    async function openOperations(card2, item) {
-      const cfg = ensureV1(card2._config), status2 = deriveOperationalState(item, card2._hass?.states, { stale_minutes: cfg.diagnostics.stale_minutes });
-      const id = entityId(item.control_entity || item.entity || item.state_entity);
-      const profile = profileForEquipment(item), meta = await registryMeta(card2, id);
-      const slots = (profile.slots || []).map((s) => {
-        const bind = item.bindings?.[s.id] || item.fields?.find((f) => f.id === s.id || f.label === s.label)?.entity;
-        const st2 = stateOf(card2, entityId(bind));
-        return `<div class="glt-v1-card"><b>${esc(s.label)}</b><small>${esc(entityId(bind) || "nicht zugeordnet")}</small><strong>${esc(st2?.state ?? "–")} ${esc(st2?.attributes?.unit_of_measurement || "")}</strong></div>`;
-      }).join("");
-      const controls = (profile.controls || []).map((c) => `<div class="glt-v1-card"><b>${esc(c.label)}</b><small>${esc(c.command)}</small>${c.command === "toggle" ? `<div class="glt-v1-actions"><button class="glt-v1-btn" data-command="on">Ein</button><button class="glt-v1-btn" data-command="off">Aus</button><button class="glt-v1-btn" data-command="toggle">Umschalten</button></div>` : `<div class="glt-v1-actions"><input class="glt-v1-input" data-value placeholder="Wert"><button class="glt-v1-btn" data-cmd="${esc(c.command)}">Setzen</button></div>`}</div>`).join("");
-      const m = modal(card2, `Objektbedienung · ${item.name || item.id}`, `<div class="glt-v1-grid"><div class="glt-v1-card"><b>Zustand</b><strong>${esc(status2.label)}</strong><small class="glt-v1-quality ${status2.quality}">Qualität ${esc(status2.quality)} · Alter ${status2.age_minutes == null ? "–" : status2.age_minutes.toFixed(1) + " min"}</small></div><div class="glt-v1-card"><b>Entity</b><strong>${esc(id || "–")}</strong><small>${esc(meta?.platform || meta?.config_entry_id || "Home Assistant")}</small></div><div class="glt-v1-card"><b>Rolle</b><strong>${esc(currentRole(cfg, card2._hass))}</strong><small>${cfg.security.server_enforced ? "serverseitig abgesichert" : "Browser-Fallback"}</small></div></div><h4>Live-Werte</h4><div class="glt-v1-grid">${slots || '<div class="glt-v1-card">Keine Value-Slots</div>'}</div><h4>Bedienung</h4><div class="glt-v1-grid">${controls || '<div class="glt-v1-card">Keine Standardbedienung</div>'}</div><div class="glt-v1-actions" style="margin-top:12px"><button class="glt-v1-btn" data-more>HA Mehr-Info</button><button class="glt-v1-btn" data-trend>Trend</button></div>`);
-      m.querySelectorAll("[data-command]").forEach((b) => b.onclick = () => executeControl(card2, item, b.dataset.command));
-      m.querySelectorAll("[data-cmd]").forEach((b) => b.onclick = () => executeControl(card2, item, b.dataset.cmd, b.closest(".glt-v1-card").querySelector("[data-value]").value));
-      m.querySelector("[data-more]").onclick = () => card2._openMoreInfo?.(id);
-      m.querySelector("[data-trend]").onclick = () => {
-        m.remove();
-        card2._replayActive = false;
-        card2._queueRender?.();
-      };
-    }
-    function decorateEquipment(card2, canvas) {
-      const cfg = ensureV1(card2._config), nodes = [...canvas.querySelectorAll(".glt-equipment")], items = cfg.equipment.filter((i) => card2._visibleInView?.(i) !== false);
-      nodes.forEach((n, i) => {
-        const item = items.find((x2) => x2.id === n.dataset.equipmentId) || items[i];
-        if (!item) return;
-        const st2 = deriveOperationalState(item, card2._hass?.states, { stale_minutes: cfg.diagnostics.stale_minutes });
-        n.querySelector(".glt-v1-state")?.remove();
-        const b = document.createElement("span");
-        b.className = `glt-v1-state ${st2.className}`;
-        b.textContent = st2.label;
-        n.appendChild(b);
-        if (!n.querySelector(".glt-v1-control-btn")) {
-          const c = document.createElement("button");
-          c.type = "button";
-          c.className = "glt-v1-control-btn";
-          c.title = "Erweiterte Objektbedienung";
-          c.textContent = "⚙";
-          c.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openOperations(card2, item);
-          };
-          n.appendChild(c);
-        }
-        n.dataset.operationalState = st2.code;
-      });
-    }
-    const oldRenderEquipment = Card.prototype._renderEquipment;
-    Card.prototype._renderEquipment = function(canvas) {
-      const r = oldRenderEquipment.call(this, canvas);
-      decorateEquipment(this, canvas);
-      return r;
-    };
     function alarmsPanel(card2) {
       const cfg = ensureV1(card2._config);
       const derived = cfg.alarms.map((a) => {
@@ -33895,7 +33871,7 @@ ${entityId}`)) return;
     }
     function showAutoMapping(editor) {
       const item = selectedEquipment(editor)[0];
-      if (!item) return alert("Zuerst ein Anlagenobjekt auswählen.");
+      if (!item) return notice(editor, "Zuerst ein Anlagenobjekt auswählen.");
       const result2 = autoMapEquipment(item, editor._hass?.states || {}), profile = profileForEquipment(item);
       const rows = (profile.slots || []).map((s) => {
         const opts = result2.suggestions[s.id] || [];
@@ -34032,7 +34008,7 @@ ${entityId}`)) return;
         try {
           download(`${slug3(cfg.project.name)}.gltproject`, await makeProjectBundle(cfg), "application/zip");
         } catch (err) {
-          alert(err.message);
+          notice(editor, err.message);
         }
       };
       m.querySelector("[data-import]").onclick = () => m.querySelector("[data-file]").click();
@@ -34045,23 +34021,23 @@ ${entityId}`)) return;
           emit(editor);
           m.remove();
         } catch (err) {
-          alert(err.message);
+          notice(editor, err.message);
         }
       };
       m.querySelector("[data-lock]").onclick = async () => {
         try {
           await ws(editor, "projects/lock", { project_id: projectId(cfg), ttl_seconds: 300 });
-          alert("Projekt gesperrt.");
+          notice(editor, "Projekt gesperrt.");
         } catch (err) {
-          alert(err.message);
+          notice(editor, err.message);
         }
       };
       m.querySelector("[data-unlock]").onclick = async () => {
         try {
           await ws(editor, "projects/unlock", { project_id: projectId(cfg) });
-          alert("Lock gelöst.");
+          notice(editor, "Lock gelöst.");
         } catch (err) {
-          alert(err.message);
+          notice(editor, err.message);
         }
       };
       m.querySelector("[data-diff]").onclick = () => {
@@ -34072,7 +34048,7 @@ ${entityId}`)) return;
           m.remove();
           editorModal(editor, "Projektvergleich", `<table class="glt-v1-table"><tbody>${d.slice(0, 500).map((x2) => `<tr><td>${esc(x2.type)}</td><td><code>${esc(x2.path)}</code></td><td>${esc(JSON.stringify(x2.before))}</td><td>${esc(JSON.stringify(x2.after))}</td></tr>`).join("")}</tbody></table>`);
         } catch (err) {
-          alert(err.message);
+          notice(editor, err.message);
         }
       };
     }
@@ -36316,8 +36292,8 @@ ${entityId}`)) return;
         option.value = name;
         role.append(option);
       }
-      const confirm2 = button(copyFor(editor, "addMember"), "glt-safe-btn primary");
-      confirm2.addEventListener("click", () => {
+      const confirm = button(copyFor(editor, "addMember"), "glt-safe-btn primary");
+      confirm.addEventListener("click", () => {
         if (!picker.value) return;
         state.access.pending = {
           userId: picker.value,
@@ -36327,7 +36303,7 @@ ${entityId}`)) return;
         state.render();
       });
       const actions = element("div", "glt-safe-actions");
-      actions.append(picker, role, confirm2);
+      actions.append(picker, role, confirm);
       add.append(actions);
       content.append(add);
     }
@@ -36397,9 +36373,9 @@ ${entityId}`)) return;
       }
       section.append(actions2);
       content.append(section);
-      const confirm2 = document.createElement("glt-flow-card-control-confirm");
-      confirm2.copy = (key, values) => copyFor(editor, key, values);
-      confirm2.props = {
+      const confirm = document.createElement("glt-flow-card-control-confirm");
+      confirm.copy = (key, values) => copyFor(editor, key, values);
+      confirm.props = {
         control: state.control,
         onCancel: () => state.controlClient.cancel(),
         onConfirm: () => state.controlClient.execute(
@@ -36408,7 +36384,7 @@ ${entityId}`)) return;
           authority.revision ?? project.revision ?? 0
         )
       };
-      content.append(confirm2);
+      content.append(confirm);
     }
     const actions = element("div", "glt-safe-actions");
     const validate = button(copyFor(editor, "validate"), "glt-safe-btn primary");
@@ -36562,10 +36538,10 @@ ${entityId}`)) return;
       if (state.preview.ordering_noise?.length) content.append(element("p", "glt-safe-help", `${copyFor(editor, "ignoredNoise")}: ${state.preview.ordering_noise.join(", ")}`));
     }
     if (state.confirmApply) {
-      const confirm2 = element("section", "glt-safe-card glt-safe-confirm");
-      confirm2.append(element("h3", "", copyFor(editor, "confirmApplyHeading")));
+      const confirm = element("section", "glt-safe-card glt-safe-confirm");
+      confirm.append(element("h3", "", copyFor(editor, "confirmApplyHeading")));
       const selectedIds = selectedClosure(state);
-      confirm2.append(element("p", "", copyFor(editor, "confirmApplyBody", {
+      confirm.append(element("p", "", copyFor(editor, "confirmApplyBody", {
         count: selectedIds.length,
         project: editor._config?.project?.name || editor._config?.project?.id,
         revision: state.expectedRevision
@@ -36603,14 +36579,14 @@ ${entityId}`)) return;
         state.render();
       });
       actions2.append(cancel2, apply);
-      confirm2.append(actions2);
-      content.append(confirm2);
+      confirm.append(actions2);
+      content.append(confirm);
     }
     if (state.confirmRollback) {
-      const confirm2 = element("section", "glt-safe-card glt-safe-confirm");
-      confirm2.append(element("h3", "", copyFor(editor, "restore")));
+      const confirm = element("section", "glt-safe-card glt-safe-confirm");
+      confirm.append(element("h3", "", copyFor(editor, "restore")));
       const name = editor._config?.project?.name || editor._config?.project?.id || "";
-      confirm2.append(element("p", "", copyFor(editor, "restoreBody", { backup_id: state.applied.rollback_snapshot_id, project: name, revision: state.applied.revision })));
+      confirm.append(element("p", "", copyFor(editor, "restoreBody", { backup_id: state.applied.rollback_snapshot_id, project: name, revision: state.applied.revision })));
       const label = element("label", "", copyFor(editor, "restoreLabel"));
       const input = element("input", "glt-safe-input");
       input.id = `glt-safe-restore-${Math.random().toString(36).slice(2)}`;
@@ -36649,8 +36625,8 @@ ${entityId}`)) return;
         state.render();
       });
       actions2.append(cancel2, restore);
-      confirm2.append(label, input, hint, actions2);
-      content.append(confirm2);
+      confirm.append(label, input, hint, actions2);
+      content.append(confirm);
     }
     const actions = element("div", "glt-safe-actions");
     const dryRun = button(state.preview ? copyFor(editor, "dryRunFresh") : copyFor(editor, "dryRun"), state.preview ? "glt-safe-btn" : "glt-safe-btn primary");
@@ -38715,21 +38691,21 @@ ${entityId}`)) return;
     _confirm(messageKey, onConfirm) {
       const existing = this.querySelector("glt-flow-card-control-confirm");
       if (existing) existing.remove();
-      const confirm2 = document.createElement("glt-flow-card-control-confirm");
-      confirm2.dataset.confirm = messageKey;
-      confirm2.copy = (key, values) => key === "controlConfirmBody" ? textFor3(this.language, messageKey) : textFor3(this.language, key) || key;
-      this.append(confirm2);
-      confirm2.props = {
+      const confirm = document.createElement("glt-flow-card-control-confirm");
+      confirm.dataset.confirm = messageKey;
+      confirm.copy = (key, values) => key === "controlConfirmBody" ? textFor3(this.language, messageKey) : textFor3(this.language, key) || key;
+      this.append(confirm);
+      confirm.props = {
         control: {
           phase: "confirm",
           controlId: messageKey,
           preview: { label: textFor3(this.language, messageKey), summary: textFor3(this.language, messageKey) }
         },
         onConfirm: () => {
-          confirm2.remove();
+          confirm.remove();
           onConfirm();
         },
-        onCancel: () => confirm2.remove()
+        onCancel: () => confirm.remove()
       };
     }
   };
@@ -38840,11 +38816,11 @@ ${entityId}`)) return;
         remove.type = "button";
         remove.dataset.removePack = pack.namespace;
         remove.addEventListener("click", () => {
-          const confirm2 = document.createElement("glt-flow-card-control-confirm");
-          confirm2.dataset.confirm = "confirm_remove_pack";
-          confirm2.copy = (key) => textFor3(language, key) || key;
-          this.append(confirm2);
-          confirm2.props = {
+          const confirm = document.createElement("glt-flow-card-control-confirm");
+          confirm.dataset.confirm = "confirm_remove_pack";
+          confirm.copy = (key) => textFor3(language, key) || key;
+          this.append(confirm);
+          confirm.props = {
             control: {
               phase: "confirm",
               controlId: pack.namespace,
@@ -38854,14 +38830,14 @@ ${entityId}`)) return;
               }
             },
             onConfirm: () => {
-              confirm2.remove();
+              confirm.remove();
               this.dispatchEvent(new CustomEvent("glt-extension-remove-requested", {
                 detail: { namespace: pack.namespace },
                 bubbles: true,
                 composed: true
               }));
             },
-            onCancel: () => confirm2.remove()
+            onCancel: () => confirm.remove()
           };
         });
         row.append(remove);
