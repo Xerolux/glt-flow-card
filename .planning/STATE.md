@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 6 complete; all 20 plans implemented and pushed, threat register closed, Phase 7 next
-last_updated: "2026-09-02T16:30:00.000Z"
-last_activity: 2026-09-02 -- Phase 6 closed: 20 of 20 plans implemented, 20 of 21 threats verified by running each owner command at head, T6-21 left planned because its composed release leaf needs a Docker engine this container does not have
+stopped_at: Phase 7 planned; 20 plans and the roadmap entry pushed, execution not started
+last_updated: "2026-09-02T17:00:00.000Z"
+last_activity: 2026-09-02 -- Phase 7 planned: source audit (24 defects), context, research resolved by executing against the vendored Recorder, patterns, 23 threats, validation map, UI contract and 20 plans; two defects found while auditing were fixed rather than deferred
 progress:
   total_phases: 10
   completed_phases: 5
@@ -21,12 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-31)
 
 **Core value:** Operators and engineers can safely understand, operate, engineer, and diagnose a real building plant from one trustworthy Home Assistant interface.
-**Current focus:** Phase 06 — alarms-notifications-schedules
+**Current focus:** Phase 07 — trends-energy-reports
 
 ## Current Position
 
-Phase: 06 (alarms-notifications-schedules) — COMPLETE
-Plan: 20 of 20 implemented (20 plans across 5 waves)
+Phase: 07 (trends-energy-reports) — PLANNED, execution not started
+Plan: 0 of 20 implemented (20 plans across 5 waves)
+
+Phase 6 is complete: 20 of 20 plans implemented, 20 of 21 threats verified.
 Status: closed and summarised in `06-SUMMARY.md`. Twenty of the twenty-one
 threats are `verified`, each by running its own owner command at head rather
 than by inferring one row from another's result. All fourteen audited defects
@@ -44,10 +46,18 @@ proxy answers `403` for that host while `registry.npmjs.org` answers `200`. The
 gate fails closed rather than skipping, which is what a provenance check that
 cannot reach its source should do.
 
-Next: Phase 7 (Trends, Energy & Reproducible Reports) planning, plus the
-outstanding review passes for Phases 2-6 and Phase 1's consolidated
-verification.
-Last activity: 2026-09-02 -- Phase 6 execution and closure on `claude/chatgpt-continuation-hi3y86` (PR #3)
+Two defects found while auditing the surfaces for Phase 7 were fixed rather
+than deferred, and both are the same shape -- reachable is not reached, and a
+passing assertion is not evidence unless something exercised it. Alarm state was
+fetched only by the panel that displayed it, so the toolbar badge, the per-site
+count and the report's Status column reported a confident zero until an operator
+opened the modal. And a Phase-4 retirement test queried for a card the harness
+never mounts, got null, and asserted an empty effect ledger produced by nothing
+having run.
+
+Next: Phase 7 execution from `07-01-PLAN.md`, plus the outstanding review passes
+for Phases 2-6 and Phase 1's consolidated verification.
+Last activity: 2026-09-02 -- Phase 7 planning committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
 
 Progress: [█████░░░░░] 50%
 
@@ -230,7 +240,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 1]: Resolved in planning — lanes are discovered and digest-pinned at execution, and Companion packaging is validated as a local integration-category artifact without unauthorized publication.
 - [Phase 5]: SDK trust, distribution, and compatibility policy must forbid project-bundled privileged execution.
 - [Phase 6]: RESOLVED. Schedule authoring is `schedule/create|update|delete` (admin-gated), calendar authoring is `calendar.create_event` gated on `CalendarEntityFeature.CREATE_EVENT`, holidays bind to `binary_sensor.workday` with its per-Bundesland `province`. The alarm philosophy is configuration with conservative defaults, decided with the user on 2026-09-02; the priority vocabulary is the one deliberate exception.
-- [Phase 7]: Recorder API lanes and energy/report calculation contracts must be pinned.
+- [Phase 7]: RESOLVED. Home Assistant 2026.2.3 already resolves `day`, `week`, `month` and `year` on local-midnight boundaries in the configured timezone -- measured at 23- and 25-hour days and 743- and 745-hour months for Europe/Berlin -- and `change` is reset-aware over the Recorder's reset-corrected running sum. `year` is reachable only through `recorder/statistic_during_period`'s calendar spec. Three traps recorded with owners: a window starting before a statistic exists reports the whole accumulated total as the first period's consumption; gaps are omitted from results rather than emitted; and `mean_type` CIRCULAR exists. Nothing in the Recorder API bounds a raw query, so the bounds are ours and belong server-side. Planning is complete; execution has not started.
 - [Phase 9]: Remote authentication, SSRF allowlisting, and partial-failure budgets require prototyping.
 - [Phase 10]: Numeric 100/500/2,000-object budgets require representative hardware measurements.
 
@@ -250,7 +260,6 @@ Two capabilities are deliberately out of v1.1 and recorded in
 ## Session Continuity
 
 Last session: 2026-09-02T16:30:00.000Z
-Stopped at: Phase 6 complete and closed; `06-SUMMARY.md` written and the threat
-register marked from owner commands run at head
-Resume file: .planning/phases/07-trends-energy-reports/.continue-here.md (to be
-written when Phase 7 planning starts)
+Stopped at: Phase 7 planned; every planning artifact committed and the
+roadmap's `Plans: TBD` replaced with the itemised list
+Resume file: .planning/phases/07-trends-energy-reports/.continue-here.md
