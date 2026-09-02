@@ -41465,6 +41465,25 @@
         return { states: [], history: [], byId: card2._alarmState, unavailable: true };
       }
     }
+    const ALARM_REFRESH_MS = 15e3;
+    function refreshAlarmState(card2) {
+      const cfg = ensureV1(card2._config);
+      if (!cfg.alarms.length) return;
+      if (card2._alarmStateLoading) return;
+      const now = Date.now();
+      if (card2._alarmStateAt && now - card2._alarmStateAt < ALARM_REFRESH_MS) return;
+      card2._alarmStateAt = now;
+      card2._alarmStateLoading = true;
+      loadAlarms(card2).then(
+        () => {
+          card2._alarmStateLoading = false;
+          card2._queueRender?.();
+        },
+        () => {
+          card2._alarmStateLoading = false;
+        }
+      );
+    }
     function alarmRow(cfg, a, row) {
       const active = Boolean(row && row.active);
       const suppression = row && row.suppression;
@@ -41537,6 +41556,7 @@
       const r = oldCardRender.call(this);
       addStyle(this.shadowRoot);
       runtimeButtons(this);
+      refreshAlarmState(this);
       if (this._config.ui?.kiosk) document.body.classList.add("glt-v1-kiosk");
       return r;
     };
