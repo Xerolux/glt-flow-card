@@ -309,35 +309,56 @@ export function diagnoseConfig(config, hassStates = {}, now = Date.now()) {
   return { referenced: [...refs], issues, unused, score: refs.size ? Math.max(0, 100 - issues.length / refs.size * 100) : 100 };
 }
 
+/**
+ * Retired reachable and inert by plan 07-17.
+ *
+ * It bucketed on `Math.floor(x / bucketMs) * bucketMs`, aligned to the UTC
+ * epoch, so for Europe/Berlin every "daily" bucket started at 01:00 or 02:00
+ * local and a transition day was the wrong length (D9). It could not express a
+ * month at all, while the report designer offered months and years. Its final
+ * ternary fell through to the mean, so `aggregate: "p95"` computed an average
+ * and reported no error (D12).
+ *
+ * The Companion resolves periods now and Home Assistant computes the buckets.
+ * The entry point stays and does nothing, so a test can prove the replacement
+ * rather than prove the absence of something nothing checks.
+ */
 export function aggregateSeries(points, options = {}) {
-  const agg = options.aggregate || "none", deadband = Number(options.deadband || 0), bucketMs = Number(options.bucket_ms || 0);
-  let src = arr(points).filter((p) => Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y))).map((p) => ({ x: Number(p.x), y: Number(p.y) })).sort((a,b)=>a.x-b.x);
-  if (deadband > 0 && src.length) {
-    const out = [src[0]]; for (const p of src.slice(1)) if (Math.abs(p.y - out.at(-1).y) >= deadband) out.push(p); src = out;
-  }
-  // `raw` is still honoured for a project that has not been migrated yet.
-  if (agg === "none" || agg === "raw" || !bucketMs) return src;
-  const buckets = new Map();
-  for (const p of src) { const k = Math.floor(p.x / bucketMs) * bucketMs; const a = buckets.get(k) || []; a.push(p.y); buckets.set(k, a); }
-  return [...buckets.entries()].map(([x, ys]) => ({ x, y: agg === "min" ? Math.min(...ys) : agg === "max" ? Math.max(...ys) : agg === "sum" ? ys.reduce((a,b)=>a+b,0) : ys.reduce((a,b)=>a+b,0)/ys.length }));
+  void options;
+  return Array.isArray(points) ? points : [];
 }
 
+/**
+ * Retired reachable and inert by plan 07-17.
+ *
+ * It trapezoid-integrated consecutive samples with no notion of a gap, so two
+ * samples six hours apart contributed six hours at their average as though the
+ * plant had run that way throughout (D18). Its `unit` argument recognised only
+ * MW, kW and an implicit W, so every other unit was integrated as watts.
+ *
+ * `energy_model.integrate_rate` excludes gaps and reports the excluded span.
+ */
 export function integrateEnergy(points, unit = "W") {
-  const s = arr(points).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)).sort((a,b)=>a.x-b.x); if (s.length < 2) return 0;
-  const factor = unit === "MW" ? 1e6 : unit === "kW" ? 1000 : 1; let wh = 0;
-  for (let i=1;i<s.length;i++) wh += ((s[i-1].y+s[i].y)/2*factor) * ((s[i].x-s[i-1].x)/3600000);
-  return wh/1000;
+  void points;
+  void unit;
+  return null;
 }
 
+/**
+ * Retired reachable and inert by plan 07-17.
+ *
+ * It multiplied a *cumulative meter reading* by a price and called the result a
+ * cost (D14). It never checked a unit (D15), silently skipped an unavailable
+ * meter so a month with half the meters offline reported a smaller confident
+ * number (D16), and produced CO2 only for electricity (D17).
+ *
+ * `energy_model.period_total` and `energy_units.site_total` replace it, with
+ * coverage and stated exclusions.
+ */
 export function energySummary(config, hassStates = {}) {
-  const c = ensureV1(config), result = [];
-  for (const m of c.energy.meters || []) {
-    const st = hassStates[m.entity]; const value = Number.parseFloat(st?.state); if (!Number.isFinite(value)) continue;
-    const cost = m.price_per_unit != null ? value * Number(m.price_per_unit) : null;
-    const co2 = m.kind === "electricity" && c.energy.co2_factor_g_per_kwh ? value * c.energy.co2_factor_g_per_kwh / 1000 : null;
-    result.push({ ...m, value, unit: st?.attributes?.unit_of_measurement || m.unit || "", cost, co2_kg: co2 });
-  }
-  return result;
+  void config;
+  void hassStates;
+  return [];
 }
 
 function legacyProjectDiff(a, b, path = "") {

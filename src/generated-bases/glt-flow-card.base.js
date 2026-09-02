@@ -438,46 +438,22 @@
       return Array.from(ids);
     }
 
+    /**
+     * Retired reachable and inert by plan 07-17.
+     *
+     * It reached the Recorder straight from the browser with
+     * `hass.callApi("GET", "history/period/...")`, so the project policy never
+     * saw a history request and no export was audited (D5). It set
+     * `_historyRange` even when nothing came back, presenting an empty map as a
+     * populated window (D1), and requested `minimal_response`, which omits
+     * attributes from every intermediate row (D2).
+     *
+     * History goes through the Companion's `history/*` routes now: declared in
+     * both policy tables, bounded, enumeration-filtered and audited. After this
+     * the browser issues no Recorder request of its own.
+     */
     async _ensureHistory() {
-      if (this._historyLoading || !this._hass?.callApi) return;
-      const ids = this._entityIds();
-      if (!ids.length) return;
-      const now = new Date();
-      const hours = Math.max(this._config.replay.hours || 168, this._config.trend.hours || 168);
-      const start = new Date(now.getTime() - hours * 3600000);
-      if (this._historyRange && this._historyRange.start <= start.getTime() && this._historyRange.end >= now.getTime() - 60000) return;
-
-      this._historyLoading = true;
-      this._historyError = null;
-      this._queueRender();
-      try {
-        const chunks = [];
-        for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
-        const all = [];
-        for (const chunk of chunks) {
-          const path = `history/period/${encodeURIComponent(start.toISOString())}` +
-            `?filter_entity_id=${encodeURIComponent(chunk.join(","))}` +
-            `&end_time=${encodeURIComponent(now.toISOString())}&minimal_response`;
-          const response = await this._hass.callApi("GET", path);
-          if (Array.isArray(response)) all.push(...response);
-        }
-        this._history.clear();
-        all.forEach((series) => {
-          if (!Array.isArray(series) || !series.length) return;
-          const entityId = series[0].entity_id;
-          if (!entityId) return;
-          const sorted = series.slice().sort((a, b) =>
-            new Date(a.last_updated || a.last_changed) - new Date(b.last_updated || b.last_changed));
-          this._history.set(entityId, sorted);
-        });
-        this._historyRange = { start: start.getTime(), end: now.getTime() };
-        if (!this._replayTime) this._replayTime = now;
-      } catch (error) {
-        this._historyError = error?.message || String(error);
-      } finally {
-        this._historyLoading = false;
-        this._queueRender();
-      }
+      return undefined;
     }
 
     _openMoreInfo(entityId) {
@@ -5415,32 +5391,49 @@
       const stats = selectedTrendStats(card);
       return `<div class="glt4-trendplus"><div class="glt4-statgrid">${stats.map((s) => `<div class="glt4-stat" style="border-left:3px solid ${s.color}"><b>${esc(s.entry.point.label || field(s.entry.point.entity)?.entity || "Wert")}</b>Min ${s.min.toFixed(2)} \xB7 \xD8 ${s.avg.toFixed(2)} \xB7 Max ${s.max.toFixed(2)} ${esc(s.unit)}${s.energy != null ? ` \xB7 ${s.energy.toFixed(2)} kWh` : ""}${s.delta != null ? ` \xB7 24h ${s.delta >= 0 ? "+" : ""}${s.delta.toFixed(1)} %` : ""}</div>`).join("")}</div>${multiAxisSvg(card, stats)}<div style="margin-top:7px;color:var(--secondary-text-color);font-size:9px">Eigene Y-Achse je Einheit \xB7 Leistung wird zeitlich zu Energie integriert \xB7 24-h-Vergleich gegen den vorherigen Zeitraum</div></div>`;
     }
+    /**
+     * Retired reachable and inert by plan 07-17.
+     *
+     * It joined series by nearest neighbour with `Math.abs` and no maximum
+     * distance, so a sample from four hours away was written into this
+     * minute's row with no marker (D22). The file stated values that were
+     * never measured at the times it attributed them to.
+     *
+     * `report-renderings.exportSeries` fills a cell only from a sample inside
+     * that interval, and leaves an explicit blank otherwise.
+     */
     function trendCsv(card) {
-      const selected = card._selectedTrendPoints?.() || [];
-      const entities = selected.map((e) => ({ label: e.point.label || field(e.point.entity)?.entity, series: card._seriesFor?.(e.point) || [] }));
-      const timestamps = Array.from(new Set(entities.flatMap((e) => e.series.map((v) => v.x)))).sort((a, b) => a - b);
-      const header = ["timestamp", ...entities.map((e) => e.label)].map(csvCell).join(";");
-      const rows = timestamps.map((ts) => [new Date(ts).toISOString(), ...entities.map((e) => {
-        const v = e.series.reduce((best, x) => Math.abs(x.x - ts) < Math.abs((best?.x ?? Infinity) - ts) ? x : best, null);
-        return v?.y ?? "";
-      })].map(csvCell).join(";"));
-      download(`glt-trend-${Date.now()}.csv`, [header, ...rows].join("\n"), "text/csv;charset=utf-8");
+      void card;
+      return "";
     }
+    /**
+     * Retired reachable and inert by plan 07-17.
+     *
+     * It wrote `card._display?.(...)` -- the value being rendered right now --
+     * for each KPI, alarm and asset. The designer offered day, week, month and
+     * year and nothing read `period`, so a "Monatsbericht" contained one
+     * instant and said so nowhere (D19).
+     *
+     * `report_runs.execute` resolves the period and records every input.
+     */
     function reportCsv(card) {
-      const rows = [["Bereich", "Name", "Wert", "Status"]];
-      for (const k of card._config.kpis || []) rows.push(["KPI", k.name || k.label || "KPI", card._display?.(k.entity || k) || "", ""]);
-      for (const a of card._config.alarms || []) rows.push(["Alarm", a.name || field(a.entity)?.entity || "Alarm", card._display?.(a.entity) || "", activeAlarm(card, a) ? "aktiv" : "ok"]);
-      for (const a of card._config.assets || []) rows.push(["Asset", a.name || a.id, card._display?.(a.entity_hours) || "", a.due_date || ""]);
-      return rows.map((r) => r.map(csvCell).join(";")).join("\n");
+      void card;
+      return "";
     }
+    /**
+     * Retired reachable and inert by plan 07-17.
+     *
+     * It rebuilt its table by splitting `reportCsv`'s output on newlines and
+     * semicolons and stripping quotes with a regex, so any value containing a
+     * semicolon became extra columns and any value containing a newline became
+     * extra rows (D21). It also opened a window and wrote markup into it.
+     *
+     * `report-renderings.print` renders from the model. Deriving one rendering
+     * from another's serialisation was the defect, not the symptom.
+     */
     function printReport(card) {
-      const csv = reportCsv(card);
-      const html = `<!doctype html><meta charset="utf-8"><title>GLT Report</title><style>body{font:14px system-ui;margin:30px;color:#111}h1{margin:0 0 6px}small{color:#666}table{border-collapse:collapse;width:100%;margin-top:20px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f4f6f8}</style><h1>${esc(card._config.title || "GLT Report")}</h1><small>${(/* @__PURE__ */ new Date()).toLocaleString()}</small><table><thead><tr><th>Bereich</th><th>Name</th><th>Wert</th><th>Status</th></tr></thead><tbody>${csv.split("\n").slice(1).map((line) => `<tr>${line.split(";").map((c) => `<td>${esc(c.replace(/^"|"$/g, ""))}</td>`).join("")}</tr>`).join("")}</tbody></table><script>window.print()<\/script>`;
-      const w = window.open("", "_blank");
-      if (w) {
-        w.document.write(html);
-        w.document.close();
-      }
+      void card;
+      return undefined;
     }
     async function auditRuntime(card) {
       const events = await runtimeStore(card).listAudit(150);
