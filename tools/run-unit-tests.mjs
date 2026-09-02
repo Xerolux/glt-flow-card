@@ -19,12 +19,23 @@ import { fileURLToPath } from "node:url";
 const TEST_DIR = fileURLToPath(new URL("../test", import.meta.url));
 
 /**
- * Suites still owned by `npm run test:phase2` rather than by the regression run.
+ * Suites still owned by a phase gate rather than by the regression run.
  *
- * Empty since plan 02-13: both Phase-2 browser sentinels are green, so they are
- * regression tests now and run here as well as in the phase gate.
+ * Emptied at plan 02-13 when both Phase-2 browser sentinels went green. Refilled
+ * by plan 06-05 with the two Phase-6 sentinels: their owning plans (06-12 and
+ * 06-15) have not landed, so they are red on purpose and leaving them here would
+ * hide every real regression behind them.
+ *
+ * Each entry is removed by the plan that makes it pass, and each is still run --
+ * `npm run test:phase6:quick` puts it through `tools/assert-red.mjs`, which
+ * requires it to reach exactly its named missing behavior and fails when
+ * anything else about the run is broken. That is stricter than a bare pass or
+ * fail, not weaker.
  */
-const PHASE_GATE_SUITES = new Set();
+const PHASE_GATE_SUITES = new Set([
+  "schedule-dst-parity.test.mjs",  // released by plan 06-12
+  "shipped-alarm-truth.test.mjs",  // released by plan 06-15
+]);
 
 const suites = readdirSync(TEST_DIR)
   .filter((name) => name.endsWith(".test.mjs"))
