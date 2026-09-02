@@ -115,6 +115,46 @@ here — the same limitation recorded for T8-25, T7-23, T6-21, T5-16, T4-14, T3-
 and T2-16. It is raised rather than taken: the row is not marked from its parts
 passing separately, and the phase is not claimed to have release evidence.
 
+### The phase gate, run at head
+
+`npm run test:phase9`, with no environment help:
+
+```
+PASS acyclic command graph reaching test:phase9:release exactly once
+PASS F9-01 Canonical build from authored modules
+PASS F9-02 Node regression suites
+PASS F9-03 Companion suite
+PASS F9-04 Exact-dist browser suites
+PASS F9-05 Complete sources and deterministic documentation site
+FAIL F9-06 Phase-8 gate
+```
+
+**F9-04 passing without `PLAYWRIGHT_CHROMIUM_EXECUTABLE` is new.** Phase 7
+recorded that its F7-04 failed because the container's Chromium revision
+differs from the pinned one and the override had to be set by hand. That is now
+resolved in `playwright.config.mjs` rather than in a shell.
+
+**F9-06 fails at the recursion floor, for a limit recorded since Phase 6.** The
+Phase-8 gate runs the Phase-7 gate and so on down to the Phase-1 gate, whose
+first step is F-01:
+
+```
+> node tools/verify-provenance.mjs --online
+Provenance verification failed: source metadata for @playwright/test request returned HTTP 403
+```
+
+All five third-party repository provenance sources answer 403 with "GitHub
+access to this repository is not enabled for this session";
+`api.github.com/rate_limit` answers 200, so this is a repository-scope limit
+rather than a network one. Attaching five third-party repositories with
+credentials to satisfy a provenance check would be a disproportionate permission
+change and was not made.
+
+This means **no phase gate from 2 upward has ever completed its recursion in
+this environment**, and every phase closure since has rested on its own F-rows
+plus each threat row's own at-head run. That is stated here rather than left to
+be inferred from a green that does not exist.
+
 ### Limitations of this closure
 
 - No live Home Assistant, Recorder, remote site, fieldbus, plant target or
