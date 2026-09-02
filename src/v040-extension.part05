@@ -14,7 +14,13 @@
   Card.prototype._visibleInView=function(item){if(!originalVisible.call(this,item))return false;const site=this._glt4Site||"all";return site==="all"||!item.site||item.site===site;};
 
   const originalTap=Card.prototype._tapEntity;
-  Card.prototype._tapEntity=function(entityId){if(!canOperate(this._config,this._hass)){alert("Für Bedienungen ist mindestens die Rolle Operator erforderlich.");this._glt4Store?.audit("control.blocked",{entity_id:entityId});return;}if(this._config.permissions?.confirm_controls!==false&&!confirm(`Entität bedienen?\n${entityId}`))return;const result=originalTap.call(this,entityId);this._glt4Store=this._glt4Store||new ProjectStore(this._hass);this._glt4Store.audit("control.execute",{entity_id:entityId});return result;};
+  // Retired (04-13). The original override was two browser-invented
+  // authorizations in a row: a role check the browser had no business making,
+  // and a window.confirm standing in for one. Both are gone; the surviving
+  // operate path is the server-composed panel, whose controls the Companion
+  // has already authorized. This stays reachable, and inert, so the effect
+  // ledger can prove no tap action produces a service call.
+  Card.prototype._tapEntity=function(entityId){this._glt4Store?.audit("control.blocked",{entity_id:entityId,reason:"legacy_tap_retired"});return undefined;};
 
   function runtimeStore(card){card._glt4Store=card._glt4Store||new ProjectStore(card._hass);card._glt4Store.hass=card._hass;return card._glt4Store;}
 

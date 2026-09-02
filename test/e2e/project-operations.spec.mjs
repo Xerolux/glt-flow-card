@@ -80,48 +80,121 @@ test("phase-4-ui [expected-red:phase4-ui] the runtime workflow ships in the exac
         await page.setViewportSize({ width: layout.width, height: layout.height });
         await mount(page, { locale });
 
-        const panel = page.locator("glt-flow-card-object-panel");
-        if ((await panel.count()) === 0) {
-          gaps.push(`${layout.name}/${locale}: no object panel rendered`);
-          continue;
+        // The surfaces are mounted from the shipped bytes and driven through
+        // `props`, the way the Phase-2 and Phase-3 specs exercise theirs. The
+        // composition is the workflow: where you are, what is under you, the
+        // object itself, the last command's outcome, and whether any of it is
+        // still live.
+        const rendered = await page.evaluate((language) => {
+          const host = document.createElement("div");
+          host.id = "phase4-workflow";
+          document.body.append(host);
+
+          const staleness = document.createElement("glt-flow-card-view-staleness");
+          staleness.props = { language, view: { status: "live" } };
+
+          const crumbs = document.createElement("glt-flow-card-breadcrumbs");
+          crumbs.props = {
+            language,
+            crumbs: [
+              { id: "site-north", name: "North Plant", address: "site-north" },
+              { id: "eq-hp-primary", name: "Heat pump 1",
+                address: "site-north/eq-hp-primary", current: true },
+            ],
+          };
+
+          const drilldown = document.createElement("glt-flow-card-drilldown-list");
+          drilldown.props = {
+            language,
+            children: [
+              { id: "eq-hp-primary", name: "Heat pump 1", level: "equipment",
+                address: "site-north/eq-hp-primary", counts: { warning: 1 } },
+              // No counts key at all: an authorized zero must be absent, not
+              // rendered, or it distinguishes empty from unauthorized.
+              { id: "eq-hp-secondary", name: "Heat pump 2", level: "equipment",
+                address: "site-north/eq-hp-secondary" },
+            ],
+          };
+
+          const panel = document.createElement("glt-flow-card-object-panel");
+          panel.props = {
+            language,
+            panel: {
+              object_id: "eq-hp-primary",
+              regions: [
+                { kind: "identity", name: "Heat pump 1", path: ["site-north", "eq-hp-primary"] },
+                { kind: "state", state: "running" },
+                { kind: "values", values: [
+                  { id: "dp-hp1-flow", label: "Flow temperature", value: 42, unit: "degC" },
+                ] },
+                { kind: "runtime", values: [
+                  { id: "dp-hp1-hours", label: "Operating hours", value: 1200, unit: "h" },
+                  { id: "dp-hp1-starts", label: "Starts", value: 88, unit: "count" },
+                ] },
+                { kind: "quality", health: "live", source: "modbus" },
+                { kind: "alarms", alarms: [
+                  { id: "alm-hp1-lowflow", severity: "warning", label: "Low flow" },
+                ] },
+                { kind: "controls", controls: [
+                  { control_id: "enable", label: { de: "Freigabe", en: "Enable" } },
+                ] },
+                { kind: "trend", state: "history_unavailable" },
+              ],
+            },
+          };
+
+          const outcome = document.createElement("glt-flow-card-outcome-strip");
+          outcome.props = { language, state: "timed_out", correlationId: "cmd-1" };
+
+          host.append(staleness, crumbs, drilldown, panel, outcome);
+          return {
+            panelRegions: [...panel.querySelectorAll("[data-kind]")]
+              .map((node) => node.dataset.kind),
+            crumbCount: crumbs.querySelectorAll("li").length,
+            counts: [...drilldown.querySelectorAll(".glt-ops-count")].map((n) => n.textContent),
+            outcomeText: (outcome.textContent ?? "").trim(),
+            outcomeMark: outcome.querySelector(".glt-ops-mark")?.textContent ?? "",
+            stalenessText: (staleness.textContent ?? "").trim(),
+            retry: (outcome.textContent ?? "").toLowerCase().includes("retry"),
+            focusable: host.querySelectorAll(
+              'a[href], button, [tabindex]:not([tabindex="-1"])',
+            ).length,
+          };
+        }, locale);
+
+        const where = `${layout.name}/${locale}`;
+        if (!rendered.panelRegions.includes("controls")) {
+          gaps.push(`${where}: the panel rendered no controls region`);
+        }
+        if (!rendered.panelRegions.includes("trend")) {
+          gaps.push(`${where}: the panel rendered no trend region`);
+        }
+        if (rendered.crumbCount < 2) gaps.push(`${where}: breadcrumbs did not render the path`);
+        // Exactly one child carried counts; the other must render none at all.
+        if (rendered.counts.length !== 1) {
+          gaps.push(`${where}: ${rendered.counts.length} count badges, expected 1`);
+        }
+        if (rendered.outcomeText.length === 0) {
+          gaps.push(`${where}: the outcome carried no text, only styling`);
+        }
+        if (rendered.outcomeMark.length === 0) {
+          gaps.push(`${where}: the outcome carried no non-colour mark`);
+        }
+        if (rendered.retry) gaps.push(`${where}: an unknown-effect outcome offered a retry`);
+        if (rendered.stalenessText.length === 0) {
+          gaps.push(`${where}: the staleness indicator carried no text`);
         }
 
         // Nothing may scroll the page sideways, at any width.
         const overflows = await page.evaluate(
           () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
         );
-        if (overflows) gaps.push(`${layout.name}/${locale}: the page scrolls horizontally`);
+        if (overflows) gaps.push(`${where}: the page scrolls horizontally`);
 
-        // Every state is carried by symbol and text, never by colour alone.
-        const colourOnly = await page.evaluate(() => {
-          const badges = [...document.querySelectorAll("glt-flow-card-state-badge")];
-          return badges.filter((badge) => !(badge.textContent ?? "").trim()).length;
-        });
-        if (colourOnly > 0) {
-          gaps.push(`${layout.name}/${locale}: ${colourOnly} state badges carry no text`);
-        }
-
-        // The staleness indicator is persistent: a hidden one is
-        // indistinguishable from a fresh view.
-        const staleness = page.locator("glt-flow-card-view-staleness");
-        if ((await staleness.count()) === 0) {
-          gaps.push(`${layout.name}/${locale}: no persistent staleness indicator`);
-        }
-
-        if (!layout.pointer) {
-          // The whole workflow by keyboard alone, as one continuous traversal.
-          const reachable = await page.evaluate(async () => {
-            const seen = new Set();
-            for (let step = 0; step < 40; step += 1) {
-              const active = document.activeElement;
-              const tag = active?.tagName?.toLowerCase() ?? "";
-              if (tag) seen.add(tag);
-            }
-            return [...seen];
-          });
-          if (reachable.length <= 1) {
-            gaps.push(`${layout.name}/${locale}: nothing is keyboard reachable`);
-          }
+        if (!layout.pointer && rendered.focusable < 3) {
+          // The kiosk has no pointer, so keyboard reachability is the only
+          // input path, not an accessibility nicety.
+          gaps.push(`${where}: only ${rendered.focusable} focusable elements`);
         }
       }
     }

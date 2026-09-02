@@ -31324,6 +31324,466 @@ ${entityId}`)) return;
     if (!customElements.get(name)) customElements.define(name, constructor);
   }
 
+  // src/v100/command-outcome.mjs
+  var AFFORDANCES = Object.freeze(["cancel", "dismiss", "state", "audit"]);
+  var PRESENTATION = Object.freeze({
+    accepted: {
+      label: "outcome_accepted",
+      tone: "neutral",
+      affordances: ["cancel"]
+    },
+    dispatched: {
+      label: "outcome_dispatched",
+      tone: "neutral",
+      affordances: [],
+      elapsed: true
+    },
+    readback_confirmed: {
+      label: "outcome_confirmed",
+      tone: "success",
+      affordances: ["dismiss"]
+    },
+    timed_out: {
+      label: "outcome_timed_out",
+      tone: "warning",
+      affordances: ["state", "audit"]
+    },
+    result_unknown: {
+      label: "outcome_result_unknown",
+      tone: "warning",
+      affordances: ["state", "audit"]
+    },
+    failed_after_dispatch: {
+      label: "outcome_failed_after_dispatch",
+      tone: "warning",
+      affordances: ["state", "audit"]
+    },
+    failed_before_dispatch: {
+      label: "outcome_failed_before_dispatch",
+      tone: "error",
+      affordances: []
+    },
+    cancelled_before_dispatch: {
+      label: "outcome_cancelled",
+      tone: "neutral",
+      affordances: []
+    },
+    denied: {
+      label: "outcome_denied",
+      tone: "error",
+      affordances: []
+    }
+  });
+  for (const state of CONTROL_RESULT_STATES) {
+    if (!(state in PRESENTATION)) {
+      throw new Error(`command-outcome has no presentation for ${state}`);
+    }
+  }
+  function presentOutcome({ state, correlation_id: correlationId, elapsedSeconds } = {}) {
+    const presentation = PRESENTATION[state];
+    if (!presentation) throw new Error(`unknown control result state: ${state}`);
+    return {
+      state,
+      label: presentation.label,
+      tone: presentation.tone,
+      affordances: [...presentation.affordances],
+      // Carried on every row so the exact-dist evidence can compare what is
+      // displayed against the authoritative audit record for the same command.
+      correlationId: correlationId ?? null,
+      elapsedSeconds: presentation.elapsed ? elapsedSeconds ?? null : null,
+      effectUnknown: CONTROL_UNKNOWN_STATES.includes(state)
+    };
+  }
+
+  // src/v100/panel-model.mjs
+  var REGION_KINDS = Object.freeze([
+    "identity",
+    "state",
+    "values",
+    "runtime",
+    "quality",
+    "alarms",
+    "controls",
+    "trend"
+  ]);
+  var EMPTY_TEXT = Object.freeze({
+    values: "no_values_declared",
+    alarms: "no_alarms",
+    controls: "no_controls_available"
+  });
+  var CAN_BE_EMPTY = Object.freeze(Object.keys(EMPTY_TEXT));
+  function isEmpty(region) {
+    if (region.kind === "values" || region.kind === "runtime") {
+      return (region.values ?? []).length === 0;
+    }
+    if (region.kind === "alarms") return (region.alarms ?? []).length === 0;
+    if (region.kind === "controls") return (region.controls ?? []).length === 0;
+    return false;
+  }
+  function reducePanel(response) {
+    if (!response || !Array.isArray(response.regions)) {
+      throw new Error("panel response carries no regions");
+    }
+    const regions = response.regions.map((region) => {
+      if (!region || !REGION_KINDS.includes(region.kind)) {
+        throw new Error(`undeclared region kind: ${region?.kind}`);
+      }
+      const rendered = { ...region };
+      if (CAN_BE_EMPTY.includes(region.kind) && isEmpty(region)) {
+        rendered.empty = true;
+        rendered.emptyText = region.emptyText ?? EMPTY_TEXT[region.kind];
+      }
+      return rendered;
+    });
+    return {
+      objectId: response.object_id ?? null,
+      regions,
+      // Convenience only. Nothing downstream may use this to decide authority:
+      // an empty list means the server sent none, never that the browser judged
+      // the user unworthy of one.
+      controls: regions.filter((region) => region.kind === "controls").flatMap((region) => region.controls ?? [])
+    };
+  }
+
+  // src/v100/project-operations.js
+  var STYLE3 = `
+  .glt-ops{font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;display:block;max-width:100%}
+  /* German is materially longer than English, and the narrow layout is 320px.
+     Wrapping is the default here rather than an afterthought; nothing in this
+     file may make the page itself scroll sideways. */
+  .glt-ops,.glt-ops *{min-width:0;overflow-wrap:anywhere}
+  .glt-ops-region{padding:8px 0;border-top:1px solid var(--brd,#1e3346)}
+  .glt-ops-region:first-child{border-top:0}
+  .glt-ops-kind{font:700 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad);text-transform:uppercase;letter-spacing:.06em}
+  .glt-ops-values{margin:4px 0 0;padding:0;list-style:none;display:grid;gap:4px}
+  .glt-ops-value{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .glt-ops-unit{color:var(--mut,#8198ad);font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
+  .glt-ops-empty{color:var(--mut,#8198ad);font-style:italic}
+  .glt-ops-crumbs{display:flex;flex-wrap:wrap;gap:4px;margin:0;padding:0;list-style:none}
+  .glt-ops-crumb{display:inline-flex;align-items:center;min-height:44px;gap:4px}
+  .glt-ops-crumb a{color:inherit}
+  .glt-ops-crumb[aria-current="page"]{font-weight:700}
+  .glt-ops-list{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+  .glt-ops-item{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:44px;padding:4px 8px;border-radius:8px}
+  .glt-ops-count{font:700 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;border:1px solid currentColor;border-radius:999px;padding:2px 8px}
+  .glt-ops-outcome{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:44px;padding:4px 12px;border:1px solid currentColor;border-radius:8px;font-weight:700}
+  .glt-ops-outcome[data-tone="success"]{color:#31d879}
+  .glt-ops-outcome[data-tone="warning"]{color:#ff9f1c}
+  .glt-ops-outcome[data-tone="error"]{color:#ff4f4f}
+  .glt-ops-outcome[data-tone="neutral"]{color:var(--mut,#8198ad)}
+  .glt-ops-mark{font:700 14px/1 ui-monospace,SFMono-Regular,Consolas,monospace}
+  .glt-ops-stale{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:44px;padding:4px 12px;border:1px solid currentColor;border-radius:8px}
+  .glt-ops-stale[data-status="live"]{color:#31d879}
+  .glt-ops-stale[data-status="resyncing"]{color:#36c7ff}
+  .glt-ops-stale[data-status="stale"]{color:#ff9f1c}
+  .glt-ops-stale[data-status="unavailable"]{color:#ff4f4f}
+  .glt-ops-dim{opacity:.6}
+  .glt-ops :focus-visible{outline:2px solid currentColor;outline-offset:2px}
+  @media(forced-colors:active){
+    .glt-ops-outcome,.glt-ops-stale,.glt-ops-count{border:1px solid CanvasText}
+  }
+`;
+  var COPY2 = {
+    en: {
+      no_values_declared: "No values declared",
+      no_alarms: "No alarms",
+      no_controls_available: "No controls available to you",
+      history_unavailable: "Trends are not available yet",
+      outcome_accepted: "Accepted — awaiting dispatch",
+      outcome_dispatched: "Sent — awaiting confirmation",
+      outcome_confirmed: "Confirmed",
+      outcome_timed_out: "No confirmation — effect unknown",
+      outcome_result_unknown: "Effect unknown",
+      outcome_failed_after_dispatch: "Failed after dispatch — effect unknown",
+      outcome_failed_before_dispatch: "Failed — not sent",
+      outcome_cancelled: "Cancelled — not sent",
+      outcome_denied: "Not permitted",
+      status_live: "Live",
+      status_resyncing: "Reloading",
+      status_stale: "Not live — showing last known values",
+      status_unavailable: "Unavailable",
+      last_updated: "Last updated",
+      view_not_available: "This view is not available.",
+      affordance_cancel: "Cancel",
+      affordance_dismiss: "Dismiss",
+      affordance_state: "Show current state",
+      affordance_audit: "Open trusted audit"
+    },
+    de: {
+      no_values_declared: "Keine Werte deklariert",
+      no_alarms: "Keine Alarme",
+      no_controls_available: "Keine Bedienung für Sie verfügbar",
+      history_unavailable: "Trends sind noch nicht verfügbar",
+      outcome_accepted: "Angenommen — wartet auf Absendung",
+      outcome_dispatched: "Gesendet — wartet auf Bestätigung",
+      outcome_confirmed: "Bestätigt",
+      outcome_timed_out: "Keine Bestätigung — Wirkung unbekannt",
+      outcome_result_unknown: "Wirkung unbekannt",
+      outcome_failed_after_dispatch: "Nach Absendung fehlgeschlagen — Wirkung unbekannt",
+      outcome_failed_before_dispatch: "Fehlgeschlagen — nicht gesendet",
+      outcome_cancelled: "Abgebrochen — nicht gesendet",
+      outcome_denied: "Nicht berechtigt",
+      status_live: "Live",
+      status_resyncing: "Wird neu geladen",
+      status_stale: "Nicht live — letzte bekannte Werte",
+      status_unavailable: "Nicht verfügbar",
+      last_updated: "Zuletzt aktualisiert",
+      view_not_available: "Diese Ansicht ist nicht verfügbar.",
+      affordance_cancel: "Abbrechen",
+      affordance_dismiss: "Schließen",
+      affordance_state: "Aktuellen Zustand zeigen",
+      affordance_audit: "Vertrauenswürdiges Protokoll öffnen"
+    }
+  };
+  {
+    const en2 = Object.keys(COPY2.en).sort().join(",");
+    const de2 = Object.keys(COPY2.de).sort().join(",");
+    if (en2 !== de2) throw new Error("project-operations copy keys differ between de and en");
+  }
+  function textFor(language, key) {
+    const table2 = COPY2[language] ?? COPY2.en;
+    return table2[key] ?? COPY2.en[key] ?? key;
+  }
+  function element3(name, className, text) {
+    const node = document.createElement(name);
+    if (className) node.className = className;
+    if (text !== void 0) node.textContent = String(text);
+    return node;
+  }
+  var GltOperationsElement = class extends HTMLElement {
+    constructor() {
+      super();
+      this._props = {};
+    }
+    set props(value) {
+      this._props = value ?? {};
+      this.render();
+    }
+    get props() {
+      return this._props;
+    }
+    get language() {
+      return this._props.language === "de" ? "de" : "en";
+    }
+    connectedCallback() {
+      this.classList.add("glt-ops");
+      this.render();
+    }
+    render() {
+      this.textContent = "";
+    }
+  };
+  var GltObjectPanel = class extends GltOperationsElement {
+    render() {
+      this.textContent = "";
+      const response = this._props.panel;
+      if (!response) return;
+      let reduced;
+      try {
+        reduced = reducePanel(response);
+      } catch (error) {
+        this.append(element3("p", "glt-ops-empty", error.message));
+        return;
+      }
+      this.setAttribute("role", "region");
+      for (const region of reduced.regions) {
+        const block = element3("section", "glt-ops-region");
+        block.dataset.kind = region.kind;
+        block.append(element3("h3", "glt-ops-kind", region.kind));
+        if (region.kind === "identity") {
+          block.append(element3("p", null, region.name ?? ""));
+          if (Array.isArray(region.path)) {
+            block.append(element3("p", "glt-ops-unit", region.path.join(" › ")));
+          }
+        } else if (region.kind === "state") {
+          const badge = document.createElement("glt-flow-card-state-badge");
+          badge.props = { state: region.state, language: this.language };
+          block.append(badge);
+        } else if (region.kind === "values" || region.kind === "runtime") {
+          if (region.empty) {
+            block.append(element3("p", "glt-ops-empty", textFor(this.language, region.emptyText)));
+          } else {
+            const list = element3("ul", "glt-ops-values");
+            for (const value of region.values ?? []) {
+              const row = element3("li", "glt-ops-value");
+              row.append(element3("span", null, value.label ?? value.id));
+              row.append(element3("strong", null, value.value ?? "—"));
+              if (value.unit) row.append(element3("span", "glt-ops-unit", value.unit));
+              list.append(row);
+            }
+            block.append(list);
+          }
+        } else if (region.kind === "quality") {
+          const card2 = document.createElement("glt-flow-card-provenance-card");
+          card2.props = { row: region, language: this.language };
+          block.append(card2);
+        } else if (region.kind === "alarms") {
+          if (region.empty) {
+            block.append(element3("p", "glt-ops-empty", textFor(this.language, region.emptyText)));
+          } else {
+            const list = element3("ul", "glt-ops-list");
+            for (const alarm of region.alarms ?? []) {
+              const row = element3("li", "glt-ops-item");
+              row.append(element3("span", "glt-ops-mark", alarm.severity === "fault" ? "✕" : "!"));
+              row.append(element3("span", null, alarm.label ?? alarm.id));
+              list.append(row);
+            }
+            block.append(list);
+          }
+        } else if (region.kind === "controls") {
+          if (region.empty) {
+            block.append(element3("p", "glt-ops-empty", textFor(this.language, region.emptyText)));
+          } else {
+            const list = element3("ul", "glt-ops-list");
+            for (const control2 of region.controls ?? []) {
+              const row = element3("li", "glt-ops-item");
+              const button2 = element3("button", null, labelOf(control2.label, this.language));
+              button2.type = "button";
+              button2.dataset.controlId = control2.control_id;
+              button2.addEventListener("click", () => {
+                this.dispatchEvent(new CustomEvent("glt-control-requested", {
+                  detail: { controlId: control2.control_id },
+                  bubbles: true,
+                  composed: true
+                }));
+              });
+              row.append(button2);
+              list.append(row);
+            }
+            block.append(list);
+          }
+        } else if (region.kind === "trend") {
+          block.append(element3("p", "glt-ops-empty", textFor(this.language, region.state)));
+        }
+        this.append(block);
+      }
+    }
+  };
+  function labelOf(label, language) {
+    if (typeof label === "string") return label;
+    if (label && typeof label === "object") return label[language] ?? label.en ?? "";
+    return "";
+  }
+  var GltBreadcrumbs = class extends GltOperationsElement {
+    render() {
+      this.textContent = "";
+      const crumbs = this._props.crumbs ?? [];
+      const nav = element3("nav");
+      nav.setAttribute("aria-label", "Breadcrumb");
+      const list = element3("ol", "glt-ops-crumbs");
+      for (const crumb of crumbs) {
+        const item = element3("li", "glt-ops-crumb");
+        if (crumb.current) {
+          item.setAttribute("aria-current", "page");
+          item.append(element3("span", null, crumb.name));
+        } else {
+          const link = element3("a", null, crumb.name);
+          link.href = `#${crumb.address}`;
+          item.append(link);
+        }
+        list.append(item);
+      }
+      nav.append(list);
+      this.append(nav);
+    }
+  };
+  var GltDrilldownList = class extends GltOperationsElement {
+    render() {
+      this.textContent = "";
+      const children = this._props.children ?? [];
+      const list = element3("ul", "glt-ops-list");
+      for (const child of children) {
+        const row = element3("li", "glt-ops-item");
+        const link = element3("a", null, child.name ?? child.id);
+        link.href = `#${child.address ?? child.id}`;
+        row.append(link);
+        if (child.level) row.append(element3("span", "glt-ops-unit", child.level));
+        for (const [severity, value] of Object.entries(child.counts ?? {})) {
+          row.append(element3("span", "glt-ops-count", `${severity}: ${value}`));
+        }
+        list.append(row);
+      }
+      this.append(list);
+    }
+  };
+  var GltOutcomeStrip = class extends GltOperationsElement {
+    render() {
+      this.textContent = "";
+      const state = this._props.state;
+      if (!state) return;
+      let outcome;
+      try {
+        outcome = presentOutcome({
+          state,
+          correlation_id: this._props.correlationId,
+          elapsedSeconds: this._props.elapsedSeconds
+        });
+      } catch (error) {
+        this.append(element3("p", "glt-ops-empty", error.message));
+        return;
+      }
+      const strip = element3("div", "glt-ops-outcome");
+      strip.dataset.tone = outcome.tone;
+      strip.dataset.state = outcome.state;
+      strip.setAttribute("role", "status");
+      strip.setAttribute("aria-live", "polite");
+      strip.append(element3("span", "glt-ops-mark", MARKS[outcome.tone] ?? "•"));
+      strip.append(element3("span", null, textFor(this.language, outcome.label)));
+      if (outcome.elapsedSeconds !== null) {
+        strip.append(element3("span", "glt-ops-unit", `${outcome.elapsedSeconds}s`));
+      }
+      if (outcome.correlationId) {
+        strip.append(element3("span", "glt-ops-unit", outcome.correlationId));
+      }
+      for (const affordance of outcome.affordances) {
+        const button2 = element3("button", null, textFor(this.language, `affordance_${affordance}`));
+        button2.type = "button";
+        button2.dataset.affordance = affordance;
+        strip.append(button2);
+      }
+      this.append(strip);
+    }
+  };
+  var MARKS = { success: "✓", warning: "!", error: "✕", neutral: "•" };
+  var GltViewStaleness = class extends GltOperationsElement {
+    render() {
+      this.textContent = "";
+      const view = this._props.view ?? { status: "stale" };
+      const strip = element3("div", "glt-ops-stale");
+      strip.dataset.status = view.status;
+      strip.setAttribute("role", "status");
+      strip.setAttribute("aria-live", "polite");
+      strip.append(element3("span", "glt-ops-mark", STATUS_MARKS[view.status] ?? "•"));
+      strip.append(element3("span", null, textFor(this.language, `status_${view.status}`)));
+      if (view.reason) strip.append(element3("span", "glt-ops-unit", view.reason));
+      if (view.status !== "live" && view.observedAt) {
+        strip.append(element3(
+          "span",
+          "glt-ops-unit",
+          `${textFor(this.language, "last_updated")}: ${new Date(view.observedAt).toISOString()}`
+        ));
+      }
+      if (view.status !== "live") strip.classList.add("glt-ops-dim");
+      this.append(strip);
+    }
+  };
+  var STATUS_MARKS = { live: "●", resyncing: "↻", stale: "!", unavailable: "✕" };
+  if (typeof document !== "undefined" && !document.querySelector("style[data-glt-operations]")) {
+    const style = element3("style");
+    style.dataset.gltOperations = "1";
+    style.textContent = STYLE3;
+    document.head?.append(style);
+  }
+  for (const [name, constructor] of [
+    ["glt-flow-card-object-panel", GltObjectPanel],
+    ["glt-flow-card-breadcrumbs", GltBreadcrumbs],
+    ["glt-flow-card-drilldown-list", GltDrilldownList],
+    ["glt-flow-card-outcome-strip", GltOutcomeStrip],
+    ["glt-flow-card-view-staleness", GltViewStaleness]
+  ]) {
+    if (!customElements.get(name)) customElements.define(name, constructor);
+  }
+
   // src/v100/v1-addons.js
   (() => {
     "use strict";

@@ -7,8 +7,15 @@
     return "viewer";
   }
 
-  function canOperate(config, hass) { return ["operator", "designer"].includes(roleFor(config, hass)); }
-  function canDesign(config, hass) { return roleFor(config, hass) === "designer"; }
+  // Retired (04-13), the way Phase 2 retired glt_flow_card/control/execute: the
+  // path stays reachable so a test can prove it produces zero effects, rather
+  // than being deleted somewhere nothing checks it again.
+  //
+  // These were browser-invented permissions. They read card config and
+  // hass.user, and "designer" is not even a role Phase 2 kept. Authority is the
+  // Companion's; the browser asks the server what it may do and renders that.
+  function canOperate() { return false; }
+  function canDesign() { return false; }
 
   function activeAlarm(card, alarm) {
     const st = card._stateAt?.(field(alarm.entity)?.entity);
