@@ -21,6 +21,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from .alarm_vocabulary import ALARM_PRIORITIES, migrate_severity
+
 #: Re-asserted from the Phase-3 vocabulary bounds. An address deeper than the
 #: hierarchy can be is rejected before any walk begins.
 MAX_ADDRESS_DEPTH = 32
@@ -33,9 +35,14 @@ MAX_ADDRESS_LENGTH = 1024
 #: control characters, traversal and percent-encoding tricks outright.
 MAX_SEGMENT_LENGTH = 200
 
-#: Severities a roll-up reports. Closed: an unknown severity is not counted
-#: rather than passed through into a number nobody can interpret.
-COUNTED_SEVERITIES = ("fault", "warning")
+#: Priorities a roll-up reports, in severity order.
+#:
+#: This was ``("fault", "warning")``, which counted neither of the two words the
+#: shipped editor actually writes for the top tier. An alarm an engineer marked
+#: ``critical`` was therefore counted here by nothing at all. The vocabulary now
+#: comes from one place and every stored string is migrated into it, so the
+#: editor's word and the roll-up's word are the same word.
+COUNTED_PRIORITIES = ALARM_PRIORITIES
 
 
 class AddressInvalid(Exception):
@@ -156,9 +163,13 @@ def _counts_for(config: Mapping[str, Any]) -> dict[str, int]:
     for alarm in config.get("alarms", []) or []:
         if not isinstance(alarm, Mapping):
             continue
-        severity = alarm.get("severity")
-        if severity in COUNTED_SEVERITIES and alarm.get("state") == "active":
-            counts[severity] = counts.get(severity, 0) + 1
+        if alarm.get("state") != "active":
+            continue
+        # Migrated, not matched. A stored string nobody declared still lands in
+        # a bucket -- the most severe one -- rather than vanishing from the
+        # total, which is what a membership test did to `critical`.
+        priority = migrate_severity(alarm.get("priority", alarm.get("severity")))["priority"]
+        counts[priority] = counts.get(priority, 0) + 1
     return {name: value for name, value in counts.items() if value > 0}
 
 

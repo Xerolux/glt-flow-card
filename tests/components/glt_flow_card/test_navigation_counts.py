@@ -22,8 +22,15 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.glt_flow_card.alarm_vocabulary import migrate_severity
+
 from .panel_factory import OPEN_PROJECT_ID, RESTRICTED_PROJECT_ID
 from .panel_seed import seed_operations_project
+
+#: The tier the corpus' stored `fault` lands in, derived rather than written.
+#: A literal here would silently stop testing the corpus if the vocabulary
+#: moved again -- the roll-up would report a key nobody asserts.
+COUNTED_KEY = migrate_severity("fault")["priority"]
 
 pytestmark = [
     pytest.mark.enable_socket,
@@ -75,7 +82,11 @@ async def test_expected_red_phase4_navigation_counts(
         rows = rows_by_project(full["result"])
         if RESTRICTED_PROJECT_ID not in rows or OPEN_PROJECT_ID not in rows:
             gaps.append("a member of both projects was not shown both")
-        if totals(full["result"]).get("fault", 0) < 1:
+        # Phase 6 closed the severity vocabulary: the corpus stores `fault`,
+        # which now migrates to the declared `critical` tier. The claim under
+        # test is unchanged -- the count is computed after the project filter --
+        # only the key the roll-up reports it under.
+        if totals(full["result"]).get(COUNTED_KEY, 0) < 1:
             gaps.append("the corpus fault is not counted for a principal who may see it")
 
     # The operator is a member of the open project only. Neither the row nor
@@ -89,7 +100,7 @@ async def test_expected_red_phase4_navigation_counts(
         rows = rows_by_project(result)
         if RESTRICTED_PROJECT_ID in rows:
             gaps.append("a project the operator is not a member of appeared as a row")
-        if totals(result).get("fault"):
+        if totals(result).get(COUNTED_KEY):
             gaps.append(
                 "the portfolio total counted the restricted project's fault, so the "
                 "total was computed before the project filter",
