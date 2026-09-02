@@ -334,8 +334,22 @@ Plans:
 
 **Known defects closed**: Sequential remote-state reads with per-entity timeouts, under-validated remote targets/services, missing remote success/failure audit, broad remote metadata/proxy exposure, and lack of failure-isolated partial roll-ups.
 **Research flag**: Prototype remote authentication lifecycle, SSRF allowlist policy, bounded subscriptions, reconnect, per-entity permissions, and representative partial-failure budgets.
-**Plans**: TBD
+**Research flag**: RESOLVED 2026-09-02 — see `09-RESEARCH.md`. `/api/states` returns every state in one request while the shipped code asks per entity; `subscribe_entities` takes an entity list where `subscribe_events` with `state_changed` delivers every change on the remote instance; an allowlist alone does not survive DNS rebinding so the resolved address must be checked at connection time; and `POST /api/services` returns the states it changed, which is the readback Phase 4's `confirmed` outcome needs and the shipped code discards.
+**Plans**: 12
 **UI hint**: yes
+
+- [ ] 09-01-PLAN.md — Stand up the Phase-9 gate, the socket ledger and the site corpus.
+- [ ] 09-02-PLAN.md — Close the site health, failure and outcome vocabularies in both runtimes.
+- [ ] 09-03-PLAN.md — Make destinations a server-owned allowlist checked at connection time.
+- [ ] 09-04-PLAN.md — Give a site a health state and a circuit breaker that says it is open.
+- [ ] 09-05-PLAN.md — Read one request per site, bounded, with a total deadline the request owns.
+- [ ] 09-06-PLAN.md — Report failures from a closed set, and prove no credential leaves.
+- [ ] 09-07-PLAN.md — Enforce the same capability and project scoping on every remote route.
+- [ ] 09-08-PLAN.md — Give remote controls the four outcomes and the audit local ones have.
+- [ ] 09-09-PLAN.md — Make a partial roll-up state its own completeness.
+- [ ] 09-10-PLAN.md — Bound subscriptions per site and in total, and name their entities.
+- [ ] 09-11-PLAN.md — Ship the site health, roll-up and remote-value surfaces.
+- [ ] 09-12-PLAN.md — Document the contract and close the Phase-9 register from commands.
 
 ### Phase 10: Product-Wide Usability & Release Evidence
 
