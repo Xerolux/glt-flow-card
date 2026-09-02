@@ -290,6 +290,11 @@ async function executePytest(lane, selectors) {
       "--workdir", "/workspace",
       "--env", `GLT_HA_VERSION=${lane.tag}`,
       "--env", `GLT_ZIP_SHA256=${stage.zip.sha256}`,
+      // The container runs as root and the workspace is a bind mount, so any
+      // byte-code it writes is root-owned on the host and the cleanup below
+      // cannot unlink it. The lane imports each module once; caching buys it
+      // nothing.
+      "--env", "PYTHONDONTWRITEBYTECODE=1",
       image,
       "python", "-m", "pytest", ...selectors,
       // `no:cacheprovider`: the container runs as root and the workspace is a
@@ -310,7 +315,24 @@ async function executePytest(lane, selectors) {
       zip_sha256: stage.zip.sha256,
     };
   } finally {
+    await removeWorkspace(workspace);
+  }
+}
+
+/**
+ * Remove the temporary workspace without turning a cleanup problem into a
+ * verdict.
+ *
+ * A directory the host cannot unlink is a permissions artifact of the bind
+ * mount, not a test result. Failing the job on it once hid a run in which every
+ * one of the lane's tests had passed.
+ */
+async function removeWorkspace(workspace) {
+  try {
     await rm(workspace, { recursive: true, force: true });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.warn(`WARN could not remove the lane workspace ${workspace}: ${reason}`);
   }
 }
 
