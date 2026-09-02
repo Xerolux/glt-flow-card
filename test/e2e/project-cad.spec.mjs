@@ -436,3 +436,91 @@ test("phase-5-routing the shipped editor no longer draws the midpoint elbow", as
   expect(shape.crosses, "the shipped router still draws through the obstacle").toBe(false);
   expect(shape.turns).toBeGreaterThan(1);
 });
+
+/** WCAG relative luminance, so "legible" is a number rather than an opinion. */
+function contrastRatio(first, second) {
+  const channel = (value) => (value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  const luminance = ([r, g, b]) => (
+    0.2126 * channel(r / 255) + 0.7152 * channel(g / 255) + 0.0722 * channel(b / 255)
+  );
+  const [light, dark] = [luminance(first), luminance(second)].sort((a, b) => b - a);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+test("phase-5-catalog every state is legible in every style, and by more than colour", async ({
+  page,
+}) => {
+  // T5-03. Two separate claims, and the second is the one that survives a
+  // theme: a state distinguished only by colour is invisible to a reader who
+  // cannot see the colour, and forced colours removes the distinction outright.
+  await mount(page);
+
+  const rendered = await page.evaluate(() => {
+    const browser = document.createElement("glt-flow-card-symbol-browser");
+    document.body.append(browser);
+    browser.props = { language: "en" };
+    const cards = [...browser.querySelectorAll("[data-variant]")];
+    return {
+      count: cards.length,
+      published: browser.querySelector("[data-published-count]")?.textContent ?? "",
+      styles: [...new Set(cards.map((card) => card.dataset.style))].sort(),
+      wordless: cards.filter((card) => (card.textContent ?? "").trim().length === 0).length,
+      drawingless: cards.filter((card) => !card.querySelector("svg")).length,
+    };
+  });
+  expect(rendered.count).toBe(Number(rendered.published));
+  expect(rendered.styles.length).toBeGreaterThan(1);
+  expect(rendered.wordless, "a variant rendered as a picture with no words").toBe(0);
+  expect(rendered.drawingless, "a variant rendered no geometry").toBe(0);
+
+  // Every state, measured against the surface it is drawn on.
+  const contrast = await page.evaluate((states) => {
+    const badge = document.createElement("glt-flow-card-state-badge");
+    document.body.append(badge);
+    const readings = [];
+    for (const state of states) {
+      badge.props = { resolved: { state, labels: { en: state, de: state }, modes: [], evidence: [] } };
+      const node = badge.querySelector("[data-state-symbol]") ?? badge;
+      const style = getComputedStyle(node);
+      readings.push({
+        state,
+        colour: style.color,
+        background: getComputedStyle(document.body).backgroundColor,
+        text: (badge.textContent ?? "").trim(),
+        symbol: node.dataset?.stateSymbol ?? "",
+      });
+    }
+    return readings;
+  }, STATES);
+
+  const parse = (value) => (value.match(/\d+/gu) ?? ["0", "0", "0"]).slice(0, 3).map(Number);
+  const symbols = new Set();
+  for (const reading of contrast) {
+    expect(reading.text.length, `${reading.state} carries no words`).toBeGreaterThan(0);
+    expect(reading.symbol.length, `${reading.state} carries no non-colour cue`).toBeGreaterThan(0);
+    symbols.add(reading.symbol);
+    const ratio = contrastRatio(parse(reading.colour), parse(reading.background));
+    expect(ratio, `${reading.state} is below the contrast floor at ${ratio.toFixed(2)}:1`)
+      .toBeGreaterThanOrEqual(4.5);
+  }
+  // Distinct cues, not one cue in five colours.
+  expect(symbols.size, "two states share a symbol, so colour is the only difference")
+    .toBe(STATES.length);
+
+  // And again with the colour distinction removed entirely.
+  await page.emulateMedia({ forcedColors: "active" });
+  const forced = await page.evaluate((states) => {
+    const badge = document.createElement("glt-flow-card-state-badge");
+    document.body.append(badge);
+    const bad = [];
+    for (const state of states) {
+      badge.props = { resolved: { state, labels: { en: state, de: state }, modes: [], evidence: [] } };
+      if (!(badge.textContent ?? "").trim() || !badge.querySelector("[data-state-symbol]")) {
+        bad.push(state);
+      }
+    }
+    return bad;
+  }, STATES);
+  await page.emulateMedia({ forcedColors: null });
+  expect(forced, "a state lost its text or its symbol in forced colours").toEqual([]);
+});
