@@ -350,3 +350,89 @@ test("phase-5-designer a refused connection is announced in words", async ({ pag
   expect(announcement.text).toContain("kind_mismatch");
   expect(announcement.tone).toBe("error");
 });
+
+test("phase-5-routing a drag reroutes its neighbours and does not freeze the editor", async ({
+  page,
+}) => {
+  // T5-08's exact-artifact half. The router this replaces walked every path in
+  // the view on every emit, and the elbow it drew ignored every obstacle in the
+  // room. Both claims are checked here against the shipped bytes rather than
+  // against the module, because the editor reaches the router through a
+  // published global and a load order that failed to publish it would look
+  // fine in a unit test.
+  await mount(page);
+
+  const published = await page.evaluate(() => {
+    const routing = globalThis.GLT_FLOW_CARD_ROUTING;
+    return routing ? Object.keys(routing).sort() : null;
+  });
+  expect(published, "the router is not published to the editor region").not.toBeNull();
+  expect(published).toContain("createRouter");
+  expect(published).toContain("routePath");
+
+  const outcome = await page.evaluate(() => {
+    const { createRouter } = globalThis.GLT_FLOW_CARD_ROUTING;
+    const routes = [];
+    const obstacles = [];
+    for (let index = 0; index < 40; index += 1) {
+      const y = index * 200;
+      routes.push({
+        id: `r${index}`,
+        source: { x: 0, y, width: 100, height: 60, side: "right" },
+        target: { x: 900, y, width: 100, height: 60, side: "left" },
+      });
+      obstacles.push({ id: `o${index}`, x: 400, y: y + 10, width: 100, height: 100 });
+    }
+    const router = createRouter({ routes, obstacles, options: { clearance: 20, spacing: 12 } });
+    const initial = router.routeAll();
+    const moved = router.moveObstacle("o0", { x: 420, y: 20 });
+    return {
+      routed: Object.keys(initial.routes).length,
+      recomputed: moved.recomputed,
+      clean: Object.values(moved.routes).every((route) => route.routable),
+    };
+  });
+
+  expect(outcome.routed).toBe(40);
+  expect(outcome.clean, "a route in the shipped router was refused").toBe(true);
+  // Bounded in routes, not in milliseconds: a wall-clock budget measured in a
+  // CI browser tells you about the browser.
+  expect(outcome.recomputed).toEqual(["r0"]);
+
+  // The page still answers after the drag. A frozen editor cannot.
+  await expect.poll(() => page.evaluate(() => 1 + 1)).toBe(2);
+
+  const ledger = await readEffectLedger(page);
+  for (const kind of ["service", "api", "dialogs", "scriptInsertion", "localStorage", "network"]) {
+    expect(ledger[kind] ?? [], `routing produced a ${kind} effect`).toEqual([]);
+  }
+});
+
+test("phase-5-routing the shipped editor no longer draws the midpoint elbow", async ({ page }) => {
+  // The retired router is superseded rather than deleted: `autoRoute` still
+  // exists and is still what the editor calls, so this proves the replacement
+  // rather than proving the absence of something nothing checks.
+  await mount(page);
+  const shape = await page.evaluate(() => {
+    const { routePath } = globalThis.GLT_FLOW_CARD_ROUTING;
+    // An obstacle squarely on the sightline. The midpoint elbow would run
+    // straight through it.
+    const routed = routePath({
+      source: { x: 0, y: 0, width: 100, height: 60, side: "right" },
+      target: { x: 600, y: 0, width: 100, height: 60, side: "left" },
+      obstacles: [{ id: "wall", x: 280, y: -60, width: 120, height: 200 }],
+      options: { clearance: 20 },
+    });
+    const crosses = routed.points.some((point, index) => {
+      if (index === 0) return false;
+      const [ax, ay] = routed.points[index - 1];
+      const [bx, by] = point;
+      return Math.max(ax, bx) > 280 && Math.min(ax, bx) < 400
+        && Math.max(ay, by) > -60 && Math.min(ay, by) < 140;
+    });
+    return { routable: routed.routable, crosses, turns: routed.turns };
+  });
+  expect(shape.routable).toBe(true);
+  expect(shape.crosses, "the shipped router still draws through the obstacle").toBe(false);
+  expect(shape.turns).toBeGreaterThan(1);
+});

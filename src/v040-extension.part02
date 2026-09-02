@@ -33,27 +33,110 @@
     return { x: +p.x || 0, y: +p.y || 0, width: +(p.width || item.width || 220), height: +(p.height || item.height || 130) };
   }
 
+  /**
+   * Route one connection with the Phase-5 router.
+   *
+   * What this replaces was the elbow through the midpoint: out to half the
+   * horizontal distance, across, and in. It ignored every obstacle in the
+   * room, which is why the Phase-5 corpus was built to defeat it.
+   *
+   * When the router is not published, this refuses and leaves the existing
+   * points alone. Falling back to the old shape would put a pipe through a
+   * chiller in exactly the situation nobody is watching.
+   */
   function autoRoute(config, path, viewId) {
     if (!path?.from_equipment || !path?.to_equipment || path.auto_route === false) return path?.points;
+    const routing = globalThis.GLT_FLOW_CARD_ROUTING;
+    if (!routing) return path.points;
     const a = equipmentPos(config, path.from_equipment, viewId);
     const b = equipmentPos(config, path.to_equipment, viewId);
     if (!a || !b) return path.points;
-    const leftToRight = a.x + a.width / 2 <= b.x + b.width / 2;
-    const sx = leftToRight ? a.x + a.width : a.x;
-    const ex = leftToRight ? b.x : b.x + b.width;
-    const sy = a.y + a.height / 2;
-    const ey = b.y + b.height / 2;
-    const mx = Math.round((sx + ex) / 2);
-    return [[Math.round(sx), Math.round(sy)], [mx, Math.round(sy)], [mx, Math.round(ey)], [Math.round(ex), Math.round(ey)]];
+    const clearance = Number(config.routing?.clearance) || routing.DEFAULT_CLEARANCE;
+    const obstacles = [];
+    for (const item of config.equipment || []) {
+      if (item.id === path.from_equipment || item.id === path.to_equipment) continue;
+      const box = equipmentPos(config, item.id, viewId);
+      if (box) obstacles.push({ id: item.id, x: box.x, y: box.y, width: box.width, height: box.height });
+    }
+    const facing = (from, to) => (from.x + from.width / 2 <= to.x + to.width / 2 ? "right" : "left");
+    const routed = routing.routePath({
+      source: { x: a.x, y: a.y, width: a.width, height: a.height, side: facing(a, b) },
+      target: { x: b.x, y: b.y, width: b.width, height: b.height, side: facing(b, a) },
+      obstacles,
+      options: { clearance },
+    });
+    // An explicit refusal keeps the drawing as it was and records why, rather
+    // than drawing a route the router just said does not exist.
+    if (!routed.routable) {
+      path.route_refused = routed.reason;
+      return path.points;
+    }
+    delete path.route_refused;
+    return routed.points.map(([x, y]) => [Math.round(x), Math.round(y)]);
   }
 
+  /** Per-config geometry from the last sweep, so the next one can be local. */
+  const ROUTE_GEOMETRY = new WeakMap();
+
+  /**
+   * Recompute the routes a change reached, and no others.
+   *
+   * This walked every path in the view on every emit. On a diagram of any
+   * size that is the freeze the roadmap names, and it ran on every keystroke
+   * that touched the config.
+   *
+   * A route is recomputed when one of its own endpoints moved, or when a
+   * piece of equipment that moved lies inside its corridor -- the same
+   * relevance the Phase-5 router uses, so the cheap answer is the answer a
+   * full sweep would have given.
+   */
   function reroute(config, viewId) {
-    if (config.routing?.automatic === false) return;
+    if (config.routing?.automatic === false) return [];
+    const routing = globalThis.GLT_FLOW_CARD_ROUTING;
+    const clearance = Number(config.routing?.clearance) || (routing?.DEFAULT_CLEARANCE ?? 20);
+    const key = String(viewId ?? "");
+    const held = ROUTE_GEOMETRY.get(config) || {};
+    const previous = held[key];
+    const current = {};
+    for (const item of config.equipment || []) {
+      const box = equipmentPos(config, item.id, viewId);
+      if (box) current[item.id] = box;
+    }
+    const moved = [];
+    for (const [id, box] of Object.entries(current)) {
+      const before = previous?.[id];
+      if (!before || before.x !== box.x || before.y !== box.y
+        || before.width !== box.width || before.height !== box.height) moved.push(box);
+    }
+    const recomputed = [];
     for (const path of config.paths || []) {
       if (!path.from_equipment || !path.to_equipment || path.auto_route === false) continue;
+      const drawn = Array.isArray(path.points) && path.points.length > 0;
+      if (previous && drawn && !reaches(path, moved, clearance)) continue;
       const points = autoRoute(config, path, viewId);
-      if (points) path.points = points;
+      if (points) {
+        path.points = points;
+        recomputed.push(path.id);
+      }
     }
+    held[key] = current;
+    ROUTE_GEOMETRY.set(config, held);
+    return recomputed;
+  }
+
+  /** Whether any moved box lies in this route's corridor. */
+  function reaches(path, moved, clearance) {
+    if (moved.length === 0) return false;
+    const xs = path.points.map((point) => point[0]);
+    const ys = path.points.map((point) => point[1]);
+    const corridor = {
+      left: Math.min(...xs) - clearance, right: Math.max(...xs) + clearance,
+      top: Math.min(...ys) - clearance, bottom: Math.max(...ys) + clearance,
+    };
+    return moved.some((box) => (
+      corridor.left < box.x + box.width + clearance && box.x - clearance < corridor.right
+      && corridor.top < box.y + box.height + clearance && box.y - clearance < corridor.bottom
+    ));
   }
 
   function editorStore(editor) {

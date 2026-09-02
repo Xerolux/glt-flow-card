@@ -24,6 +24,9 @@
  */
 import { COMMAND_KINDS, UNDO_DEPTH_LIMIT, sampleCommand } from "./designer-commands.mjs";
 import { checkCompatibility } from "./ports.mjs";
+import {
+  DEFAULT_CLEARANCE, DEFAULT_SPACING, createRouter, relevantObstacles, routeNetwork, routePath,
+} from "./routing.mjs";
 
 const STYLE = `
   .glt-des{font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;display:block;max-width:100%}
@@ -637,6 +640,25 @@ class GltExtensionManager extends GltDesignerElement {
       this.append(strip);
     }
   }
+}
+
+/**
+ * Publish the router to the v0.4 editor region.
+ *
+ * The two halves of this card are separate bundles concatenated into one file,
+ * with no module linkage between them, so a namespaced global is the only
+ * honest way for the older editor to reach the newer router. It is published
+ * rather than duplicated: the alternative is two routers, and the one nobody
+ * tests is the one the editor actually uses.
+ *
+ * The legacy `autoRoute` refuses to draw anything when this is absent, so a
+ * load order that failed to publish it produces a diagram with no new routes
+ * rather than a diagram full of midpoint elbows through the plant.
+ */
+if (typeof globalThis !== "undefined") {
+  globalThis.GLT_FLOW_CARD_ROUTING = Object.freeze({
+    DEFAULT_CLEARANCE, DEFAULT_SPACING, createRouter, relevantObstacles, routeNetwork, routePath,
+  });
 }
 
 if (typeof document !== "undefined" && !document.querySelector("style[data-glt-designer]")) {
