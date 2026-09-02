@@ -104,6 +104,7 @@ try {
   const specs = [
     "test/e2e/project-safety.spec.mjs",
     "test/e2e/project-authority.spec.mjs",
+    "test/e2e/project-semantics.spec.mjs",
   ];
   const args = [cliPath, "test", ...specs, "--config=playwright.config.mjs"];
   if (options.grep) args.push(`--grep=${options.grep}`);

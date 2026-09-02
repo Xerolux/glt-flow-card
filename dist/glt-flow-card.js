@@ -31045,6 +31045,285 @@ ${entityId}`)) return;
     if (window.GLTFlowCardSDK) window.GLTFlowCardSDK.projectSafety = { version: 1, tabs: 5 };
   }
 
+  // src/v100/semantic-model.mjs
+  var SEMANTIC_LEVELS = Object.freeze([...contractVocabularies.levels]);
+  var UNITS = Object.freeze(contractVocabularies.units);
+  var MEDIA = Object.freeze([...contractVocabularies.media]);
+  var DIRECTIONS = Object.freeze([...contractVocabularies.directions]);
+  var SEMANTIC_TAGS = Object.freeze([...contractVocabularies.semantic_tags]);
+  var BOUNDS = Object.freeze({ ...contractVocabularies.bounds });
+  var LEVEL_INDEX = Object.freeze(Object.fromEntries(
+    SEMANTIC_LEVELS.map((level, index) => [level, index])
+  ));
+  function nodesOf(model) {
+    const nodes = model?.nodes;
+    return Array.isArray(nodes) ? nodes : [];
+  }
+  function semanticPath2(model, nodeId) {
+    const byId = new Map(nodesOf(model).map((node) => [node?.id, node]));
+    const path = [];
+    const seen = /* @__PURE__ */ new Set();
+    let current = nodeId;
+    while (current !== void 0 && current !== null && byId.has(current) && !seen.has(current)) {
+      seen.add(current);
+      path.unshift(current);
+      current = byId.get(current).parent;
+    }
+    return path;
+  }
+
+  // src/v100/equipment-state.mjs
+  var STATE_PRECEDENCE = Object.freeze([
+    "communication_error",
+    "invalid",
+    "stale",
+    "fault",
+    "interlock",
+    "locked",
+    "maintenance",
+    "local",
+    "manual",
+    "command_failed",
+    "command_pending",
+    "warning",
+    "running",
+    "standby",
+    "off"
+  ]);
+  var MODE_QUALIFIERS = Object.freeze(["auto", "remote"]);
+  var LABELS = Object.freeze({
+    communication_error: { en: "Communication error", de: "Kommunikationsfehler" },
+    invalid: { en: "Invalid value", de: "Ungültiger Wert" },
+    stale: { en: "Value not current", de: "Wert nicht aktuell" },
+    fault: { en: "Fault", de: "Störung" },
+    interlock: { en: "Interlocked", de: "Verriegelt" },
+    locked: { en: "Locked", de: "Gesperrt" },
+    maintenance: { en: "Maintenance", de: "Wartung" },
+    local: { en: "Local control", de: "Vor-Ort-Bedienung" },
+    manual: { en: "Manual", de: "Handbetrieb" },
+    command_failed: { en: "Command failed", de: "Befehl fehlgeschlagen" },
+    command_pending: { en: "Command pending", de: "Befehl läuft" },
+    warning: { en: "Warning", de: "Warnung" },
+    running: { en: "Running", de: "In Betrieb" },
+    standby: { en: "Standby", de: "Bereitschaft" },
+    off: { en: "Off", de: "Aus" },
+    unknown: { en: "Unknown", de: "Unbekannt" }
+  });
+  var SYMBOLS = Object.freeze({
+    communication_error: "link-broken",
+    invalid: "question",
+    stale: "clock",
+    fault: "triangle-alert",
+    interlock: "lock-chain",
+    locked: "lock",
+    maintenance: "wrench",
+    local: "hand",
+    manual: "hand",
+    command_failed: "cross",
+    command_pending: "hourglass",
+    warning: "triangle",
+    running: "play",
+    standby: "pause",
+    off: "circle",
+    unknown: "question"
+  });
+  var TONES = Object.freeze({
+    communication_error: "critical",
+    invalid: "critical",
+    stale: "caution",
+    fault: "critical",
+    interlock: "caution",
+    locked: "caution",
+    maintenance: "info",
+    local: "info",
+    manual: "info",
+    command_failed: "critical",
+    command_pending: "info",
+    warning: "caution",
+    running: "positive",
+    standby: "neutral",
+    off: "neutral",
+    unknown: "neutral"
+  });
+  var QUALITY_VALUES = Object.freeze(["good", "uncertain", "bad", "unknown"]);
+  function stateProjection(resolved, locale = "en") {
+    const state = resolved?.state ?? "unknown";
+    const labels = resolved?.labels ?? LABELS.unknown;
+    return {
+      state,
+      symbol: SYMBOLS[state] ?? SYMBOLS.unknown,
+      tone: TONES[state] ?? TONES.unknown,
+      label: locale === "de" ? labels.de : labels.en,
+      modes: [...resolved?.modes ?? []],
+      quality: resolved?.quality ?? "unknown",
+      freshness: resolved?.freshness ?? null,
+      evidence: [...resolved?.evidence ?? []]
+    };
+  }
+
+  // src/v100/project-semantics.js
+  var STYLE2 = `
+  .glt-sem-tree{margin:0;padding:0;list-style:none;font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif}
+  .glt-sem-node{display:flex;align-items:center;gap:8px;min-height:44px;padding:4px 8px;border-radius:8px}
+  .glt-sem-level{font:700 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad);text-transform:uppercase;letter-spacing:.06em}
+  .glt-sem-invalid{color:#ff4f4f;font-weight:700}
+  .glt-sem-path{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad);overflow-wrap:anywhere}
+  .glt-sem-row{display:flex;gap:8px;align-items:baseline;padding:4px 0}
+  .glt-sem-source{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mut,#8198ad)}
+  .glt-sem-badge{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 12px;border:1px solid currentColor;border-radius:999px;font:700 12px/1.4 inherit}
+  .glt-sem-badge[data-tone="critical"]{color:#ff4f4f}.glt-sem-badge[data-tone="caution"]{color:#ff9f1c}
+  .glt-sem-badge[data-tone="positive"]{color:#31d879}.glt-sem-badge[data-tone="info"]{color:#36c7ff}
+  .glt-sem-badge[data-tone="neutral"]{color:var(--mut,#8198ad)}
+  .glt-sem-reasons{margin:4px 0 0;padding-left:20px;font:12px/1.4 inherit}
+  .glt-sem-weak{font-style:italic}
+  @media(forced-colors:active){.glt-sem-badge{border:1px solid CanvasText}}
+`;
+  function element2(name, className, text) {
+    const node = document.createElement(name);
+    if (className) node.className = className;
+    if (text !== void 0) node.textContent = String(text);
+    return node;
+  }
+  var GltSemanticElement = class extends HTMLElement {
+    constructor() {
+      super();
+      this._copy = (key) => key;
+      this._props = {};
+    }
+    connectedCallback() {
+      this.paint();
+    }
+    set copy(value) {
+      if (typeof value !== "function") return;
+      this._copy = value;
+      this.paint();
+    }
+    set props(value) {
+      this._props = value ?? {};
+      this.paint();
+    }
+    get props() {
+      return this._props;
+    }
+    paint() {
+      if (this.isConnected) this.replaceChildren(...this.render());
+    }
+    render() {
+      return [];
+    }
+  };
+  var GltSemanticTree = class extends GltSemanticElement {
+    render() {
+      const { model, invalidNodes = [] } = this._props;
+      const nodes = Array.isArray(model?.nodes) ? model.nodes : [];
+      if (nodes.length === 0) return [element2("p", "glt-sem-path", this._copy("semanticEmpty"))];
+      const invalid = new Set(invalidNodes);
+      const list = element2("ul", "glt-sem-tree");
+      list.setAttribute("role", "tree");
+      for (const node of nodes) {
+        const item = element2("li");
+        item.setAttribute("role", "treeitem");
+        const depth = Math.max(1, SEMANTIC_LEVELS.indexOf(node.level) + 1);
+        item.setAttribute("aria-level", String(depth));
+        const row = element2("div", "glt-sem-node");
+        row.style.paddingLeft = `${8 + depth * 12}px`;
+        row.append(element2("span", "glt-sem-level", node.level ?? "?"));
+        row.append(element2("span", "", node.name ?? node.id));
+        if (invalid.has(node.id)) {
+          row.append(element2("span", "glt-sem-invalid", this._copy("semanticInvalidNode")));
+        }
+        item.append(row);
+        const path = semanticPath2(model, node.id);
+        if (path.length > 0) item.append(element2("div", "glt-sem-path", path.join(" / ")));
+        list.append(item);
+      }
+      for (const [index, item] of [...list.children].entries()) {
+        item.setAttribute("aria-posinset", String(index + 1));
+        item.setAttribute("aria-setsize", String(list.children.length));
+      }
+      return [list];
+    }
+  };
+  var GltProvenanceCard = class extends GltSemanticElement {
+    render() {
+      const record = this._props.record;
+      if (!record) return [];
+      const section = element2("section");
+      section.append(element2("h4", "", this._copy("provenanceHeading")));
+      for (const field of ["integration", "config_entry", "device", "area", "health"]) {
+        const value = record[field];
+        if (!value || !value.source) continue;
+        const row = element2("div", "glt-sem-row");
+        row.append(element2("span", "", this._copy(`provenance_${field}`)));
+        const detail = field === "integration" ? value.label ?? value.domain ?? this._copy("unknown") : value.value ?? value.title ?? value.name ?? value.manufacturer ?? this._copy("unknown");
+        row.append(element2("strong", "", detail));
+        row.append(element2("span", "glt-sem-source", value.source));
+        if (field === "integration" && value.known === false) {
+          row.append(element2("span", "glt-sem-weak", this._copy("provenanceUnknownIntegration")));
+        }
+        section.append(row);
+      }
+      return [section];
+    }
+  };
+  var GltMappingReview = class extends GltSemanticElement {
+    render() {
+      const { candidates = [], onAccept } = this._props;
+      if (candidates.length === 0) return [element2("p", "glt-sem-path", this._copy("mappingEmpty"))];
+      const list = element2("ol");
+      for (const candidate of candidates) {
+        const item = element2("li");
+        item.append(element2("strong", "", candidate.entity_id));
+        item.append(element2("span", "glt-sem-source", ` ${candidate.score}`));
+        if (candidate.override) item.append(element2("span", "", this._copy("mappingOverride")));
+        if (candidate.sufficient === false) {
+          item.append(element2("span", "glt-sem-weak", this._copy("mappingWeakEvidence")));
+        }
+        const reasons = element2("ul", "glt-sem-reasons");
+        for (const reason of candidate.reasons ?? []) {
+          reasons.append(element2("li", "", `${reason.code} ${reason.weight}`));
+        }
+        item.append(reasons);
+        list.append(item);
+      }
+      const accept = element2("button", "", this._copy("mappingAccept"));
+      accept.type = "button";
+      accept.addEventListener("click", () => onAccept?.());
+      return [list, accept];
+    }
+  };
+  var GltStateBadge = class extends GltSemanticElement {
+    render() {
+      const { resolved, locale = "en" } = this._props;
+      if (!resolved) return [];
+      const projection = stateProjection(resolved, locale);
+      const badge = element2("span", "glt-sem-badge");
+      badge.dataset.tone = projection.tone;
+      badge.dataset.stateSymbol = projection.symbol;
+      const glyph = element2("span", "", projection.symbol);
+      glyph.setAttribute("aria-hidden", "true");
+      badge.append(glyph, element2("span", "", projection.label));
+      for (const mode2 of projection.modes) {
+        badge.append(element2("span", "", `· ${mode2}`));
+      }
+      return [badge];
+    }
+  };
+  if (typeof document !== "undefined" && !document.querySelector("style[data-glt-semantics]")) {
+    const style = element2("style");
+    style.dataset.gltSemantics = "1";
+    style.textContent = STYLE2;
+    document.head?.append(style);
+  }
+  for (const [name, constructor] of [
+    ["glt-flow-card-semantic-tree", GltSemanticTree],
+    ["glt-flow-card-provenance-card", GltProvenanceCard],
+    ["glt-flow-card-mapping-review", GltMappingReview],
+    ["glt-flow-card-state-badge", GltStateBadge]
+  ]) {
+    if (!customElements.get(name)) customElements.define(name, constructor);
+  }
+
   // src/v100/v1-addons.js
   (() => {
     "use strict";
