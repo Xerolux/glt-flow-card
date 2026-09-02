@@ -23,9 +23,14 @@ const COMPONENT_FILES = [
   "const.py",
   "diagnostics.py",
   "manifest.json",
+  "policy.py",
+  "policy_sessions.py",
+  "project_access.py",
   "project_bundle.py",
   "project_contract.py",
   "project_diff.py",
+  "project_leases.py",
+  "project_merge.py",
   "project_migrations.py",
   "project_repository.py",
   "project_transactions.py",
@@ -347,5 +352,31 @@ test("category layout version hash and archive mutations are rejected", async ()
     const result = runValidator(mutationRoot);
     assert.notEqual(result.status, 0, `${mutation.name} unexpectedly passed`);
     assert.match(`${result.stdout}\n${result.stderr}`, new RegExp(mutation.expected), mutation.name);
+  }
+});
+
+test("every authored Companion Python module is packaged for HACS", async () => {
+  // A module that exists in the repository but not in the package is a silent
+  // shipping bug: the integration imports it and dies at load time inside a
+  // real Home Assistant, long after every local gate has passed. Deriving the
+  // expectation from the directory means adding a module cannot forget this.
+  const componentRoot = path.join(ROOT, "custom_components/glt_flow_card");
+  const authored = (await readdir(componentRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".py"))
+    .map((entry) => entry.name)
+    .sort();
+
+  const stagerSource = await readFile(path.join(ROOT, "tools/stage-hacs-packages.mjs"), "utf8");
+  const validatorSource = await readFile(path.join(ROOT, "tools/validate-hacs-staging.mjs"), "utf8");
+
+  for (const moduleName of authored) {
+    assert.ok(
+      stagerSource.includes(`"${moduleName}"`),
+      `${moduleName} is not staged by tools/stage-hacs-packages.mjs`,
+    );
+    assert.ok(
+      validatorSource.includes(`"${moduleName}"`),
+      `${moduleName} is not expected by tools/validate-hacs-staging.mjs`,
+    );
   }
 });
