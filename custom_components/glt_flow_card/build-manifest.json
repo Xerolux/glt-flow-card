@@ -127,7 +127,7 @@
     }
   ],
   "build": {
-    "commit": "2b7c6ad565e62f632361090085a3e1fd56dc3d8e",
+    "commit": "42070e64c9827ce0caf16d4e65e34750f3d48895",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -355,6 +355,11 @@
       "path": "src/v100/project-semantics.js",
       "sha256": "6e392a1d3e50ca42305cfee5d2b3f9fad3ea55af789aec402940dce3be3a28c9",
       "size": 8409
+    },
+    {
+      "path": "src/v100/replay-truth.mjs",
+      "sha256": "d89135eec79ff887f5f11dc6965556527ed830f7e2651739d788d7cc0e710f48",
+      "size": 4390
     },
     {
       "path": "src/v100/routing.mjs",
