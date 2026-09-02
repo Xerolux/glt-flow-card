@@ -50057,8 +50057,8 @@
   function rotateRight(value, amount) {
     return value >>> amount | value << 32 - amount;
   }
-  function sha256Hex(text3) {
-    const source = textEncoder.encode(text3);
+  function sha256Hex(text4) {
+    const source = textEncoder.encode(text4);
     const paddedLength = Math.ceil((source.length + 9) / 64) * 64;
     const bytes = new Uint8Array(paddedLength);
     bytes.set(source);
@@ -59480,11 +59480,11 @@
     return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   }
   function canonicalDocument(bytes, path) {
-    let text3;
+    let text4;
     let document2;
     try {
-      text3 = decoder.decode(bytes);
-      document2 = JSON.parse(text3);
+      text4 = decoder.decode(bytes);
+      document2 = JSON.parse(text4);
     } catch {
       failure("bundle.manifest_mismatch", path, { reason: "invalid_json" });
     }
@@ -59494,7 +59494,7 @@
     } catch {
       failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
     }
-    if (text3 !== canonical) failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
+    if (text4 !== canonical) failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
     return { document: document2, canonical };
   }
   function manifestErrorPath(error) {
@@ -61189,7 +61189,7 @@
         return dispatch({ type: "candidate/discarded" });
       },
       /** Load one evidence page through the server's opaque cursor. */
-      async evidencePage({ cursor = null, append: append4 = false } = {}) {
+      async evidencePage({ cursor = null, append: append5 = false } = {}) {
         try {
           const page = await call("glt_flow_card/evidence/list", cursor ? { cursor } : {});
           return dispatch({
@@ -61197,13 +61197,13 @@
             rows: page?.rows ?? [],
             cursor: page?.cursor ?? null,
             hasMore: Boolean(page?.has_more),
-            append: append4
+            append: append5
           });
         } catch (error) {
           return dispatch({ type: "evidence/page-failed", code: error?.code });
         }
       },
-      async telemetryPage({ cursor = null, append: append4 = false } = {}) {
+      async telemetryPage({ cursor = null, append: append5 = false } = {}) {
         try {
           const page = await call("glt_flow_card/telemetry/list", cursor ? { cursor } : {});
           return dispatch({
@@ -61211,7 +61211,7 @@
             rows: page?.rows ?? [],
             cursor: page?.cursor ?? null,
             hasMore: Boolean(page?.has_more),
-            append: append4
+            append: append5
           });
         } catch (error) {
           return dispatch({ type: "telemetry/page-failed", code: error?.code });
@@ -62268,10 +62268,10 @@
     const locale = projectSafetyLocale(editor._hass || editor._glt4Hass, document.documentElement.lang);
     return projectSafetyCopy(locale, key, values);
   }
-  function element(name, className, text3) {
+  function element(name, className, text4) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text3 !== void 0) node.textContent = String(text3);
+    if (text4 !== void 0) node.textContent = String(text4);
     return node;
   }
   function button(label, className = "glt-safe-btn") {
@@ -62285,11 +62285,11 @@
     if (detail) node.append(element("div", "glt-safe-help", detail));
     return node;
   }
-  function status(kind, text3) {
+  function status(kind, text4) {
     const node = element("div", `glt-safe-status ${kind}`);
     node.setAttribute("role", "status");
     node.setAttribute("aria-live", "polite");
-    node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text3));
+    node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text4));
     return node;
   }
   var COMPANION_STATE = {
@@ -62311,12 +62311,12 @@
     "lease_lost",
     "companion_disconnected"
   ]);
-  function chip(glyph, text3, state) {
+  function chip(glyph, text4, state) {
     const node = element("span", "glt-safe-chip");
     node.dataset.state = state;
     const icon = element("span", "", glyph);
     icon.setAttribute("aria-hidden", "true");
-    node.append(icon, element("span", "", text3));
+    node.append(icon, element("span", "", text4));
     return node;
   }
   function leaseChipState(state, affordances) {
@@ -62405,10 +62405,10 @@
       const announcement = state.announcement;
       if (!announcement || announcement.code === this._announced) return;
       this._announced = announcement.code;
-      const text3 = t("announcements")[announcement.code] || t("readOnlyReasons")[announcement.code] || t("errorCodes")[announcement.code] || "";
-      if (!text3) return;
+      const text4 = t("announcements")[announcement.code] || t("readOnlyReasons")[announcement.code] || t("errorCodes")[announcement.code] || "";
+      if (!text4) return;
       const assertive = announcement.level === "assertive";
-      (assertive ? this._assertive : this._polite).textContent = text3;
+      (assertive ? this._assertive : this._polite).textContent = text4;
       (assertive ? this._polite : this._assertive).textContent = "";
     }
   };
@@ -63748,10 +63748,10 @@
   .glt-sem-weak{font-style:italic}
   @media(forced-colors:active){.glt-sem-badge{border:1px solid CanvasText}}
 `;
-  function element2(name, className, text3) {
+  function element2(name, className, text4) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text3 !== void 0) node.textContent = String(text3);
+    if (text4 !== void 0) node.textContent = String(text4);
     return node;
   }
   var GltSemanticElement = class extends HTMLElement {
@@ -64114,10 +64114,10 @@
     const table2 = COPY2[language] ?? COPY2.en;
     return table2[key] ?? COPY2.en[key] ?? key;
   }
-  function element3(name, className, text3) {
+  function element3(name, className, text4) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text3 !== void 0) node.textContent = String(text3);
+    if (text4 !== void 0) node.textContent = String(text4);
     return node;
   }
   var GltOperationsElement = class extends HTMLElement {
@@ -64578,10 +64578,10 @@
     return document.importNode(root, true);
   }
   var PUBLISHED = symbolCatalogStats();
-  function element4(name, className, text3) {
+  function element4(name, className, text4) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text3 !== void 0) node.textContent = String(text3);
+    if (text4 !== void 0) node.textContent = String(text4);
     return node;
   }
   var GltCatalogElement = class extends HTMLElement {
@@ -64680,8 +64680,8 @@
         const all = element4("option", null, textFor2(language, "filter_all"));
         all.value = "";
         select.append(all);
-        for (const [value, text3] of options) {
-          const option2 = element4("option", null, text3);
+        for (const [value, text4] of options) {
+          const option2 = element4("option", null, text4);
           option2.value = value;
           if (active[name] === value) option2.selected = true;
           select.append(option2);
@@ -65671,10 +65671,10 @@
     const table2 = COPY4[language] ?? COPY4.en;
     return table2[key] ?? COPY4.en[key] ?? key;
   }
-  function element5(name, className, text3) {
+  function element5(name, className, text4) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text3 !== void 0) node.textContent = String(text3);
+    if (text4 !== void 0) node.textContent = String(text4);
     return node;
   }
   var GltDesignerElement = class extends HTMLElement {
@@ -66338,10 +66338,10 @@
     const table2 = COPY5[language] || COPY5.en;
     return table2[key] ?? COPY5.en[key] ?? key;
   }
-  function element6(tag, className, text3) {
+  function element6(tag, className, text4) {
     const node = document.createElement(tag);
     if (className) node.className = className;
-    if (text3 !== void 0 && text3 !== null) node.textContent = String(text3);
+    if (text4 !== void 0 && text4 !== null) node.textContent = String(text4);
     return node;
   }
   function priorityOf(row) {
@@ -66809,9 +66809,9 @@
   function labelFor(group, member, language = "de") {
     const wording = LABELS2[group]?.[member];
     if (!wording) throw new Error(`no wording for ${group} "${member}"`);
-    const text3 = wording[language] ?? wording.en;
-    if (!text3) throw new Error(`no ${language} wording for ${group} "${member}"`);
-    return text3;
+    const text4 = wording[language] ?? wording.en;
+    if (!text4) throw new Error(`no ${language} wording for ${group} "${member}"`);
+    return text4;
   }
 
   // src/v100/project-trends.js
@@ -67311,6 +67311,146 @@
     ["glt-flow-card-dispatch-refusal", DispatchRefusal]
   ];
   for (const [name, constructor] of ELEMENTS2) {
+    if (!customElements.get(name)) customElements.define(name, constructor);
+  }
+
+  // src/v100/project-sites.js
+  var LANGUAGES4 = ["de", "en"];
+  var TEXT3 = {
+    siteHealthy: { de: "erreichbar", en: "reachable" },
+    siteSlow: { de: "langsam", en: "slow" },
+    siteUnreachable: { de: "nicht erreichbar", en: "unreachable" },
+    siteCircuitOpen: { de: "ausgesetzt nach wiederholten Fehlern", en: "suspended after repeated failures" },
+    shapeHealthy: { de: "●", en: "●" },
+    shapeSlow: { de: "◐", en: "◐" },
+    shapeUnreachable: { de: "○", en: "○" },
+    shapeCircuitOpen: { de: "✕", en: "✕" },
+    age: {
+      de: (seconds) => `Stand vor ${seconds} s`,
+      en: (seconds) => `read ${seconds} s ago`
+    },
+    unverifiedTls: {
+      de: "unverschlüsselt geprüft: Zertifikat wird für diesen Standort nicht geprüft",
+      en: "unverified: this site's certificate is not checked"
+    },
+    completeness: {
+      de: (answered, total) => `${answered} von ${total} Standorten geantwortet`,
+      en: (answered, total) => `${answered} of ${total} sites answered`
+    },
+    missingSites: {
+      de: "Fehlende Standorte:",
+      en: "Missing sites:"
+    },
+    effectUnknown: {
+      de: "Wirkung unbekannt — der Befehl kann ausgeführt worden sein. Prüfen Sie den Anlagenzustand, bevor Sie etwas erneut senden.",
+      en: "Effect unknown — the command may have run. Check the plant state before sending anything again."
+    },
+    noValue: { de: "kein Messwert", en: "no reading" }
+  };
+  for (const key of Object.keys(TEXT3)) {
+    for (const language of LANGUAGES4) {
+      if (TEXT3[key][language] === void 0) {
+        throw new Error(`site surfaces: "${key}" has no ${language} wording`);
+      }
+    }
+  }
+  function text3(key, language, ...args) {
+    const entry = TEXT3[key]?.[language] ?? TEXT3[key]?.en;
+    return typeof entry === "function" ? entry(...args) : entry;
+  }
+  function append4(parent, tag, value, attributes = {}) {
+    const node = document.createElement(tag);
+    for (const [name, attribute] of Object.entries(attributes)) {
+      if (attribute !== null && attribute !== void 0) node.setAttribute(name, String(attribute));
+    }
+    if (value !== null && value !== void 0) node.textContent = String(value);
+    parent.append(node);
+    return node;
+  }
+  var STATE_KEYS = {
+    healthy: ["siteHealthy", "shapeHealthy"],
+    slow: ["siteSlow", "shapeSlow"],
+    unreachable: ["siteUnreachable", "shapeUnreachable"],
+    circuit_open: ["siteCircuitOpen", "shapeCircuitOpen"]
+  };
+  var SiteHealthBadge = class extends HTMLElement {
+    set props({ site = null, language = "de" }) {
+      this.replaceChildren();
+      if (!site) return;
+      const state = STATE_KEYS[site.state] ? site.state : "unreachable";
+      const [wordKey, shapeKey] = STATE_KEYS[state];
+      this.setAttribute("data-site", site.site_id ?? "");
+      this.setAttribute("data-site-state", state);
+      append4(this, "span", site.site_id, { "data-site-name": "" });
+      append4(this, "span", TEXT3[shapeKey][language], { "data-site-shape": "" });
+      append4(this, "span", text3(wordKey, language), { "data-site-state-text": "" });
+      if (Number.isFinite(site.age_seconds)) {
+        append4(this, "span", text3("age", language, Math.round(site.age_seconds)), {
+          "data-site-age": ""
+        });
+      }
+      if (site.verified_tls === false) {
+        append4(this, "span", text3("unverifiedTls", language), { "data-unverified-tls": "" });
+      }
+    }
+  };
+  var PortfolioRollup = class extends HTMLElement {
+    set props({ rollup = null, language = "de" }) {
+      this.replaceChildren();
+      if (!rollup) return;
+      const answered = rollup.answered_sites ?? [];
+      const absent = rollup.absent_sites ?? [];
+      this.setAttribute("data-complete", String(Boolean(rollup.complete)));
+      append4(this, "span", rollup.label ?? "", { "data-rollup-label": "" });
+      append4(this, "span", rollup.total ?? text3("noValue", language), { "data-rollup-total": "" });
+      append4(this, "span", text3("completeness", language, answered.length, rollup.total_sites ?? 0), {
+        "data-completeness": ""
+      });
+      if (absent.length > 0) {
+        append4(this, "span", text3("missingSites", language), { "data-missing-label": "" });
+        const list = append4(this, "ul", null, { "data-missing": "" });
+        for (const entry of absent) {
+          const item = append4(list, "li", null, { "data-missing-site": entry.site_id });
+          append4(item, "span", entry.site_id, { "data-site-name": "" });
+          const state = STATE_KEYS[entry.state] ? entry.state : "unreachable";
+          append4(item, "span", TEXT3[STATE_KEYS[state][1]][language], { "data-site-shape": "" });
+          append4(item, "span", text3(STATE_KEYS[state][0], language), { "data-site-state-text": "" });
+        }
+      }
+    }
+  };
+  var RemoteValue = class extends HTMLElement {
+    set props({ value = null, unit = "", site = null, language = "de" }) {
+      this.replaceChildren();
+      const state = site && STATE_KEYS[site.state] ? site.state : "unreachable";
+      this.setAttribute("data-site-state", state);
+      const missing = value === null || value === void 0;
+      append4(this, "span", missing ? text3("noValue", language) : value, { "data-value": "" });
+      if (!missing && unit) append4(this, "span", unit, { "data-unit": "" });
+      const badge = document.createElement("glt-flow-card-site-health-badge");
+      this.append(badge);
+      badge.props = { site: site ?? { site_id: "", state }, language };
+    }
+  };
+  var RemoteOutcome = class extends HTMLElement {
+    set props({ outcome = "failed", reason = null, language = "de" }) {
+      this.replaceChildren();
+      this.setAttribute("data-outcome", outcome);
+      if (reason) this.setAttribute("data-reason", reason);
+      if (outcome === "effect_unknown") {
+        append4(this, "span", text3("effectUnknown", language), { "data-effect-unknown": "" });
+        return;
+      }
+      append4(this, "span", outcome, { "data-outcome-text": "" });
+    }
+  };
+  var ELEMENTS3 = [
+    ["glt-flow-card-site-health-badge", SiteHealthBadge],
+    ["glt-flow-card-portfolio-rollup", PortfolioRollup],
+    ["glt-flow-card-remote-value", RemoteValue],
+    ["glt-flow-card-remote-outcome", RemoteOutcome]
+  ];
+  for (const [name, constructor] of ELEMENTS3) {
     if (!customElements.get(name)) customElements.define(name, constructor);
   }
 

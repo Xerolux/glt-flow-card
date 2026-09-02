@@ -195,6 +195,73 @@ hours, because that direction makes an overdue service look current.
 **This is not a CMMS**, and the product makes no CMMS, Brick, Haystack or ISO
 conformance claim.
 
+### Multi-site supervision and remote sites
+
+A central supervision screen is worth having because a person stops watching five
+screens. The moment they do, an unnoticed missing site is a plant nobody is
+watching — so the rule of this phase is not what the view can do, but what it
+says when it cannot.
+
+**A partial answer says that it is partial.** Every roll-up names which sites
+answered, which did not and why, and a total carrying no such statement is
+refused rather than displayed. This is wrong in *both* directions: failing the
+whole evaluation because one site is down hides four healthy plants, and
+returning the four and calling it "the portfolio" is the same defect from the
+other side. A silent site contributes **nothing** — it does not contribute zero.
+
+**"Unreachable" is not an entity state.** A failed read used to write
+`unavailable` per entity, which is a real Home Assistant state: an entity
+genuinely unavailable at the remote site and one we could not ask produced the
+same word. Unreachability belongs to the *site*, in four states — `healthy`,
+`slow`, `unreachable` (asked, did not answer) and `circuit_open` (**not asked**,
+because it has been failing repeatedly). The last pair is the one that matters:
+it is the difference between "check the network" and "that plant has been off
+since Tuesday". `slow` is an answer; treating it as absent would discard real
+data.
+
+**One read per site, not per entity.** Two hundred entities against a
+non-answering site, at fifteen seconds each, is fifty minutes inside a websocket
+handler — an availability defect, and the obvious remedies (shorter timeout,
+fewer entities) make the answer *less* complete rather than faster. States are
+fetched in one request per site and filtered in the Companion, under three bounds
+that answer three different questions: concurrency (how many sites are asked at
+once), a per-site timeout (how long one site may take) and — the one usually
+missing — a **total deadline** that belongs to the request and is not divided
+among the sites. A truncated entity list says that it was truncated.
+
+**Where the Companion may connect is site configuration.** Any URL used to be
+accepted, and the Companion then made an *authenticated* request to it and
+returned the answer to the browser. The check now has two halves and neither
+carries alone: a server-side allowlist, and a check of the **resolved address at
+connect time**, because an allowed name can resolve publicly during validation
+and to `127.0.0.1` when connecting. Loopback, link-local, private and
+unique-local ranges are refused, and `169.254.169.254` is refused by name — it
+is the cloud metadata endpoint, and an SSRF that reaches it returns credentials
+for the whole account. A disabled certificate check must be stated explicitly and
+then travels with every figure that site delivers.
+
+**Credentials do not leave the Companion.** No token appears in a response, a log
+line, an export or an error message, and that is *searched for* rather than
+asserted: a sentinel token is sent through every path, error branches included,
+and looked for in everything that comes back. Errors are a closed set of reasons,
+because connection errors carry the host and port they failed to reach —
+returning `str(err)` let a caller enumerate internal names by provoking failures.
+
+**Remote is not a second product.** Every rule of the local path holds one
+network hop further out: the same capabilities, the same project scoping, the
+same four command outcomes, the same audit, the same simulation lock. A site
+belongs to projects, and that binding is server configuration; being authorized
+on project A does not operate site B. The site list is filtered and *then*
+limited, because the other order turns the limit into a counting oracle for rows
+the caller may not see. A timeout is reported as `effect_unknown` and **no retry
+is offered beside an unknown effect** — repairing forward is a new, separately
+authorized command, or the plant gets operated twice.
+
+**What this is not.** No remote engineering, no cross-site alarm correlation, no
+measured capacity numbers (Phase 10 owns the budgets; this phase makes the
+*shape* of the cost boundable and states its limits) and no redesign of
+credential storage.
+
 > The **GLT Flow Card Companion** is recommended for secure controls, cross-device projects, alarms, schedules, audit, locks and remote Home Assistant sites. The dashboard card still works standalone.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**
@@ -315,8 +382,10 @@ authority makes shared editing read-only rather than falling back to a
 privileged local path.
 
 **Remote sites.** Remote listing, remote states and remote control are declared
-and fail closed with `feature_unavailable`. The remote transport is Phase 9 work
-and is not available in this release.
+here and their authority is the local one: the same capabilities, the same
+project scoping, the same audit. Phase 9 supplies the transport underneath them;
+until a site is configured server-side and passes the destination check, the
+routes still fail closed.
 
 **Upgrading.** The legacy 30–3600 second lock window does not survive the
 upgrade: a stored value is clamped into the 60–900 second lease window rather

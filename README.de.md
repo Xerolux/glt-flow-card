@@ -205,6 +205,84 @@ lässt eine überfällige Wartung aussehen wie eine erledigte.
 **Das ist kein CMMS**, und das Produkt behauptet keine CMMS-, Brick-, Haystack-
 oder ISO-Konformität.
 
+### Multi-Site-Aufsicht und Fern-Standorte
+
+Eine zentrale Aufsicht ist deshalb wertvoll, weil jemand aufhört, fünf
+Bildschirme zu beobachten. In dem Moment, in dem er das tut, ist ein unbemerkt
+fehlender Standort eine Anlage, die niemand beobachtet — die wichtigste Regel
+dieser Phase ist deshalb nicht, was die Ansicht kann, sondern was sie sagt, wenn
+sie etwas nicht kann.
+
+**Eine unvollständige Antwort sagt, dass sie unvollständig ist.** Jede
+Auswertung nennt, welche Standorte geantwortet haben, welche nicht und warum;
+eine Summe ohne diese Angabe wird abgelehnt statt angezeigt. Das ist in *beide*
+Richtungen falsch: die ganze Auswertung scheitern zu lassen, weil ein Standort
+ausgefallen ist, macht vier gesunde Anlagen unsichtbar — und die vier
+zurückzugeben und es „das Portfolio“ zu nennen, ist derselbe Fehler von der
+anderen Seite. Ein stiller Standort trägt **nichts** zur Summe bei; er trägt
+nicht null bei.
+
+**„Nicht erreichbar“ ist kein Entitätszustand.** Ein fehlgeschlagener Lesevorgang
+schrieb vorher je Entität `unavailable` — ein *echter* Home-Assistant-Zustand.
+Eine Entität, die am entfernten Standort tatsächlich nicht verfügbar ist, und
+eine, die wir nicht fragen konnten, ergaben dasselbe Wort. Unerreichbarkeit
+gehört zum *Standort*, in vier Zuständen: `healthy`, `slow`, `unreachable`
+(gefragt, nicht geantwortet) und `circuit_open` (**nicht gefragt**, weil er
+wiederholt ausgefallen ist). Die letzten beiden sind das Paar, auf das es
+ankommt: der Unterschied zwischen „Netzwerk prüfen“ und „die Anlage steht seit
+Dienstag“. `slow` ist eine Antwort; sie als Ausfall zu behandeln würde echte
+Daten wegwerfen.
+
+**Ein Lesevorgang pro Standort, nicht pro Entität.** Zweihundert Entitäten gegen
+einen nicht antwortenden Standort, mit je fünfzehn Sekunden Zeitlimit, sind
+fünfzig Minuten innerhalb eines Websocket-Handlers — ein Verfügbarkeitsfehler,
+und die naheliegenden Abhilfen (kürzeres Zeitlimit, weniger Entitäten) machen die
+Antwort *unvollständiger* statt schneller. Zustände werden in einer Anfrage je
+Standort geholt und im Companion gefiltert, unter drei Grenzen, die drei
+verschiedene Fragen beantworten: Nebenläufigkeit (wie viele Standorte
+gleichzeitig gefragt werden), Zeitlimit je Standort (wie lange ein Standort
+brauchen darf) und — die meistens fehlende — eine **Gesamtfrist**, die der
+Anfrage gehört und nicht unter den Standorten aufgeteilt wird. Eine gekürzte
+Entitätsliste sagt, dass sie gekürzt wurde.
+
+**Wohin der Companion sich verbinden darf, ist Standortkonfiguration.** Vorher
+wurde jede URL akzeptiert, und der Companion stellte dann eine
+*authentifizierte* Anfrage dorthin und gab die Antwort an den Browser zurück.
+Die Prüfung hat jetzt zwei Hälften, und keine trägt allein: eine serverseitige
+Freigabeliste und eine Prüfung der **aufgelösten Adresse beim
+Verbindungsaufbau**, denn ein freigegebener Name kann bei der Prüfung öffentlich
+auflösen und beim Verbinden auf `127.0.0.1`. Abgelehnt werden Loopback,
+Link-Local, private und Unique-Local-Bereiche; `169.254.169.254` wird namentlich
+geprüft — das ist der Metadaten-Endpunkt der Cloud, und ein SSRF, der ihn
+erreicht, liefert Zugangsdaten für das ganze Konto. Eine abgeschaltete
+Zertifikatsprüfung muss ausdrücklich erklärt werden und steht danach an jeder
+Zahl, die dieser Standort liefert.
+
+**Zugangsdaten verlassen den Companion nicht.** Kein Token erscheint in einer
+Antwort, einer Protokollzeile, einem Export oder einer Fehlermeldung — und das
+wird *gesucht*, nicht behauptet: Ein Sentinel-Token wird durch jeden Pfad
+geschickt, auch durch jeden Fehlerzweig, und in allen Ausgaben danach gesucht.
+Fehler sind eine geschlossene Menge von Begründungen, denn Verbindungsfehler
+tragen den Host und den Port, den sie nicht erreichen konnten; `str(err)`
+zurückzugeben ließ einen Aufrufer interne Namen aufzählen, indem er Fehler
+provozierte.
+
+**Fern ist kein zweites Produkt.** Jede Regel des lokalen Pfades gilt eine
+Netzwerkstrecke weiter unverändert: dieselben Fähigkeiten, dieselbe
+Projektzuordnung, dieselben vier Bedienergebnisse, dasselbe Audit, dieselbe
+Simulationssperre. Ein Standort gehört zu Projekten, und diese Bindung ist
+Serverkonfiguration; wer auf Projekt A berechtigt ist, bedient nicht Standort B.
+Die Standortliste wird gefiltert und *dann* begrenzt — andersherum würde die
+Grenze zum Zähl-Orakel für Zeilen, die der Aufrufer nicht sehen darf. Eine
+Zeitüberschreitung wird als `effect_unknown` gemeldet, und **neben einer
+unbekannten Wirkung wird kein Wiederholen angeboten**: Nachbessern ist ein neuer,
+separat autorisierter Befehl, sonst wird die Anlage zweimal bedient.
+
+**Was es nicht gibt.** Kein Fern-Engineering, keine standortübergreifende
+Alarmkorrelation, keine gemessenen Kapazitätszahlen (Phase 10 besitzt die
+Budgets; diese Phase macht die *Form* der Kosten begrenzbar und nennt ihre
+Grenzen) und keine Neugestaltung der Zugangsdatenhaltung.
+
 > Für sichere Bedienungen, geräteübergreifende Projekte, Alarme, Zeitprogramme, Audit, Locks und Remote-Home-Assistant wird der **GLT Flow Card Companion** empfohlen. Die reine Dashboard-Card bleibt weiterhin ohne Backend nutzbar.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**
@@ -338,8 +416,10 @@ Bearbeiten schreibgeschützt, statt auf einen privilegierten lokalen Pfad
 zurückzufallen.
 
 **Remote Sites.** Remote-Liste, Remote-Zustände und Remote-Steuerung sind
-deklariert und antworten fail-closed mit `feature_unavailable`. Der
-Remote-Transport ist Aufgabe von Phase 9 und in diesem Stand nicht verfügbar.
+hier deklariert, und ihre Autorität ist die lokale: dieselben Fähigkeiten,
+dieselbe Projektzuordnung, dasselbe Audit. Phase 9 liefert den Transport
+darunter; solange ein Standort nicht serverseitig konfiguriert ist und die
+Zielprüfung besteht, antworten die Routen weiterhin fail-closed.
 
 **Upgrade.** Das alte Lock-Fenster von 30–3600 Sekunden überlebt das Upgrade
 nicht: ein gespeicherter Wert wird in das Lease-Fenster von 60–900 Sekunden
