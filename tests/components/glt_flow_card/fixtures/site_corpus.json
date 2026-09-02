@@ -1,0 +1,117 @@
+{
+  "allowlist": [
+    "site-a.example",
+    "site-b.example",
+    "glt-fake-site.invalid"
+  ],
+  "cases": [
+    {
+      "expected": "allowed",
+      "expected_at_connect": null,
+      "id": "allowlisted-public",
+      "resolves_to": "93.184.216.34",
+      "url": "https://site-a.example:8123/",
+      "why": "the ordinary case; without it the check could simply refuse everything and pass every other case"
+    },
+    {
+      "expected": "host_not_allowlisted",
+      "expected_at_connect": null,
+      "id": "not-allowlisted",
+      "resolves_to": "93.184.216.99",
+      "url": "https://evil.example/",
+      "why": "a destination nobody put on the list, caught before anything resolves"
+    },
+    {
+      "expected": "allowed",
+      "expected_at_connect": "address_not_routable",
+      "id": "resolves-to-loopback",
+      "resolves_to": "127.0.0.1",
+      "url": "https://site-b.example/",
+      "why": "allowlisted, and pointing back at this machine: only the connection-time check can see it"
+    },
+    {
+      "expected": "allowed",
+      "expected_at_connect": "address_not_routable",
+      "id": "cloud-metadata",
+      "resolves_to": "169.254.169.254",
+      "url": "https://site-b.example/",
+      "why": "the cloud metadata endpoint; an SSRF that reaches it returns credentials for the whole account"
+    },
+    {
+      "expected": "allowed",
+      "expected_at_connect": "address_not_routable",
+      "id": "resolves-to-private",
+      "resolves_to": "10.0.0.5",
+      "url": "https://site-b.example/",
+      "why": "the site's own internal network, reachable from the Companion and from nowhere else"
+    },
+    {
+      "expected": "allowed",
+      "expected_at_connect": "address_not_routable",
+      "id": "resolves-to-private-172",
+      "resolves_to": "172.16.4.9",
+      "url": "https://site-b.example/",
+      "why": "the RFC 1918 range people forget, because it is not 10 or 192.168"
+    },
+    {
+      "expected": "allowed",
+      "expected_at_connect": "address_not_routable",
+      "id": "unique-local-ipv6",
+      "resolves_to": "fd00::1",
+      "url": "https://site-b.example/",
+      "why": "IPv6 has its own private range and a hand-written check usually omits it"
+    },
+    {
+      "expected": "allowed",
+      "expected_at_connect": "address_not_routable",
+      "id": "ipv6-loopback",
+      "resolves_to": "::1",
+      "url": "https://site-b.example/",
+      "why": "loopback again, spelled differently"
+    },
+    {
+      "expected": "allowed",
+      "expected_at_connect": "address_not_routable",
+      "id": "documentation-range",
+      "resolves_to": "203.0.113.10",
+      "url": "https://site-b.example/",
+      "why": "TEST-NET-3 looks public and is reserved; my first corpus used it as a public address and the check was right to refuse it"
+    },
+    {
+      "expected": "allowed",
+      "expected_at_connect": "address_not_routable",
+      "id": "rebinding",
+      "rebinds_to": "127.0.0.1",
+      "resolves_to": "93.184.216.35",
+      "url": "https://site-b.example/",
+      "why": "resolves publicly when validated and privately when connected to; this is the case that makes the second check necessary rather than belt-and-braces"
+    },
+    {
+      "expected": "host_not_allowlisted",
+      "expected_at_connect": null,
+      "id": "credentials-in-url",
+      "resolves_to": "93.184.216.34",
+      "url": "https://evil.example@site-a.example/",
+      "why": "reads as site-a.example to a human; refused rather than resolved, because which half wins is not a question a security check should have an opinion about"
+    },
+    {
+      "expected": "scheme_not_allowed",
+      "expected_at_connect": null,
+      "id": "bad-scheme",
+      "resolves_to": "127.0.0.1",
+      "url": "file:///etc/passwd",
+      "why": "not every URL is an HTTP URL"
+    },
+    {
+      "expected": "scheme_not_allowed",
+      "expected_at_connect": null,
+      "id": "gopher-scheme",
+      "resolves_to": "93.184.216.34",
+      "url": "gopher://site-a.example/",
+      "why": "an allowlisted host does not make an arbitrary protocol acceptable"
+    }
+  ],
+  "format": "glt-flow-card-site-corpus",
+  "note": "Two stages, and each case says which one should catch it. Validation checks the scheme, the allowlist and the TLS declaration; only the connection-time check can see what a name resolves to. The rebinding case is why both exist: an allowlist holds at validation time and not at connection time. No entry contains a real credential, and nothing ever connects to these addresses because the transport is a fixture.",
+  "version": 2
+}

@@ -310,12 +310,21 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/work_orders/save", "work_order.write"),
     _route("glt_flow_card/reports/run", "report.run"),
     _route("glt_flow_card/reports/list", "report.read", enumeration="filter"),
-    # -- remote sites: declared, unavailable until Phase 9 (resolved A6) ---
+    # -- remote sites: available from Phase 9 -------------------------------
+    #
+    # `remote/list` enumerates `filter` for the same reason `alarms/list` and
+    # `history/series` do: a refusal would tell an unauthorized caller that
+    # sites exist, and the limit is applied after filtering so it cannot become
+    # a count oracle.
+    #
+    # `remote/states` and `remote/control` are `opaque`: unlike a listing there
+    # is no honest partial answer to "read this site" or "operate this site",
+    # so both refuse with `not_found_or_denied`, which deliberately does not
+    # distinguish "no such site" from "not allowed".
     _route("glt_flow_card/remote/list", "remote.read", scope="component",
-           enumeration="filter", state="deferred"),
-    _route("glt_flow_card/remote/states", "remote.read", scope="component",
-           state="deferred"),
-    _route("glt_flow_card/remote/control", "remote.control", state="deferred"),
+           enumeration="filter"),
+    _route("glt_flow_card/remote/states", "remote.read", scope="component"),
+    _route("glt_flow_card/remote/control", "remote.control"),
     # -- extensions (05-17) ------------------------------------------------
     # Component-scoped and filtered, for the same reason the portfolio is: an
     # unassigned caller sees an empty list, which is what an installation with

@@ -168,7 +168,13 @@ async def test_retired_and_deferred_routes_fail_closed(
     config_entry: MockConfigEntry,
     hass_ws_client,
 ) -> None:
-    """Legacy locks, caller-selected control and remote transport are inert."""
+    """Legacy locks and caller-selected control are inert.
+
+    The remote routes used to be in this list. Phase 9 implements them, so they
+    are no longer `feature_unavailable` — they now enforce capability and project
+    scoping, and `test_remote_authority.py` asserts that. Leaving them here would
+    have made the test pass by asserting a route stays broken.
+    """
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
     client = await hass_ws_client(hass)
@@ -184,8 +190,6 @@ async def test_retired_and_deferred_routes_fail_closed(
             "service": "turn_on",
         },
         {"type": "glt_flow_card/audit/add", "event": {"action": "forged"}},
-        {"type": "glt_flow_card/remote/list"},
-        {"type": "glt_flow_card/remote/states", "site_id": "x", "entity_ids": []},
     ):
         response = await command(client, payload)
         assert response["success"] is False, payload["type"]

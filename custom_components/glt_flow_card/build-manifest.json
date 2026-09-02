@@ -138,7 +138,7 @@
   ],
   "build": {
     "commit": "6816de8389f6ef854438333b66ef3ca08ca52704",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -169,8 +169,8 @@
     },
     {
       "path": "package.json",
-      "sha256": "f25dd653ef875d996961cec23f937d7a8011248116bbf17b31691583aef80aad",
-      "size": 4934
+      "sha256": "f99da7f77cf968bd495ae728cbb04f104f593a875c4e0a6930d6ff7e03bf77af",
+      "size": 5135
     },
     {
       "path": "schemas/bundle-manifest.schema.json",
@@ -416,6 +416,11 @@
       "path": "src/v100/semantic-model.mjs",
       "sha256": "21410bb65f7f5af578bfca459360349bcbfe686cb02fee91de0579e60cc0c94d",
       "size": 6396
+    },
+    {
+      "path": "src/v100/site-vocabulary.mjs",
+      "sha256": "13746888b9d657f245a432dc7e098cdd8474107249333f9708085ddfde1893ad",
+      "size": 3280
     },
     {
       "path": "src/v100/v1-addons.js",

@@ -210,6 +210,21 @@ async def enumeration_gaps(
     # Seed one real project so an authorized direct read has something to read,
     # and one the probe never assigns anyone to, so "hidden" is really hidden.
     manager = hass.data["glt_flow_card"]["manager"]
+    # And one remote site, so the Phase-9 routes reach a *decision* rather than
+    # "no such site" -- the same arrangement this probe already makes for
+    # projects. Its host is deliberately absent from the (empty) allowlist, so
+    # the destination check refuses before anything is resolved or connected:
+    # a policy probe must never open a socket, and this one cannot.
+    manager.site_allowlist = []
+    manager.remote_sites = {
+        "probe": {
+            "id": "probe",
+            "url": "https://probe-site.invalid/",
+            "token": "probe-token-never-used",
+            "descriptor": {"host": "probe-site.invalid", "id": "probe", "port": None,
+                           "scheme": "https", "verified_tls": True},
+        },
+    }
     for seeded in (PROJECT_ID, HIDDEN_PROJECT_ID):
         await manager.save_project(
             {

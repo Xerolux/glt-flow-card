@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
 import json
+import time
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any
@@ -34,6 +35,7 @@ from homeassistant.util import dt as dt_util
 from . import (
     alarm_engine,
     dispatch_gate,
+    remote_fanout,
     history_bounds,
     history_routes,
     notifications,
@@ -42,6 +44,10 @@ from . import (
     schedule_time,
     scenarios,
     series_coverage,
+    site_destinations,
+    site_health,
+    site_rollup,
+    site_vocabulary,
 )
 from .simulation_session import SessionRejected, SimulationSessions
 from .configured_controls import (
@@ -204,6 +210,12 @@ class GltStore:
             "locks": {}, "schedule_runs": {}, "schedule_history": [],
         }
         self.remote_sites: dict[str, dict[str, Any]] = {}
+        #: Which hosts the Companion may connect to. Server configuration, never
+        #: project data -- the same rule as the notification allowlist and the
+        #: simulation gate.
+        self.site_allowlist: list[str] = []
+        self.site_refusals: list[dict[str, Any]] = []
+        self.site_breakers = site_health.SiteBreakers(monotonic=time.monotonic)
         self._alarm_tasks: dict[str, asyncio.Task] = {}
         #: When Home Assistant reported itself started. None means "not yet",
         #: and that counts as inside the startup grace: the guard must be closed
@@ -554,36 +566,142 @@ class GltStore:
         await self.async_save()
         return deepcopy(snapshot)
 
-    def configure_remote_sites(self, sites: list[dict[str, Any]]) -> None:
-        self.remote_sites = {str(s.get("id")): deepcopy(s) for s in sites if s.get("id") and s.get("url") and s.get("token")}
+    def configure_remote_sites(
+        self, sites: list[dict[str, Any]], *, allowlist: list[str] | None = None,
+    ) -> None:
+        """Accept only the sites that pass the destination check.
 
-    async def remote_states(self, site_id: str, entity_ids: list[str]) -> dict[str, Any]:
-        site = self.remote_sites.get(site_id)
-        if not site:
-            raise ValueError("remote site not found")
-        session = async_get_clientsession(self.hass, verify_ssl=site.get("verify_ssl", True))
+        D9: this accepted any `url` -- no scheme check, no host validation, no
+        allowlist -- and the Companion then made an authenticated request to it
+        and returned the body to the browser. A refused site is *dropped and
+        recorded*, never silently kept: a site that looks configured and is not
+        reachable is a plant somebody believes is being watched.
+        """
+        self.site_allowlist = list(allowlist or [])
+        self.remote_sites = {}
+        self.site_refusals = []
+        for site in sites:
+            try:
+                descriptor = site_destinations.validate_site(site, allowlist=self.site_allowlist)
+            except site_destinations.DestinationRefused as refused:
+                self.site_refusals.append({
+                    "reason": refused.reason, "site_id": str(site.get("id") or ""),
+                })
+                continue
+            self.remote_sites[str(site["id"])] = {**deepcopy(site), "descriptor": descriptor}
+
+    async def _fetch_site_states(self, site_id: str, *, timeout: float) -> list[dict[str, Any]]:
+        """Fetch every state from one site in one request.
+
+        `GET /api/states` returns all of them. The shipped code asked once per
+        entity, so two hundred entities against one unresponsive site was fifty
+        minutes inside a websocket handler -- and over a slow link the round
+        trips *are* the cost.
+        """
+        site = self.remote_sites[site_id]
+        descriptor = site["descriptor"]
+        # Re-checked immediately before connecting, because a name allowlisted
+        # and validated an hour ago may resolve to 127.0.0.1 now.
+        site_destinations.check_before_connecting(
+            descriptor,
+            allowlist=self.site_allowlist,
+            resolve=self._resolve_host,
+        )
+        session = async_get_clientsession(self.hass, verify_ssl=descriptor["verified_tls"])
         headers = {"Authorization": f"Bearer {site['token']}", "Content-Type": "application/json"}
-        result = {}
-        for entity_id in entity_ids[:200]:
-            async with session.get(f"{site['url'].rstrip('/')}/api/states/{entity_id}", headers=headers, timeout=15) as resp:
-                if resp.status == 200:
-                    result[entity_id] = await resp.json()
-                else:
-                    result[entity_id] = {"state": "unavailable", "error": resp.status}
-        return result
+        async with session.get(
+            f"{site['url'].rstrip('/')}/api/states", headers=headers, timeout=timeout,
+        ) as response:
+            if response.status >= 400:
+                raise PermissionError(f"HTTP {response.status}")
+            return await response.json()
 
-    async def remote_control(self, site_id: str, domain: str, service: str, data: dict[str, Any]) -> Any:
+    async def read_remote_states(
+        self, site_ids: list[str], entity_ids: list[str],
+    ) -> dict[str, Any]:
+        """Read many sites at once, and say which did not answer.
+
+        Returns the fan-out result rather than a bare state map, because a state
+        map cannot express "this site was silent" without inventing a state for
+        its entities -- which is exactly what the shipped code did.
+        """
+        result = await remote_fanout.read_sites(
+            [site_id for site_id in site_ids if site_id in self.remote_sites],
+            entity_ids,
+            fetch=lambda site_id, timeout: self._fetch_site_states(site_id, timeout=timeout),
+            is_open=self.site_breakers.should_skip,
+        )
+        for answer in result.answers:
+            if answer.answered:
+                self.site_breakers.record_success(answer.site_id)
+            elif answer.state != "circuit_open":
+                self.site_breakers.record_failure(answer.site_id)
+        return {
+            "absent_sites": result.absent,
+            "answered_sites": result.answered,
+            "deadline_reached": result.deadline_reached,
+            "limit": result.limit,
+            # Merged with absence kept absent: an entity missing here is
+            # missing, never `unavailable`.
+            "states": site_health.merge_states(result.answers),
+            "truncated": result.truncated,
+        }
+
+    def _resolve_host(self, host: str) -> str:
+        """Resolve a host to the address that will actually be connected to."""
+        import socket
+
+        return socket.gethostbyname(host)
+
+    async def remote_control(
+        self, site_id: str, domain: str, service: str, data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Call one remote service, with the four outcomes local controls have.
+
+        T9-11: this returned the remote's JSON on success and raised on any
+        failure, so Phase 4's *accepted*, *sent*, *confirmed* and *failed after
+        dispatch* all collapsed into two.
+
+        T9-12: and a timeout was reported as a failure. Over a network that is
+        the canonical case where the service may well have run, so it is
+        `effect_unknown` -- reporting it as failed invites a retry, and a retry
+        after an unknown is how plant gets operated twice.
+        """
         site = self.remote_sites.get(site_id)
         if not site:
             raise ValueError("remote site not found")
         if domain not in SAFE_SERVICE_DOMAINS:
             raise PermissionError("service domain not allowed")
-        session = async_get_clientsession(self.hass, verify_ssl=site.get("verify_ssl", True))
+
+        descriptor = site["descriptor"]
+        site_destinations.check_before_connecting(
+            descriptor, allowlist=self.site_allowlist, resolve=self._resolve_host,
+        )
+        session = async_get_clientsession(self.hass, verify_ssl=descriptor["verified_tls"])
         headers = {"Authorization": f"Bearer {site['token']}", "Content-Type": "application/json"}
-        async with session.post(f"{site['url'].rstrip('/')}/api/services/{domain}/{service}", headers=headers, json=data, timeout=15) as resp:
-            if resp.status >= 300:
-                raise RuntimeError(f"remote service failed: HTTP {resp.status}")
-            return await resp.json()
+        url = f"{site['url'].rstrip('/')}/api/services/{domain}/{service}"
+
+        try:
+            async with session.post(url, headers=headers, json=data, timeout=15) as response:
+                if response.status >= 300:
+                    return {"outcome": "failed", "reason": "unauthorized", "readback": []}
+                # `POST /api/services` returns the states it changed. That is
+                # the readback `confirmed` needs, and the shipped code discarded
+                # it.
+                readback = await response.json()
+        except asyncio.TimeoutError:
+            return {"outcome": site_vocabulary.outcome_for_failure("timeout"),
+                    "reason": "timeout", "readback": []}
+        except Exception as error:  # noqa: BLE001 - mapped to a closed reason
+            reason = remote_fanout.classify_failure(error)
+            return {"outcome": site_vocabulary.outcome_for_failure(reason),
+                    "reason": reason, "readback": []}
+
+        return {
+            "outcome": "confirmed" if readback else "sent",
+            "reason": None,
+            "readback": readback or [],
+        }
 
     def alarm_index(self) -> dict[str, list[str]]:
         """Return the current entity to alarm index, rebuilt from one place."""
@@ -2387,6 +2505,27 @@ async def _audit_simulation_refusal(hass, connection, decision, kind, gate, subj
     }, uid, uname)
 
 
+def _may_reach_site(hass, connection, site) -> bool:
+    """Return whether this caller may reach one site.
+
+    T9-09. `remote_control` checked only the service domain, which is a good
+    check and was the *only* one: the caller's `project_id` drove a role check
+    but was never checked against the site, so an operator on project A could
+    operate site B.
+
+    A site declares which projects it belongs to, and that binding is server
+    configuration -- the same rule as the destination allowlist, the notification
+    allowlist and the simulation gate. A site with no declared projects is
+    reachable by anyone who holds `remote.read`, which is the pre-existing
+    single-site behaviour and is stated here rather than left implicit.
+    """
+    runtime = _runtime_for(hass)
+    project_ids = list((site or {}).get("project_ids") or [])
+    if not project_ids:
+        return True
+    return bool(runtime.policy.visible_projects(connection, project_ids, "remote.read"))
+
+
 def _site_timezone(hass, project_id: str) -> str:
     """Return the timezone a period is resolved in, for one project.
 
@@ -2867,20 +3006,85 @@ async def ws_reports_list(hass, connection, msg):
     connection.send_result(msg["id"], [deepcopy(x) for x in _manager(hass).data["report_history"] if not pid or x.get("project_id") == pid])
 
 
-@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/remote/list"})
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/remote/list",
+    # Optional with a default, so the generic policy prober reaches a decision
+    # rather than a schema rejection. Phase 5 lost a round to exactly this and
+    # Phase 7's history routes record the same note.
+    vol.Optional("limit", default=100): vol.All(int, vol.Range(min=1, max=500)),
+})
 @websocket_api.async_response
 async def ws_remote_list(hass, connection, msg):
-    sites = [{k:v for k,v in site.items() if k != "token"} for site in _manager(hass).remote_sites.values()]
-    connection.send_result(msg["id"], sites)
+    """List the sites this caller may see.
+
+    T9-10. This returned **every** configured site to any caller: the token was
+    stripped, which is right, but the url and name were not and nothing filtered
+    by what the caller may reach.
+
+    Filtered, then limited. Limiting first turns the limit into a count oracle
+    for rows the caller may not see -- Phase 6 established this for
+    `alarms/list` and Phase 7 for `history/series`, and this is the third route
+    to need it.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    manager = _manager(hass)
+    visible = []
+    for site in manager.remote_sites.values():
+        project_ids = list(site.get("project_ids") or [])
+        if project_ids and not runtime.policy.visible_projects(
+            connection, project_ids, "remote.read",
+        ):
+            continue
+        visible.append({
+            key: value for key, value in site.items()
+            # The token never leaves, and neither does anything that would let a
+            # caller reconstruct where the Companion connects.
+            if key not in ("token", "url")
+        })
+    limit = int(msg.get("limit") or 100)
+    connection.send_result(msg["id"], {
+        "limit": limit,
+        "sites": sorted(visible, key=lambda entry: str(entry.get("id")))[:limit],
+        "truncated": len(visible) > limit,
+    })
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/remote/states", vol.Required("site_id"): str, vol.Required("entity_ids"): [str]})
 @websocket_api.async_response
 async def ws_remote_states(hass, connection, msg):
-    try:
-        connection.send_result(msg["id"], await _manager(hass).remote_states(msg["site_id"], msg["entity_ids"]))
-    except Exception as err:
-        connection.send_error(msg["id"], "remote_failed", str(err))
+    """Read state from one site, scoped and bounded.
+
+    T9-08. This checked **nothing**: no role, no capability, no project scoping,
+    so any caller who could reach the websocket read any entity of any
+    configured site.
+
+    T9-06. It also returned `str(err)`, and connection errors carry the host and
+    port they failed to reach -- so failures enumerated internal topology.
+    """
+    manager = _manager(hass)
+    requested = [str(msg["site_id"])]
+
+    # Filtered, not denied -- the same shape as `history/series` and for the same
+    # reason: a refusal would itself tell an unauthorized caller that the site
+    # exists. A site the caller may not reach comes back **absent with a
+    # reason**, which is exactly the vocabulary this phase built for a site that
+    # did not answer. It is also why nothing connects on this path for a site
+    # the caller has no business reaching.
+    reachable, withheld = [], []
+    for site_id in requested:
+        site = manager.remote_sites.get(site_id)
+        if site is not None and _may_reach_site(hass, connection, site):
+            reachable.append(site_id)
+        else:
+            withheld.append({"reason": "not_permitted", "site_id": site_id,
+                             "state": "unreachable"})
+
+    result = await manager.read_remote_states(reachable, list(msg["entity_ids"] or []))
+    result["absent_sites"] = sorted(
+        [*result["absent_sites"], *withheld], key=lambda entry: entry["site_id"],
+    )
+    connection.send_result(msg["id"], result)
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/remote/control", vol.Required("project_id"): str, vol.Required("site_id"): str, vol.Required("domain"): str, vol.Required("service"): str, vol.Optional("service_data", default={}): dict})
@@ -2903,10 +3107,35 @@ async def ws_remote_control(hass, connection, msg):
                 f"{remote_gate.reason}: the remote service was not called",
             )
             return
-        result = await _manager(hass).remote_control(msg["site_id"], msg["domain"], msg["service"], msg["service_data"])
+        site = _manager(hass).remote_sites.get(str(msg["site_id"]))
+        if site is None or not _may_reach_site(hass, connection, site):
+            connection.send_error(msg["id"], "not_found_or_denied", "not_found_or_denied")
+            return
+        result = await _manager(hass).remote_control(
+            msg["site_id"], msg["domain"], msg["service"], msg["service_data"],
+        )
+        await _manager(hass).add_audit({
+            "action": "remote.control",
+            "detail": {
+                "domain": msg["domain"], "outcome": result["outcome"],
+                "project_id": msg.get("project_id"), "service": msg["service"],
+                "site_id": msg["site_id"],
+            },
+        }, *_user(connection)[:2])
         connection.send_result(msg["id"], result)
-    except Exception as err:
-        connection.send_error(msg["id"], "remote_failed", str(err))
+    except PermissionError as denied:
+        # An unsafe service domain is *invalid input*, not a permission denial:
+        # the caller holds `remote.control`, and the request is the thing that
+        # is not acceptable. Distinguishing them matters because a capability
+        # denial tells an operator to ask an administrator, and this tells them
+        # to fix the request.
+        connection.send_error(msg["id"], "invalid_input", str(denied))
+    except site_destinations.DestinationRefused as refused:
+        # `invalid_input` rather than the raw reason: from the caller's side the
+        # request could not be made because the site's configuration is not
+        # usable, and the specific reason names a host. The detail stays in the
+        # log where an operator can act on it.
+        connection.send_error(msg["id"], "invalid_input", refused.reason)
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/audit/add", vol.Required("event"): dict})

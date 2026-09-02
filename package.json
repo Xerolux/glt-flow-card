@@ -62,7 +62,9 @@
     "test:phase7": "node tools/verify-phase7.mjs",
     "test:phase7:release": "npm run validate:hacs-staging && npm run test:ha-artifacts && npm run verify:release && npm run test:release-acceptance",
     "test:phase8": "node tools/verify-phase8.mjs",
-    "test:phase8:release": "npm run validate:hacs-staging && npm run test:ha-artifacts && npm run verify:release && npm run test:release-acceptance"
+    "test:phase8:release": "npm run validate:hacs-staging && npm run test:ha-artifacts && npm run verify:release && npm run test:release-acceptance",
+    "test:phase9": "node tools/verify-phase9.mjs",
+    "test:phase9:release": "npm run validate:hacs-staging && npm run test:ha-artifacts && npm run verify:release && npm run test:release-acceptance"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",

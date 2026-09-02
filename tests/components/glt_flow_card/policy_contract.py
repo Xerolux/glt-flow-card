@@ -255,12 +255,11 @@ COMMAND_POLICY_CONTRACT: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/work_orders/save", "work_order.write"),
     _route("glt_flow_card/reports/run", "report.run"),
     _route("glt_flow_card/reports/list", "report.read", enumeration="filter"),
-    # -- remote sites (Phase 9 owns the transport) ------------------------
+    # -- remote sites: available from Phase 9 ------------------------------
     _route("glt_flow_card/remote/list", "remote.read", scope="component",
-           enumeration="filter", state="deferred"),
-    _route("glt_flow_card/remote/states", "remote.read", scope="component",
-           state="deferred"),
-    _route("glt_flow_card/remote/control", "remote.control", state="deferred"),
+           enumeration="filter"),
+    _route("glt_flow_card/remote/states", "remote.read", scope="component"),
+    _route("glt_flow_card/remote/control", "remote.control"),
     # -- extensions (05-17) ------------------------------------------------
     # Component-scoped and filtered, for the same reason the portfolio is: an
     # unassigned caller sees the empty list an installation with no packs would
