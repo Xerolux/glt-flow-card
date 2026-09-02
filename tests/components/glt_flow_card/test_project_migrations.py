@@ -85,3 +85,26 @@ def test_result_is_json_serializable_without_loss_markers() -> None:
     encoded = json.dumps(migrate_project_document(_legacy_project()), ensure_ascii=False)
     assert "vendor_alpha" in encoded
     assert '"dropped": []' in encoded
+
+
+def test_synthesized_empty_project_matches_a_migrated_one() -> None:
+    """The empty-project template must be what the migration would produce.
+
+    Deriving only `schema_version` was not enough: schema 4 added a
+    `contributions` collection, the hand-written template did not gain it, and a
+    synthesized rollback snapshot stopped being byte-identical to a migrated
+    one. Taking the template, declaring it one version older, and migrating it
+    back must return the same document -- which fails loudly the next time a
+    migration step adds a collection the template does not.
+    """
+    from custom_components.glt_flow_card.project_transactions import (
+        ProjectTransactionCoordinator,
+    )
+
+    template = ProjectTransactionCoordinator._empty_project("plant-a", "Plant A")
+    assert template["schema_version"] == CURRENT_PROJECT_SCHEMA_VERSION
+
+    older = {**template, "schema_version": CURRENT_PROJECT_SCHEMA_VERSION - 1}
+    older.pop("contributions", None)
+    migrated = migrate_project_document(older, dry_run=True)["candidate"]
+    assert migrated == template

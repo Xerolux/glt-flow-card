@@ -17,6 +17,16 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+// Discovered from the authored schema directory, never imported from the build.
+// This verifier is deliberately independent -- it must not trust the tool it is
+// checking -- but a hand-written version list is how "independent" quietly turns
+// into "out of date".
+const PROJECT_SCHEMA_VERSIONS = (await readdir(path.join(ROOT, "schemas/project")))
+  .filter((name) => /^\d+\.schema\.json$/.test(name))
+  .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10))
+  .map((name) => Number.parseInt(name, 10));
+
 const require = createRequire(import.meta.url);
 const MANIFEST_PATH = "custom_components/glt_flow_card/build-manifest.json";
 const STAGING_MANIFEST_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "../build/release/hacs-staging-manifest.json");
@@ -30,20 +40,14 @@ const OUTPUT_PATHS = [
   "custom_components/glt_flow_card/schemas/diff-policy.json",
   "custom_components/glt_flow_card/schemas/limits.json",
   "custom_components/glt_flow_card/schemas/vocabularies.json",
-  "custom_components/glt_flow_card/schemas/project/0.schema.json",
-  "custom_components/glt_flow_card/schemas/project/1.schema.json",
-  "custom_components/glt_flow_card/schemas/project/2.schema.json",
-  "custom_components/glt_flow_card/schemas/project/3.schema.json",
+  ...PROJECT_SCHEMA_VERSIONS.map((v) => `custom_components/glt_flow_card/schemas/project/${v}.schema.json`),
   "custom_components/glt_flow_card/www/glt-flow-card.js",
   "dist/glt-flow-card.js",
   "dist/schemas/bundle-manifest.schema.json",
   "dist/schemas/diff-policy.json",
   "dist/schemas/limits.json",
   "dist/schemas/vocabularies.json",
-  "dist/schemas/project/0.schema.json",
-  "dist/schemas/project/1.schema.json",
-  "dist/schemas/project/2.schema.json",
-  "dist/schemas/project/3.schema.json",
+  ...PROJECT_SCHEMA_VERSIONS.map((v) => `dist/schemas/project/${v}.schema.json`),
   "docs/editor/app.js",
 ];
 const SCHEMAS = [
@@ -51,10 +55,7 @@ const SCHEMAS = [
   ["diffPolicy", "schemas/diff-policy.json"],
   ["limits", "schemas/limits.json"],
   ["vocabularies", "schemas/vocabularies.json"],
-  ["project0", "schemas/project/0.schema.json"],
-  ["project1", "schemas/project/1.schema.json"],
-  ["project2", "schemas/project/2.schema.json"],
-  ["project3", "schemas/project/3.schema.json"],
+  ...PROJECT_SCHEMA_VERSIONS.map((v) => [`project${v}`, `schemas/project/${v}.schema.json`]),
 ];
 const DEFAULT_EVIDENCE_PATH = path.join(ROOT, ".planning/tmp/release-build-verification.json");
 

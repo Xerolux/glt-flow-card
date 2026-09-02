@@ -50,6 +50,7 @@ const COMPONENT_FILES = [
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",
   "schemas/project/3.schema.json",
+  "schemas/project/4.schema.json",
   "strings.json",
   "translations/de.json",
   "translations/en.json",
@@ -383,16 +384,29 @@ test("every generated Companion schema is packaged for HACS", async () => {
   await walk(schemaRoot, "");
   assert.ok(authored.length >= 6, "the component ships no schemas, which cannot be right");
 
-  const stagerSource = await readFile(path.join(ROOT, "tools/stage-hacs-packages.mjs"), "utf8");
-  const validatorSource = await readFile(path.join(ROOT, "tools/validate-hacs-staging.mjs"), "utf8");
+  // Checked against the staged output rather than against the stager's source
+  // text. The original version grepped both tools for a literal path, which
+  // worked only while the lists were literal -- deriving them from the schema
+  // directory made the guard blind to exactly the files it exists to protect.
+  // Asserting on the stage is also the stronger claim: the file is packaged,
+  // not merely mentioned.
+  // The stage the `before` hook already produced, read from disk.
+  const stagedSchemaRoot = path.join(
+    firstRoot, "hacs-integration/custom_components/glt_flow_card/schemas",
+  );
+  const stagedIntegration = new Set();
+  const walkStaged = async (directory, prefix) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) await walkStaged(path.join(directory, entry.name), relative);
+      else if (entry.name.endsWith(".json")) stagedIntegration.add(`schemas/${relative}`);
+    }
+  };
+  await walkStaged(stagedSchemaRoot, "");
   for (const schemaPath of authored.sort()) {
     assert.ok(
-      stagerSource.includes(`"${schemaPath}"`),
-      `${schemaPath} is not staged by tools/stage-hacs-packages.mjs`,
-    );
-    assert.ok(
-      validatorSource.includes(`"${schemaPath}"`),
-      `${schemaPath} is not expected by tools/validate-hacs-staging.mjs`,
+      stagedIntegration.has(schemaPath),
+      `${schemaPath} is not in the HACS integration stage`,
     );
   }
 });

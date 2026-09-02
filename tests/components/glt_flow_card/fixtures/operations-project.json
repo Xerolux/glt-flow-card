@@ -1,6 +1,7 @@
 {
   "type": "custom:glt-flow-card",
-  "schema_version": 3,
+  "schema_version": 4,
+  "contributions": [],
   "project": {
     "id": "operations-corpus",
     "name": "Operations corpus",

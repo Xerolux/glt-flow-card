@@ -85,7 +85,7 @@ async def test_diagnostics_use_explicit_metadata_allowlist(
     assert result["integration"] == {
         "domain": "glt_flow_card",
         "version": "1.0.0",
-        "project_schema_version": 3,
+        "project_schema_version": 4,
         "loaded": True,
     }
     assert result["options"] == {

@@ -125,7 +125,8 @@ def operations_project(project_id: str = OPEN_PROJECT_ID) -> dict[str, Any]:
     nodes.extend(_datapoints_for("eq-hp-secondary", "hp2"))
     return {
         "type": "custom:glt-flow-card",
-        "schema_version": 3,
+        "schema_version": 4,
+        "contributions": [],
         "project": {"id": project_id, "name": "Operations corpus", "revision": 0},
         "title": "Operations corpus",
         "sites": [{"id": "site-north", "name": "North Plant"}],
@@ -164,7 +165,8 @@ def restricted_project(project_id: str = RESTRICTED_PROJECT_ID) -> dict[str, Any
     nodes.extend(_datapoints_for("eq-boiler-backup", "boiler"))
     return {
         "type": "custom:glt-flow-card",
-        "schema_version": 3,
+        "schema_version": 4,
+        "contributions": [],
         "project": {"id": project_id, "name": "Restricted corpus", "revision": 0},
         "title": "Restricted corpus",
         "sites": [{"id": "site-south", "name": "South Plant"}],

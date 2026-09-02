@@ -19153,7 +19153,7 @@ return errors === 0;
 validate120.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};
 
 export const bundleManifest = validate158;
-const schema340 = {"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://schemas.glt-flow-card.invalid/bundle-manifest.schema.json","title":"GLT Flow Card project bundle manifest","type":"object","properties":{"format":{"const":"gltproject"},"bundle_version":{"const":1},"project":{"type":"object","properties":{"id":{"$ref":"https://schemas.glt-flow-card.invalid/project/2.schema.json#/$defs/id"},"path":{"const":"project.json"},"schema_version":{"type":"integer","minimum":0,"maximum":3},"sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"size":{"type":"integer","minimum":0,"maximum":5242880}},"required":["id","path","schema_version","sha256","size"],"unevaluatedProperties":false},"assets":{"type":"array","items":{"type":"object","properties":{"id":{"$ref":"https://schemas.glt-flow-card.invalid/project/2.schema.json#/$defs/id"},"path":{"$ref":"https://schemas.glt-flow-card.invalid/project/2.schema.json#/$defs/assetPath"},"sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"size":{"type":"integer","minimum":0,"maximum":16777216},"media_type":{"type":"string","minLength":3,"maxLength":128,"pattern":"^[a-z0-9.+-]+/[a-z0-9.+-]+$"},"compression":{"enum":["store","deflate"]}},"required":["id","path","sha256","size","media_type","compression"],"unevaluatedProperties":false},"maxItems":254}},"required":["format","bundle_version","project","assets"],"unevaluatedProperties":false};
+const schema340 = {"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://schemas.glt-flow-card.invalid/bundle-manifest.schema.json","title":"GLT Flow Card project bundle manifest","type":"object","properties":{"format":{"const":"gltproject"},"bundle_version":{"const":1},"project":{"type":"object","properties":{"id":{"$ref":"https://schemas.glt-flow-card.invalid/project/2.schema.json#/$defs/id"},"path":{"const":"project.json"},"schema_version":{"type":"integer","minimum":0,"maximum":4},"sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"size":{"type":"integer","minimum":0,"maximum":5242880}},"required":["id","path","schema_version","sha256","size"],"unevaluatedProperties":false},"assets":{"type":"array","items":{"type":"object","properties":{"id":{"$ref":"https://schemas.glt-flow-card.invalid/project/2.schema.json#/$defs/id"},"path":{"$ref":"https://schemas.glt-flow-card.invalid/project/2.schema.json#/$defs/assetPath"},"sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"size":{"type":"integer","minimum":0,"maximum":16777216},"media_type":{"type":"string","minLength":3,"maxLength":128,"pattern":"^[a-z0-9.+-]+/[a-z0-9.+-]+$"},"compression":{"enum":["store","deflate"]}},"required":["id","path","sha256","size","media_type","compression"],"unevaluatedProperties":false},"maxItems":254}},"required":["format","bundle_version","project","assets"],"unevaluatedProperties":false};
 
 function validate158(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 /*# sourceURL="https://schemas.glt-flow-card.invalid/bundle-manifest.schema.json" */;
@@ -19354,8 +19354,8 @@ vErrors.push(err16);
 errors++;
 }
 if((typeof data5 == "number") && (isFinite(data5))){
-if(data5 > 3 || isNaN(data5)){
-const err17 = {instancePath:instancePath+"/project/schema_version",schemaPath:"#/properties/project/properties/schema_version/maximum",keyword:"maximum",params:{comparison: "<=", limit: 3},message:"must be <= 3"};
+if(data5 > 4 || isNaN(data5)){
+const err17 = {instancePath:instancePath+"/project/schema_version",schemaPath:"#/properties/project/properties/schema_version/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4},message:"must be <= 4"};
 if(vErrors === null){
 vErrors = [err17];
 }
@@ -19808,7 +19808,7 @@ validate158.errors = vErrors;
 return errors === 0;
 }
 validate158.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};
-export const schemaFingerprints = Object.freeze({"bundle":"aa21d0740533070cb9202d4d9ac4f7b8f7c5fbec551ee4db8be08c5e44462b7a","project":{"0":"992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8","1":"0e3e3ba8b547331ce254d00c2cbf91efa85e97dd2a10b313fb47ac4eb95eed37","2":"ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7","3":"4ffb7214e5e1e041a38416b3293dba476aabc53d1c38ccbeefffe4caf69c4f78","4":"80f355c82d67c8db2c7ae187aadbc59da49eff2314a3d843041766f062269769"}});
+export const schemaFingerprints = Object.freeze({"bundle":"fd4f01308db26a308d10b85d5e8c578ae6256bcaa48b0e72d80631b0f7852312","project":{"0":"992bb8ea2ea2d8578779ef16a212eb2b66adcc2bdfd33d6e46cd229d9899c3d8","1":"0e3e3ba8b547331ce254d00c2cbf91efa85e97dd2a10b313fb47ac4eb95eed37","2":"ed384efc210e9dddc55a937f7050dcaaf75e9dd1b3c92a072aac071d1b3232f7","3":"4ffb7214e5e1e041a38416b3293dba476aabc53d1c38ccbeefffe4caf69c4f78","4":"80f355c82d67c8db2c7ae187aadbc59da49eff2314a3d843041766f062269769"}});
 export const limitsFingerprint = "cff48eeb03edd85618bf36dd14e663f984d4a349163d121701706a260d563619";
 export const vocabulariesFingerprint = "abd346b1cbc7a5b581f2e6a3651767d69fbb3d16f0248c20556434e8584ede94";
 export const contractLimits = Object.freeze({"policy_version":1,"json":{"max_bytes":5242880,"max_depth":64,"max_nodes":100000,"max_string_bytes":262144,"max_id_chars":128,"max_path_chars":512,"max_errors":100},"archive":{"max_compressed_bytes":33554432,"max_entries":256,"max_asset_bytes":16777216,"max_expanded_bytes":134217728,"max_compression_ratio":100}});

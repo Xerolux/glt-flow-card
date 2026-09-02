@@ -126,10 +126,18 @@ class ProjectTransactionCoordinator:
         # The version comes from the migration module rather than a literal: a
         # synthesized snapshot pinned to a number goes stale on the next schema
         # bump and starts producing candidates the current contract rejects.
+        #
+        # Deriving the number alone was not enough. Schema 4 added a
+        # `contributions` collection, so a synthesized snapshot and a migrated
+        # one stopped being byte-identical and rollback comparisons failed. The
+        # shape below is guarded by
+        # test_synthesized_empty_project_matches_a_migrated_one, which migrates
+        # this document from an older version and requires the same bytes back.
         return {
             "type": "custom:glt-flow-card",
             "schema_version": CURRENT_PROJECT_SCHEMA_VERSION,
             "semantic_model": {"nodes": []},
+            "contributions": [],
             "project": {"id": project_id, "name": name, "revision": 0},
         }
 

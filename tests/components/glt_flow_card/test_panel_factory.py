@@ -28,9 +28,9 @@ from .panel_factory import (
 FIXTURE = Path(__file__).resolve().parent / "fixtures/operations-project.json"
 
 
-def test_both_corpus_projects_are_valid_schema_3_projects() -> None:
+def test_both_corpus_projects_are_valid_schema_4_projects() -> None:
     for project in (operations_project(), restricted_project()):
-        assert list(_PROJECT_VALIDATORS[3].iter_errors(project)) == [], project["project"]["id"]
+        assert list(_PROJECT_VALIDATORS[4].iter_errors(project)) == [], project["project"]["id"]
         assert validate_semantic_model(project["semantic_model"]) == []
 
 

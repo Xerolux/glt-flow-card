@@ -65,6 +65,6 @@ test(".gltproject bundle migrates and round trips through the safe async API", a
   const bundle = await makeProjectBundle(cfg);
   assert.ok(bundle.length > 100);
   const restored = await readProjectBundle(bundle);
-  assert.equal(restored.schema_version, 3);
+  assert.equal(restored.schema_version, 4);
   assert.equal(restored.equipment[0].id, "p1");
 });

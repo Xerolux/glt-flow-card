@@ -1,6 +1,6 @@
 /* Deterministic Phase-1 contract corpus generator; generated bodies stay disposable. */
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { load as loadYaml } from "js-yaml";
@@ -10,7 +10,12 @@ const ROOT = new URL("../", import.meta.url);
 const LIMITS_URL = new URL("schemas/limits.json", ROOT);
 const DIFF_POLICY_URL = new URL("schemas/diff-policy.json", ROOT);
 const EXAMPLE_URL = new URL("examples/idm-neo2030.yaml", ROOT);
-const SCHEMA_URLS = [0, 1, 2, 3].map((version) => new URL(`schemas/project/${version}.schema.json`, ROOT));
+// Derived from the schema directory. A literal version list here silently
+// stopped covering whatever version was added last.
+const SCHEMA_URLS = (await readdir(new URL("schemas/project/", ROOT)))
+  .filter((name) => /^\d+\.schema\.json$/.test(name))
+  .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10))
+  .map((name) => new URL(`schemas/project/${name}`, ROOT));
 const BUNDLE_SCHEMA_URL = new URL("schemas/bundle-manifest.schema.json", ROOT);
 
 const STABLE_ERROR_CODES = [
@@ -257,7 +262,10 @@ export async function generateContractFixtures({ outputDir }) {
     id: "malformed-future-version",
     class: "malformed",
     expected: expected("reject", "version", "/schema_version", "contract.schema_version"),
-  }, { ...baseV3(), schema_version: 4 });
+  // One past the highest version that exists, derived so this fixture cannot
+  // quietly become "the current version" the next time a schema is added --
+  // which is exactly what happened when 4 shipped.
+  }, { ...baseV3(), schema_version: SCHEMA_URLS.length });
   await addJson({
     id: "valid-semantic-hierarchy",
     class: "valid",
