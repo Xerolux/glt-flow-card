@@ -96,3 +96,82 @@ test("[expected-red:phase5-catalog] the catalog count is proven by rendering", a
   }
   assert.deepEqual(gaps, [], "generated catalog evidence is unavailable");
 });
+
+// -- Beyond the sentinel ----------------------------------------------------
+// The sentinel reads a file. These make the file's freshness a checked
+// property, and tie the number the card shows to the number the evidence
+// proves — otherwise the evidence describes a catalog nobody ships.
+
+import { spawnSync } from "node:child_process";
+import { writeFile } from "node:fs/promises";
+import { BASE_SYMBOLS, VISUAL_STYLES, renderVariant } from "../src/v100/catalog.mjs";
+import { symbolCatalogStats } from "../src/v100/core.mjs";
+import {
+  CATALOG_EVIDENCE_PATH, generateCatalogEvidence,
+} from "../tools/generate-catalog-evidence.mjs";
+
+test("the committed evidence is what the catalog renders today", async () => {
+  const committed = await readFile(EVIDENCE_URL, "utf8");
+  assert.equal(committed, generateCatalogEvidence(),
+    "stale evidence; regenerate with npm run generate:catalog:evidence");
+});
+
+test("a stale manifest fails --check, proven by seeding one", async () => {
+  const original = await readFile(CATALOG_EVIDENCE_PATH, "utf8");
+  const seeded = JSON.parse(original);
+  seeded.variant_count += 1;
+  try {
+    await writeFile(CATALOG_EVIDENCE_PATH, `${JSON.stringify(seeded, null, 2)}\n`);
+    const result = spawnSync(process.execPath,
+      ["tools/generate-catalog-evidence.mjs", "--check"],
+      { cwd: new URL("..", import.meta.url).pathname, encoding: "utf8" });
+    assert.notEqual(result.status, 0, "a stale manifest passed --check");
+    assert.match(result.stderr, /stale/);
+  } finally {
+    await writeFile(CATALOG_EVIDENCE_PATH, original);
+  }
+  const result = spawnSync(process.execPath,
+    ["tools/generate-catalog-evidence.mjs", "--check"],
+    { cwd: new URL("..", import.meta.url).pathname, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test("the count the card reports is the count the evidence proves", async () => {
+  const evidence = JSON.parse(await readFile(EVIDENCE_URL, "utf8"));
+  const stats = symbolCatalogStats();
+  assert.equal(stats.variants, evidence.variant_count);
+  assert.equal(stats.base_symbols, evidence.base_symbol_count);
+  assert.equal(stats.styles, evidence.style_count);
+});
+
+test("every base symbol draws, and the ones that used to draw nothing draw now", () => {
+  const silent = BASE_SYMBOLS.filter((base) => (
+    !renderVariant(base.id, VISUAL_STYLES[0].id).includes("</title><")
+  ));
+  assert.deepEqual(silent.map((base) => base.id), []);
+  // These three had no branch in the shipped renderer at all, and the catalog
+  // counted them anyway. They are named here so a regression is legible.
+  for (const id of ["ahu", "wallbox", "room_sensor"]) {
+    assert.ok(renderVariant(id, "clean").length > 120, `${id} draws nothing`);
+  }
+});
+
+test("the domains CAT-01 names each carry base symbols of their own", async () => {
+  const evidence = JSON.parse(await readFile(EVIDENCE_URL, "utf8"));
+  for (const id of REQUIRED_DOMAINS) {
+    const domain = evidence.domains.find((entry) => entry.id === id);
+    assert.ok(domain, `domain absent: ${id}`);
+    assert.ok(domain.base_symbols > 0, `domain ${id} has no base symbols`);
+    assert.equal(domain.variants, domain.base_symbols * evidence.style_count);
+  }
+  // Fire and electrical were the thin ones. Six styles over an absent domain
+  // leave it absent, so these had to arrive as base geometry.
+  for (const id of ["fire", "electrical"]) {
+    assert.ok(evidence.domains.find((entry) => entry.id === id).base_symbols >= 10);
+  }
+});
+
+test("a symbol rendered in one style is not the same bytes as in another", () => {
+  const rendered = VISUAL_STYLES.map((style) => renderVariant("boiler", style.id));
+  assert.equal(new Set(rendered).size, rendered.length);
+});

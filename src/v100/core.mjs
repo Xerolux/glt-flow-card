@@ -1,5 +1,5 @@
 /* GLT Flow Card Platform 1.0 pure engineering core */
-import { COMPONENT_PROFILES, SYMBOL_VARIANTS, profileForEquipment, portsForEquipment } from "./catalog.mjs";
+import { COMPONENT_PROFILES, SYMBOL_VARIANTS, VISUAL_STYLES, profileForEquipment, portsForEquipment, renderVariant } from "./catalog.mjs";
 import { computeProjectDiff } from "./project-diff.mjs";
 import { createProjectBundle, readProjectBundleArchive } from "./project-bundle.mjs";
 import { migrateProjectDocument } from "./project-migrations.mjs";
@@ -391,6 +391,28 @@ export async function readProjectBundle(input, { includeAssets = false, onExtrac
 
 export { BundleError, bundleDecision, createProjectBundle, readProjectBundleArchive } from "./project-bundle.mjs";
 
+/**
+ * The catalog's size, counted by rendering.
+ *
+ * This used to measure array lengths, which proves the array's length: a
+ * catalog whose rows draw nothing reports the same number, and so does one
+ * whose rows all draw the same picture. Both were true here. Counting what
+ * actually rendered is the only version of this number a buyer can be shown,
+ * and `catalog-evidence.json` records the digests behind it.
+ */
 export function symbolCatalogStats() {
-  return { base_symbols: new Set(SYMBOL_VARIANTS.map((x)=>x.base_symbol)).size, variants: SYMBOL_VARIANTS.length, profiles: COMPONENT_PROFILES.length };
+  const bases = new Set();
+  let variants = 0;
+  for (const variant of SYMBOL_VARIANTS) {
+    if (renderVariant(variant.base_symbol, variant.style).includes("</title><")) {
+      bases.add(variant.base_symbol);
+      variants += 1;
+    }
+  }
+  return {
+    base_symbols: bases.size,
+    variants,
+    styles: VISUAL_STYLES.length,
+    profiles: COMPONENT_PROFILES.length,
+  };
 }
