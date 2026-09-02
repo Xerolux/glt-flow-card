@@ -390,11 +390,54 @@ class GltStore:
         await self.async_save()
         return deepcopy(state)
 
-    async def shelve_alarm(self, project_id: str, alarm_id: str, minutes: int, user_id: str | None) -> dict[str, Any]:
+    def alarm_settings(self) -> dict[str, Any]:
+        """Return the site's alarm philosophy: configuration, not product opinion.
+
+        Priorities, shelving limits, escalation stages, recipients and retention
+        are *site* decisions -- a plant's alarm philosophy belongs to the plant.
+        The defaults here are the conservative ones agreed with the user on
+        2026-09-02 and documented in `06-CONTEXT.md`, each as a site decision
+        rather than a baked-in answer.
+        """
+        options = dict(self.effective_options or {})
+        return {
+            "shelving_maximum_days": int(options.get(
+                "alarm_shelving_maximum_days", alarm_engine.DEFAULT_SHELVING_MAXIMUM_DAYS,
+            )),
+        }
+
+    async def shelve_alarm(
+        self, project_id: str, alarm_id: str, minutes: int, user_id: str | None,
+    ) -> dict[str, Any]:
+        """Shelve one alarm until an expiry, or refuse with a reason.
+
+        The bound was previously a silent clamp -- `min(int(minutes), 10080)` --
+        so a request for ninety days became seven and the operator was never
+        told. That is a worse answer than a refusal: they walk away believing
+        the alarm is quiet for three months.
+        """
+        now = datetime.now(timezone.utc)
+        try:
+            requested = int(minutes)
+        except (TypeError, ValueError):
+            raise ValueError("shelve_malformed") from None
+        if requested < 1:
+            raise ValueError("shelve_in_the_past")
+        until = now + timedelta(minutes=requested)
+        refusal = alarm_engine.refuse_shelve(until, now=now, settings=self.alarm_settings())
+        if refusal is not None:
+            raise ValueError(refusal)
+
         key = f"{project_id}:{alarm_id}"
-        state = self.data["alarm_state"].setdefault(key, {"project_id": project_id, "alarm_id": alarm_id})
-        state["shelved_until"] = (datetime.now(timezone.utc) + timedelta(minutes=max(1, min(int(minutes), 10080)))).isoformat()
+        state = self.data["alarm_state"].setdefault(
+            key, {"project_id": project_id, "alarm_id": alarm_id}
+        )
+        state["shelved_until"] = until.isoformat()
         state["shelved_by"] = user_id
+        # D13: acknowledgement audited and shelving did not, which made the
+        # *less* reversible of the two the less auditable.
+        self.data["alarm_history"].insert(0, {**deepcopy(state), "transition": "shelve"})
+        self.data["alarm_history"] = self.data["alarm_history"][:MAX_AUDIT]
         await self.async_save()
         return deepcopy(state)
 
@@ -466,11 +509,31 @@ class GltStore:
                 key = f"{project_id}:{alarm.get('id')}"
                 current = self.data["alarm_state"].get(key, {})
                 previous_active = bool(current.get("active"))
+                # Suppression is read from the *runtime* state, not from the
+                # project config: shelving and acknowledgement are things an
+                # operator did, and the engine writes them into `alarm_state`.
+                suppression = alarm_engine.suppression_for(
+                    {**alarm, **current},
+                    state=raw,
+                    now=datetime.now(timezone.utc),
+                    settings=self.alarm_settings(),
+                )
                 decision = alarm_engine.decide(
                     alarm, raw,
                     previous_active=previous_active,
                     previous_state=current.get("state"),
+                    suppression=suppression,
                 )
+
+                if decision["reason"] == "suppressed":
+                    # D1, closed. The alarm neither processes nor notifies, and
+                    # the record says which suppression applied -- "quiet"
+                    # without a reason is exactly what shelving shipped.
+                    current["suppressed_by"] = decision["suppressed_by"]
+                    current["suppression"] = decision["suppression"]
+                    current["last_value"] = raw
+                    self.data["alarm_state"][key] = current
+                    continue
 
                 if decision["reason"] == "indeterminate":
                     # An entity that vanished has not returned to normal. Holding
@@ -1674,9 +1737,19 @@ async def ws_alarms_ack(hass, connection, msg):
 async def ws_alarms_shelve(hass, connection, msg):
     try:
         uid, _uname, _admin = _user(connection)
-        connection.send_result(msg["id"], await _manager(hass).shelve_alarm(msg["project_id"], msg["alarm_id"], msg["minutes"], uid))
+        connection.send_result(msg["id"], await _manager(hass).shelve_alarm(
+            msg["project_id"], msg["alarm_id"], msg["minutes"], uid,
+        ))
     except PermissionError:
         connection.send_error(msg["id"], "capability_denied", "capability_denied")
+    except ValueError as error:
+        # A refusal, with its reason. The browser offers only durations within
+        # the site maximum, but that check is UX; this is the enforcement, and
+        # it holds whatever the browser sent.
+        code = str(error)
+        if code not in alarm_engine.SHELVE_REFUSALS:
+            raise
+        connection.send_error(msg["id"], "invalid_input", code)
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/work_orders/list", vol.Optional("project_id"): str})

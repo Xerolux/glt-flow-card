@@ -254,3 +254,112 @@ def decide(
         "value": None if raw is None else str(raw),
         "previous_state": previous_state,
     }
+
+
+# ---------------------------------------------------------------------------
+# Suppression
+# ---------------------------------------------------------------------------
+
+#: The site's shelving maximum, in days. Conservative default, decided with the
+#: user on 2026-09-02: long enough for a planned outage, short enough that a
+#: forgotten shelf expires. Configurable, and documented as a site decision.
+DEFAULT_SHELVING_MAXIMUM_DAYS = 7
+
+#: Why a shelve request was refused. Closed, and distinct from the suppression
+#: reasons: this is why the request failed, not why an alarm is quiet.
+SHELVE_REFUSALS = ("shelve_exceeds_maximum", "shelve_in_the_past", "shelve_malformed")
+
+
+def _parse_instant(value: Any) -> Any:
+    """Parse an ISO instant, returning None rather than raising.
+
+    A malformed expiry must produce a declared refusal, not a traceback in the
+    middle of a state scan.
+    """
+    from datetime import datetime
+
+    if value is None:
+        return None
+    if hasattr(value, "tzinfo"):
+        return value
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+    return parsed
+
+
+def refuse_shelve(
+    until: Any,
+    *,
+    now: Any,
+    settings: dict[str, Any] | None = None,
+) -> str | None:
+    """Return a refusal code for a shelve request, or None when it is allowed.
+
+    The bound was previously a silent clamp: a request for ninety days became
+    seven and the operator was never told. A clamp is a worse answer than a
+    refusal here, because the operator walks away believing the alarm is quiet
+    for three months.
+
+    An absent expiry is not refused -- clearing a shelf is not a shelve.
+    """
+    if until is None:
+        return None
+    parsed = _parse_instant(until)
+    if parsed is None:
+        return "shelve_malformed"
+    if parsed <= now:
+        return "shelve_in_the_past"
+    maximum_days = int(
+        (settings or {}).get("shelving_maximum_days", DEFAULT_SHELVING_MAXIMUM_DAYS)
+    )
+    from datetime import timedelta
+
+    if parsed > now + timedelta(days=maximum_days):
+        return "shelve_exceeds_maximum"
+    return None
+
+
+def suppression_for(
+    alarm: dict[str, Any],
+    *,
+    state: Any = None,
+    now: Any,
+    settings: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Return why this alarm is suppressed, or None when it is not.
+
+    One function, called from the one place the decision is made, so processing
+    and notification cannot disagree about whether an alarm is quiet.
+
+    Before this, `shelved_until` was written in two places, cleared in one and
+    read in **none**. Shelving changed a field in a dict nothing inspected, so a
+    shelved alarm still processed and still notified while the product reported
+    success. That is worse than a missing feature: the operator believes the
+    alarm is quiet.
+
+    Precedence is deliberate. Maintenance is the plant's state and outranks an
+    individual's shelf; a shelf outranks an acknowledgement, because a shelf was
+    chosen with an expiry and an acknowledgement only says "seen".
+    """
+    if alarm.get("maintenance"):
+        return {"reason": "maintenance", "by": None, "until": None}
+
+    until = alarm.get("shelved_until")
+    if until is not None:
+        parsed = _parse_instant(until)
+        # A shelf that has expired is not a shelf. A malformed one is not
+        # honoured either: an unparseable expiry must not suppress forever,
+        # which is the failure mode that keeps an alarm quiet indefinitely.
+        if parsed is not None and parsed > now:
+            return {
+                "reason": "shelved",
+                "by": alarm.get("shelved_by"),
+                "until": parsed.isoformat() if hasattr(parsed, "isoformat") else str(parsed),
+            }
+
+    if alarm.get("acknowledged"):
+        return {"reason": "acknowledged", "by": alarm.get("ack_user_name"), "until": None}
+
+    return None
