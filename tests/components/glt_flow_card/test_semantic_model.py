@@ -7,10 +7,9 @@ requires the same verdicts.
 from __future__ import annotations
 
 import json
-import subprocess
-import tempfile
 from pathlib import Path
 
+from custom_components.glt_flow_card.project_contract import digest_canonical_json
 from custom_components.glt_flow_card.semantic_model import (
     BOUNDS,
     SEMANTIC_LEVELS,
@@ -19,7 +18,10 @@ from custom_components.glt_flow_card.semantic_model import (
     validate_semantic_model,
 )
 
-ROOT = Path(__file__).resolve().parents[3]
+CORPUS = json.loads(
+    (Path(__file__).resolve().parent / "fixtures/semantic-parity-corpus.json").read_text("utf-8")
+)
+_PARAMETERS = CORPUS["parameters"]
 
 REJECTED_SHAPES = (
     "self_cycle", "two_node_cycle", "long_cycle", "dangling_parent",
@@ -44,6 +46,8 @@ def _valid() -> dict:
 
 
 def _mutate(shape: str) -> dict:
+    if shape == "valid":
+        return _valid()
     model = _valid()
     by_id = {node["id"]: node for node in model["nodes"]}
     if shape == "self_cycle":
@@ -57,16 +61,18 @@ def _mutate(shape: str) -> dict:
     elif shape == "inverted_level":
         by_id["bldg-1"]["parent"] = "eq-hp"
     elif shape == "multiple_parents":
-        model["nodes"].append({"id": "floor-1", "level": "floor", "parent": "site-a", "name": "Dup"})
+        model["nodes"].append(
+            {"id": "floor-1", "level": "floor", "parent": "site-a", "name": "Duplicate"}
+        )
     elif shape == "over_depth":
-        for index in range(64):
+        for index in range(_PARAMETERS["over_depth_nodes"]):
             model["nodes"].append({
                 "id": f"deep-{index}", "level": "subsystem",
                 "parent": "sys-heat" if index == 0 else f"deep-{index - 1}",
                 "name": f"Deep {index}",
             })
     elif shape == "over_breadth":
-        for index in range(BOUNDS["max_children"] + 8):
+        for index in range(_PARAMETERS["over_breadth_nodes"]):
             model["nodes"].append({
                 "id": f"wide-{index}", "level": "equipment",
                 "parent": "sub-primary", "name": f"Wide {index}",
@@ -110,30 +116,35 @@ def test_energy_and_power_are_not_the_same_dimension() -> None:
 
 
 def test_both_runtimes_return_the_same_verdicts() -> None:
-    """The rule set is identical, or the Companion enforces something else."""
-    # The models go through a file: the over-breadth shape alone is thousands of
-    # nodes, and an argument list has a limit a fixture should not have to know.
-    script = (
-        "import('node:fs/promises').then(async (fs) => {"
-        "  const m = await import('file://' + process.argv[1]);"
-        "  const shapes = JSON.parse(await fs.readFile(process.argv[2], 'utf8'));"
-        "  const out = shapes.map((model) => m.validateSemanticModel(model).map((e) => e.code).sort());"
-        "  console.log(JSON.stringify(out));"
-        "});"
-    )
-    models = [_valid()] + [_mutate(shape) for shape in REJECTED_SHAPES]
-    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
-        json.dump(models, handle)
-        payload = handle.name
-    result = subprocess.run(
-        ["node", "-e", script, str(ROOT / "src/v100/semantic-model.mjs"), payload],
-        capture_output=True, text=True, cwd=ROOT, check=False,
-    )
-    Path(payload).unlink(missing_ok=True)
-    assert result.returncode == 0, result.stderr
-    javascript = json.loads(result.stdout)
-    python = [sorted(error["code"] for error in validate_semantic_model(model)) for model in models]
-    assert javascript == python
+    """The rule set is identical, or the Companion enforces something else.
+
+    The Home Assistant lanes run a Python-only container with no `node` binary
+    and no `src/` in the workspace, so this cannot shell out to JavaScript. It
+    compares against the recorded JavaScript verdicts instead, and
+    `test/semantic-parity-corpus.test.mjs` fails if those recordings are not
+    exactly what the current `semantic-model.mjs` produces.
+
+    The digest comparison is the part that matters. An earlier version of this
+    test compared only error codes, and the two runtimes had quietly drifted to
+    building *different* models -- 4096 wide nodes here, 2056 there -- while
+    still agreeing on the verdict. Comparing the canonical bytes makes that
+    impossible.
+    """
+    assert CORPUS["bounds"] == BOUNDS
+    for recorded in CORPUS["shapes"]:
+        model = _mutate(recorded["shape"])
+        assert len(model["nodes"]) == recorded["node_count"], recorded["shape"]
+        assert digest_canonical_json(model)["digest"] == recorded["model_digest"], (
+            f"{recorded['shape']}: the Python model is not the model JavaScript validated"
+        )
+        codes = sorted(error["code"] for error in validate_semantic_model(model))
+        assert codes == recorded["codes"], recorded["shape"]
+
+
+def test_the_parity_corpus_covers_every_rejected_shape() -> None:
+    """A shape dropped from the corpus must not silently stop being checked."""
+    covered = {entry["shape"] for entry in CORPUS["shapes"]}
+    assert covered == {"valid", *REJECTED_SHAPES}
 
 
 def test_levels_match_the_shared_vocabulary() -> None:
