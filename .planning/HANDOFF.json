@@ -3,60 +3,67 @@
   "project": "GLT Flow Card",
   "milestone": "v1.1",
   "created_at": "2026-09-01T20:39:55.9074407+02:00",
-  "status": "paused",
-  "pause_reason": "User requested that phase work stop, be documented, and be uploaded to GitHub for later continuation.",
+  "updated_at": "2026-09-02T00:00:00Z",
+  "status": "in_progress",
+  "pause_reason": null,
   "current_position": {
     "phase": "02",
     "phase_name": "authoritative-policy-controls-collaboration",
-    "stage": "planning",
+    "stage": "execution",
     "plans_created": 17,
     "tasks_planned": 61,
-    "plans_implemented": 0,
-    "implementation_started": false,
+    "plans_implemented": 6,
+    "implementation_started": true,
     "resume_file": ".planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md"
   },
   "completed": [
     "Phase 1: all 13 implementation plans and all 14 recorded code-review fixes are committed; full post-fix gates pass.",
-    "Phase 2 context, UI contract, technical research, validation strategy, pattern map, threat ledger, source audit, and 17 implementation plans are committed.",
-    "Phase 2 UI contract passed its six-dimension design check without recommendations.",
-    "The only blocker from the penultimate Phase 2 plan check, a recursive T2-16 verification command, was corrected consistently in the planning artifacts."
+    "Phase 2 planning: context, UI contract, research, validation, patterns, threats, source audit and 17 plans are committed.",
+    "The bounded final Phase 2 plan check passed and is recorded in 02-PLAN-CHECK.md; the T2-16 recursion correction is consistent across every planning artifact.",
+    "Python 3.13 gates are portable: tools/python-launcher.mjs resolves the pinned interpreter on the Windows py launcher and on Linux without weakening the pin.",
+    "Plan 02-01: threat register status column, seven-principal authenticated HA fixtures, controlled fake service, Phase-2 resource ledger, the twelve-entry strict RED classifier with mutation tests, and the extended browser effect ledger with seeded secret scanning.",
+    "Plans 02-02 through 02-05: all twelve Phase-2 RED sentinels exist and are accepted by the classifier - policy matrix, access and subscriptions, evidence pagination, leases, collaboration guard, merge, configured controls, control evidence, migration and lifecycle, browser reducers, exact-dist fixture seed, and the complete exact-dist UI.",
+    "Plan 02-06: the deny-default policy boundary and the server-owned ACL are GREEN; T2-01, T2-02 and T2-03 pass their owner commands."
   ],
   "remaining": [
-    "Run one bounded final Phase 2 plan check to confirm the T2-16 recursion correction; the final checker was intentionally interrupted when the user requested the stop.",
-    "Execute Phase 2 plans 02-01 through 02-17 in dependency order.",
+    "Execute Phase 2 plans 02-07 through 02-17 in dependency order: 02-08 leases, 02-07 sessions and ACL writes, 02-09 in-lock guard and merge, 02-10 trusted evidence, 02-11 configured controls, 02-12 and 02-13 browser UI, 02-14 migration and lifecycle, 02-15 packaging, 02-16 documentation, 02-17 the phase gate.",
     "Complete Phase 2 code review, security audit, UI audit, drift checks, and independent goal verification.",
-    "Complete Phases 3 through 10 and the final milestone/release verification in a later session.",
-    "Close the still-open consolidated Phase 1 security, UI, drift, and goal verification when work resumes."
+    "Complete Phases 3 through 10 and the final milestone/release verification.",
+    "Close the still-open consolidated Phase 1 security, UI, drift, and goal verification."
   ],
   "decisions": [
-    "No Phase 2 implementation is part of this paused checkpoint.",
+    "Shared mutations return lease_required until plan 02-08 lands: unreachable rather than unguarded.",
+    "A filtered collection is reachable by every authenticated principal and protected by omitting rows; refusing the call would itself leak that rows exist.",
+    "Component-wide surfaces authorize against the union of a principal's project capabilities; a user with no assignment anywhere still holds nothing.",
+    "Authorization is decided synchronously at the WebSocket boundary, before a handler is scheduled.",
+    "Each RED test file carries exactly one product-completeness sentinel and reports every unmet guarantee as a gap list, so a controlled RED fails exactly once.",
     "No release is created at this checkpoint.",
-    "The current repository state is uploaded to origin/main because the user explicitly authorized that exact push.",
-    "Future work resumes at the bounded Phase 2 plan check, not by repeating completed planning or starting another open-ended review loop.",
     "Live Home Assistant, remote-site, physical-bus, and plant writes remain outside authorization."
   ],
   "blockers": [],
   "open_verification": [
     "Phase 1 consolidated security, UI, drift, and goal verification.",
-    "Phase 2 final plan-check verdict after the recursion correction."
+    "Phase 2 threats T2-04 through T2-16 remain planned; their owner commands are controlled REDs."
   ],
   "human_actions_required": [],
   "background_processes": [],
   "git": {
-    "branch": "main",
-    "planning_commit": "7d77583",
-    "pause_handoff_commit": "0f935ac",
+    "branch": "claude/chatgpt-continuation-hi3y86",
     "remote": "origin",
-    "remote_branch": "main",
+    "remote_branch": "claude/chatgpt-continuation-hi3y86",
+    "pull_request": "https://github.com/Xerolux/glt-flow-card/pull/3",
     "push_authorized": true,
-    "push_completed": true,
-    "push_verified_at": "2026-09-01T20:41:43.1371739+02:00",
     "release_authorized": false,
-    "working_tree_expected_after_pause_commit": "clean"
+    "working_tree_expected_after_commit": "clean"
+  },
+  "environment": {
+    "python": "tools/python-launcher.mjs resolves Python 3.13; a repository .venv is used on Linux",
+    "playwright": "set PLAYWRIGHT_CHROMIUM_EXECUTABLE when the container Chromium revision differs from the pinned Playwright version",
+    "gate": "npm run test:phase2 reports every Phase-2 sentinel as controlled RED, implemented, or broken"
   },
   "resume": {
-    "first_action": "Read .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md and refresh Git state.",
-    "next_gate": "Run one bounded Phase 2 plan checker over all 17 plans and record the verdict.",
-    "after_gate": "If the plan check passes, execute Phase 2 only with $gsd-execute-phase 2 --no-transition."
+    "first_action": "Read .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md and run npm run test:phase2 to see which sentinels are still RED.",
+    "next_gate": "Plan 02-08: implement project_leases.py so phase2-leases turns green and the lease_required gate becomes a real lease check.",
+    "after_gate": "Continue in dependency order: 02-07, 02-09, 02-10, 02-11, 02-12, 02-13, 02-14, 02-15, 02-16, 02-17."
   }
 }
