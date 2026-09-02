@@ -27,20 +27,33 @@ plant target.
 
 | ID | STRIDE | Abuse case / invariant | Owner plan | Blocking evidence | Status |
 |---|---|---|---|---|---|
-| T3-01 | Tampering | A containment cycle, a dangling parent, a level inversion or an over-deep tree is accepted, so navigation, permissions and roll-ups walk a graph that has no bottom. | 03-06 | `py -3.13 -m pytest tests/components/glt_flow_card/test_semantic_model.py -q -x && node --test test/semantic-model.test.mjs` | planned |
-| T3-02 | Tampering | A unit, medium, direction or semantic tag outside its declared vocabulary passes validation and reaches a conversion or a roll-up. | 03-06 | `node --test test/semantic-model.test.mjs` | planned |
-| T3-03 | Tampering | The 2→3 migration drops, reorders or invents project content, or is not idempotent across a dry run and an apply. | 03-05 | `node --test test/v100-migrations.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_project_migrations.py -q -x` | planned |
-| T3-04 | Spoofing | A protocol or integration is inferred from an entity id or a friendly name, so a datapoint claims a provenance no registry supports. | 03-08 | `py -3.13 -m pytest tests/components/glt_flow_card/test_provenance.py -q -x` | planned |
-| T3-05 | Information disclosure | A provenance or mapping query reveals entities, devices, areas or config entries outside the caller's authorized projects, or answers a hidden project differently from a missing one. | 03-08 | `py -3.13 -m pytest tests/components/glt_flow_card/test_provenance_policy.py -q -x` | planned |
-| T3-06 | Repudiation / Safety | Communication health reports healthy for an unavailable, disabled or stale entity, so an operator acts on a value that is not live. | 03-08 | `py -3.13 -m pytest tests/components/glt_flow_card/test_provenance.py -q -x` | planned |
-| T3-07 | Elevation | A profile names a domain, a service or a target, reintroducing the caller-authored control path Phase 2 removed. | 03-10 | `py -3.13 -m pytest tests/components/glt_flow_card/test_equipment_profiles.py -q -x` | planned |
-| T3-08 | Tampering | A profile upgrade silently drops an engineer's override, or two instantiations of one profile version differ. | 03-10 | `py -3.13 -m pytest tests/components/glt_flow_card/test_equipment_profiles.py -q -x` | planned |
-| T3-09 | Tampering | A mapping binds without human acceptance, a re-rank overrules a manual override, or an acceptance cannot be undone. | 03-12 | `node --test test/entity-mapping.test.mjs` | planned |
-| T3-10 | Spoofing | Ranking disagrees between the browser and the Companion, so the mapping a person reviewed is not the mapping that is applied. | 03-12 | `node --test test/entity-mapping.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_entity_mapping.py -q -x` | planned |
-| T3-11 | Repudiation / Safety | An equipment with a communication error, an invalid value or a stale reading is presented as running, or two of symbol, colour, label and drill-down disagree. | 03-14 | `node --test test/equipment-state.test.mjs` | planned |
-| T3-12 | Denial | A hostile or accidental project — deep trees, huge fan-out, thousands of candidates — makes validation, ranking or state resolution unbounded. | 03-06 | `node --test test/semantic-model.test.mjs` | planned |
-| T3-13 | Information disclosure / Tampering | The exact generated card leaks entity, device or area data the viewer may not see, or presents state without a non-colour cue in German or English. | 03-15 | `node tools/run-exact-dist-playwright.mjs --grep=phase-3-ui` | planned |
+| T3-01 | Tampering | A containment cycle, a dangling parent, a level inversion or an over-deep tree is accepted, so navigation, permissions and roll-ups walk a graph that has no bottom. | 03-06 | `py -3.13 -m pytest tests/components/glt_flow_card/test_semantic_model.py -q -x && node --test test/semantic-model.test.mjs` | verified |
+| T3-02 | Tampering | A unit, medium, direction or semantic tag outside its declared vocabulary passes validation and reaches a conversion or a roll-up. | 03-06 | `node --test test/semantic-model.test.mjs` | verified |
+| T3-03 | Tampering | The 2→3 migration drops, reorders or invents project content, or is not idempotent across a dry run and an apply. | 03-05 | `node --test test/v100-migrations.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_project_migrations.py -q -x` | verified |
+| T3-04 | Spoofing | A protocol or integration is inferred from an entity id or a friendly name, so a datapoint claims a provenance no registry supports. | 03-08 | `py -3.13 -m pytest tests/components/glt_flow_card/test_provenance.py -q -x` | verified |
+| T3-05 | Information disclosure | A provenance or mapping query reveals entities, devices, areas or config entries outside the caller's authorized projects, or answers a hidden project differently from a missing one. | 03-08 | `py -3.13 -m pytest tests/components/glt_flow_card/test_provenance_policy.py -q -x` | verified |
+| T3-06 | Repudiation / Safety | Communication health reports healthy for an unavailable, disabled or stale entity, so an operator acts on a value that is not live. | 03-08 | `py -3.13 -m pytest tests/components/glt_flow_card/test_provenance.py -q -x` | verified |
+| T3-07 | Elevation | A profile names a domain, a service or a target, reintroducing the caller-authored control path Phase 2 removed. | 03-10 | `py -3.13 -m pytest tests/components/glt_flow_card/test_equipment_profiles.py -q -x` | verified |
+| T3-08 | Tampering | A profile upgrade silently drops an engineer's override, or two instantiations of one profile version differ. | 03-10 | `py -3.13 -m pytest tests/components/glt_flow_card/test_equipment_profiles.py -q -x` | verified |
+| T3-09 | Tampering | A mapping binds without human acceptance, a re-rank overrules a manual override, or an acceptance cannot be undone. | 03-12 | `node --test test/entity-mapping.test.mjs` | verified |
+| T3-10 | Spoofing | Ranking disagrees between the browser and the Companion, so the mapping a person reviewed is not the mapping that is applied. | 03-12 | `node --test test/entity-mapping.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_entity_mapping.py -q -x` | verified |
+| T3-11 | Repudiation / Safety | An equipment with a communication error, an invalid value or a stale reading is presented as running, or two of symbol, colour, label and drill-down disagree. | 03-14 | `node --test test/equipment-state.test.mjs` | verified |
+| T3-12 | Denial | A hostile or accidental project — deep trees, huge fan-out, thousands of candidates — makes validation, ranking or state resolution unbounded. | 03-06 | `node --test test/semantic-model.test.mjs` | verified |
+| T3-13 | Information disclosure / Tampering | The exact generated card leaks entity, device or area data the viewer may not see, or presents state without a non-colour cue in German or English. | 03-15 | `node tools/run-exact-dist-playwright.mjs --grep=phase-3-ui` | verified |
 | T3-14 | Tampering / Supply chain | Schema 3, its generated validators, the packaged Companion modules or the exact artifacts diverge between runtimes or from the checked-in bytes. | 03-17 | `npm run test:phase3:release` | planned |
+
+## Evidence Status
+
+T3-01 through T3-13 are `verified`: each owner command was run at the current
+head and passed with non-skipped behavioral counts, and `tools/verify-phase3.mjs`
+binds every one of them to a requirement, a roadmap truth, a plan and a resolved
+assumption.
+
+T3-14 remains `planned` for the same reason T2-16 does: its owner installs the
+exact stage on two digest-pinned Home Assistant images and needs a Docker
+engine, which this execution environment does not have. It runs in the
+`ha-artifacts` CI job and in the release workflow. Marking it verified without
+running it is exactly the failure the register exists to prevent.
 
 ## Blocking Rule
 

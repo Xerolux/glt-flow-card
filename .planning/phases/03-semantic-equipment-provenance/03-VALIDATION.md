@@ -27,16 +27,16 @@ implementation tasks may pass without a behavioral suite executing against them.
 
 | Requirement | Threat Refs | Secure Behavior | Test Type | Automated Command | Status |
 |-------------|-------------|-----------------|-----------|-------------------|--------|
-| SEM-01 | T3-01, T3-12 | Typed containment, one parent, level order, cycle and depth/breadth rejection, derived paths | Dual-runtime contract | `py -3.13 -m pytest tests/components/glt_flow_card/test_semantic_model.py -q -x && node --test test/semantic-model.test.mjs` | ⬜ pending |
-| SEM-01 | T3-02 | Closed unit, medium, direction and semantic-tag vocabularies reject unknown members | Contract | `node --test test/semantic-model.test.mjs` | ⬜ pending |
-| SEM-01 | T3-03 | The 2→3 migration is sequential, receipted, lossless over the corpus and idempotent | Dual-runtime migration | `node --test test/v100-migrations.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_project_migrations.py -q -x` | ⬜ pending |
-| PROTO-01 | T3-04, T3-06 | Provenance and health come from registries and config entries; unknown stays unknown; names never infer a protocol | HA integration | `py -3.13 -m pytest tests/components/glt_flow_card/test_provenance.py -q -x` | ⬜ pending |
-| PROTO-01 | T3-05 | Provenance reads authorize per project and answer hidden and missing identically | Multi-user HA | `py -3.13 -m pytest tests/components/glt_flow_card/test_provenance_policy.py -q -x` | ⬜ pending |
-| PROF-01 | T3-07, T3-08 | Versioned profiles instantiate identically, preserve overrides across upgrades, report what they cannot carry, and name no effect | Store/WS integration | `py -3.13 -m pytest tests/components/glt_flow_card/test_equipment_profiles.py -q -x` | ⬜ pending |
-| MAP-01 | T3-09 | Ranking explains itself, binds nothing without acceptance, preserves overrides and supports undo | Node reducer | `node --test test/entity-mapping.test.mjs` | ⬜ pending |
-| MAP-01 | T3-10 | Browser and Companion ranking agree exactly on the shared corpus, including the iDM fixtures | Dual-runtime parity | `node --test test/entity-mapping.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_entity_mapping.py -q -x` | ⬜ pending |
-| OPS-01 | T3-11 | One severity-ranked state per equipment; trust outranks activity; symbol, quality, freshness, DE/EN label and drill-down agree | Node exhaustive | `node --test test/equipment-state.test.mjs` | ⬜ pending |
-| OPS-01 / SEM-01 | T3-13 | The exact card shows state and provenance with non-colour cues, keyboard access and no unauthorized data, in German and English | Exact-dist Playwright | `node tools/run-exact-dist-playwright.mjs --grep=phase-3-ui` | ⬜ pending |
+| SEM-01 | T3-01, T3-12 | Typed containment, one parent, level order, cycle and depth/breadth rejection, derived paths | Dual-runtime contract | `py -3.13 -m pytest tests/components/glt_flow_card/test_semantic_model.py -q -x && node --test test/semantic-model.test.mjs` | ✅ verified |
+| SEM-01 | T3-02 | Closed unit, medium, direction and semantic-tag vocabularies reject unknown members | Contract | `node --test test/semantic-model.test.mjs` | ✅ verified |
+| SEM-01 | T3-03 | The 2→3 migration is sequential, receipted, lossless over the corpus and idempotent | Dual-runtime migration | `node --test test/v100-migrations.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_project_migrations.py -q -x` | ✅ verified |
+| PROTO-01 | T3-04, T3-06 | Provenance and health come from registries and config entries; unknown stays unknown; names never infer a protocol | HA integration | `py -3.13 -m pytest tests/components/glt_flow_card/test_provenance.py -q -x` | ✅ verified |
+| PROTO-01 | T3-05 | Provenance reads authorize per project and answer hidden and missing identically | Multi-user HA | `py -3.13 -m pytest tests/components/glt_flow_card/test_provenance_policy.py -q -x` | ✅ verified |
+| PROF-01 | T3-07, T3-08 | Versioned profiles instantiate identically, preserve overrides across upgrades, report what they cannot carry, and name no effect | Store/WS integration | `py -3.13 -m pytest tests/components/glt_flow_card/test_equipment_profiles.py -q -x` | ✅ verified |
+| MAP-01 | T3-09 | Ranking explains itself, binds nothing without acceptance, preserves overrides and supports undo | Node reducer | `node --test test/entity-mapping.test.mjs` | ✅ verified |
+| MAP-01 | T3-10 | Browser and Companion ranking agree exactly on the shared corpus, including the iDM fixtures | Dual-runtime parity | `node --test test/entity-mapping.test.mjs && py -3.13 -m pytest tests/components/glt_flow_card/test_entity_mapping.py -q -x` | ✅ verified |
+| OPS-01 | T3-11 | One severity-ranked state per equipment; trust outranks activity; symbol, quality, freshness, DE/EN label and drill-down agree | Node exhaustive | `node --test test/equipment-state.test.mjs` | ✅ verified |
+| OPS-01 / SEM-01 | T3-13 | The exact card shows state and provenance with non-colour cues, keyboard access and no unauthorized data, in German and English | Exact-dist Playwright | `node tools/run-exact-dist-playwright.mjs --grep=phase-3-ui` | ✅ verified |
 | All | T3-14 | Schema 3, generated validators, packaged modules and exact artifacts agree across runtimes and with the checked-in bytes | Release/HA artifact | `npm run test:phase3:release` | ⬜ pending |
 
 ## Wave 0 Requirements
@@ -83,4 +83,10 @@ authorized.
 - [x] No watch-mode flags or live control targets are used.
 - [x] Exact generated artifacts, not source modules alone, are required at the phase gate.
 
-**Approval:** approved 2026-09-02; execution evidence pending.
+**Approval:** approved 2026-09-02.
+
+**Execution evidence, 2026-09-02:** every row except T3-14 was run at the current
+head and passed with non-skipped behavioral counts. T3-14 stays pending because
+its owner installs the exact stage on two digest-pinned Home Assistant images and
+needs a Docker engine this environment does not have; it runs in the
+`ha-artifacts` CI job and in the release workflow.

@@ -196,6 +196,72 @@ exact staged artifact. They perform no physical plant write, contact no remote
 site, handle no credential, and are not a statement about capacity or about
 public Companion availability.
 
+### Semantic model, provenance and equipment state
+
+Phase 3 gives the product one validated equipment model, and schema version 3
+to express it.
+
+**The hierarchy.** Site → building → floor → system → subsystem → equipment →
+datapoint, with exactly one parent per node. A child may sit at its parent's
+level — a subsystem inside a subsystem is ordinary plant — but never above it.
+A dangling parent, a containment cycle of any length, a level inversion, a
+duplicate id, or a tree past its depth or breadth bound is a contract error with
+a stable path, in both runtimes. The semantic path is derived from the parents
+and never stored: a stored path is a second source of truth that starts agreeing
+with its parents and stops without telling anyone.
+
+**Closed vocabularies.** Units, media, directions and semantic tags are declared
+sets; an unknown member is a validation error rather than a passthrough string.
+Units carry their dimension, so kW and kWh are not interchangeable to a naive
+prefix match — binding power to an energy slot yields a number wrong by a unit of
+time that looks entirely plausible.
+
+**Upgrading.** Schema 2 projects migrate to 3 through the same sequential,
+receipted, dry-run-first machinery as earlier versions. Nothing is dropped.
+
+**Provenance.** A datapoint's integration, config entry, device, area and
+communication health are read from Home Assistant's own registries and state
+machine. Nothing is inferred from an entity id or a friendly name: a plant where
+`sensor.knx_return_temperature` is served by Modbus is not unusual. The card
+implements no fieldbus driver and opens no connection of its own. It reports the
+integration that owns an entity; of the protocols this product cares about,
+Modbus and KNX are Home Assistant core integrations, while BACnet and OPC UA are
+served by whatever integration an installation provides, so an unrecognised
+domain is reported as itself rather than dressed up as support the card cannot
+verify. Health resolves in a fixed order — disabled, then unavailable, then
+stale — because an entity switched off deliberately is a different situation
+from one that is merely quiet.
+
+Provenance is a project-scoped read behind the Phase-2 boundary, and it
+describes only entities the project itself references, so it can never become a
+way to search the registry.
+
+**Profiles.** A profile carries an identity, a semantic version, slots, controls,
+state signals, alarms, ports, diagnostics, maintenance metadata and symbols. Two
+instantiations of one version are identical. An upgrade carries every override
+that still applies and reports the ones it cannot, rather than dropping them
+silently. A profile control names a control id, its bounded input schema and its
+gates — never a domain, a service or a target, because that is the
+caller-authored control path Phase 2 removed.
+
+**Mapping.** Candidates are ranked from device membership, the profile slot's
+expectation, area agreement, integration agreement, unit compatibility and —
+last, and never sufficient on its own — name similarity. Every candidate carries
+the reasons that produced its score. Ranking is an assignment: an entity that
+plainly answers another slot is not this slot's answer. An entity whose name
+carries a role the slot does not declare is not a candidate at all, because a
+setpoint is not its measurement. Nothing binds without an explicit acceptance,
+and a manual override is stored as a decision, so a later re-rank cannot
+overrule an engineer who already looked at it.
+
+**Operational state.** Sixteen conditions resolve through a fixed precedence to
+exactly one state. Trust outranks activity: a communication error, an invalid
+value or a stale reading is never reported as running, however recently it said
+so, because the card does not know that it is. `auto` and `remote` qualify the
+state rather than replacing it, so an operator reads "running · remote". Symbol,
+colour, label and drill-down are projections of the one resolved value, so they
+cannot disagree, and every state carries a shape and a word as well as a colour.
+
 ### HACS
 
 1. HACS → three dots → **Custom repositories**.

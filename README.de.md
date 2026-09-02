@@ -215,6 +215,78 @@ Anlagen-Schreibzugriff aus, kontaktieren keine Remote Site, verarbeiten keine
 Zugangsdaten und sind weder eine Kapazitätsaussage noch eine Aussage über eine
 öffentliche Companion-Verfügbarkeit.
 
+### Semantisches Modell, Herkunft und Anlagenzustand
+
+Mit Phase 3 erhält das Produkt ein validiertes Anlagenmodell und Schemaversion 3,
+um es auszudrücken.
+
+**Die Hierarchie.** Standort → Gebäude → Etage → System → Teilsystem → Anlage →
+Datenpunkt, mit genau einem Elternteil je Knoten. Ein Kind darf auf der Ebene
+seines Elternteils liegen — ein Teilsystem in einem Teilsystem ist normaler
+Anlagenbau — aber nie darüber. Ein fehlendes Elternteil, ein Zyklus beliebiger
+Länge, eine Ebenenumkehr, eine doppelte ID oder ein Baum jenseits seiner Tiefen-
+oder Breitengrenze ist ein Vertragsfehler mit stabilem Pfad, in beiden Laufzeiten.
+Der semantische Pfad wird aus den Eltern abgeleitet und nie gespeichert: ein
+gespeicherter Pfad ist eine zweite Wahrheitsquelle, die anfangs mit ihren Eltern
+übereinstimmt und irgendwann kommentarlos aufhört.
+
+**Geschlossene Vokabulare.** Einheiten, Medien, Richtungen und semantische Tags
+sind deklarierte Mengen; ein unbekanntes Element ist ein Validierungsfehler und
+keine durchgereichte Zeichenkette. Einheiten tragen ihre Dimension, damit kW und
+kWh für einen naiven Präfixvergleich nicht austauschbar sind — Leistung an einen
+Energie-Slot gebunden ergibt eine Zahl, die um eine Zeiteinheit falsch ist und
+völlig plausibel aussieht.
+
+**Upgrade.** Projekte in Schema 2 migrieren nach 3 über dieselbe sequenzielle,
+belegte Mechanik mit vorangehendem Probelauf wie bei früheren Versionen. Es geht
+nichts verloren.
+
+**Herkunft.** Integration, Config-Entry, Gerät, Bereich und Kommunikationszustand
+eines Datenpunkts werden aus den Registries und der State Machine von Home
+Assistant gelesen. Nichts wird aus einer Entity-ID oder einem Anzeigenamen
+abgeleitet: eine Anlage, in der `sensor.knx_return_temperature` über Modbus
+kommt, ist nicht ungewöhnlich. Die Karte implementiert keinen Feldbustreiber und
+öffnet keine eigene Verbindung. Sie meldet die besitzende Integration; von den
+für dieses Produkt relevanten Protokollen sind Modbus und KNX
+Core-Integrationen, während BACnet und OPC UA über die jeweils installierte
+Integration kommen — eine unbekannte Domain wird deshalb als sie selbst gemeldet
+statt als Unterstützung ausgegeben, die die Karte nicht belegen kann. Der
+Zustand löst in fester Ordnung auf — deaktiviert, dann nicht verfügbar, dann
+veraltet — denn eine bewusst abgeschaltete Entity ist etwas anderes als eine,
+die nur gerade still ist.
+
+Die Herkunftsabfrage ist ein projektbezogener Lesezugriff hinter der
+Phase-2-Grenze und beschreibt ausschließlich Entities, die das Projekt selbst
+referenziert; sie kann also nie zur Registry-Suche werden.
+
+**Profile.** Ein Profil trägt Identität, semantische Version, Slots, Steuerungen,
+Zustandssignale, Alarme, Ports, Diagnosen, Wartungsdaten und Symbole. Zwei
+Instanziierungen einer Version sind identisch. Ein Upgrade übernimmt jede noch
+gültige Override und meldet die, die es nicht übernehmen kann, statt sie still zu
+verwerfen. Eine Profilsteuerung nennt eine Steuerungs-ID, ihr begrenztes
+Eingabeschema und ihre Gates — nie Domain, Service oder Ziel, denn das ist der
+vom Aufrufer bestimmte Steuerpfad, den Phase 2 entfernt hat.
+
+**Zuordnung.** Kandidaten werden aus Gerätezugehörigkeit, Slot-Erwartung des
+Profils, Bereichsübereinstimmung, Integrationsübereinstimmung,
+Einheitenverträglichkeit und — zuletzt und nie für sich allein ausreichend —
+Namensähnlichkeit bewertet. Jeder Kandidat trägt die Gründe seiner Bewertung.
+Zuordnung ist eine Zuweisung: eine Entity, die offensichtlich einen anderen Slot
+beantwortet, ist nicht die Antwort dieses Slots. Eine Entity, deren Name eine
+Rolle trägt, die der Slot nicht deklariert, ist gar kein Kandidat — ein Sollwert
+ist nicht seine Messung. Ohne ausdrückliche Annahme wird nichts gebunden, und
+eine manuelle Override wird als Entscheidung gespeichert, damit eine spätere
+Neubewertung keinen Ingenieur überstimmt, der bereits hingesehen hat.
+
+**Anlagenzustand.** Sechzehn Bedingungen lösen über eine feste Präzedenz zu genau
+einem Zustand auf. Vertrauen schlägt Aktivität: ein Kommunikationsfehler, ein
+ungültiger oder ein veralteter Wert wird nie als „in Betrieb“ gemeldet, wie
+aktuell die Meldung auch war, denn die Karte weiß es nicht. `auto` und `remote`
+qualifizieren den Zustand, statt ihn zu ersetzen, sodass ein Bediener „In Betrieb
+· Fernbetrieb“ liest. Symbol, Farbe, Beschriftung und Detailansicht sind
+Projektionen desselben aufgelösten Werts und können sich daher nicht
+widersprechen, und jeder Zustand trägt Form und Wort zusätzlich zur Farbe.
+
 ### HACS
 
 1. HACS → Drei-Punkte-Menü → **Benutzerdefinierte Repositories**.

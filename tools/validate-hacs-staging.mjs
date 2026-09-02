@@ -35,6 +35,7 @@ const COMPONENT_FILES = [
   "project_repository.py",
   "project_transactions.py",
   "provenance.py",
+  "semantic_model.py",
   "trusted_evidence.py",
   "schemas/bundle-manifest.schema.json",
   "schemas/diff-policy.json",
