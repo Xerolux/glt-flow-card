@@ -265,7 +265,9 @@ class ControlEvidenceRecorder:
 
     def __init__(self, hass: Any, *, evidence: TrustedEvidenceStore | None = None) -> None:
         self._hass = hass
-        self._evidence = evidence or TrustedEvidenceStore(hass)
+        # `is not None`, never `or`: this class defines __len__, so an empty
+        # store is falsy and `or` would silently create a second one.
+        self._evidence = evidence if evidence is not None else TrustedEvidenceStore(hass)
         self._barriers: set[str] = set()
 
     def supports_barrier(self, barrier: str) -> bool:

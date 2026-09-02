@@ -33,6 +33,17 @@ if TYPE_CHECKING:
 
 pytest_plugins = "pytest_homeassistant_custom_component.plugins"
 DOMAIN = "glt_flow_card"
+
+#: Captured at import, before any fixture patches the class. `lifecycle_effects`
+#: and `controlled_service` both replace `ServiceRegistry.async_call`, so a
+#: fixture that captured "the current implementation" would chain onto the other
+#: fixture's blocker and refuse a call the test explicitly permitted.
+try:  # pragma: no cover - import guard for environments without Home Assistant
+    from homeassistant.core import ServiceRegistry as _ServiceRegistry
+
+    PRISTINE_SERVICE_CALL = _ServiceRegistry.async_call
+except ImportError:  # pragma: no cover
+    PRISTINE_SERVICE_CALL = None
 PROJECT_CUSTOM_COMPONENTS = Path(__file__).resolve().parents[3] / "custom_components"
 
 
@@ -143,7 +154,7 @@ class LifecycleEffects:
             "cursors": size("_cursors", "cursors"),
             "leases": size("_leases", "leases", "project_leases"),
             "control_waits": size("_control_waits", "control_waits"),
-            "rate_buckets": size("_rate_buckets", "rate_buckets"),
+            "rate_buckets": size("_rate_buckets", "rate_buckets", "control_rates"),
         }
 
     def snapshot(self) -> dict[str, int | list[str]]:
@@ -246,7 +257,7 @@ def controlled_service(hass: HomeAssistant) -> Generator[Any]:
     from .user_factory import ControlledService
 
     controlled = ControlledService(hass)
-    original_call = type(hass.services).async_call
+    original_call = PRISTINE_SERVICE_CALL
 
     # `patch.object(..., side_effect=...)` installs a MagicMock as a class
     # attribute, so the instance lookup does not bind `self`; the replacement

@@ -22,6 +22,14 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 
+from uuid import uuid4
+
+from .configured_controls import (
+    ControlRateLimiter,
+    ControlRejected,
+    preview_payload,
+    resolve_control,
+)
 from .const import (
     DOMAIN,
     MAX_AUDIT,
@@ -488,6 +496,7 @@ class CompanionRuntime:
     evidence: TrustedEvidenceStore | None = None
     telemetry: TelemetryStore | None = None
     controls: ControlEvidenceRecorder | None = None
+    control_rates: ControlRateLimiter | None = None
     generation: int = 0
     available: bool = True
 
@@ -723,6 +732,142 @@ async def ws_projects_delete(hass, connection, msg):
         ))
     except PermissionError:
         connection.send_error(msg["id"], "capability_denied", "capability_denied")
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/controls/preview",
+    vol.Required("project_id"): str,
+    vol.Required("control_id"): str,
+    vol.Required("expected_revision"): vol.All(int, vol.Range(min=0)),
+    vol.Optional("input", default={}): dict,
+})
+@websocket_api.async_response
+async def ws_controls_preview(hass, connection, msg):
+    """Describe exactly what a control would do, resolved from the head."""
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    head = _project_for(hass, decision.project_id)
+    if head is None:
+        connection.send_error(msg["id"], "not_found_or_denied", "not_found_or_denied")
+        return
+    if int(head["revision"]) != int(msg["expected_revision"]):
+        connection.send_error(msg["id"], "revision_conflict", "revision_conflict")
+        return
+    try:
+        runtime.control_rates.check(
+            kind="preview",
+            user_id=decision.actor.user_id,
+            project_id=decision.project_id,
+        )
+        resolved = resolve_control(head["config"], msg["control_id"], msg["input"])
+    except ControlRejected as rejected:
+        code = "rate_limited" if rejected.reason == "rate_limited" else "invalid_input"
+        connection.send_error(msg["id"], code, rejected.reason)
+        return
+    connection.send_result(msg["id"], preview_payload(resolved))
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/controls/execute",
+    vol.Required("project_id"): str,
+    vol.Required("control_id"): str,
+    vol.Required("expected_revision"): vol.All(int, vol.Range(min=0)),
+    vol.Optional("input", default={}): dict,
+})
+@websocket_api.async_response
+async def ws_controls_execute(hass, connection, msg):
+    """Dispatch one configured control at most once, with honest evidence.
+
+    Resolved A4: this is an operational path. It re-checks capability, head and
+    Home Assistant permission, but it does not take an engineering lease -
+    operating a plant is not engineering it.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    correlation_id = f"ctl:{uuid4().hex}"
+
+    head = _project_for(hass, decision.project_id)
+    if head is None:
+        connection.send_error(msg["id"], "not_found_or_denied", "not_found_or_denied")
+        return
+    if int(head["revision"]) != int(msg["expected_revision"]):
+        connection.send_error(msg["id"], "revision_conflict", "revision_conflict")
+        return
+
+    try:
+        runtime.control_rates.check(
+            kind="execute",
+            user_id=decision.actor.user_id,
+            project_id=decision.project_id,
+        )
+        resolved = resolve_control(head["config"], msg["control_id"], msg["input"])
+    except ControlRejected as rejected:
+        code = "rate_limited" if rejected.reason == "rate_limited" else "invalid_input"
+        connection.send_error(msg["id"], code, rejected.reason)
+        return
+
+    # Durable `accepted` first. If this fails, nothing was dispatched and there
+    # is nothing to repair.
+    try:
+        await runtime.controls.async_accept(
+            project_id=decision.project_id,
+            actor_user_id=decision.actor.user_id,
+            control_id=resolved.control_id,
+            correlation_id=correlation_id,
+            target=resolved.target,
+        )
+    except Exception:
+        connection.send_error(msg["id"], "effect_unknown", "failed_before_dispatch")
+        return
+
+    try:
+        await hass.services.async_call(
+            resolved.domain,
+            resolved.service,
+            dict(resolved.service_data),
+            blocking=True,
+            target=dict(resolved.target),
+            context=Context(user_id=decision.actor.user_id),
+        )
+    except Exception:
+        # The attempt happened or it did not, and the Companion cannot tell.
+        # It records that honestly and never tries again on its own.
+        await runtime.controls.async_record_state(
+            project_id=decision.project_id,
+            actor_user_id=decision.actor.user_id,
+            correlation_id=correlation_id,
+            state="result_unknown",
+        )
+        connection.send_result(msg["id"], {
+            "correlation_id": correlation_id,
+            "state": "result_unknown",
+        })
+        return
+
+    await runtime.controls.async_record_state(
+        project_id=decision.project_id,
+        actor_user_id=decision.actor.user_id,
+        correlation_id=correlation_id,
+        state="dispatched",
+    )
+
+    # Only a matching readback may upgrade this to confirmed.
+    state = "timed_out"
+    readback = resolved.readback
+    if readback.get("entity_id"):
+        observed = hass.states.get(readback["entity_id"])
+        if observed is not None and observed.state == readback.get("expect_state"):
+            state = "readback_confirmed"
+    await runtime.controls.async_record_state(
+        project_id=decision.project_id,
+        actor_user_id=decision.actor.user_id,
+        correlation_id=correlation_id,
+        state=state,
+    )
+    connection.send_result(msg["id"], {
+        "correlation_id": correlation_id,
+        "state": state,
+    })
 
 
 @websocket_api.websocket_command({
@@ -1212,6 +1357,7 @@ _COMMAND_HANDLERS = (
     ws_projects_list, ws_projects_get, ws_projects_save, ws_projects_preview,
     ws_projects_apply, ws_projects_rollback, ws_projects_delete,
     ws_access_get, ws_access_set,
+    ws_controls_preview, ws_controls_execute,
     ws_evidence_list, ws_telemetry_list, ws_telemetry_add,
     ws_projects_lock, ws_projects_unlock,
     ws_leases_acquire, ws_leases_renew, ws_leases_release, ws_leases_status,
@@ -1443,6 +1589,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         evidence=evidence,
         telemetry=telemetry,
         controls=ControlEvidenceRecorder(hass, evidence=evidence),
+        control_rates=ControlRateLimiter(),
         generation=generation,
     )
     manager.project_transactions.set_mutation_guard(recheck_before_commit)
