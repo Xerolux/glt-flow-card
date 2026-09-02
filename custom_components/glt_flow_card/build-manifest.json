@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "f8145663676ae439f11f3bd29fd2abde57620180328aeb1bf7c2156c4f855b74",
-      "size": 3065744
+      "sha256": "168aed1e5dfb21e53c579e789a7707334f7c694e15d2c807d5b0253c4d6ce695",
+      "size": 3083602
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "f8145663676ae439f11f3bd29fd2abde57620180328aeb1bf7c2156c4f855b74",
-      "size": 3065744
+      "sha256": "168aed1e5dfb21e53c579e789a7707334f7c694e15d2c807d5b0253c4d6ce695",
+      "size": 3083602
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -138,7 +138,7 @@
   ],
   "build": {
     "commit": "6b570763a17ad814062837143236ba26f5c7b839",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -219,13 +219,13 @@
     },
     {
       "path": "src/v100/catalog-de.mjs",
-      "sha256": "db06ba187e3754bf2b721008ce053a55ffc832f642d9d6eb3caaacb839532bf0",
-      "size": 30539
+      "sha256": "d7ef4254299417dc8a6b939b50e62660c67ede8469c024426fa6f1a2d2eabb86",
+      "size": 37237
     },
     {
       "path": "src/v100/catalog-en.mjs",
-      "sha256": "19c4d1c1a79690c3adcbbaa0267fae5f2d203e38a304de2815ab3fdcc14c25bc",
-      "size": 27628
+      "sha256": "9a77451048097b0db77125b82485e4f7446fd4814fbbef8b43cf98b88b2f1f5f",
+      "size": 34289
     },
     {
       "path": "src/v100/catalog-lookup.mjs",
@@ -234,8 +234,8 @@
     },
     {
       "path": "src/v100/catalog.mjs",
-      "sha256": "07e505c46c351c4a0b519017c2816783e0f0adccff3645a4697fb0cda44d94e1",
-      "size": 33783
+      "sha256": "9370454f651d071bda169fe066011b5dad8023712b68ce8af4572269ebf595d3",
+      "size": 39142
     },
     {
       "path": "src/v100/command-outcome.mjs",
@@ -359,8 +359,8 @@
     },
     {
       "path": "src/v100/project-catalog.js",
-      "sha256": "09206263cd1a0948f9cadfbe36db47d4fbe83ee714e79733ba53ef7bbfbb0a6b",
-      "size": 17283
+      "sha256": "26784c8bc30926bb16f3a13e4115bc7cfb1f5596738302002349a60832dbab0f",
+      "size": 18186
     },
     {
       "path": "src/v100/project-collaboration.mjs",

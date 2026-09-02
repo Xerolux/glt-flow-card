@@ -21,7 +21,7 @@ import "./catalog-en.mjs";
 
 import {
   BASE_SYMBOLS, DOMAINS, SYMBOL_VARIANTS, VISUAL_STYLES,
-  domainForCategory, renderVariant,
+  domainForCategory, labelText, renderVariant,
 } from "./catalog.mjs";
 import { symbolCatalogStats } from "./core.mjs";
 import { PORT_KINDS, REFUSAL_REASONS } from "./ports.mjs";
@@ -234,7 +234,12 @@ class GltSymbolBrowser extends GltCatalogElement {
       if (filters.domain && domainForCategory(variant.category) !== filters.domain) return false;
       if (filters.style && variant.style !== filters.style) return false;
       if (filters.text) {
-        const haystack = `${variant.label} ${variant.category} ${base?.id ?? ""}`.toLowerCase();
+        // Both languages in the haystack, so a German operator finds "Pumpe"
+        // and an English one finds "Pump" without switching the interface.
+        const haystack = [
+          labelText(variant.label, "de"), labelText(variant.label, "en"),
+          variant.category, base?.id ?? "",
+        ].join(" ").toLowerCase();
         if (!haystack.includes(String(filters.text).toLowerCase())) return false;
       }
       return true;
@@ -258,11 +263,11 @@ class GltSymbolBrowser extends GltCatalogElement {
 
       const drawing = element("div");
       drawing.setAttribute("aria-hidden", "true");
-      const svg = parseSymbol(renderVariant(variant.base_symbol, variant.style));
+      const svg = parseSymbol(renderVariant(variant.base_symbol, variant.style, language));
       if (svg) drawing.append(svg);
       card.append(drawing);
 
-      const button = element("button", "glt-cat-name", base?.label ?? variant.base_symbol);
+      const button = element("button", "glt-cat-name", labelText(base?.label, language) || variant.base_symbol);
       button.type = "button";
       button.dataset.chooseVariant = variant.id;
       button.addEventListener("click", () => {
@@ -273,7 +278,10 @@ class GltSymbolBrowser extends GltCatalogElement {
         }));
       });
       card.append(button);
-      card.append(element("span", "glt-cat-meta", `${variant.category} · ${style?.label ?? variant.style}`));
+      const domain = DOMAINS.find((entry) => entry.category === variant.category);
+      card.append(element("span", "glt-cat-meta",
+        `${labelText(domain?.label, language) || variant.category} · `
+        + `${labelText(style?.label, language) || variant.style}`));
       grid.append(card);
     }
     this.append(grid);
@@ -282,10 +290,17 @@ class GltSymbolBrowser extends GltCatalogElement {
   _filters(language, active) {
     const wrap = element("div", "glt-cat-filters");
     const categories = [...new Set(BASE_SYMBOLS.map((base) => base.category))].sort();
+    // A category token is a grouping key, not display text: it is matched
+    // against `base.category` across the product. What a reader sees is the
+    // domain label that names it, so the option text comes from the catalog
+    // and the option *value* stays the key.
+    const categoryLabel = (value) => labelText(
+      DOMAINS.find((domain) => domain.category === value)?.label, language,
+    ) || value;
     const choices = [
-      ["category", "filter_category", categories.map((value) => [value, value])],
-      ["domain", "filter_domain", DOMAINS.map((domain) => [domain.id, domain.label[language]])],
-      ["style", "filter_style", VISUAL_STYLES.map((style) => [style.id, style.label])],
+      ["category", "filter_category", categories.map((value) => [value, categoryLabel(value)])],
+      ["domain", "filter_domain", DOMAINS.map((domain) => [domain.id, labelText(domain.label, language)])],
+      ["style", "filter_style", VISUAL_STYLES.map((style) => [style.id, labelText(style.label, language)])],
     ];
     for (const [name, labelKey, options] of choices) {
       const label = element("label");

@@ -121,6 +121,14 @@ export function looksUserFacing(value) {
   if (/^[\s\p{P}\p{S}\d]+$/u.test(value)) return false;    // punctuation, digits, glyphs
   if (/^--?[a-z]/u.test(value)) return false;              // a CSS custom property or flag
   if (/[{}<>]/u.test(value) && !GERMAN.test(value)) return false; // markup or a template
+  // An inline CSS declaration block: `color:#0f766e;background:#ccfbf1;…`. Two
+  // or more `property:value` pairs is a shape no sentence has, and excluding it
+  // structurally beats an allowlist entry per colour scheme.
+  if (/^(?:[a-z-]+\s*:\s*[^;:]+;?\s*){2,}$/u.test(value)) return false;
+  // A class-name list: `glt4-btn glt4-danger`. Every token is a lower-case
+  // identifier, which prose is not — a sentence has a capital, a digit with a
+  // unit, or punctuation somewhere.
+  if (/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\s+[a-z][a-z0-9]*(?:-[a-z0-9]+)*)+$/u.test(value)) return false;
   return GERMAN.test(value) || PROSE.test(value);
 }
 

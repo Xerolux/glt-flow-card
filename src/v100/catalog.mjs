@@ -4,12 +4,12 @@ import { pair as catalogPair } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
 import "./catalog-en.mjs";
 export const VISUAL_STYLES = [
-  { id: "neo2030", label: "Neo 2030" },
-  { id: "clean", label: "Clean" },
-  { id: "classic_scada", label: "Classic SCADA" },
-  { id: "standard_2d", label: "Standard 2D" },
-  { id: "operations_light", label: "Operations Light" },
-  { id: "pid_dark", label: "P&ID Dark" },
+  { id: "neo2030", label: catalogPair("symbols.style_neo2030") },
+  { id: "clean", label: catalogPair("symbols.style_clean") },
+  { id: "classic_scada", label: catalogPair("symbols.style_classic_scada") },
+  { id: "standard_2d", label: catalogPair("symbols.style_standard_2d") },
+  { id: "operations_light", label: catalogPair("symbols.style_operations_light") },
+  { id: "pid_dark", label: catalogPair("symbols.style_pid_dark") },
 ];
 
 const P = (id, label, category, type, ports = [], slots = [], controls = []) => ({
@@ -20,76 +20,104 @@ const slot = (id, label, domains = ["sensor"], unit = null) => ({ id, label, dom
 const control = (id, label, command, domains = []) => ({ id, label, command, domains });
 
 export const COMPONENT_PROFILES = [
-  P("heat_pump", "Wärmepumpe", "Heizung", "heat_pump",
+  P("heat_pump", catalogPair("symbols.profile_heat_pump"), "Heizung", "heat_pump",
     [port("source_in", "source", "left", "in"), port("source_out", "source", "left", "out"), port("supply", "heating_supply", "right", "out"), port("return", "heating_return", "right", "in")],
-    [slot("flow_temp", "Vorlauf", ["sensor"], "°C"), slot("return_temp", "Rücklauf", ["sensor"], "°C"), slot("power", "Leistung", ["sensor"], "kW"), slot("cop", "COP", ["sensor"]), slot("operating_hours", "Betriebsstunden", ["sensor"], "h")],
-    [control("enable", "Freigabe", "toggle", ["switch", "input_boolean"]), control("mode", "Betriebsart", "select", ["select", "climate"]) ]),
-  P("pump", "Pumpe", "Hydraulik", "pump",
+    [slot("flow_temp", catalogPair("symbols.slot_flow_temp"), ["sensor"], "°C"), slot("return_temp", catalogPair("symbols.slot_return_temp"), ["sensor"], "°C"), slot("power", catalogPair("symbols.slot_power"), ["sensor"], "kW"), slot("cop", catalogPair("symbols.slot_cop"), ["sensor"]), slot("operating_hours", catalogPair("symbols.slot_operating_hours"), ["sensor"], "h")],
+    [control("enable", catalogPair("symbols.control_enable"), "toggle", ["switch", "input_boolean"]), control("mode", catalogPair("symbols.control_mode"), "select", ["select", "climate"]) ]),
+  P("pump", catalogPair("symbols.profile_pump"), "Hydraulik", "pump",
     [port("in", "hydronic", "left", "in"), port("out", "hydronic", "right", "out")],
-    [slot("speed", "Drehzahl", ["sensor", "number"], "%"), slot("power", "Leistung", ["sensor"], "W"), slot("hours", "Betriebsstunden", ["sensor"], "h"), slot("starts", "Starts", ["sensor"])],
-    [control("run", "Ein/Aus", "toggle", ["switch", "fan"]), control("speed", "Drehzahl", "number", ["number", "fan"])]),
-  P("valve", "Ventil", "Hydraulik", "valve",
+    [slot("speed", catalogPair("symbols.slot_speed"), ["sensor", "number"], "%"), slot("power", catalogPair("symbols.slot_power"), ["sensor"], "W"), slot("hours", catalogPair("symbols.slot_hours"), ["sensor"], "h"), slot("starts", catalogPair("symbols.slot_starts"), ["sensor"])],
+    [control("run", catalogPair("symbols.control_run"), "toggle", ["switch", "fan"]), control("speed", catalogPair("symbols.control_speed"), "number", ["number", "fan"])]),
+  P("valve", catalogPair("symbols.profile_valve"), "Hydraulik", "valve",
     [port("in", "hydronic", "left", "in"), port("out", "hydronic", "right", "out")],
-    [slot("position", "Stellung", ["sensor", "number", "cover"], "%"), slot("feedback", "Rückmeldung", ["binary_sensor", "sensor"])],
-    [control("position", "Stellung", "number", ["number", "cover"]), control("open_close", "Öffnen/Schließen", "toggle", ["switch", "cover"])]),
-  P("mixing_valve", "3-Wege-Mischer", "Hydraulik", "valve",
+    [slot("position", catalogPair("symbols.slot_position"), ["sensor", "number", "cover"], "%"), slot("feedback", catalogPair("symbols.slot_feedback"), ["binary_sensor", "sensor"])],
+    [control("position", catalogPair("symbols.control_position"), "number", ["number", "cover"]), control("open_close", catalogPair("symbols.control_open_close"), "toggle", ["switch", "cover"])]),
+  P("mixing_valve", catalogPair("symbols.profile_mixing_valve"), "Hydraulik", "valve",
     [port("hot", "heating_supply", "left", "in"), port("return", "heating_return", "bottom", "in"), port("mixed", "heating_supply", "right", "out")],
-    [slot("position", "Stellung", ["sensor", "number"], "%"), slot("setpoint", "Soll VL", ["sensor", "number"], "°C"), slot("actual", "Ist VL", ["sensor"], "°C")],
-    [control("position", "Stellung", "number", ["number"])]),
-  P("tank", "Speicher", "Heizung", "tank",
+    [slot("position", catalogPair("symbols.slot_position"), ["sensor", "number"], "%"), slot("setpoint", catalogPair("symbols.slot_setpoint"), ["sensor", "number"], "°C"), slot("actual", catalogPair("symbols.slot_actual"), ["sensor"], "°C")],
+    [control("position", catalogPair("symbols.control_position"), "number", ["number"])]),
+  P("tank", catalogPair("symbols.profile_tank"), "Heizung", "tank",
     [port("top", "heating_supply", "right", "out"), port("bottom", "heating_return", "right", "in")],
-    [slot("top_temp", "Oben", ["sensor"], "°C"), slot("middle_temp", "Mitte", ["sensor"], "°C"), slot("bottom_temp", "Unten", ["sensor"], "°C")]),
-  P("dhw_tank", "Warmwasserspeicher", "Heizung", "tank",
+    [slot("top_temp", catalogPair("symbols.slot_top_temp"), ["sensor"], "°C"), slot("middle_temp", catalogPair("symbols.slot_middle_temp"), ["sensor"], "°C"), slot("bottom_temp", catalogPair("symbols.slot_bottom_temp"), ["sensor"], "°C")]),
+  P("dhw_tank", catalogPair("symbols.profile_dhw_tank"), "Heizung", "tank",
     [port("charge_in", "dhw", "left", "in"), port("charge_out", "dhw", "left", "out"), port("dhw_out", "dhw", "right", "out"), port("cold_in", "cold_water", "bottom", "in")],
-    [slot("temperature", "Warmwasser", ["sensor"], "°C"), slot("setpoint", "Soll", ["number", "sensor"], "°C")],
-    [control("setpoint", "Solltemperatur", "number", ["number", "water_heater"])]),
-  P("boiler", "Heizkessel", "Heizung", "boiler",
+    [slot("temperature", catalogPair("symbols.slot_temperature"), ["sensor"], "°C"), slot("setpoint", catalogPair("symbols.slot_setpoint"), ["number", "sensor"], "°C")],
+    [control("setpoint", catalogPair("symbols.control_setpoint"), "number", ["number", "water_heater"])]),
+  P("boiler", catalogPair("symbols.profile_boiler"), "Heizung", "boiler",
     [port("supply", "heating_supply", "right", "out"), port("return", "heating_return", "left", "in")],
-    [slot("flow_temp", "Vorlauf", ["sensor"], "°C"), slot("power", "Leistung", ["sensor"], "kW"), slot("hours", "Betriebsstunden", ["sensor"], "h")],
-    [control("enable", "Freigabe", "toggle", ["switch"])]),
-  P("heat_exchanger", "Wärmetauscher", "Hydraulik", "heat_exchanger",
+    [slot("flow_temp", catalogPair("symbols.slot_flow_temp"), ["sensor"], "°C"), slot("power", catalogPair("symbols.slot_power"), ["sensor"], "kW"), slot("hours", catalogPair("symbols.slot_hours"), ["sensor"], "h")],
+    [control("enable", catalogPair("symbols.control_enable"), "toggle", ["switch"])]),
+  P("heat_exchanger", catalogPair("symbols.profile_heat_exchanger"), "Hydraulik", "heat_exchanger",
     [port("primary_in", "primary", "left", "in"), port("primary_out", "primary", "left", "out"), port("secondary_in", "secondary", "right", "in"), port("secondary_out", "secondary", "right", "out")],
-    [slot("primary_in_temp", "Primär Ein", ["sensor"], "°C"), slot("primary_out_temp", "Primär Aus", ["sensor"], "°C"), slot("secondary_in_temp", "Sekundär Ein", ["sensor"], "°C"), slot("secondary_out_temp", "Sekundär Aus", ["sensor"], "°C")]),
-  P("ahu", "RLT-Zentrale", "RLT", "ahu",
+    [slot("primary_in_temp", catalogPair("symbols.slot_primary_in_temp"), ["sensor"], "°C"), slot("primary_out_temp", catalogPair("symbols.slot_primary_out_temp"), ["sensor"], "°C"), slot("secondary_in_temp", catalogPair("symbols.slot_secondary_in_temp"), ["sensor"], "°C"), slot("secondary_out_temp", catalogPair("symbols.slot_secondary_out_temp"), ["sensor"], "°C")]),
+  P("ahu", catalogPair("symbols.profile_ahu"), "RLT", "ahu",
     [port("outdoor", "air_outdoor", "left", "in"), port("supply", "air_supply", "right", "out"), port("extract", "air_extract", "right", "in"), port("exhaust", "air_exhaust", "left", "out")],
-    [slot("supply_temp", "Zuluft", ["sensor"], "°C"), slot("extract_temp", "Abluft", ["sensor"], "°C"), slot("supply_flow", "Zuluftmenge", ["sensor"], "m³/h"), slot("extract_flow", "Abluftmenge", ["sensor"], "m³/h"), slot("co2", "CO₂", ["sensor"], "ppm")],
-    [control("enable", "Freigabe", "toggle", ["switch", "fan"]), control("mode", "Betriebsart", "select", ["select"])]),
-  P("fan", "Ventilator", "RLT", "fan",
+    [slot("supply_temp", catalogPair("symbols.slot_supply_temp"), ["sensor"], "°C"), slot("extract_temp", catalogPair("symbols.slot_extract_temp"), ["sensor"], "°C"), slot("supply_flow", catalogPair("symbols.slot_supply_flow"), ["sensor"], "m³/h"), slot("extract_flow", catalogPair("symbols.slot_extract_flow"), ["sensor"], "m³/h"), slot("co2", catalogPair("symbols.slot_co2"), ["sensor"], "ppm")],
+    [control("enable", catalogPair("symbols.control_enable"), "toggle", ["switch", "fan"]), control("mode", catalogPair("symbols.control_mode"), "select", ["select"])]),
+  P("fan", catalogPair("symbols.profile_fan"), "RLT", "fan",
     [port("in", "air", "left", "in"), port("out", "air", "right", "out")],
-    [slot("speed", "Drehzahl", ["sensor", "number", "fan"], "%"), slot("flow", "Luftmenge", ["sensor"], "m³/h"), slot("pressure", "Druck", ["sensor"], "Pa")],
-    [control("run", "Ein/Aus", "toggle", ["fan", "switch"]), control("speed", "Drehzahl", "number", ["fan", "number"])]),
-  P("damper", "Luftklappe", "RLT", "valve",
+    [slot("speed", catalogPair("symbols.slot_speed"), ["sensor", "number", "fan"], "%"), slot("flow", catalogPair("symbols.slot_flow"), ["sensor"], "m³/h"), slot("pressure", catalogPair("symbols.slot_pressure"), ["sensor"], "Pa")],
+    [control("run", catalogPair("symbols.control_run"), "toggle", ["fan", "switch"]), control("speed", catalogPair("symbols.control_speed"), "number", ["fan", "number"])]),
+  P("damper", catalogPair("symbols.profile_damper"), "RLT", "valve",
     [port("in", "air", "left", "in"), port("out", "air", "right", "out")],
-    [slot("position", "Stellung", ["sensor", "number", "cover"], "%")],
-    [control("position", "Stellung", "number", ["number", "cover"])]),
-  P("chiller", "Kältemaschine", "Kälte", "heat_pump",
+    [slot("position", catalogPair("symbols.slot_position"), ["sensor", "number", "cover"], "%")],
+    [control("position", catalogPair("symbols.control_position"), "number", ["number", "cover"])]),
+  P("chiller", catalogPair("symbols.profile_chiller"), "Kälte", "heat_pump",
     [port("supply", "cooling_supply", "right", "out"), port("return", "cooling_return", "right", "in"), port("condenser_in", "condenser", "left", "in"), port("condenser_out", "condenser", "left", "out")],
-    [slot("supply_temp", "Kälte VL", ["sensor"], "°C"), slot("return_temp", "Kälte RL", ["sensor"], "°C"), slot("power", "Leistung", ["sensor"], "kW")],
-    [control("enable", "Freigabe", "toggle", ["switch"])]),
-  P("meter", "Zähler", "Energie", "meter", [], [slot("value", "Zählerstand", ["sensor"]), slot("power", "Leistung", ["sensor"]) ]),
-  P("room", "Raum / Zone", "Gebäude", "room", [], [slot("temperature", "Raumtemperatur", ["sensor", "climate"], "°C"), slot("humidity", "Feuchte", ["sensor"], "%"), slot("co2", "CO₂", ["sensor"], "ppm"), slot("setpoint", "Sollwert", ["climate", "number"], "°C")], [control("setpoint", "Sollwert", "number", ["climate", "number"])]),
-  P("generic", "Allgemeines Aggregat", "Allgemein", "generic", [port("left", "neutral", "left"), port("right", "neutral", "right")], [slot("value", "Wert", ["sensor"])])
+    [slot("supply_temp", catalogPair("symbols.slot_supply_temp"), ["sensor"], "°C"), slot("return_temp", catalogPair("symbols.slot_return_temp"), ["sensor"], "°C"), slot("power", catalogPair("symbols.slot_power"), ["sensor"], "kW")],
+    [control("enable", catalogPair("symbols.control_enable"), "toggle", ["switch"])]),
+  P("meter", catalogPair("symbols.profile_meter"), "Energie", "meter", [], [slot("value", catalogPair("symbols.slot_value"), ["sensor"]), slot("power", catalogPair("symbols.slot_power"), ["sensor"]) ]),
+  P("room", catalogPair("symbols.profile_room"), "Gebäude", "room", [], [slot("temperature", catalogPair("symbols.slot_temperature"), ["sensor", "climate"], "°C"), slot("humidity", catalogPair("symbols.slot_humidity"), ["sensor"], "%"), slot("co2", catalogPair("symbols.slot_co2"), ["sensor"], "ppm"), slot("setpoint", catalogPair("symbols.slot_setpoint"), ["climate", "number"], "°C")], [control("setpoint", catalogPair("symbols.control_setpoint"), "number", ["climate", "number"])]),
+  P("generic", catalogPair("symbols.profile_generic"), "Allgemein", "generic", [port("left", "neutral", "left"), port("right", "neutral", "right")], [slot("value", catalogPair("symbols.slot_value"), ["sensor"])])
 ];
 
 export const BASE_SYMBOLS = [
-  ["heat_pump_neo","Wärmepumpe Neo","Heizung","heat_pump"],["heat_pump_compact","Wärmepumpe Kompakt","Heizung","heat_pump"],["boiler","Heizkessel","Heizung","boiler"],["burner","Brenner","Heizung","generic"],["immersion_heater","Heizstab","Heizung","generic"],["buffer_layered","Schichtspeicher","Heizung","tank"],["dhw_tank","Warmwasserspeicher","Heizung","dhw_tank"],["underfloor","Fußbodenheizung","Heizung","room"],["radiator","Heizkörper","Heizung","room"],
-  ["pump_inline","Pumpe Inline","Hydraulik","pump"],["pump_variable","Pumpe FU","Hydraulik","pump"],["pump_twin","Doppelpumpe","Hydraulik","pump"],["pump_dhw","Zirkulationspumpe","Hydraulik","pump"],["valve_2way","2-Wege-Ventil","Hydraulik","valve"],["valve_3way","3-Wege-Ventil","Hydraulik","valve"],["mixing_valve","3-Wege-Mischer","Hydraulik","mixing_valve"],["shutoff_valve","Absperrventil","Hydraulik","valve"],["check_valve","Rückschlagventil","Hydraulik","valve"],["safety_valve","Sicherheitsventil","Hydraulik","valve"],["balancing_valve","Strangregulierventil","Hydraulik","valve"],["hydraulic_separator","Hydraulische Weiche","Hydraulik","heat_exchanger"],["heat_exchanger_plate","Plattenwärmetauscher","Hydraulik","heat_exchanger"],["manifold","Verteiler / Sammler","Hydraulik","generic"],["filter_water","Schmutzfänger","Hydraulik","generic"],["dirt_separator","Schlammabscheider","Hydraulik","generic"],["expansion_vessel","Ausdehnungsgefäß","Hydraulik","tank"],
-  ["ahu","RLT-Zentrale","RLT","ahu"],["fan_supply","Zuluftventilator","RLT","fan"],["fan_extract","Abluftventilator","RLT","fan"],["damper","Luftklappe","RLT","damper"],["fire_damper","Brandschutzklappe","RLT","damper"],["air_filter","Luftfilter","RLT","generic"],["heating_coil","Heizregister","RLT","heat_exchanger"],["cooling_coil","Kühlregister","RLT","heat_exchanger"],["heat_recovery_rotary","Rotations-WRG","RLT","heat_exchanger"],["heat_recovery_plate","Platten-WRG","RLT","heat_exchanger"],["humidifier","Befeuchter","RLT","generic"],["silencer","Schalldämpfer","RLT","generic"],
-  ["chiller","Kältemaschine","Kälte","chiller"],["compressor","Verdichter","Kälte","generic"],["cooling_tower","Kühlturm","Kälte","generic"],["cooling_buffer","Kältepuffer","Kälte","tank"],
-  ["pv_array","PV-Feld","Energie","generic"],["inverter","Wechselrichter","Energie","generic"],["battery","Batteriespeicher","Energie","generic"],["grid","Stromnetz","Energie","generic"],["meter","Energiezähler","Energie","meter"],["wallbox","Wallbox","Energie","generic"],
-  ["temp_sensor","Temperaturfühler","Sensorik","meter"],["pressure_sensor","Drucksensor","Sensorik","meter"],["dp_sensor","Differenzdrucksensor","Sensorik","meter"],["flow_sensor","Volumenstromsensor","Sensorik","meter"],["humidity_sensor","Feuchtefühler","Sensorik","meter"],["co2_sensor","CO₂-Sensor","Sensorik","meter"],["frost_thermostat","Frostschutzthermostat","Sensorik","meter"],["room_sensor","Raumsensor","Sensorik","room"],
-  ["switchgear","Niederspannungsverteilung","Elektro","generic"],["busbar","Sammelschiene","Elektro","generic"],["sub_distribution_board","Unterverteilung","Elektro","generic"],["transformer","Transformator","Elektro","generic"],["ups","USV-Anlage","Elektro","generic"],["generator_set","Netzersatzanlage","Elektro","generic"],["circuit_breaker","Leitungsschutzschalter","Elektro","generic"],["rcd","FI-Schutzschalter","Elektro","generic"],["surge_arrester","Überspannungsableiter","Elektro","generic"],["isolator_switch","Lasttrennschalter","Elektro","generic"],
-  ["fire_alarm_panel","Brandmeldezentrale","Brandschutz","generic"],["smoke_detector","Rauchmelder","Brandschutz","meter"],["heat_detector","Wärmemelder","Brandschutz","meter"],["manual_call_point","Handfeuermelder","Brandschutz","generic"],["aspirating_detector","Ansaugrauchmelder","Brandschutz","meter"],["sprinkler_head","Sprinklerkopf","Brandschutz","generic"],["sprinkler_valve_station","Nassalarmventil","Brandschutz","valve"],["extinguishing_system","Löschanlage","Brandschutz","generic"],["fire_barrier","Brandabschottung","Brandschutz","generic"],["fire_door","Brandschutztür","Brandschutz","generic"]
+  ["heat_pump_neo",catalogPair("symbols.symbol_heat_pump_neo"),"Heizung","heat_pump"],["heat_pump_compact",catalogPair("symbols.symbol_heat_pump_compact"),"Heizung","heat_pump"],["boiler",catalogPair("symbols.symbol_boiler"),"Heizung","boiler"],["burner",catalogPair("symbols.symbol_burner"),"Heizung","generic"],["immersion_heater",catalogPair("symbols.symbol_immersion_heater"),"Heizung","generic"],["buffer_layered",catalogPair("symbols.symbol_buffer_layered"),"Heizung","tank"],["dhw_tank",catalogPair("symbols.symbol_dhw_tank"),"Heizung","dhw_tank"],["underfloor",catalogPair("symbols.symbol_underfloor"),"Heizung","room"],["radiator",catalogPair("symbols.symbol_radiator"),"Heizung","room"],
+  ["pump_inline",catalogPair("symbols.symbol_pump_inline"),"Hydraulik","pump"],["pump_variable",catalogPair("symbols.symbol_pump_variable"),"Hydraulik","pump"],["pump_twin",catalogPair("symbols.symbol_pump_twin"),"Hydraulik","pump"],["pump_dhw",catalogPair("symbols.symbol_pump_dhw"),"Hydraulik","pump"],["valve_2way",catalogPair("symbols.symbol_valve_2way"),"Hydraulik","valve"],["valve_3way",catalogPair("symbols.symbol_valve_3way"),"Hydraulik","valve"],["mixing_valve",catalogPair("symbols.symbol_mixing_valve"),"Hydraulik","mixing_valve"],["shutoff_valve",catalogPair("symbols.symbol_shutoff_valve"),"Hydraulik","valve"],["check_valve",catalogPair("symbols.symbol_check_valve"),"Hydraulik","valve"],["safety_valve",catalogPair("symbols.symbol_safety_valve"),"Hydraulik","valve"],["balancing_valve",catalogPair("symbols.symbol_balancing_valve"),"Hydraulik","valve"],["hydraulic_separator",catalogPair("symbols.symbol_hydraulic_separator"),"Hydraulik","heat_exchanger"],["heat_exchanger_plate",catalogPair("symbols.symbol_heat_exchanger_plate"),"Hydraulik","heat_exchanger"],["manifold",catalogPair("symbols.symbol_manifold"),"Hydraulik","generic"],["filter_water",catalogPair("symbols.symbol_filter_water"),"Hydraulik","generic"],["dirt_separator",catalogPair("symbols.symbol_dirt_separator"),"Hydraulik","generic"],["expansion_vessel",catalogPair("symbols.symbol_expansion_vessel"),"Hydraulik","tank"],
+  ["ahu",catalogPair("symbols.symbol_ahu"),"RLT","ahu"],["fan_supply",catalogPair("symbols.symbol_fan_supply"),"RLT","fan"],["fan_extract",catalogPair("symbols.symbol_fan_extract"),"RLT","fan"],["damper",catalogPair("symbols.symbol_damper"),"RLT","damper"],["fire_damper",catalogPair("symbols.symbol_fire_damper"),"RLT","damper"],["air_filter",catalogPair("symbols.symbol_air_filter"),"RLT","generic"],["heating_coil",catalogPair("symbols.symbol_heating_coil"),"RLT","heat_exchanger"],["cooling_coil",catalogPair("symbols.symbol_cooling_coil"),"RLT","heat_exchanger"],["heat_recovery_rotary",catalogPair("symbols.symbol_heat_recovery_rotary"),"RLT","heat_exchanger"],["heat_recovery_plate",catalogPair("symbols.symbol_heat_recovery_plate"),"RLT","heat_exchanger"],["humidifier",catalogPair("symbols.symbol_humidifier"),"RLT","generic"],["silencer",catalogPair("symbols.symbol_silencer"),"RLT","generic"],
+  ["chiller",catalogPair("symbols.symbol_chiller"),"Kälte","chiller"],["compressor",catalogPair("symbols.symbol_compressor"),"Kälte","generic"],["cooling_tower",catalogPair("symbols.symbol_cooling_tower"),"Kälte","generic"],["cooling_buffer",catalogPair("symbols.symbol_cooling_buffer"),"Kälte","tank"],
+  ["pv_array",catalogPair("symbols.symbol_pv_array"),"Energie","generic"],["inverter",catalogPair("symbols.symbol_inverter"),"Energie","generic"],["battery",catalogPair("symbols.symbol_battery"),"Energie","generic"],["grid",catalogPair("symbols.symbol_grid"),"Energie","generic"],["meter",catalogPair("symbols.symbol_meter"),"Energie","meter"],["wallbox",catalogPair("symbols.symbol_wallbox"),"Energie","generic"],
+  ["temp_sensor",catalogPair("symbols.symbol_temp_sensor"),"Sensorik","meter"],["pressure_sensor",catalogPair("symbols.symbol_pressure_sensor"),"Sensorik","meter"],["dp_sensor",catalogPair("symbols.symbol_dp_sensor"),"Sensorik","meter"],["flow_sensor",catalogPair("symbols.symbol_flow_sensor"),"Sensorik","meter"],["humidity_sensor",catalogPair("symbols.symbol_humidity_sensor"),"Sensorik","meter"],["co2_sensor",catalogPair("symbols.symbol_co2_sensor"),"Sensorik","meter"],["frost_thermostat",catalogPair("symbols.symbol_frost_thermostat"),"Sensorik","meter"],["room_sensor",catalogPair("symbols.symbol_room_sensor"),"Sensorik","room"],
+  ["switchgear",catalogPair("symbols.symbol_switchgear"),"Elektro","generic"],["busbar",catalogPair("symbols.symbol_busbar"),"Elektro","generic"],["sub_distribution_board",catalogPair("symbols.symbol_sub_distribution_board"),"Elektro","generic"],["transformer",catalogPair("symbols.symbol_transformer"),"Elektro","generic"],["ups",catalogPair("symbols.symbol_ups"),"Elektro","generic"],["generator_set",catalogPair("symbols.symbol_generator_set"),"Elektro","generic"],["circuit_breaker",catalogPair("symbols.symbol_circuit_breaker"),"Elektro","generic"],["rcd",catalogPair("symbols.symbol_rcd"),"Elektro","generic"],["surge_arrester",catalogPair("symbols.symbol_surge_arrester"),"Elektro","generic"],["isolator_switch",catalogPair("symbols.symbol_isolator_switch"),"Elektro","generic"],
+  ["fire_alarm_panel",catalogPair("symbols.symbol_fire_alarm_panel"),"Brandschutz","generic"],["smoke_detector",catalogPair("symbols.symbol_smoke_detector"),"Brandschutz","meter"],["heat_detector",catalogPair("symbols.symbol_heat_detector"),"Brandschutz","meter"],["manual_call_point",catalogPair("symbols.symbol_manual_call_point"),"Brandschutz","generic"],["aspirating_detector",catalogPair("symbols.symbol_aspirating_detector"),"Brandschutz","meter"],["sprinkler_head",catalogPair("symbols.symbol_sprinkler_head"),"Brandschutz","generic"],["sprinkler_valve_station",catalogPair("symbols.symbol_sprinkler_valve_station"),"Brandschutz","valve"],["extinguishing_system",catalogPair("symbols.symbol_extinguishing_system"),"Brandschutz","generic"],["fire_barrier",catalogPair("symbols.symbol_fire_barrier"),"Brandschutz","generic"],["fire_door",catalogPair("symbols.symbol_fire_door"),"Brandschutz","generic"]
 ].map(([id,label,category,profile])=>({id,label,category,profile}));
+
+/**
+ * Join two `{de, en}` labels into one, per language.
+ *
+ * A variant's name is its symbol and its style, and both are catalog wording
+ * now — so the join has to happen per language rather than by interpolating
+ * two objects into a template, which produced `[object Object] · [object
+ * Object]` the moment the labels stopped being strings.
+ */
+const joinLabels = (first, second) => Object.freeze(Object.fromEntries(
+  Object.keys(first).map((language) => [language, `${first[language]} · ${second[language]}`]),
+));
 
 export const SYMBOL_VARIANTS = BASE_SYMBOLS.flatMap((base) => VISUAL_STYLES.map((style) => ({
   id: `${base.id}@${style.id}`,
   base_symbol: base.id,
-  label: `${base.label} · ${style.label}`,
+  label: joinLabels(base.label, style.label),
   category: base.category,
   profile: base.profile,
   style: style.id,
 })));
+
+/**
+ * One catalog label, in one language.
+ *
+ * Labels are `{de, en}` pairs now, so every render site has to say which
+ * language it is rendering. Interpolating the pair into a template produced
+ * `[object Object]` — and every suite still passed, because the assertions
+ * checked that *something* was rendered rather than what. That is the vacuous
+ * pass this codebase has now corrected four times, and it is why this helper
+ * exists in one place rather than as a spread of `?.de` accesses.
+ */
+export function labelText(label, language = "de") {
+  if (typeof label === "string") return label;
+  if (label && typeof label === "object") return label[language] ?? label.de ?? label.en ?? "";
+  return "";
+}
 
 export function profileById(id) {
   return COMPONENT_PROFILES.find((p) => p.id === id) || COMPONENT_PROFILES.find((p) => p.id === "generic");
@@ -248,14 +276,14 @@ export const SYMBOL_GEOMETRY = new Map([
  * "fire" must not depend on how the label is spelled this release.
  */
 export const DOMAINS = Object.freeze([
-  { id: "heating", category: "Heizung", label: catalogPair("symbols.label") },
-  { id: "hydraulics", category: "Hydraulik", label: catalogPair("symbols.label_hydraulik") },
-  { id: "air", category: "RLT", label: catalogPair("symbols.label_rlt") },
-  { id: "refrigeration", category: "Kälte", label: catalogPair("symbols.label_k_lte") },
-  { id: "energy", category: "Energie", label: catalogPair("symbols.label_energie") },
-  { id: "instrumentation", category: "Sensorik", label: catalogPair("symbols.label_sensorik") },
-  { id: "electrical", category: "Elektro", label: catalogPair("symbols.label_elektro") },
-  { id: "fire", category: "Brandschutz", label: catalogPair("symbols.label_brandschutz") },
+  { id: "heating", category: "Heizung", label: catalogPair("symbols.category_heizung") },
+  { id: "hydraulics", category: "Hydraulik", label: catalogPair("symbols.category_hydraulik") },
+  { id: "air", category: "RLT", label: catalogPair("symbols.category_rlt") },
+  { id: "refrigeration", category: "Kälte", label: catalogPair("symbols.category_kalte") },
+  { id: "energy", category: "Energie", label: catalogPair("symbols.category_energie") },
+  { id: "instrumentation", category: "Sensorik", label: catalogPair("symbols.category_sensorik") },
+  { id: "electrical", category: "Elektro", label: catalogPair("symbols.category_elektro") },
+  { id: "fire", category: "Brandschutz", label: catalogPair("symbols.category_brandschutz") },
 ]);
 
 const DOMAIN_BY_CATEGORY = new Map(DOMAINS.map((domain) => [domain.category, domain.id]));
@@ -334,7 +362,7 @@ function renderPrimitive(primitive, tokens) {
  * The `<title>` is not decoration: in forced-colours mode a viewer may lose
  * every distinction this drawing makes with colour, and a name is what is left.
  */
-export function renderVariant(baseId, styleId) {
+export function renderVariant(baseId, styleId, language = "de") {
   const geometry = SYMBOL_GEOMETRY.get(baseId);
   if (!geometry) throw new Error(`no geometry for base symbol: ${String(baseId)}`);
   const tokens = STYLE_TOKENS[styleId];
@@ -342,7 +370,7 @@ export function renderVariant(baseId, styleId) {
   const base = BASE_SYMBOLS.find((entry) => entry.id === baseId);
   const body = geometry.map((primitive) => renderPrimitive(primitive, tokens)).join("");
   return `<svg viewBox="0 0 64 64" role="img" data-base="${escapeXml(baseId)}" data-style="${escapeXml(styleId)}">`
-    + `<title>${escapeXml(base?.label ?? baseId)}</title>${body}</svg>`;
+    + `<title>${escapeXml(labelText(base?.label, language) || baseId)}</title>${body}</svg>`;
 }
 
 /** The geometry of a base symbol, style-independent: what makes it that symbol. */
