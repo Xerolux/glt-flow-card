@@ -50463,10 +50463,6 @@
     const unused = c.diagnostics.show_unused_entities ? Object.keys(hassStates).filter((id) => !refs.has(id)) : [];
     return { referenced: [...refs], issues, unused, score: refs.size ? Math.max(0, 100 - issues.length / refs.size * 100) : 100 };
   }
-  function aggregateSeries(points, options = {}) {
-    void options;
-    return Array.isArray(points) ? points : [];
-  }
   function legacyProjectDiff(a, b, path = "") {
     const out = [];
     if (Object.is(a, b)) return out;
@@ -50801,6 +50797,24 @@
       wrap.querySelector("[data-trend]").onclick = () => trendsPanel(card2);
       bar.appendChild(wrap);
     }
+    const HISTORY_REFRESH_MS = 6e4;
+    function refreshHistoryState(card2) {
+      const cfg = ensureV1(card2._config);
+      const entities = cfg.datapoints.map((d) => entityId(d.entity)).filter(Boolean).slice(0, 20);
+      if (!entities.length) return;
+      if (card2._historyLoading) return;
+      const now = Date.now();
+      if (card2._historyAt && now - card2._historyAt < HISTORY_REFRESH_MS) return;
+      card2._historyAt = now;
+      card2._historyLoading = true;
+      loadHistory(card2, { contract: "statistics", entity_ids: entities, period: "day" }).then((loaded) => {
+        card2._historyState = loaded;
+        card2._historyLoading = false;
+        card2._queueRender?.();
+      }, () => {
+        card2._historyLoading = false;
+      });
+    }
     async function trendsPanel(card2) {
       const cfg = ensureV1(card2._config);
       const entities = cfg.datapoints.map((d) => entityId(d.entity)).filter(Boolean).slice(0, 20);
@@ -50829,6 +50843,7 @@
       addStyle(this.shadowRoot);
       runtimeButtons(this);
       refreshAlarmState(this);
+      refreshHistoryState(this);
       if (this._config.ui?.kiosk) document.body.classList.add("glt-v1-kiosk");
       return r;
     };
@@ -51136,9 +51151,11 @@
     };
     const oldSeries = Card.prototype._seriesFor;
     if (oldSeries) Card.prototype._seriesFor = function(point) {
-      const raw = oldSeries.call(this, point) || [];
-      const h = ensureV1(this._config).historian;
-      return aggregateSeries(raw, { aggregate: h.aggregate, deadband: h.deadband, bucket_ms: h.bucket_minutes ? Number(h.bucket_minutes) * 6e4 : 0 });
+      const measured = this._historyState && this._historyState.series || [];
+      const id = entityId(point && point.entity || point);
+      const row = measured.find((entry) => entry && (entry.entity_id === id || entry.statistic_id === id));
+      if (row && Array.isArray(row.points)) return row.points;
+      return oldSeries.call(this, point) || [];
     };
     console.info(`GLT Flow Card Engineering Platform 1.0 enabled · ${symbolCatalogStats().variants} symbol variants · ${COMPONENT_PROFILES.length} parametric profiles`);
   })();
