@@ -3,18 +3,18 @@
   "project": "GLT Flow Card",
   "milestone": "v1.1",
   "created_at": "2026-09-01T20:39:55.9074407+02:00",
-  "updated_at": "2026-09-02T07:10:00Z",
+  "updated_at": "2026-09-02T12:00:00Z",
   "status": "in_progress",
   "pause_reason": null,
   "current_position": {
-    "phase": "02",
-    "phase_name": "authoritative-policy-controls-collaboration",
+    "phase": "03",
+    "phase_name": "semantic-equipment-provenance",
     "stage": "phase-verification",
     "plans_created": 17,
-    "tasks_planned": 61,
+    "tasks_planned": 17,
     "plans_implemented": 17,
     "implementation_started": true,
-    "resume_file": ".planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md"
+    "resume_file": ".planning/phases/03-semantic-equipment-provenance/.continue-here.md"
   },
   "completed": [
     "Phase 1: all 13 implementation plans and all 14 recorded code-review fixes are committed; full post-fix gates pass.",
@@ -35,12 +35,23 @@
     "Plan 02-14: legacy authority retires conservatively on upgrade - the 30-3600s lock window is replaced by the 60-900s lease window with clamping rather than resetting, persisted locks are dropped rather than minted into leases, and legacy audit rows are kept labelled legacy_untrusted (T2-05, T2-15).",
     "Plan 02-15: the HA lanes now fail on a collapsed run, on any skip and on any deselect, the pytest cache no longer poisons the bind-mounted workspace, and verify:release consumes the staged packages instead of ignoring them.",
     "Plan 02-16: English and German READMEs and the Companion, YAML-project and installation wiki pages state the tested Phase-2 contract; three stale claims (Designer role, TTL locks) were corrected. The docs workflow validates sources and build determinism before either delivery job.",
-    "Plan 02-17: tools/verify-phase2.mjs binds SEC-01, COLLAB-01, five roadmap truths, all 17 plans, T2-01..T2-16 and resolved A1-A6 to current evidence, and proves its own command graph is acyclic with exactly one path to the T2-16 leaf. T2-01 through T2-15 are marked verified in the threat register and validation map; T2-16 stays planned because its owner needs a Docker engine this environment does not have."
+    "Plan 02-17: tools/verify-phase2.mjs binds SEC-01, COLLAB-01, five roadmap truths, all 17 plans, T2-01..T2-16 and resolved A1-A6 to current evidence, and proves its own command graph is acyclic with exactly one path to the T2-16 leaf. T2-01 through T2-15 are marked verified in the threat register and validation map; T2-16 stays planned because its owner needs a Docker engine this environment does not have.",
+    "Phase 3 planning: context, source audit, research, patterns, threats, validation, UI spec and 17 plans across 11 waves are committed; the roadmap's Plans: TBD entry for Phase 3 is replaced.",
+    "Plans 03-01 through 03-04: the seven Phase-3 RED sentinels, the misleading-name registry factory (modbus_named_knx, knx_named_modbus), the IDM heat-pump corpus with its four mapping traps, and the extended effect ledger.",
+    "Plans 03-05 through 03-07: schema 3 generated from schema 2 preserving every collection, schemas/vocabularies.json with unit dimensions, the sequential 2 to 3 migration in both runtimes, and semantic-model.mjs with its Python mirror proven to return identical verdicts on a shared malformed corpus.",
+    "Plans 03-08 and 03-09: registry-derived provenance that infers nothing from a name, the project-scoped glt_flow_card/provenance/get route (route count 37 to 38), and its generation-stamped cache in the lifecycle ledger.",
+    "Plans 03-10 and 03-11: versioned parametric equipment profiles whose controls are deny-default, so a profile control cannot name a domain, service or target; an upgrade carries every still-addressable override and reports what it cannot.",
+    "Plans 03-12 and 03-13: assignment-based entity mapping with explained reasons, binding nothing without acceptance, with manual overrides stored as decisions.",
+    "Plan 03-14: the frozen operational-state precedence table with pairwise proof generated from the table itself; trust outranks activity.",
+    "Plans 03-15 through 03-17: the four semantic surfaces in the generated artifact, bilingual documentation, and tools/verify-phase3.mjs on the Phase-2 orchestrator pattern with 22 gate mutation tests. T3-01 through T3-13 are marked verified; T3-14 stays planned because its owner needs a Docker engine this environment does not have.",
+    "Phase 3 exposed and fixed four latent index bugs: project_contract.py split its schema list at literal index 3 and project_bundle.py selected the bundle manifest as _ALL_SCHEMAS[3], so adding schema 3 shifted both onto the project contract and bundle manifests were being validated against it. Both now derive.",
+    "Phase 3 exposed and fixed a packaging gap: the HACS stager and its independent validator each keep their own file list and both were missing schema 3 and the vocabulary file, so ha-artifacts went red with FileNotFoundError while every local gate passed. Both lists are corrected and the drift guard now walks the schema directory as well as *.py."
   ],
   "remaining": [
-    "Run the T2-16 owner (npm run test:phase2:release) and the full npm run test:phase2 where Docker and the package-provenance endpoints are reachable, then mark T2-16 verified.",
-    "Complete Phase 2 code review, security audit, UI audit, drift checks, and independent goal verification.",
-    "Complete Phases 3 through 10 and the final milestone/release verification.",
+    "Run npm run test:phase3 (which subsumes npm run test:phase2) where Docker and the package-provenance endpoints are reachable, then mark T3-14 and T2-16 verified.",
+    "Complete the Phase 2 and Phase 3 code reviews, security audits, UI audits, drift checks, and independent goal verification.",
+    "Write the individual Phase-3 plan summaries 03-01-SUMMARY.md through 03-17-SUMMARY.md; only the consolidated 03-SUMMARY.md exists.",
+    "Plan and complete Phases 4 through 10 - all still carry Plans: TBD - and the final milestone/release verification.",
     "Close the still-open consolidated Phase 1 security, UI, drift, and goal verification."
   ],
   "decisions": [
@@ -52,13 +63,18 @@
     "No release is created at this checkpoint.",
     "Live Home Assistant, remote-site, physical-bus, and plant writes remain outside authorization.",
     "The browser never derives a role-to-capability matrix of its own. Until the server returns one, RoleMatrixDisclosure renders its declared unavailable state: a client-side matrix would be exactly the browser-derived authority this phase exists to prevent.",
-    "A threat row is marked verified only after its owner command has actually run and passed. T2-16 stays planned rather than being marked on the strength of its constituent parts passing separately."
+    "A threat row is marked verified only after its owner command has actually run and passed. T2-16 stays planned rather than being marked on the strength of its constituent parts passing separately.",
+    "Vocabulary data lives in schemas/vocabularies.json beside limits.json rather than in a foreign x-vocabularies keyword inside the schema: a foreign keyword is something every consumer has to be taught about, and it breaks Ajv strict mode. A drift test asserts the schema enums equal these keys.",
+    "A profile control is deny-default via unevaluatedProperties: false, so it cannot name a domain, service or target at all; the server still resolves every control from the verified head.",
+    "Entity mapping is an assignment problem, not a per-slot ranking: a candidate that fully covers another slot's name is skipped for this slot. An undeclared role token is an eligibility rule, not a score penalty.",
+    "The containment path is derived from the hierarchy rather than stored, so it cannot drift from the graph it describes.",
+    "Provenance is project-scoped and describes only entities the project references, so the route cannot become a registry search; a hidden project answers byte-identically to a missing one."
   ],
   "blockers": [],
   "open_verification": [
     "Phase 1 consolidated security, UI, drift, and goal verification.",
-    "Phase 2 threat T2-16: its owner installs the exact stage on two digest-pinned Home Assistant images and needs Docker; T2-01 through T2-15 pass their owner commands at this head.",
-    "The Phase-1 gate cannot complete in this environment either: its dependency-provenance step reaches package source metadata that the network policy answers with HTTP 403."
+    "Phase 2 threat T2-16 and Phase 3 threat T3-14: both owners install the exact stage on digest-pinned Home Assistant images and need Docker. T2-01..T2-15 and T3-01..T3-13 pass their owner commands at this head.",
+    "The Phase-1 gate cannot complete in this environment either: its dependency-provenance step reaches package source metadata that the network policy answers with HTTP 403. npm run test:phase2 and npm run test:phase3 therefore both fail closed at that step here."
   ],
   "human_actions_required": [],
   "background_processes": [],
@@ -74,11 +90,11 @@
   "environment": {
     "python": "tools/python-launcher.mjs resolves Python 3.13; a repository .venv is used on Linux",
     "playwright": "set PLAYWRIGHT_CHROMIUM_EXECUTABLE when the container Chromium revision differs from the pinned Playwright version",
-    "gate": "npm run test:phase2 reports every Phase-2 sentinel as controlled RED, implemented, or broken"
+    "gate": "npm run test:phase3 reports every Phase-3 sentinel as controlled RED, implemented, or broken; node tools/phase3-red-gate.mjs runs the sentinel classifier alone"
   },
   "resume": {
-    "first_action": "Read .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md. All 17 Phase-2 plans are implemented and every sentinel reports implemented.",
-    "next_gate": "Run npm run test:phase2 in an environment with Docker and reachable package-provenance endpoints, then mark T2-16 verified in 02-THREATS.md and 02-VALIDATION.md.",
-    "after_gate": "Phase 2 code review, security audit, UI audit, drift checks and goal verification; then Phase 3."
+    "first_action": "Read .planning/phases/03-semantic-equipment-provenance/.continue-here.md. All 17 Phase-3 plans are implemented and every sentinel reports implemented.",
+    "next_gate": "Run npm run test:phase3 in an environment with Docker and reachable package-provenance endpoints, then mark T3-14 and T2-16 verified in their threat registers and validation maps.",
+    "after_gate": "Phase 2 and Phase 3 code review, security audit, UI audit, drift checks and goal verification; then plan Phase 4 (Runtime Operations & Drill-Down, OPS-02 and NAV-01), which still carries Plans: TBD."
   }
 }

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 2 execution complete; all 17 plans implemented, T2-16 awaits a Docker-capable environment
-last_updated: "2026-09-02T07:10:00.000Z"
-last_activity: 2026-09-02 -- plans 02-14 through 02-17 executed; the Phase-2 gate binds every requirement, plan, threat and resolved assumption to current evidence
+stopped_at: Phase 3 execution complete; all 17 plans implemented, T3-14 and T2-16 await a Docker-capable environment
+last_updated: "2026-09-02T12:00:00.000Z"
+last_activity: 2026-09-02 -- Phase 3 planned and executed end to end; schema 3, provenance, profiles, mapping, operational state, four surfaces and the Phase-3 gate are committed
 progress:
   total_phases: 10
-  completed_phases: 1
-  total_plans: 30
-  completed_plans: 30
-  percent: 22
+  completed_phases: 3
+  total_plans: 47
+  completed_plans: 47
+  percent: 30
 ---
 
 # Project State
@@ -21,22 +21,37 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-31)
 
 **Core value:** Operators and engineers can safely understand, operate, engineer, and diagnose a real building plant from one trustworthy Home Assistant interface.
-**Current focus:** Phase 02 — authoritative-policy-controls-collaboration
+**Current focus:** Phase 03 — semantic-equipment-provenance
 
 ## Current Position
 
-Phase: 02 (authoritative-policy-controls-collaboration) — EXECUTING
-Plan: 17 of 17 implemented (61 tasks planned)
-Status: every Phase-2 plan is implemented and T2-01 through T2-15 are verified.
-T2-16 stays planned: its owner installs the exact stage on two digest-pinned
-Home Assistant images and needs a Docker engine this environment does not have.
-Last activity: 2026-09-02 -- plans 02-01 through 02-17 committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+Phase: 03 (semantic-equipment-provenance) — EXECUTING
+Plan: 17 of 17 implemented (17 plans across 11 waves)
+Status: every Phase-3 plan is implemented and T3-01 through T3-13 are verified.
+T3-14 stays planned: its owner installs the exact stage on digest-pinned Home
+Assistant images and needs a Docker engine this environment does not have.
+The same limit still holds T2-16 open.
+Last activity: 2026-09-02 -- plans 03-01 through 03-17 committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
 
-Progress: [██░░░░░░░░] 22%
+Progress: [███░░░░░░░] 30%
+
+### Phase 3 sentinel state
+
+`node tools/phase3-red-gate.mjs` reports 7 implemented, 0 controlled RED, 0 broken.
+
+| Sentinel | Owner plan | State |
+|---|---|---|
+| phase3-semantic-model | 03-07 | implemented |
+| phase3-provenance | 03-08 | implemented |
+| phase3-provenance-policy | 03-09 | implemented |
+| phase3-profiles | 03-10 | implemented |
+| phase3-mapping | 03-12 | implemented |
+| phase3-equipment-state | 03-14 | implemented |
+| phase3-ui | 03-15 | implemented |
 
 ### Phase 2 sentinel state
 
-`npm run test:phase2` reports 12 implemented, 0 controlled RED, 0 broken.
+`npm run test:phase2:quick` reports 12 implemented, 0 controlled RED, 0 broken.
 
 | Sentinel | Owner plan | State |
 |---|---|---|
@@ -152,7 +167,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Blockers/Concerns
 
-- [Phase 2]: No known technical blocker. The bounded plan check passed on 2026-09-02 (see `02-PLAN-CHECK.md`); execution is under way.
+- [Phase 3]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T3-14 row and the review passes remain.
+- [Phase 4]: Runtime Operations & Drill-Down (OPS-02, NAV-01) still carries `Plans: TBD`; it needs its planning artifacts before execution.
+- [Phase 2]: No known technical blocker. The bounded plan check passed on 2026-09-02 (see `02-PLAN-CHECK.md`); execution is complete.
 - [Phase 2]: Shared mutation routes now require a valid bearer at the policy boundary. Plan 02-09 must still add the decisive in-lock recheck; the boundary check alone cannot see authority that changes mid-request.
 - [Phase 1]: Resolved in planning — lanes are discovered and digest-pinned at execution, and Companion packaging is validated as a local integration-category artifact without unauthorized publication.
 - [Phase 5]: SDK trust, distribution, and compatibility policy must forbid project-bundled privileged execution.
@@ -167,6 +184,6 @@ No numbered v1.1 requirement is deferred.
 
 ## Session Continuity
 
-Last session: 2026-09-02T07:10:00.000Z
-Stopped at: Phase 2 execution complete; plans 02-01 through 02-17 pushed
-Resume file: .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md
+Last session: 2026-09-02T12:00:00.000Z
+Stopped at: Phase 3 execution complete; plans 03-01 through 03-17 pushed
+Resume file: .planning/phases/03-semantic-equipment-provenance/.continue-here.md

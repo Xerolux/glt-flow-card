@@ -1,8 +1,8 @@
 # GLT Flow Card v1.1 — Living Cross-AI Execution Handoff
 
-**Last updated:** 2026-09-01T20:41:43+02:00
+**Last updated:** 2026-09-02T12:00:00+02:00
 **Canonical scope:** Implement and verify all original roadmap items **1-30**.
-**Overall status:** Paused at the user's request. Phase 1 implementation and all 14 reported code-review fixes are committed with full post-fix gates passing. Phase 2 planning is complete with 17 plans and 61 tasks, but implementation has not started; one bounded final plan-check verdict remains open because its last run was intentionally interrupted. Phases 3-10 have not started.
+**Overall status:** Executing on `claude/chatgpt-continuation-hi3y86` (PR #3). Phase 1 implementation and all 14 reported code-review fixes are committed with full post-fix gates passing; its consolidated verification is still open. Phase 2 is implemented at 17/17 plans with T2-01..T2-15 verified. Phase 3 is planned and implemented at 17/17 plans with T3-01..T3-13 verified. T2-16 and T3-14 both stay `planned`: their owners install the exact stage on digest-pinned Home Assistant images and need a Docker engine this environment does not have. Phases 4-10 have not started and all still carry `Plans: TBD`. No release is authorized.
 **Maintainer rule:** Update this file whenever implementation, review, verification, or blockers change.
 
 ## Purpose and User Intent
@@ -26,14 +26,14 @@ The user explicitly requested implementation of **all original items 1-30**. No 
 
 This is a timestamped snapshot, not a substitute for a fresh `git status` when resuming.
 
-| Field | Snapshot at 2026-09-01T20:41:43+02:00 |
+| Field | Snapshot at 2026-09-02T12:00:00+02:00 |
 |---|---|
-| Repository | `C:\Users\basti\Documents\GitHub\glt-flow-card` |
-| Branch | `main` |
-| HEAD before this pause handoff update | `7d77583` |
-| Upstream comparison | `origin/main...HEAD`: 0 behind, 0 ahead after the pause handoff push |
-| Push/publication | Pause state pushed to `origin/main` through `0f935ac`; no release authorized or created |
-| Working tree | Clean after committing Phase 2 planning and before creating pause artifacts |
+| Repository | `/home/user/glt-flow-card` (Linux container) |
+| Branch | `claude/chatgpt-continuation-hi3y86` |
+| HEAD before this handoff update | `e4d84fe` |
+| Upstream comparison | `origin/main...HEAD`: 0 behind, 61 ahead |
+| Push/publication | Branch pushed to `origin/claude/chatgpt-continuation-hi3y86` through `e4d84fe`; open draft PR #3; no release authorized or created |
+| Working tree | Clean after committing the Phase 3 documentation, gate and rebuilt manifest |
 | Active recovery marker | None |
 | Preserved local fix branch | `gsd-reviewfix/01-phase1-code-fixes` is already merged; retained only as local history |
 | Temporary worktrees/containers | None active |
@@ -50,6 +50,7 @@ Read these as a set; no single file is sufficient:
 - Current workflow position, decisions, todos, and blockers: [STATE.md](STATE.md)
 - This living cross-AI checklist: [HANDOFF.md](HANDOFF.md)
 - Machine-readable pause handoff: [HANDOFF.json](HANDOFF.json)
+- Exact Phase 3 resume marker: [`.continue-here.md`](phases/03-semantic-equipment-provenance/.continue-here.md)
 - Exact Phase 2 resume marker: [`.continue-here.md`](phases/02-authoritative-policy-controls-collaboration/.continue-here.md)
 - Phase 1 decisions and acceptance model: [01-CONTEXT.md](phases/01-trusted-contract-release-foundation/01-CONTEXT.md)
 - Phase 1 research: [01-RESEARCH.md](phases/01-trusted-contract-release-foundation/01-RESEARCH.md)
@@ -60,6 +61,7 @@ Read these as a set; no single file is sufficient:
 - Independent Phase 1 code review and open findings: [01-REVIEW.md](phases/01-trusted-contract-release-foundation/01-REVIEW.md)
 - Compact Phase 1 execution evidence, when regenerated: `.planning/tmp/phase1-evidence.json`
 - Phase 2 decisions and planning: `phases/02-authoritative-policy-controls-collaboration/02-CONTEXT.md`, `02-UI-SPEC.md`, `02-RESEARCH.md`, `02-PATTERNS.md`, `02-THREATS.md`, `02-VALIDATION.md`, `02-SOURCE-AUDIT.md`, and `02-01-PLAN.md` through `02-17-PLAN.md`
+- Phase 3 decisions and planning: `phases/03-semantic-equipment-provenance/03-CONTEXT.md`, `03-SOURCE-AUDIT.md`, `03-RESEARCH.md`, `03-PATTERNS.md`, `03-THREATS.md`, `03-VALIDATION.md`, `03-UI-SPEC.md`, `03-01-PLAN.md` through `03-17-PLAN.md`, and the consolidated `03-SUMMARY.md`
 
 The current `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` record Phase 1 as implementation-complete/ready for verification. The stricter acceptance status in this handoff takes precedence for resumption: Phase 1 and its requirements are **not finally verified** until the remaining checklist below passes and a final verification report exists.
 
@@ -69,8 +71,8 @@ The current `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` record Phase 1 as im
 |---:|---|---|---|---|
 | 1 | Trusted Contract & Release Foundation | SCHEMA-01, DIFF-01, HACS-01 | ◆ 13/13 plans and 14/14 review fixes implemented; final verification open | Resume with one consolidated verification pass, not another review loop |
 | 2 | Authoritative Policy, Controls & Collaboration | SEC-01, COLLAB-01 | ◆ 17/17 plans implemented; T2-01..T2-15 verified, T2-16 needs a Docker-capable environment | Run `npm run test:phase2` where Docker and the provenance endpoints are reachable, then start the Phase-2 review pass |
-| 3 | Semantic Equipment & Provenance | OPS-01, SEM-01, MAP-01, PROF-01, PROTO-01 | ○ Not started | Start after Phase 2 verification |
-| 4 | Runtime Operations & Drill-Down | OPS-02, NAV-01 | ○ Not started | Start after Phase 3 verification |
+| 3 | Semantic Equipment & Provenance | OPS-01, SEM-01, MAP-01, PROF-01, PROTO-01 | ◆ 17/17 plans implemented; T3-01..T3-13 verified, T3-14 needs a Docker-capable environment | Run `npm run test:phase3` where Docker and the provenance endpoints are reachable, then start the Phase-3 review pass |
+| 4 | Runtime Operations & Drill-Down | OPS-02, NAV-01 | ○ Not started; `Plans: TBD` | Write the Phase-4 planning artifacts, then execute |
 | 5 | CAD Engineering & Extension Platform | CAT-01, ENG-01, ENG-02, CAD-01, SDK-01 | ○ Not started | Start after Phase 4 verification |
 | 6 | Alarms, Notifications & Schedules | ALM-01, ALM-02, SCH-01 | ○ Not started | Start after Phase 5 verification |
 | 7 | Trends, Energy & Reproducible Reports | HIST-01, ENER-01, REPORT-01 | ○ Not started | Start after Phase 6 verification |
@@ -82,15 +84,15 @@ The current `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` record Phase 1 as im
 
 Checkboxes represent final acceptance, not implementation alone. All remain unchecked until their phase verifier and applicable release evidence pass.
 
-- [ ] **1 — OPS-01: Deterministic operational state** — Owner: Phase 3 — Status: Not started.
+- [ ] **1 — OPS-01: Deterministic operational state** — Owner: Phase 3 — Status: Implementation complete (Phase 3, 17/17 plans); T3-14 and the Phase-3 review pass are pending.
 - [ ] **2 — OPS-02: Profile-driven object panels and command outcomes** — Owner: Phase 4 — Status: Not started.
-- [ ] **3 — SEC-01: Authoritative server-side permissions** — Owner: Phase 2 — Status: Planning complete; implementation and verification not started.
+- [ ] **3 — SEC-01: Authoritative server-side permissions** — Owner: Phase 2 — Status: Implementation complete (17/17 plans); T2-16 and the Phase-2 review pass are pending.
 - [ ] **4 — ALM-01: Restart-safe alarm lifecycle** — Owner: Phase 6 — Status: Not started.
 - [ ] **5 — ALM-02: Notification and escalation policies** — Owner: Phase 6 — Status: Not started.
 - [ ] **6 — SCH-01: Schedules, calendars, exceptions, and DST** — Owner: Phase 6 — Status: Not started.
-- [ ] **7 — SEM-01: Validated semantic equipment hierarchy** — Owner: Phase 3 — Status: Not started.
-- [ ] **8 — MAP-01: Explainable entity mapping and iDM profiles** — Owner: Phase 3 — Status: Not started.
-- [ ] **9 — PROF-01: Versioned parametric equipment profiles** — Owner: Phase 3 — Status: Not started.
+- [ ] **7 — SEM-01: Validated semantic equipment hierarchy** — Owner: Phase 3 — Status: Implementation complete (Phase 3, 17/17 plans); T3-14 and the Phase-3 review pass are pending.
+- [ ] **8 — MAP-01: Explainable entity mapping and iDM profiles** — Owner: Phase 3 — Status: Implementation complete (Phase 3, 17/17 plans); T3-14 and the Phase-3 review pass are pending.
+- [ ] **9 — PROF-01: Versioned parametric equipment profiles** — Owner: Phase 3 — Status: Implementation complete (Phase 3, 17/17 plans); T3-14 and the Phase-3 review pass are pending.
 - [ ] **10 — CAT-01: Verified 300-plus symbol catalog** — Owner: Phase 5 — Status: Not started.
 - [ ] **11 — ENG-01: Typed compatible ports and stable endpoints** — Owner: Phase 5 — Status: Not started.
 - [ ] **12 — ENG-02: Deterministic obstacle-aware auto-routing** — Owner: Phase 5 — Status: Not started.
@@ -104,10 +106,10 @@ Checkboxes represent final acceptance, not implementation alone. All remain unch
 - [ ] **20 — REPORT-01: Reproducible reports and deliveries** — Owner: Phase 7 — Status: Not started.
 - [ ] **21 — SITE-01: Failure-isolated multi-site supervision** — Owner: Phase 9 — Status: Not started.
 - [ ] **22 — SDK-01: Versioned declarative extension SDK** — Owner: Phase 5 — Status: Not started.
-- [ ] **23 — PROTO-01: Registry-derived protocol provenance** — Owner: Phase 3 — Status: Not started.
+- [ ] **23 — PROTO-01: Registry-derived protocol provenance** — Owner: Phase 3 — Status: Implementation complete (Phase 3, 17/17 plans); T3-14 and the Phase-3 review pass are pending.
 - [ ] **24 — SCHEMA-01: Bounded shared schema, migrations, and bundles** — Owner: Phase 1 — Status: Implementation complete; independent review fixes and final verification pending.
 - [ ] **25 — DIFF-01: Semantic selective comparison and rollback** — Owner: Phase 1 — Status: Implementation complete; CR-02/CR-03/CR-04 fixes and final verification pending.
-- [ ] **26 — COLLAB-01: Revision-plus-lease collaborative editing** — Owner: Phase 2 — Status: Planning complete; implementation and verification not started.
+- [ ] **26 — COLLAB-01: Revision-plus-lease collaborative editing** — Owner: Phase 2 — Status: Implementation complete (17/17 plans); T2-16 and the Phase-2 review pass are pending.
 - [ ] **27 — HACS-01: Correct Companion/plugin packaging and lifecycle** — Owner: Phase 1 — Status: Implementation complete; independent review fixes and final verification pending. Local staging only; no public publication authorized.
 - [ ] **28 — I18N-01: Complete extensible localization** — Owner: Phase 10 — Status: Not started.
 - [ ] **29 — A11Y-01: WCAG 2.2 AA-oriented behavior and evidence** — Owner: Phase 10 — Status: Not started.
@@ -149,10 +151,10 @@ The last [01-REVIEW.md](phases/01-trusted-contract-release-foundation/01-REVIEW.
 
 For each remaining phase, follow the phase's exact goal and requirements in `ROADMAP.md` and `REQUIREMENTS.md`. Do not replace behavioral evidence with source-token assertions.
 
-Phase 2 planning is complete and committed as `7d77583`. Its 17 plans contain 61 tasks across 14 waves. The prior checker found a recursive T2-16 owner; the planning revision corrected it. The final checker was then intentionally interrupted at the user's stop request, so the first resume action is one bounded plan check—not another planning cycle.
+Phase 2 is implemented: all 17 plans are committed, `npm run test:phase2:quick` reports 12 implemented / 0 controlled RED / 0 broken, and T2-01 through T2-15 are marked `verified` after their owner commands ran at head. Phase 3 is planned and implemented: all 17 plans are committed, `node tools/phase3-red-gate.mjs` reports 7 implemented / 0 controlled RED / 0 broken, and T3-01 through T3-13 are marked `verified`. T2-16 and T3-14 both need a Docker engine and stay `planned`; `npm run test:phase2` and `npm run test:phase3` additionally fail closed here at the Phase-1 gate, whose dependency-provenance step is answered with HTTP 403 by this network policy. Both are environment limits, not repository defects, and the `ha-artifacts` CI job exercises them. Phases 4 through 10 still carry `Plans: TBD` in the roadmap and need their planning artifacts written before execution.
 
-- [ ] **Phase 2:** Establish authoritative default-deny Companion permissions, configured exact control targets, trusted audit, and atomic revision-plus-lease collaboration; prove multi-user denials and fail-closed shared behavior.
-- [ ] **Phase 3:** Build the validated semantic hierarchy, versioned profiles, explainable entity mapping, registry-derived provenance, and deterministic operational state shared across UI/backend.
+- [ ] **Phase 2:** *(implemented; T2-16 and the review pass open)* Establish authoritative default-deny Companion permissions, configured exact control targets, trusted audit, and atomic revision-plus-lease collaboration; prove multi-user denials and fail-closed shared behavior.
+- [ ] **Phase 3:** *(implemented; T3-14 and the review pass open)* Build the validated semantic hierarchy, versioned profiles, explainable entity mapping, registry-derived provenance, and deterministic operational state shared across UI/backend.
 - [ ] **Phase 4:** Deliver profile-driven operational panels, explicit command result states, contextual drill-down, deep links, breadcrumbs, and permission-filtered navigation.
 - [ ] **Phase 5:** Deliver the verified 300-plus catalog, typed ports, deterministic routing, transactional accessible CAD tools, and a bounded declarative SDK without privileged project scripts.
 - [ ] **Phase 6:** Deliver restart-safe alarms, suppression/shelving/hysteresis, observable notifications/escalations, and audited timezone/DST-safe schedule/calendar execution.
@@ -165,7 +167,7 @@ For every phase: discuss unresolved product decisions, research unstable framewo
 
 ## How to Resume Safely
 
-1. Read, in order: `AGENTS.md`, `.planning/HANDOFF.json`, `.planning/HANDOFF.md`, `.planning/STATE.md`, `.planning/ROADMAP.md`, `.planning/REQUIREMENTS.md`, and `.planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md`, then the current phase's planning artifacts.
+1. Read, in order: `AGENTS.md`, `.planning/HANDOFF.json`, `.planning/HANDOFF.md`, `.planning/STATE.md`, `.planning/ROADMAP.md`, `.planning/REQUIREMENTS.md`, and `.planning/phases/03-semantic-equipment-provenance/.continue-here.md`, then the current phase's planning artifacts.
 2. Refresh Git state. Inspect the current branch, HEAD, upstream divergence, working tree, worktrees, active recovery markers, and recent commits. Do not discard or fold concurrent work silently.
 3. If a recovery marker exists, determine whether its worker/worktree/branch is active. Resume or reconcile that exact effort before starting an overlapping fix. Preserve the marker until recovery is complete.
 4. Treat claims in summaries as historical evidence. Re-run the relevant gates after any source, dependency, generator, test, workflow, packaging, schema, or generated-artifact change.
@@ -190,6 +192,8 @@ For every phase: discuss unresolved product decisions, research unstable framewo
 
 | Timestamp | Change | Commit/evidence |
 |---|---|---|
+| 2026-09-02T12:00:00+02:00 | Planned and executed Phase 3 end to end: schema 3 with closed dimensioned vocabularies, the sequential 2 to 3 migration in both runtimes, the semantic hierarchy with cross-runtime verdict parity, registry-derived provenance behind a project-scoped route, versioned parametric profiles with deny-default controls, assignment-based explainable mapping, the frozen operational-state precedence table, four generated surfaces, bilingual documentation and `tools/verify-phase3.mjs`. T3-01..T3-13 verified; T3-14 blocked on Docker. Fixed four latent schema-index bugs and a HACS packaging gap the phase exposed. | `e4d84fe`; `phases/03-semantic-equipment-provenance/03-SUMMARY.md`; `03-THREATS.md`; `tools/verify-phase3.mjs` |
+| 2026-09-02T07:10:00+02:00 | Executed Phase 2 end to end on `claude/chatgpt-continuation-hi3y86`: the deny-default policy boundary, server-owned ACL, connection-bound leases, in-lock mutation guard, bounded merge, configured controls resolved from the verified head, the fail-closed browser authority reducer and its surfaces, conservative legacy retirement, hardened HA lanes, bilingual documentation and `tools/verify-phase2.mjs`. T2-01..T2-15 verified; T2-16 blocked on Docker. | `phases/02-authoritative-policy-controls-collaboration/.continue-here.md`; `02-THREATS.md`; `tools/verify-phase2.mjs` |
 | 2026-09-01T20:41:43+02:00 | Paused all phase work at explicit user request. Committed the complete Phase 2 planning package (17 plans/61 tasks), recorded the interrupted final plan check as the exact resume gate, and pushed the pause state to `origin/main`; no release. | `7d77583`; `0f935ac`; `HANDOFF.json`; `phases/02-authoritative-policy-controls-collaboration/.continue-here.md` |
 | 2026-09-01T19:21:11+02:00 | Stopped repeated review loops at explicit user request; recorded all 14 findings fixed and the full post-fix gate results; left consolidated security/UI/goal verification and Phases 2-10 open. | `83d8b32`; `fc05158`; `phases/01-trusted-contract-release-foundation/01-REVIEW-FIX.md` |
 | 2026-09-01T17:38:29+02:00 | Created the canonical cross-AI handoff; captured the strict distinction between Phase 1 implementation and final verification; recorded all 30 requirements, open review findings, safety boundaries, and remaining phases. | Handoff commit pending at document creation; todo capture `d9ad33d`; review report `.planning/phases/01-trusted-contract-release-foundation/01-REVIEW.md` |
