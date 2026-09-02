@@ -12,26 +12,32 @@ const BUILD_OUTPUTS = [
   "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
   "custom_components/glt_flow_card/schemas/diff-policy.json",
   "custom_components/glt_flow_card/schemas/limits.json",
+  "custom_components/glt_flow_card/schemas/vocabularies.json",
   "custom_components/glt_flow_card/schemas/project/0.schema.json",
   "custom_components/glt_flow_card/schemas/project/1.schema.json",
   "custom_components/glt_flow_card/schemas/project/2.schema.json",
+  "custom_components/glt_flow_card/schemas/project/3.schema.json",
   "custom_components/glt_flow_card/www/glt-flow-card.js",
   "dist/glt-flow-card.js",
   "dist/schemas/bundle-manifest.schema.json",
   "dist/schemas/diff-policy.json",
   "dist/schemas/limits.json",
+  "dist/schemas/vocabularies.json",
   "dist/schemas/project/0.schema.json",
   "dist/schemas/project/1.schema.json",
   "dist/schemas/project/2.schema.json",
+  "dist/schemas/project/3.schema.json",
   "docs/editor/app.js",
 ];
 const SCHEMA_OUTPUTS = [
   ["schemas/bundle-manifest.schema.json", "dist/schemas/bundle-manifest.schema.json"],
   ["schemas/diff-policy.json", "dist/schemas/diff-policy.json"],
   ["schemas/limits.json", "dist/schemas/limits.json"],
+  ["schemas/vocabularies.json", "dist/schemas/vocabularies.json"],
   ["schemas/project/0.schema.json", "dist/schemas/project/0.schema.json"],
   ["schemas/project/1.schema.json", "dist/schemas/project/1.schema.json"],
   ["schemas/project/2.schema.json", "dist/schemas/project/2.schema.json"],
+  ["schemas/project/3.schema.json", "dist/schemas/project/3.schema.json"],
 ];
 
 let tempRoot;
@@ -91,7 +97,7 @@ test("manifest is canonical, deterministic and non-circular", async () => {
   assert.equal(manifest.versions.package, "1.0.0");
   assert.equal(manifest.versions.companion, "1.0.0");
   assert.equal(manifest.versions.card, "1.0.0");
-  assert.deepEqual(manifest.versions.project_schema, [0, 1, 2]);
+  assert.deepEqual(manifest.versions.project_schema, [0, 1, 2, 3]);
   assert.match(manifest.build.commit, /^(?:[a-f0-9]{40}|WORKTREE)$/);
   assert.equal(typeof manifest.build.dirty, "boolean");
   assert.equal(manifest.tools.node, "22");

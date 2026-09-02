@@ -29,26 +29,32 @@ const OUTPUT_PATHS = [
   "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
   "custom_components/glt_flow_card/schemas/diff-policy.json",
   "custom_components/glt_flow_card/schemas/limits.json",
+  "custom_components/glt_flow_card/schemas/vocabularies.json",
   "custom_components/glt_flow_card/schemas/project/0.schema.json",
   "custom_components/glt_flow_card/schemas/project/1.schema.json",
   "custom_components/glt_flow_card/schemas/project/2.schema.json",
+  "custom_components/glt_flow_card/schemas/project/3.schema.json",
   "custom_components/glt_flow_card/www/glt-flow-card.js",
   "dist/glt-flow-card.js",
   "dist/schemas/bundle-manifest.schema.json",
   "dist/schemas/diff-policy.json",
   "dist/schemas/limits.json",
+  "dist/schemas/vocabularies.json",
   "dist/schemas/project/0.schema.json",
   "dist/schemas/project/1.schema.json",
   "dist/schemas/project/2.schema.json",
+  "dist/schemas/project/3.schema.json",
   "docs/editor/app.js",
 ];
 const SCHEMAS = [
   ["bundleManifest", "schemas/bundle-manifest.schema.json"],
   ["diffPolicy", "schemas/diff-policy.json"],
   ["limits", "schemas/limits.json"],
+  ["vocabularies", "schemas/vocabularies.json"],
   ["project0", "schemas/project/0.schema.json"],
   ["project1", "schemas/project/1.schema.json"],
   ["project2", "schemas/project/2.schema.json"],
+  ["project3", "schemas/project/3.schema.json"],
 ];
 const DEFAULT_EVIDENCE_PATH = path.join(ROOT, ".planning/tmp/release-build-verification.json");
 

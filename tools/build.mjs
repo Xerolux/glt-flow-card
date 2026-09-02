@@ -327,6 +327,7 @@ async function main() {
         ...PROJECT_SCHEMA_SPECS,
         ["diffPolicy", "schemas/diff-policy.json"],
         ["limits", "schemas/limits.json"],
+        ["vocabularies", "schemas/vocabularies.json"],
       ].map(async ([name, sourcePath]) => [
         name,
         sha256(await readFile(path.join(ROOT, sourcePath))),
@@ -352,7 +353,11 @@ async function main() {
         card: cardVersion,
         companion: companionManifest.version,
         package: packageJson.version,
-        project_schema: [0, 1, 2],
+        // Derived from the compiled schema list rather than typed out, so a new
+        // schema version cannot be added without the manifest saying so.
+        project_schema: PROJECT_SCHEMA_SPECS
+          .filter(([name]) => /^project\d+$/.test(name))
+          .map(([name]) => Number(name.slice("project".length))),
       },
     };
     await writeStage(stageRoot, MANIFEST_PATH, canonicalJson(manifest));
