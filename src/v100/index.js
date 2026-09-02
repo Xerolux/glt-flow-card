@@ -89,6 +89,35 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
   // all, so the authoritative alarm state was displayed nowhere in the product
   // -- one of the four disagreeing derivations Phase 6 retired.
   async function loadAlarms(card){const cfg=ensureV1(card._config);try{const res=await ws(card,"alarms/list",{project_id:projectId(cfg),limit:500});const byId={};for(const row of res?.states||[])byId[String(row.alarm_id)]=row;card._alarmState=byId;return {states:res?.states||[],history:res?.history||[],byId};}catch(_e){card._alarmState=card._alarmState||{};return {states:[],history:[],byId:card._alarmState,unavailable:true};}}
+  // Fetching the state is the card's job, not the panel's.
+  //
+  // Retiring the four derivations left `activeAlarm` reading `card._alarmState`,
+  // and `_alarmState` was written in exactly one place: `alarmsPanel`. Every
+  // other consumer -- the toolbar badge, the per-site active count and the
+  // report's Status column -- therefore read `undefined` until an operator
+  // happened to open the alarm modal, and reported *no active alarms* until
+  // they did. That is the same failure T6-05 names, one layer further out: the
+  // authoritative answer existed and was displayed nowhere. A confident zero is
+  // worse than a blank, because nobody investigates a zero.
+  //
+  // Bounded on purpose. The refresh is throttled and the stamp is written
+  // *before* the request, so a Companion that is refusing or unreachable is
+  // asked once per interval rather than once per render -- Phase 6 spent a plan
+  // on bounding the backend's scan cost and must not hand the cost back to the
+  // browser.
+  const ALARM_REFRESH_MS=15000;
+  function refreshAlarmState(card){
+    const cfg=ensureV1(card._config);
+    if(!cfg.alarms.length)return;
+    if(card._alarmStateLoading)return;
+    const now=Date.now();
+    if(card._alarmStateAt&&now-card._alarmStateAt<ALARM_REFRESH_MS)return;
+    card._alarmStateAt=now;
+    card._alarmStateLoading=true;
+    loadAlarms(card).then(()=>{card._alarmStateLoading=false;card._queueRender?.();},
+      ()=>{card._alarmStateLoading=false;});
+  }
+
   function alarmRow(cfg,a,row){const active=Boolean(row&&row.active);const suppression=row&&row.suppression;const delivery=row&&row.last_delivery;const priority=esc(String(row&&row.priority||a.priority||a.severity||"warning"));
     // Priority as a word *and* a shape: a red dot on a monochrome kiosk is no
     // information at all.
@@ -106,7 +135,7 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
     m.querySelectorAll("[data-shelve]").forEach(b=>b.onclick=async()=>{const answer=await askText(card,"F\u00fcr wie viele Minuten unterdr\u00fccken?","60");if(answer===null)return;const minutes=Number(answer)||60;try{await ws(card,"alarms/shelve",{project_id:projectId(cfg),alarm_id:b.dataset.shelve,minutes});}catch(err){notice(card,err.message);}m.remove();alarmsPanel(card)});}
   function operationsPanel(card){const cfg=ensureV1(card._config);const items=cfg.equipment.map(i=>({i,s:deriveOperationalState(i,card._hass?.states,{stale_minutes:cfg.diagnostics.stale_minutes})})).sort((a,b)=>b.s.severity-a.s.severity);const m=modal(card,t(cfg,"operations"),`<div class="glt-v1-grid">${items.map(({i,s})=>`<div class="glt-v1-card"><b>${esc(i.name||i.id)}</b><small>${esc(s.label)} · ${esc(s.quality)}</small><div class="glt-v1-actions"><button class="glt-v1-btn" data-open="${esc(i.id)}">Bedienen</button></div></div>`).join("")}</div>`);m.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{const i=cfg.equipment.find(x=>x.id===b.dataset.open);m.remove();openOperations(card,i)});}
   function runtimeButtons(card){const root=card.shadowRoot,bar=root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");if(!bar||bar.querySelector("[data-glt-v1-runtime]"))return;const wrap=document.createElement("span");wrap.dataset.gltV1Runtime="1";wrap.className="glt-v1-actions";wrap.innerHTML=`<button class="glt4-pill glt-v1-btn" data-ops>${t(card._config,"operations")}</button><button class="glt4-pill glt-v1-btn" data-alarm>${t(card._config,"alarms")}</button>`;wrap.querySelector("[data-ops]").onclick=()=>operationsPanel(card);wrap.querySelector("[data-alarm]").onclick=()=>alarmsPanel(card);bar.appendChild(wrap);}
-  const oldCardRender=Card.prototype._render;Card.prototype._render=function(){this._config=ensureV1(this._config);const r=oldCardRender.call(this);addStyle(this.shadowRoot);runtimeButtons(this);if(this._config.ui?.kiosk)document.body.classList.add("glt-v1-kiosk");return r;};
+  const oldCardRender=Card.prototype._render;Card.prototype._render=function(){this._config=ensureV1(this._config);const r=oldCardRender.call(this);addStyle(this.shadowRoot);runtimeButtons(this);refreshAlarmState(this);if(this._config.ui?.kiosk)document.body.classList.add("glt-v1-kiosk");return r;};
 
   function editorRoot(editor){return editor.shadowRoot;} function editorModal(editor,title,html){return modal(editor,title,html);} function emit(editor){editor._emit?.();editor._render?.();}
   function selectedRefs(editor){const multi=[...(editor._glt4Multi||[])].map(k=>{const [kind,id]=k.split(":");return{kind,id}});if(multi.length)return multi;return editor._sel?[{kind:editor._sel.k,id:editor._sel.id}]:[];}

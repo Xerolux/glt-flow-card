@@ -183,3 +183,89 @@ test("phase-6-alarms [expected-red:phase6-ui] the alarm and schedule surfaces sh
   }
   expect(gaps, "complete exact-dist Phase-6 alarm and schedule UI is unavailable").toEqual([]);
 });
+
+test("phase-6-alarms the card fetches alarm state without the panel being opened", async ({
+  page,
+}) => {
+  // T6-05, one layer out from where the register first drew the line.
+  //
+  // Retiring the four derivations left `activeAlarm` reading `card._alarmState`,
+  // and only `alarmsPanel` ever wrote it. So the toolbar badge, the per-site
+  // active count and the report's Status column all reported *no active alarms*
+  // until an operator happened to open the alarm modal. The artifact grep in
+  // `test/shipped-alarm-truth.test.mjs` passed throughout, because
+  // `alarms/list` does appear in the bytes -- in the one place nothing else
+  // reaches.
+  //
+  // This asserts the outcome instead: render the card, open nothing, and the
+  // authoritative state must already be there. A grep cannot see the difference
+  // between reachable and reached.
+  await mount(page, {
+    wsResults: {
+      "glt_flow_card/alarms/list": {
+        states: [
+          { alarm_id: "a1", active: true, priority: "critical", state: "active" },
+          { alarm_id: "a2", active: false, priority: "warning", state: "returned" },
+        ],
+        history: [],
+      },
+    },
+  });
+
+  const observed = await page.evaluate(async () => {
+    const card = document.createElement("glt-flow-card");
+    card.setConfig({
+      type: "custom:glt-flow-card",
+      title: "Anlage",
+      alarms: [
+        { id: "a1", name: "Vorlauf zu hoch", entity: "sensor.flow", priority: "critical" },
+        { id: "a2", name: "Filter", entity: "sensor.filter", priority: "warning" },
+      ],
+    });
+    document.body.append(card);
+    card.hass = window.__fakeHass;
+    // One render is all an operator does. Nothing below opens a panel.
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      if (card._alarmState && Object.keys(card._alarmState).length > 0) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return {
+      stateKeys: Object.keys(card._alarmState ?? {}),
+      activeCount: Object.values(card._alarmState ?? {}).filter((row) => row.active).length,
+      modalOpened: Boolean(card.shadowRoot?.querySelector(".glt-v1-modal")),
+    };
+  });
+
+  const ledger = await readEffectLedger(page);
+  const listRequests = ledger.websocketRequests
+    .filter((entry) => entry.type === "glt_flow_card/alarms/list");
+
+  expect(
+    observed.modalOpened,
+    "the test opened a panel, so it proves nothing about the card on its own",
+  ).toBe(false);
+  expect(
+    listRequests.length,
+    "the card never asked the Companion for alarm state, so every surface but the panel reports a confident zero",
+  ).toBeGreaterThan(0);
+  expect(observed.stateKeys.sort()).toEqual(["a1", "a2"]);
+  expect(
+    observed.activeCount,
+    "the card holds alarm state but not the backend's verdict about it",
+  ).toBe(1);
+  expect(ledger.service, "fetching alarm state reached a service call").toEqual([]);
+
+  // Bounded: a render loop must not turn into a request loop.
+  await page.evaluate(() => {
+    const card = document.querySelector("glt-flow-card");
+    for (let i = 0; i < 10; i += 1) card._queueRender?.();
+  });
+  await page.waitForTimeout(200);
+  const after = await readEffectLedger(page);
+  const afterCount = after.websocketRequests
+    .filter((entry) => entry.type === "glt_flow_card/alarms/list").length;
+  expect(
+    afterCount,
+    "ten renders produced more than one alarm-state request; the refresh is not throttled",
+  ).toBeLessThanOrEqual(listRequests.length);
+});
