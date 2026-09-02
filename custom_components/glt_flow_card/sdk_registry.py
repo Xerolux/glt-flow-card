@@ -43,6 +43,7 @@ INSTALL_REFUSALS: tuple[str, ...] = (
     "too_many_packs",
     "too_many_contributions",
     "pack_not_installed",
+    "pack_still_referenced",
 )
 
 
@@ -190,11 +191,29 @@ class SdkRegistry:
             "contribution_count": len(ids),
         }
 
-    def remove(self, namespace: str) -> dict[str, Any]:
-        """Remove one pack, or refuse if it is not installed."""
-        pack = self._packs.pop(namespace, None)
+    def remove(self, namespace: str, projects: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        """Remove one pack, or refuse if it is not installed or still in use.
+
+        `projects` maps project id to project document. Removing a pack a
+        project still draws with would leave a diagram referring to a symbol
+        that no longer resolves -- and a diagram that has silently stopped
+        meaning something is worse than one that will not let you delete
+        something. The refusal names the referring projects and the ids, so the
+        owner knows what to change before trying again.
+
+        The lookup is read-only and touches only the projects the caller
+        already handed in: the registry never goes looking for projects, which
+        is what keeps a refusal from naming one the caller cannot see.
+        """
+        pack = self._packs.get(namespace)
         if pack is None:
             raise InstallRefused("pack_not_installed", {"namespace": namespace})
+        referrers = referring_projects(projects or {}, pack["contribution_ids"])
+        if referrers:
+            raise InstallRefused("pack_still_referenced", {
+                "namespace": namespace, "referrers": referrers,
+            })
+        del self._packs[namespace]
         return {"namespace": namespace, "removed": len(pack["contribution_ids"])}
 
     def clear(self) -> None:
@@ -223,3 +242,41 @@ def visible_packs(registries: Mapping[str, SdkRegistry], readable: Iterable[str]
         for pack in registry.list_packs():
             visible.append({**pack, "project_id": project_id})
     return visible
+
+
+#: Where a project can name a contribution. A reference in any of these keeps
+#: the pack that provides it installed.
+_REFERENCE_FIELDS = ("symbol", "symbol_variant", "profile", "contribution")
+
+
+def project_references(project: Mapping[str, Any]) -> set[str]:
+    """Every contribution id a project document names."""
+    referenced: set[str] = set()
+    for item in project.get("equipment") or []:
+        if not isinstance(item, Mapping):
+            continue
+        for field in _REFERENCE_FIELDS:
+            value = item.get(field)
+            if isinstance(value, str) and "/" in value:
+                referenced.add(value)
+    for contribution in project.get("contributions") or []:
+        if isinstance(contribution, Mapping) and isinstance(contribution.get("id"), str):
+            referenced.add(contribution["id"])
+    for profile in project.get("profiles") or []:
+        if isinstance(profile, Mapping) and isinstance(profile.get("extends"), str):
+            if "/" in profile["extends"]:
+                referenced.add(profile["extends"])
+    return referenced
+
+
+def referring_projects(
+    projects: Mapping[str, Any], contribution_ids: Iterable[str],
+) -> list[dict[str, Any]]:
+    """Which of `projects` still name any of `contribution_ids`, and which ones."""
+    wanted = set(contribution_ids)
+    referrers = []
+    for project_id in sorted(projects):
+        used = sorted(project_references(projects[project_id]) & wanted)
+        if used:
+            referrers.append({"project_id": project_id, "contributions": used})
+    return referrers

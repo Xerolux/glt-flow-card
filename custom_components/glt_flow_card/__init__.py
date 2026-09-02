@@ -1757,7 +1757,13 @@ async def ws_extensions_remove(hass, connection, msg):
     try:
         if registry is None:
             raise InstallRefused("pack_not_installed", {"namespace": msg["namespace"]})
-        result = registry.remove(msg["namespace"])
+        # Only this project's document is offered. The registry never goes
+        # looking for projects, which is what keeps a refusal from naming one
+        # the caller cannot see.
+        head = _manager(hass).project(project_id)
+        result = registry.remove(
+            msg["namespace"], {project_id: head} if head is not None else {},
+        )
     except InstallRefused as refused:
         _send_install_refusal(connection, msg, refused)
         return
