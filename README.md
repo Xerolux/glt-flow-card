@@ -106,6 +106,96 @@ required but unavailable. The automated evidence performs no physical plant
 write. The 100/500/2,000-object fixtures prove bounded correctness only; this is
 not a capacity certification, which remains Phase 10 work.
 
+### Shared authority and collaboration
+
+Phase 2 makes the Companion the only authority for shared projects. The browser
+may use a capability snapshot to decide what to *show*; it never uses one to
+decide what is *allowed*. Every shared request is authorized again on the
+server, at the WebSocket boundary, before any handler runs.
+
+**Fixed roles.** A project assignment is exactly one of **Viewer**, **Operator**,
+**Engineer** or **Admin**. The set is closed and lives in the Companion's own
+access list. Project JSON, an imported `.gltproject` bundle, browser storage, a
+URL parameter and a form field never contribute a role or a capability. There
+are no per-user capability checkboxes: capabilities follow from the role.
+
+**Home Assistant administrators.** Being a Home Assistant administrator does not
+grant content authority. It grants exactly one thing: the ability to read and
+repair project membership, so an installation cannot lock itself out. An
+administrator with no project assignment can see who holds what and change it —
+and nothing else: no project content, no controls, no evidence.
+
+**Non-enumeration.** A project you may not see and a project that does not exist
+answer identically. Lists, searches and counts omit what you are not authorized
+to see rather than showing a redacted placeholder, because a placeholder still
+answers "there is something here".
+
+**Leases and revisions.** Editing shared content requires an exclusive
+engineering lease. A lease is ephemeral, bound to the connection that acquired
+it, rotates its bearer on every renewal, and expires on a monotonic clock with
+no grace period; nothing about it is persisted, so a restart cannot resurrect
+one. TTLs are 60 to 900 seconds, default 300. A lease held elsewhere is reported
+anonymously: who is editing is a membership question, not a lease question.
+
+Content revisions and access revisions are separate streams. A membership change
+does not invalidate a save in flight, and a save does not renumber membership.
+Every mutation carries the exact revision it believes it is acting on, and the
+server re-checks the whole authority chain inside its own commit lock.
+
+**Conflicts.** A newer revision blocks a save and preserves your candidate in
+memory. Recovery is refresh, a server-computed merge preview, retry with a fresh
+lease, or an explicit discard. There is no overwrite and no force, and no
+last-writer-wins path anywhere: unsaved work is cleared only by an authoritative
+committed receipt or by you saying so.
+
+**Configured controls.** A control request names a control identifier, the
+revision it is acting on, and the bounded input that control's own schema
+declares. The domain, the service, the target and every immutable field are
+resolved by the server from the verified project head — the browser cannot name
+them, and a request that tries is refused before Home Assistant is asked
+anything. An operator can run a configured control without holding the
+engineering lease: operating a plant and engineering a project are different
+activities. There is exactly one dispatch attempt and no automatic retry.
+
+**Evidence.** Server-authored trusted evidence and browser-authored telemetry
+live in separate stores with separate schemas, bounds, cursors and read paths,
+and are never merged into one timeline or one export. Only a confirmed readback
+is reported as a completed control: "accepted" means the server wrote it down,
+"dispatched" means Home Assistant was asked, and a timeout or an unknown result
+says so and points you at the current state rather than at a retry button. The
+older client-authored audit route is retired; a browser can write telemetry, and
+telemetry is permanently labelled untrusted.
+
+Evidence pages use short-lived server-state cursors. Page size is fixed and no
+total is exposed; a cursor is bound to the connection that created it and dies
+with the runtime generation.
+
+**Local-only projects.** A local-only project is a separate, explicitly labelled
+mode. A shared project never silently becomes a local one, and losing Companion
+authority makes shared editing read-only rather than falling back to a
+privileged local path.
+
+**Remote sites.** Remote listing, remote states and remote control are declared
+and fail closed with `feature_unavailable`. The remote transport is Phase 9 work
+and is not available in this release.
+
+**Upgrading.** The legacy 30–3600 second lock window does not survive the
+upgrade: a stored value is clamped into the 60–900 second lease window rather
+than reset, so a deliberate choice becomes the nearest legal one. A persisted
+legacy lock is dropped rather than turned into a lease — a row in a file has no
+connection to bind to and nobody holding it. Legacy audit rows are kept and
+labelled `legacy_untrusted` rather than deleted, so they can never be read as a
+claim about who did what. A legacy permissions block on the active head may seed
+membership once, conservatively, into fixed roles it already implied and never
+into Admin; an imported candidate can never seed membership at all. Every step
+is idempotent.
+
+**What the evidence does and does not cover.** The Phase-2 checks run on the
+same immutable minimum and current Home Assistant lanes as Phase 1, against the
+exact staged artifact. They perform no physical plant write, contact no remote
+site, handle no credential, and are not a statement about capacity or about
+public Companion availability.
+
 ### HACS
 
 1. HACS → three dots → **Custom repositories**.

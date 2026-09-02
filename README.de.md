@@ -112,6 +112,109 @@ Anlagen-Schreibzugriff aus. Die 100-/500-/2.000-Objekt-Fixtures belegen nur
 begrenzte Korrektheit und sind keine Kapazitätszertifizierung; diese Messung
 gehört zu Phase 10.
 
+### Gemeinsame Autorität und Zusammenarbeit
+
+Mit Phase 2 ist der Companion die einzige Autorität für gemeinsame Projekte. Der
+Browser darf einen Berechtigungs-Snapshot nutzen, um zu entscheiden, was er
+*anzeigt*; er entscheidet damit nie, was *erlaubt* ist. Jede gemeinsame Anfrage
+wird serverseitig erneut autorisiert, an der WebSocket-Grenze, bevor ein Handler
+läuft.
+
+**Feste Rollen.** Eine Projektzuweisung ist genau eine von **Betrachter**,
+**Bediener**, **Ingenieur** oder **Administrator**. Die Menge ist geschlossen und
+liegt in der Zugriffsliste des Companions. Projekt-JSON, ein importiertes
+`.gltproject`-Paket, Browser-Speicher, ein URL-Parameter oder ein Formularfeld
+tragen niemals eine Rolle oder Berechtigung bei. Es gibt keine
+Berechtigungs-Checkboxen pro Benutzer: Berechtigungen folgen aus der Rolle.
+
+**Home-Assistant-Administratoren.** Der Administratorstatus in Home Assistant
+verleiht keine Inhaltsautorität. Er verleiht genau eines: Projektmitgliedschaften
+lesen und reparieren zu dürfen, damit sich eine Installation nicht selbst
+aussperrt. Ein Administrator ohne Projektzuweisung sieht, wer welche Rolle hat,
+und kann das ändern — sonst nichts: keine Projektinhalte, keine Steuerungen,
+keine Nachweise.
+
+**Keine Aufzählung.** Ein Projekt, das Sie nicht sehen dürfen, und ein Projekt,
+das nicht existiert, antworten identisch. Listen, Suchen und Zähler lassen
+Nichtberechtigtes weg, statt einen geschwärzten Platzhalter zu zeigen — denn ein
+Platzhalter beantwortet immer noch die Frage „gibt es hier etwas?“.
+
+**Leases und Revisionen.** Das Bearbeiten gemeinsamer Inhalte erfordert ein
+exklusives Bearbeitungslease. Ein Lease ist flüchtig, an die Verbindung
+gebunden, die es erhalten hat, rotiert seinen Träger bei jeder Verlängerung und
+läuft auf einer monotonen Uhr ohne Nachfrist ab; nichts davon wird persistiert,
+ein Neustart kann also keines wiederbeleben. Die TTL liegt zwischen 60 und 900
+Sekunden, Standard 300. Ein anderweitig gehaltenes Lease wird anonym gemeldet:
+wer gerade bearbeitet, ist eine Mitgliedschafts-, keine Lease-Frage.
+
+Inhalts- und Zugriffsrevisionen sind getrennte Ströme. Eine
+Mitgliedschaftsänderung entwertet kein laufendes Speichern, und ein Speichern
+nummeriert keine Mitgliedschaft neu. Jede Änderung trägt die exakte Revision, auf
+die sie sich bezieht, und der Server prüft die gesamte Autoritätskette innerhalb
+seiner eigenen Commit-Sperre erneut.
+
+**Konflikte.** Eine neuere Revision blockiert das Speichern und bewahrt Ihren
+Entwurf im Speicher. Die Wiederherstellung ist: aktualisieren, eine
+serverseitig berechnete Zusammenführungsvorschau, ein erneuter Versuch mit neuem
+Lease oder ein ausdrückliches Verwerfen. Es gibt kein Überschreiben, kein
+Erzwingen und nirgends ein „letzter Schreiber gewinnt“: Ungespeichertes wird nur
+durch eine autoritative Bestätigung oder durch Ihre Entscheidung gelöscht.
+
+**Konfigurierte Steuerungen.** Eine Steuerungsanfrage nennt eine Steuerungs-ID,
+die Revision, auf die sie sich bezieht, und die begrenzte Eingabe, die das
+Schema dieser Steuerung deklariert. Domain, Service, Ziel und alle unveränderlichen
+Felder löst der Server aus dem verifizierten Projektstand auf — der Browser kann
+sie nicht benennen, und eine Anfrage, die es versucht, wird abgelehnt, bevor
+Home Assistant überhaupt gefragt wird. Ein Bediener kann eine konfigurierte
+Steuerung ohne Bearbeitungslease ausführen: eine Anlage bedienen und ein Projekt
+engineeren sind verschiedene Tätigkeiten. Es gibt genau einen Absetzversuch und
+keine automatische Wiederholung.
+
+**Nachweise.** Serverseitig erzeugte vertrauenswürdige Nachweise und im Browser
+erzeugte Telemetrie liegen in getrennten Speichern mit eigenen Schemata,
+Grenzen, Cursorn und Lesepfaden und werden nie in einer Zeitleiste oder einem
+Export zusammengeführt. Nur eine bestätigte Rücklesung gilt als abgeschlossene
+Steuerung: „angenommen“ heißt, der Server hat es protokolliert, „abgesetzt“
+heißt, Home Assistant wurde gefragt, und eine Zeitüberschreitung oder ein
+unbekanntes Ergebnis sagt genau das und verweist auf den aktuellen Zustand statt
+auf eine Wiederholen-Schaltfläche. Die frühere clientseitig geschriebene
+Audit-Route ist stillgelegt; ein Browser darf Telemetrie schreiben, und
+Telemetrie ist dauerhaft als nicht vertrauenswürdig gekennzeichnet.
+
+Nachweisseiten verwenden kurzlebige serverseitige Cursor. Die Seitengröße ist
+fest, es wird keine Gesamtzahl offengelegt, und ein Cursor ist an die Verbindung
+gebunden, die ihn erzeugt hat, und stirbt mit der Laufzeitgeneration.
+
+**Nur lokale Projekte.** Ein nur lokales Projekt ist ein eigener, ausdrücklich
+gekennzeichneter Modus. Ein gemeinsames Projekt wird niemals stillschweigend zu
+einem lokalen, und der Verlust der Companion-Autorität macht das gemeinsame
+Bearbeiten schreibgeschützt, statt auf einen privilegierten lokalen Pfad
+zurückzufallen.
+
+**Remote Sites.** Remote-Liste, Remote-Zustände und Remote-Steuerung sind
+deklariert und antworten fail-closed mit `feature_unavailable`. Der
+Remote-Transport ist Aufgabe von Phase 9 und in diesem Stand nicht verfügbar.
+
+**Upgrade.** Das alte Lock-Fenster von 30–3600 Sekunden überlebt das Upgrade
+nicht: ein gespeicherter Wert wird in das Lease-Fenster von 60–900 Sekunden
+geklemmt statt zurückgesetzt, damit eine bewusste Wahl zur nächstgelegenen
+zulässigen wird. Ein persistiertes Alt-Lock wird verworfen statt in ein Lease
+verwandelt — eine Zeile in einer Datei hat keine Verbindung, an die sie gebunden
+werden könnte, und niemanden, der sie hält. Alte Audit-Zeilen werden behalten und
+als `legacy_untrusted` gekennzeichnet statt gelöscht, damit sie nie als Aussage
+darüber gelesen werden können, wer was getan hat. Ein alter
+`permissions`-Block auf dem aktiven Stand darf die Mitgliedschaft einmalig und
+konservativ vorbelegen, ausschließlich in bereits implizierte feste Rollen und
+nie als Administrator; ein importierter Entwurf darf das nie. Jeder Schritt ist
+idempotent.
+
+**Was die Nachweise abdecken — und was nicht.** Die Phase-2-Prüfungen laufen auf
+denselben unveränderlich gepinnten Minimum- und Current-Home-Assistant-Lanes wie
+Phase 1, gegen das exakte Stage-Artefakt. Sie führen keinen physischen
+Anlagen-Schreibzugriff aus, kontaktieren keine Remote Site, verarbeiten keine
+Zugangsdaten und sind weder eine Kapazitätsaussage noch eine Aussage über eine
+öffentliche Companion-Verfügbarkeit.
+
 ### HACS
 
 1. HACS → Drei-Punkte-Menü → **Benutzerdefinierte Repositories**.

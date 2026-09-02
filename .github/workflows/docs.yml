@@ -22,8 +22,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate:
+    name: Validate documentation sources
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      # The wiki job copies these files verbatim, so a missing or empty source
+      # would silently delete a published page rather than fail here.
+      - name: Every wiki source is present and non-empty
+        run: |
+          for file in README.md README.de.md docs/wiki/*.md; do
+            test -s "$file" || { echo "empty or missing documentation source: $file"; exit 1; }
+          done
+      - name: The site build is deterministic
+        run: |
+          node tools/build-site.mjs
+          mv _site _site-first
+          node tools/build-site.mjs
+          diff -r _site-first _site
+
   pages:
     name: Deploy Pages + online editor
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -34,11 +61,13 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - run: npm ci --ignore-scripts
+      # These three Pages actions have no digest verified in this repository, so
+      # they stay on their release tags rather than on an unverified SHA.
       - uses: actions/configure-pages@v5
         with:
           enablement: true
@@ -53,14 +82,15 @@ jobs:
 
   wiki:
     name: Sync GitHub Wiki
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      # Write is required to push the wiki repository and nothing else; the job
+      # reads only docs/wiki, so it takes a shallow checkout.
       contents: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Clone or initialise wiki
         env:
           GH_TOKEN: ${{ github.token }}
@@ -83,6 +113,8 @@ jobs:
           git add -A
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'docs: sync wiki from docs/wiki [skip ci]'
+          # Never --force: the wiki is a repository other people can edit, and a
+          # forced push would delete their history without a record.
           if ! git push origin HEAD; then
             echo "::warning title=Wiki not initialised::Open the Wiki tab once, create any page, save it, then re-run this workflow. GitHub creates the wiki repository only after the first manual page."
           fi
