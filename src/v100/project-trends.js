@@ -32,51 +32,60 @@
  * Operator text -- an equipment name, a KPI label, a report name -- is set as
  * text content and never interpolated into markup.
  */
+
+import { hasWording, text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
+
 import { labelFor } from "./period-vocabulary.mjs";
 
 const LANGUAGES = ["de", "en"];
 
-/** Wording for the surfaces, written out in both languages rather than built. */
-const TEXT = {
-  coverage: {
-    de: (percent, gaps) => gaps
-      ? `Abdeckung ${percent} % · ${gaps} ${gaps === 1 ? "Lücke" : "Lücken"}`
-      : `Abdeckung ${percent} %`,
-    en: (percent, gaps) => gaps
-      ? `Coverage ${percent} % · ${gaps} ${gaps === 1 ? "gap" : "gaps"}`
-      : `Coverage ${percent} %`,
-  },
-  gapRow: {
-    de: (start, end) => `Keine Daten von ${start} bis ${end}`,
-    en: (start, end) => `No data from ${start} to ${end}`,
-  },
-  noData: { de: "Keine Daten", en: "No data" },
-  spanDay23: {
-    de: "Dieser Tag hat 23 Stunden — die Zeitumstellung fällt hinein.",
-    en: "This day has 23 hours — the clock change falls inside it.",
-  },
-  spanDay25: {
-    de: "Dieser Tag hat 25 Stunden — die Zeitumstellung fällt hinein.",
-    en: "This day has 25 hours — the clock change falls inside it.",
-  },
-  spanMonth: {
-    de: (hours) => `Dieser Monat hat ${hours} Stunden — die Zeitumstellung fällt hinein.`,
-    en: (hours) => `This month has ${hours} hours — the clock change falls inside it.`,
-  },
-  unreadable: { de: "Nicht lesbar", en: "Unreadable" },
-};
+/**
+ * Local wording names, mapped to their catalog keys.
+ *
+ * The wording itself lives in `catalog-de.mjs` and `catalog-en.mjs`. It used
+ * to live here as a `TEXT` table, which is what made a third locale a code
+ * edit in every module that renders anything: a locale is now a catalog, and a
+ * catalog is data.
+ *
+ * This map exists so the call sites below keep naming the string they mean
+ * rather than a namespaced key, including the ones that compute a name.
+ */
+const KEYS = Object.freeze({
+  "coverage": "trends.coverage",
+  "coverageGaps": "trends.coverage_gaps",
+  "gapOne": "trends.gap_one",
+  "gapOther": "trends.gap_other",
+  "gapRow": "trends.gap_row",
+  "noData": "trends.no_data",
+  "spanDay23": "trends.span_day23",
+  "spanDay25": "trends.span_day25",
+  "spanMonth": "trends.span_month",
+  "unreadable": "trends.unreadable",
+});
 
-for (const key of Object.keys(TEXT)) {
+for (const catalogKey of Object.values(KEYS)) {
   for (const language of LANGUAGES) {
-    if (TEXT[key][language] === undefined) {
-      throw new Error(`trend surfaces: "${key}" has no ${language} wording`);
+    if (!hasWording(catalogKey, language)) {
+      throw new Error(`trend surfaces: ${catalogKey} has no ${language} wording`);
     }
   }
 }
 
-function text(key, language, ...args) {
-  const entry = TEXT[key]?.[language] ?? TEXT[key]?.en;
-  return typeof entry === "function" ? entry(...args) : entry;
+/**
+ * Resolve one trend string through the catalog.
+ *
+ * **There is no fallback.** The three spellings this replaces across nine
+ * modules resolved a missing key to the English string or to the raw key, and
+ * neither is visible to anyone except the operator it fails: a German operator
+ * saw an English sentence, indistinguishable from a term deliberately left in
+ * English. An unknown name throws instead, naming what is missing.
+ */
+function text(key, language, values = {}) {
+  const catalogKey = KEYS[key];
+  if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+  return catalogText(catalogKey, language, values);
 }
 
 /** Append a child carrying operator text, set as text content and never markup. */
@@ -95,6 +104,24 @@ function percentOf(coverage) {
 }
 
 /**
+ * The coverage sentence, whose plural is data rather than a conditional.
+ *
+ * This was the product's only inline plural: `gaps === 1 ? "Lücke" : "Lücken"`.
+ * Correct for German and English, a code edit for every other locale, and wrong
+ * outright for any language with more than two plural forms. The two forms are
+ * catalog entries now and the selection is a lookup, which is the shape a
+ * locale can be supplied in.
+ */
+function coverageText(language, percent, gaps) {
+  if (gaps === 0) return text("coverage", language, { percent });
+  return text("coverageGaps", language, {
+    gapWord: text(gaps === 1 ? "gapOne" : "gapOther", language),
+    gaps,
+    percent,
+  });
+}
+
+/**
  * Coverage, as text, on every chart and every total.
  *
  * Its own element so a surface cannot render a number without one: adding a
@@ -105,7 +132,7 @@ class CoverageBadge extends HTMLElement {
   set props({ coverage, gaps = [], language = "de" }) {
     this.replaceChildren();
     this.setAttribute("data-coverage", String(coverage ?? 0));
-    append(this, "span", text("coverage", language, percentOf(coverage), gaps.length), {
+    append(this, "span", coverageText(language, percentOf(coverage), gaps.length), {
       "data-coverage-text": "",
     });
   }
@@ -191,7 +218,7 @@ class TrendChart extends HTMLElement {
     }
 
     for (const gap of gaps) {
-      append(plot, "span", text("gapRow", language, gap.start, gap.end), { "data-gap": "" });
+      append(plot, "span", text("gapRow", language, { end: gap.end, start: gap.start }), { "data-gap": "" });
     }
     if (!series.some((entry) => (entry.points ?? []).some((point) => point.value !== null))) {
       append(plot, "span", text("noData", language), { "data-empty": "" });
@@ -205,7 +232,7 @@ function unusualSpan(period, language) {
   if (period?.name === "day" && hours === 23) return text("spanDay23", language);
   if (period?.name === "day" && hours === 25) return text("spanDay25", language);
   if (period?.name === "month" && hours !== 720 && Number.isFinite(hours)) {
-    return text("spanMonth", language, hours);
+    return text("spanMonth", language, { hours });
   }
   return null;
 }
@@ -247,7 +274,7 @@ class TrendTable extends HTMLElement {
       const row = document.createElement("tr");
       row.setAttribute("data-gap-row", "");
       table.append(row);
-      const cell = append(row, "td", text("gapRow", language, gap.start, gap.end));
+      const cell = append(row, "td", text("gapRow", language, { end: gap.end, start: gap.start }));
       cell.setAttribute("colspan", String(series.length + 1));
     }
   }

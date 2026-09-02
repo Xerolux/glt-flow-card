@@ -12,6 +12,11 @@
  * only costs them the afternoon they spend guessing. A red outline alone, or a
  * silent no-op, is the version of this feature that does not work.
  */
+
+import { hasWording, template as catalogTemplate, text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
+
 import {
   BASE_SYMBOLS, DOMAINS, SYMBOL_VARIANTS, VISUAL_STYLES,
   domainForCategory, renderVariant,
@@ -43,96 +48,94 @@ const STYLE = `
   }
 `;
 
-/** DE/EN copy. A missing key renders its own name, never the other language. */
-const COPY = {
-  en: {
-    catalog_title: "Symbol catalog",
-    published_variants: "published variants",
-    filter_category: "Category",
-    filter_domain: "Domain",
-    filter_style: "Style",
-    filter_text: "Search",
-    filter_all: "All",
-    no_matches: "No symbol matches these filters",
-    port_medium: "Medium",
-    port_direction: "Direction",
-    port_kind: "Kind",
-    port_multiplicity: "Connections",
-    port_side: "Side",
-    direction_in: "Inlet",
-    direction_out: "Outlet",
-    direction_bidirectional: "Both ways",
-    kind_process: "Process",
-    kind_signal: "Signal",
-    kind_power: "Power",
-    multiplicity_one: "One connection",
-    multiplicity_many: "Many connections",
-    multiplicity_full: "At its limit",
-    refusal_title: "This connection is not possible",
-    refusal_medium_mismatch: "The media differ: these two ports carry different things.",
-    refusal_direction_conflict: "The directions conflict: both ports point the same way.",
-    refusal_kind_mismatch: "The kinds differ: a process port cannot join a signal or power port.",
-    refusal_multiplicity_exceeded: "That port already has the one connection it admits.",
-    refusal_self_connection: "A port cannot be connected to itself.",
-    refusal_duplicate_connection: "These two ports are already connected.",
-    refusal_unknown: "The connection was refused.",
-  },
-  de: {
-    catalog_title: "Symbolkatalog",
-    published_variants: "veröffentlichte Varianten",
-    filter_category: "Kategorie",
-    filter_domain: "Gewerk",
-    filter_style: "Stil",
-    filter_text: "Suche",
-    filter_all: "Alle",
-    no_matches: "Kein Symbol passt zu diesen Filtern",
-    port_medium: "Medium",
-    port_direction: "Richtung",
-    port_kind: "Art",
-    port_multiplicity: "Verbindungen",
-    port_side: "Seite",
-    direction_in: "Eingang",
-    direction_out: "Ausgang",
-    direction_bidirectional: "Beide Richtungen",
-    kind_process: "Prozess",
-    kind_signal: "Signal",
-    kind_power: "Energie",
-    multiplicity_one: "Eine Verbindung",
-    multiplicity_many: "Mehrere Verbindungen",
-    multiplicity_full: "Bereits belegt",
-    refusal_title: "Diese Verbindung ist nicht möglich",
-    refusal_medium_mismatch: "Die Medien unterscheiden sich: die Ports führen Verschiedenes.",
-    refusal_direction_conflict: "Die Richtungen widersprechen sich: beide Ports zeigen gleich.",
-    refusal_kind_mismatch: "Die Arten unterscheiden sich: Prozess passt nicht zu Signal oder Energie.",
-    refusal_multiplicity_exceeded: "Dieser Port hat die eine Verbindung bereits, die er zulässt.",
-    refusal_self_connection: "Ein Port kann nicht mit sich selbst verbunden werden.",
-    refusal_duplicate_connection: "Diese beiden Ports sind bereits verbunden.",
-    refusal_unknown: "Die Verbindung wurde abgelehnt.",
-  },
-};
+/**
+ * Local wording names, mapped to their catalog keys.
+ *
+ * The wording itself lives in `catalog-de.mjs` and `catalog-en.mjs`. It used
+ * to live here as a `COPY` table, which is what made a third locale a code
+ * edit in every module that renders anything: a locale is now a catalog, and a
+ * catalog is data.
+ *
+ * This map exists so the call sites below keep naming the string they mean
+ * rather than a namespaced key, including the ones that compute a name.
+ */
+const KEYS = Object.freeze({
+  "catalog_title": "catalog.catalog_title",
+  "direction_bidirectional": "catalog.direction_bidirectional",
+  "direction_in": "catalog.direction_in",
+  "direction_out": "catalog.direction_out",
+  "filter_all": "catalog.filter_all",
+  "filter_category": "catalog.filter_category",
+  "filter_domain": "catalog.filter_domain",
+  "filter_style": "catalog.filter_style",
+  "filter_text": "catalog.filter_text",
+  "kind_power": "catalog.kind_power",
+  "kind_process": "catalog.kind_process",
+  "kind_signal": "catalog.kind_signal",
+  "multiplicity_full": "catalog.multiplicity_full",
+  "multiplicity_many": "catalog.multiplicity_many",
+  "multiplicity_one": "catalog.multiplicity_one",
+  "no_matches": "catalog.no_matches",
+  "port_direction": "catalog.port_direction",
+  "port_kind": "catalog.port_kind",
+  "port_medium": "catalog.port_medium",
+  "port_multiplicity": "catalog.port_multiplicity",
+  "port_side": "catalog.port_side",
+  "published_variants": "catalog.published_variants",
+  "refusal_direction_conflict": "catalog.refusal_direction_conflict",
+  "refusal_duplicate_connection": "catalog.refusal_duplicate_connection",
+  "refusal_kind_mismatch": "catalog.refusal_kind_mismatch",
+  "refusal_medium_mismatch": "catalog.refusal_medium_mismatch",
+  "refusal_multiplicity_exceeded": "catalog.refusal_multiplicity_exceeded",
+  "refusal_self_connection": "catalog.refusal_self_connection",
+  "refusal_title": "catalog.refusal_title",
+  "refusal_unknown": "catalog.refusal_unknown",
+});
 
-// Both languages must carry the same keys, or one of them renders key names in
-// production. Checked at module load rather than left to a translator's memory.
-{
-  const en = Object.keys(COPY.en).sort().join(",");
-  const de = Object.keys(COPY.de).sort().join(",");
-  if (en !== de) throw new Error("project-catalog copy keys differ between de and en");
+// Every name this module renders must resolve in the catalog, in both
+// languages. Cross-language completeness is now computed once for every
+// namespace in `test/catalog-completeness.test.mjs`; what stays here is the
+// half only this module knows — that the names *it* uses exist at all.
+for (const catalogKey of Object.values(KEYS)) {
+  for (const language of ["de", "en"]) {
+    if (!hasWording(catalogKey, language)) {
+      throw new Error(`project-catalog renders ${catalogKey}, which has no ${language} wording`);
+    }
+  }
 }
 
 // Every refusal the port model can produce needs words. A reason with no copy
 // would render as a code, which is the "red outline alone" failure by another
 // route.
 for (const reason of REFUSAL_REASONS) {
-  if (!(`refusal_${reason}` in COPY.en)) {
+  if (!(`refusal_${reason}` in KEYS)) {
     throw new Error(`project-catalog has no wording for refusal ${reason}`);
   }
 }
 
-export const PROJECT_CATALOG_COPY = COPY;
+/** The wording this module renders, by language. Assembled from the catalog. */
+export const PROJECT_CATALOG_COPY = Object.freeze(Object.fromEntries(
+  ["de", "en"].map((language) => [
+    language,
+    Object.freeze(Object.fromEntries(
+      Object.entries(KEYS).map(([local, catalogKey]) => [local, catalogTemplate(catalogKey, language)]),
+    )),
+  ]),
+));
 
-function textFor(language, key) {
-  const table = COPY[language] ?? COPY.en;
-  return table[key] ?? COPY.en[key] ?? key;
+/**
+ * Resolve one catalog string through the catalog.
+ *
+ * **There is no fallback.** The three spellings this replaces across nine
+ * modules resolved a missing key to the English string or to the raw key, and
+ * neither is visible to anyone except the operator it fails: a German operator
+ * saw an English sentence, indistinguishable from a term deliberately left in
+ * English. An unknown name throws instead, naming what is missing.
+ */
+function textFor(language, key, values = {}) {
+  const catalogKey = KEYS[key];
+  if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+  return catalogText(catalogKey, language, values);
 }
 
 /**

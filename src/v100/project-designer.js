@@ -22,8 +22,14 @@
  * be observed by the effect ledger that proves the card asks for nothing it
  * should not.
  */
+
+import { hasWording, template as catalogTemplate, text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
+
 import { COMMAND_KINDS, UNDO_DEPTH_LIMIT, sampleCommand } from "./designer-commands.mjs";
 import { checkCompatibility } from "./ports.mjs";
+import { projectSafetyCopy } from "./project-safety-i18n.mjs";
 import {
   DEFAULT_CLEARANCE, DEFAULT_SPACING, createRouter, relevantObstacles, routeNetwork, routePath,
 } from "./routing.mjs";
@@ -92,107 +98,98 @@ for (const kind of COMMAND_KINDS) {
   }
 }
 
-const COPY = {
-  en: {
-    canvas_label: "Designer canvas",
-    objects: "objects",
-    keyboard_help: "Keyboard",
-    nudge_fine: "Nudge",
-    nudge_coarse: "Nudge, coarse",
-    resize: "Resize",
-    select: "Select",
-    extend_selection: "Extend selection",
-    group: "Group",
-    ungroup: "Ungroup",
-    align: "Align",
-    distribute: "Distribute",
-    reorder: "Bring forward",
-    connect: "Connect ports",
-    disconnect: "Disconnect",
-    add: "Add object",
-    instantiate_master: "Place master instance",
-    delete: "Delete",
-    undo: "Undo",
-    redo: "Redo",
-    ready: "Ready",
-    nothing_selected: "Nothing selected",
-    connect_choose_source: "Choose the source port",
-    connect_choose_target: "Choose the target port",
-    connect_refused: "Connection refused",
-    undo_depth: "Undo steps kept",
-    layers: "Layers",
-    layer_visible: "Visible",
-    layer_hidden: "Hidden",
-    layer_locked: "Locked",
-    layer_unlocked: "Unlocked",
-    minimap_label: "Diagram overview",
-    viewport: "Current view",
-    extensions: "Installed extensions",
-    no_extensions: "No extension packs are installed",
-    contributes: "Contributes",
-    supports: "Supports project schema",
-    conflict: "Conflict",
-    confirm_delete: "Delete the selected objects?",
-    confirm_remove_pack: "Remove this extension pack?",
-  },
-  de: {
-    canvas_label: "Konstruktionsfläche",
-    objects: "Objekte",
-    keyboard_help: "Tastatur",
-    nudge_fine: "Verschieben",
-    nudge_coarse: "Verschieben, grob",
-    resize: "Größe ändern",
-    select: "Auswählen",
-    extend_selection: "Auswahl erweitern",
-    group: "Gruppieren",
-    ungroup: "Gruppierung aufheben",
-    align: "Ausrichten",
-    distribute: "Verteilen",
-    reorder: "Nach vorn holen",
-    connect: "Ports verbinden",
-    disconnect: "Verbindung trennen",
-    add: "Objekt hinzufügen",
-    instantiate_master: "Master-Instanz setzen",
-    delete: "Löschen",
-    undo: "Rückgängig",
-    redo: "Wiederherstellen",
-    ready: "Bereit",
-    nothing_selected: "Nichts ausgewählt",
-    connect_choose_source: "Quell-Port wählen",
-    connect_choose_target: "Ziel-Port wählen",
-    connect_refused: "Verbindung abgelehnt",
-    undo_depth: "Aufbewahrte Schritte",
-    layers: "Ebenen",
-    layer_visible: "Sichtbar",
-    layer_hidden: "Ausgeblendet",
-    layer_locked: "Gesperrt",
-    layer_unlocked: "Entsperrt",
-    minimap_label: "Übersicht",
-    viewport: "Aktueller Ausschnitt",
-    extensions: "Installierte Erweiterungen",
-    no_extensions: "Es sind keine Erweiterungspakete installiert",
-    contributes: "Enthält",
-    supports: "Unterstützt Projektschema",
-    conflict: "Konflikt",
-    confirm_delete: "Ausgewählte Objekte löschen?",
-    confirm_remove_pack: "Dieses Erweiterungspaket entfernen?",
-  },
-};
+/**
+ * Local wording names, mapped to their catalog keys.
+ *
+ * The wording itself lives in `catalog-de.mjs` and `catalog-en.mjs`. It used
+ * to live here as a `COPY` table, which is what made a third locale a code
+ * edit in every module that renders anything: a locale is now a catalog, and a
+ * catalog is data.
+ *
+ * This map exists so the call sites below keep naming the string they mean
+ * rather than a namespaced key, including the ones that compute a name.
+ */
+const KEYS = Object.freeze({
+  "add": "designer.add",
+  "align": "designer.align",
+  "canvas_label": "designer.canvas_label",
+  "confirm_delete": "designer.confirm_delete",
+  "confirm_remove_pack": "designer.confirm_remove_pack",
+  "conflict": "designer.conflict",
+  "connect": "designer.connect",
+  "connect_choose_source": "designer.connect_choose_source",
+  "connect_choose_target": "designer.connect_choose_target",
+  "connect_refused": "designer.connect_refused",
+  "contributes": "designer.contributes",
+  "delete": "designer.delete",
+  "disconnect": "designer.disconnect",
+  "distribute": "designer.distribute",
+  "extend_selection": "designer.extend_selection",
+  "extensions": "designer.extensions",
+  "group": "designer.group",
+  "instantiate_master": "designer.instantiate_master",
+  "keyboard_help": "designer.keyboard_help",
+  "layer_hidden": "designer.layer_hidden",
+  "layer_locked": "designer.layer_locked",
+  "layer_unlocked": "designer.layer_unlocked",
+  "layer_visible": "designer.layer_visible",
+  "layers": "designer.layers",
+  "minimap_label": "designer.minimap_label",
+  "no_extensions": "designer.no_extensions",
+  "nothing_selected": "designer.nothing_selected",
+  "nudge_coarse": "designer.nudge_coarse",
+  "nudge_fine": "designer.nudge_fine",
+  "objects": "designer.objects",
+  "ready": "designer.ready",
+  "redo": "designer.redo",
+  "reorder": "designer.reorder",
+  "resize": "designer.resize",
+  "select": "designer.select",
+  "supports": "designer.supports",
+  "undo": "designer.undo",
+  "undo_depth": "designer.undo_depth",
+  "ungroup": "designer.ungroup",
+  "viewport": "designer.viewport",
+});
 
-{
-  const en = Object.keys(COPY.en).sort().join(",");
-  const de = Object.keys(COPY.de).sort().join(",");
-  if (en !== de) throw new Error("project-designer copy keys differ between de and en");
+// Every name this module renders must resolve in the catalog, in both
+// languages. Cross-language completeness is now computed once for every
+// namespace in `test/catalog-completeness.test.mjs`; what stays here is the
+// half only this module knows — that the names *it* uses exist at all.
+for (const catalogKey of Object.values(KEYS)) {
+  for (const language of ["de", "en"]) {
+    if (!hasWording(catalogKey, language)) {
+      throw new Error(`project-designer renders ${catalogKey}, which has no ${language} wording`);
+    }
+  }
 }
 
-export const PROJECT_DESIGNER_COPY = COPY;
+/** The wording this module renders, by language. Assembled from the catalog. */
+export const PROJECT_DESIGNER_COPY = Object.freeze(Object.fromEntries(
+  ["de", "en"].map((language) => [
+    language,
+    Object.freeze(Object.fromEntries(
+      Object.entries(KEYS).map(([local, catalogKey]) => [local, catalogTemplate(catalogKey, language)]),
+    )),
+  ]),
+));
 
 const FINE_STEP = 1;
 const COARSE_STEP = 20;
 
-function textFor(language, key) {
-  const table = COPY[language] ?? COPY.en;
-  return table[key] ?? COPY.en[key] ?? key;
+/**
+ * Resolve one designer string through the catalog.
+ *
+ * **There is no fallback.** The three spellings this replaces across nine
+ * modules resolved a missing key to the English string or to the raw key, and
+ * neither is visible to anyone except the operator it fails: a German operator
+ * saw an English sentence, indistinguishable from a term deliberately left in
+ * English. An unknown name throws instead, naming what is missing.
+ */
+function textFor(language, key, values = {}) {
+  const catalogKey = KEYS[key];
+  if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+  return catalogText(catalogKey, language, values);
 }
 
 function element(name, className, text) {
@@ -469,10 +466,17 @@ class GltDesignerCanvas extends GltDesignerElement {
     if (existing) existing.remove();
     const confirm = document.createElement("glt-flow-card-control-confirm");
     confirm.dataset.confirm = messageKey;
+    // The confirm element is the Phase-2 one, so its own wording — heading,
+    // effect, target, the two buttons — belongs to that surface's namespace.
+    // The designer supplies only the message. Routing everything through the
+    // designer's names used to work because the lookup fell back to the key
+    // itself; without that fallback, asking the wrong namespace is a defect
+    // rather than a slightly worse dialog, and the dialog it produced had no
+    // focusable control at all.
     confirm.copy = (key, values) => (
       key === "controlConfirmBody"
         ? textFor(this.language, messageKey)
-        : textFor(this.language, key) || key
+        : projectSafetyCopy(this.language, key, values)
     );
     this.append(confirm);
     confirm.props = {

@@ -28,52 +28,61 @@
  * markup.
  */
 
+import { hasWording, text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
+
 const LANGUAGES = ["de", "en"];
 
-/** Wording, written out in both languages rather than assembled from fragments. */
-const TEXT = {
-  siteHealthy: { de: "erreichbar", en: "reachable" },
-  siteSlow: { de: "langsam", en: "slow" },
-  siteUnreachable: { de: "nicht erreichbar", en: "unreachable" },
-  siteCircuitOpen: { de: "ausgesetzt nach wiederholten Fehlern", en: "suspended after repeated failures" },
-  shapeHealthy: { de: "●", en: "●" },
-  shapeSlow: { de: "◐", en: "◐" },
-  shapeUnreachable: { de: "○", en: "○" },
-  shapeCircuitOpen: { de: "✕", en: "✕" },
-  age: {
-    de: (seconds) => `Stand vor ${seconds} s`,
-    en: (seconds) => `read ${seconds} s ago`,
-  },
-  unverifiedTls: {
-    de: "unverschlüsselt geprüft: Zertifikat wird für diesen Standort nicht geprüft",
-    en: "unverified: this site's certificate is not checked",
-  },
-  completeness: {
-    de: (answered, total) => `${answered} von ${total} Standorten geantwortet`,
-    en: (answered, total) => `${answered} of ${total} sites answered`,
-  },
-  missingSites: {
-    de: "Fehlende Standorte:",
-    en: "Missing sites:",
-  },
-  effectUnknown: {
-    de: "Wirkung unbekannt — der Befehl kann ausgeführt worden sein. Prüfen Sie den Anlagenzustand, bevor Sie etwas erneut senden.",
-    en: "Effect unknown — the command may have run. Check the plant state before sending anything again.",
-  },
-  noValue: { de: "kein Messwert", en: "no reading" },
-};
+/**
+ * Local wording names, mapped to their catalog keys.
+ *
+ * The wording itself lives in `catalog-de.mjs` and `catalog-en.mjs`. It used
+ * to live here as a `TEXT` table, which is what made a third locale a code
+ * edit in every module that renders anything: a locale is now a catalog, and a
+ * catalog is data.
+ *
+ * This map exists so the call sites below keep naming the string they mean
+ * rather than a namespaced key, including the ones that compute a name.
+ */
+const KEYS = Object.freeze({
+  "age": "sites.age",
+  "completeness": "sites.completeness",
+  "effectUnknown": "sites.effect_unknown",
+  "missingSites": "sites.missing_sites",
+  "noValue": "sites.no_value",
+  "shapeCircuitOpen": "sites.shape_circuit_open",
+  "shapeHealthy": "sites.shape_healthy",
+  "shapeSlow": "sites.shape_slow",
+  "shapeUnreachable": "sites.shape_unreachable",
+  "siteCircuitOpen": "sites.site_circuit_open",
+  "siteHealthy": "sites.site_healthy",
+  "siteSlow": "sites.site_slow",
+  "siteUnreachable": "sites.site_unreachable",
+  "unverifiedTls": "sites.unverified_tls",
+});
 
-for (const key of Object.keys(TEXT)) {
+for (const catalogKey of Object.values(KEYS)) {
   for (const language of LANGUAGES) {
-    if (TEXT[key][language] === undefined) {
-      throw new Error(`site surfaces: "${key}" has no ${language} wording`);
+    if (!hasWording(catalogKey, language)) {
+      throw new Error(`site surfaces: ${catalogKey} has no ${language} wording`);
     }
   }
 }
 
-function text(key, language, ...args) {
-  const entry = TEXT[key]?.[language] ?? TEXT[key]?.en;
-  return typeof entry === "function" ? entry(...args) : entry;
+/**
+ * Resolve one site string through the catalog.
+ *
+ * **There is no fallback.** The three spellings this replaces across nine
+ * modules resolved a missing key to the English string or to the raw key, and
+ * neither is visible to anyone except the operator it fails: a German operator
+ * saw an English sentence, indistinguishable from a term deliberately left in
+ * English. An unknown name throws instead, naming what is missing.
+ */
+function text(key, language, values = {}) {
+  const catalogKey = KEYS[key];
+  if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+  return catalogText(catalogKey, language, values);
 }
 
 /** Append a child carrying remote text, set as text content and never markup. */
@@ -112,11 +121,11 @@ class SiteHealthBadge extends HTMLElement {
     this.setAttribute("data-site-state", state);
 
     append(this, "span", site.site_id, { "data-site-name": "" });
-    append(this, "span", TEXT[shapeKey][language], { "data-site-shape": "" });
+    append(this, "span", text(shapeKey, language), { "data-site-shape": "" });
     append(this, "span", text(wordKey, language), { "data-site-state-text": "" });
 
     if (Number.isFinite(site.age_seconds)) {
-      append(this, "span", text("age", language, Math.round(site.age_seconds)), {
+      append(this, "span", text("age", language, { seconds: Math.round(site.age_seconds) }), {
         "data-site-age": "",
       });
     }
@@ -148,7 +157,7 @@ class PortfolioRollup extends HTMLElement {
     // Always rendered, complete or not. A completeness note that appeared only
     // when something was missing would make its absence mean "we did not check"
     // — the same reasoning as Phase 7's coverage badge at 100 %.
-    append(this, "span", text("completeness", language, answered.length, rollup.total_sites ?? 0), {
+    append(this, "span", text("completeness", language, { answered: answered.length, total: rollup.total_sites ?? 0 }), {
       "data-completeness": "",
     });
 
@@ -159,7 +168,7 @@ class PortfolioRollup extends HTMLElement {
         const item = append(list, "li", null, { "data-missing-site": entry.site_id });
         append(item, "span", entry.site_id, { "data-site-name": "" });
         const state = STATE_KEYS[entry.state] ? entry.state : "unreachable";
-        append(item, "span", TEXT[STATE_KEYS[state][1]][language], { "data-site-shape": "" });
+        append(item, "span", text(STATE_KEYS[state][1], language), { "data-site-shape": "" });
         append(item, "span", text(STATE_KEYS[state][0], language), { "data-site-state-text": "" });
       }
     }

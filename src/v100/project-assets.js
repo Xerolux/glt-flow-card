@@ -30,75 +30,80 @@
  * text content and never interpolated into markup.
  */
 
+import { hasWording, text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
+
 const LANGUAGES = ["de", "en"];
 
-/** Wording, written out in both languages rather than assembled from fragments. */
-const TEXT = {
-  simulated: { de: "simuliert", en: "simulated" },
-  simulatedShape: { de: "◈", en: "◈" },
-  measured: { de: "gemessen", en: "measured" },
-  sessionActive: {
-    de: (who, until) => `Simulation aktiv — gestartet von ${who}, endet ${until}. Die Anlage wird nicht bedient.`,
-    en: (who, until) => `Simulation active — started by ${who}, ends ${until}. The plant is not being operated.`,
-  },
-  sessionExpired: {
-    de: "Die Simulation ist abgelaufen. Die Anlage wird wieder bedient.",
-    en: "The simulation has expired. The plant is being operated again.",
-  },
-  refusedSimulating: {
-    de: "Nicht ausgeführt: eine Simulation läuft.",
-    en: "Not performed: a simulation is running.",
-  },
-  refusedUnknown: {
-    de: "Nicht ausgeführt: der Simulationszustand war nicht feststellbar. Bitte erneut versuchen.",
-    en: "Not performed: the simulation state could not be determined. Please try again.",
-  },
-  diagnosis: {
-    de: {
-      present: "vorhanden",
-      registered_not_loaded: "registriert, aber nicht geladen",
-      unregistered: "ohne Registry-Eintrag",
-      missing: "fehlt",
-      wrong_unit: "falsche Einheit",
-      wrong_device_class: "falsche Geräteklasse",
-      duplicate_binding: "doppelte Zuordnung",
-      stale: "veraltet",
-      service_missing: "Dienst fehlt",
-    },
-    en: {
-      present: "present",
-      registered_not_loaded: "registered but not loaded",
-      unregistered: "no registry entry",
-      missing: "missing",
-      wrong_unit: "wrong unit",
-      wrong_device_class: "wrong device class",
-      duplicate_binding: "duplicate binding",
-      stale: "stale",
-      service_missing: "service missing",
-    },
-  },
-  readOnly: {
-    de: "Diese Ansicht ändert nichts. Alle Hinweise sind Verweise, keine Aktionen.",
-    en: "This view changes nothing. Every remediation is a link, not an action.",
-  },
-  attachmentLimits: {
-    de: (count, megabytes) => `Höchstens ${count} Anhänge, je bis ${megabytes} MB.`,
-    en: (count, megabytes) => `At most ${count} attachments, each up to ${megabytes} MB.`,
-  },
-  noEntries: { de: "Keine Einträge.", en: "No entries." },
-};
+/**
+ * Local wording names, mapped to their catalog keys.
+ *
+ * The wording itself lives in `catalog-de.mjs` and `catalog-en.mjs`. It used
+ * to live here as a `TEXT` table, which is what made a third locale a code
+ * edit in every module that renders anything: a locale is now a catalog, and a
+ * catalog is data.
+ *
+ * This map exists so the call sites below keep naming the string they mean
+ * rather than a namespaced key, including the ones that compute a name.
+ */
+const KEYS = Object.freeze({
+  "attachmentLimits": "assets.attachment_limits",
+  "diagnosis.duplicate_binding": "assets.diagnosis_duplicate_binding",
+  "diagnosis.missing": "assets.diagnosis_missing",
+  "diagnosis.present": "assets.diagnosis_present",
+  "diagnosis.registered_not_loaded": "assets.diagnosis_registered_not_loaded",
+  "diagnosis.service_missing": "assets.diagnosis_service_missing",
+  "diagnosis.stale": "assets.diagnosis_stale",
+  "diagnosis.unregistered": "assets.diagnosis_unregistered",
+  "diagnosis.wrong_device_class": "assets.diagnosis_wrong_device_class",
+  "diagnosis.wrong_unit": "assets.diagnosis_wrong_unit",
+  "measured": "assets.measured",
+  "noEntries": "assets.no_entries",
+  "readOnly": "assets.read_only",
+  "refusedSimulating": "assets.refused_simulating",
+  "refusedUnknown": "assets.refused_unknown",
+  "sessionActive": "assets.session_active",
+  "sessionExpired": "assets.session_expired",
+  "simulated": "assets.simulated",
+  "simulatedShape": "assets.simulated_shape",
+});
 
-for (const key of Object.keys(TEXT)) {
+for (const catalogKey of Object.values(KEYS)) {
   for (const language of LANGUAGES) {
-    if (TEXT[key][language] === undefined) {
-      throw new Error(`asset surfaces: "${key}" has no ${language} wording`);
+    if (!hasWording(catalogKey, language)) {
+      throw new Error(`asset surfaces: ${catalogKey} has no ${language} wording`);
     }
   }
 }
 
-function text(key, language, ...args) {
-  const entry = TEXT[key]?.[language] ?? TEXT[key]?.en;
-  return typeof entry === "function" ? entry(...args) : entry;
+/**
+ * Resolve one asset string through the catalog.
+ *
+ * **There is no fallback.** The three spellings this replaces across nine
+ * modules resolved a missing key to the English string or to the raw key, and
+ * neither is visible to anyone except the operator it fails: a German operator
+ * saw an English sentence, indistinguishable from a term deliberately left in
+ * English. An unknown name throws instead, naming what is missing.
+ */
+function text(key, language, values = {}) {
+  const catalogKey = KEYS[key];
+  if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+  return catalogText(catalogKey, language, values);
+}
+
+/**
+ * One diagnosis code's wording.
+ *
+ * The nine codes used to live in a nested per-language table read as
+ * `text("diagnosis", language)[code] ?? code`, which rendered the raw code for
+ * anything unlisted — a screen saying `wrong_unit` to a plant engineer. They
+ * are catalog keys now, and an unknown code is a defect that names itself.
+ */
+function diagnosisText(code, language) {
+  const key = `diagnosis.${code}`;
+  if (!KEYS[key]) throw new Error(`asset surfaces: no wording for diagnosis ${JSON.stringify(code)}`);
+  return text(key, language);
 }
 
 /** Append a child carrying operator text, set as text content and never markup. */
@@ -133,10 +138,13 @@ class SimulationBanner extends HTMLElement {
       return;
     }
     this.setAttribute("data-simulation", "active");
-    append(this, "span", TEXT.simulatedShape[language], { "data-simulation-shape": "" });
+    append(this, "span", text("simulatedShape", language), { "data-simulation-shape": "" });
     append(
       this, "span",
-      text("sessionActive", language, session.actor_name || session.actor_user_id, session.expires_at),
+      text("sessionActive", language, {
+        until: session.expires_at,
+        who: session.actor_name || session.actor_user_id,
+      }),
       { "data-banner-text": "" },
     );
   }
@@ -160,7 +168,7 @@ class ProvidedValue extends HTMLElement {
     append(this, "span", value === null || value === undefined ? "—" : value, { "data-value": "" });
     if (unit) append(this, "span", unit, { "data-unit": "" });
     if (simulated) {
-      append(this, "span", TEXT.simulatedShape[language], { "data-provider-shape": "" });
+      append(this, "span", text("simulatedShape", language), { "data-provider-shape": "" });
     }
     append(this, "span", text(simulated ? "simulated" : "measured", language), {
       "data-provider-text": "",
@@ -192,7 +200,7 @@ class ScenarioTable extends HTMLElement {
       append(row, "td", entry.slot);
       append(row, "td", entry.value);
       const marker = append(row, "td", null, { "data-provider": entry.provider ?? "simulated" });
-      append(marker, "span", TEXT.simulatedShape[language], { "data-provider-shape": "" });
+      append(marker, "span", text("simulatedShape", language), { "data-provider-shape": "" });
       append(marker, "span", text("simulated", language), { "data-provider-text": "" });
     }
   }
@@ -215,7 +223,7 @@ class CommissioningTable extends HTMLElement {
       const counts = append(this, "ul", null, { "data-summary": "" });
       for (const [code, count] of Object.entries(summary.counts ?? {})) {
         if (!count) continue;
-        append(counts, "li", `${text("diagnosis", language)[code] ?? code}: ${count}`, {
+        append(counts, "li", `${diagnosisText(code, language)}: ${count}`, {
           "data-count": code,
         });
       }
@@ -233,7 +241,7 @@ class CommissioningTable extends HTMLElement {
       append(row, "td", finding.site ?? finding.evidence?.site ?? "", { "data-site": "" });
       // The word, not a colour. A severity rendered only as a tint is no
       // information at all on a monochrome kiosk.
-      append(row, "td", text("diagnosis", language)[finding.code] ?? finding.code, {
+      append(row, "td", diagnosisText(finding.code, language), {
         "data-diagnosis-text": "",
       });
       append(row, "td", finding.evidence?.platform ?? "", { "data-evidence": "" });
@@ -303,10 +311,10 @@ class WorkOrderForm extends HTMLElement {
       append(wrapper, "input", null, { "data-field": field, id, name: field, type: "text" });
     }
     if (limits) {
-      append(form, "p", text(
-        "attachmentLimits", language,
-        limits.max_attachments, Math.round(limits.max_bytes / (1024 * 1024)),
-      ), { "data-attachment-limits": "" });
+      append(form, "p", text("attachmentLimits", language, {
+        count: limits.max_attachments,
+        megabytes: Math.round(limits.max_bytes / (1024 * 1024)),
+      }), { "data-attachment-limits": "" });
     }
   }
 }

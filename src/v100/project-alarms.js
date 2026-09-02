@@ -26,6 +26,11 @@
  * -- is set as text content and never interpolated into markup. One operator
  * writes it and another reads it.
  */
+
+import { hasWording, text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
+
 import {
   ALARM_PRIORITIES,
   SUPPRESSION_REASONS,
@@ -63,89 +68,57 @@ const STYLE = `
   }
 `;
 
-/** DE/EN copy. A missing key renders its own name, never the other language. */
-const COPY = {
-  en: {
-    alarms_title: "Alarms",
-    no_alarms: "No active alarms",
-    state_active: "active",
-    state_returned: "returned",
-    state_acknowledged: "acknowledged",
-    state_indeterminate: "state unknown",
-    state_suppressed: "suppressed",
-    priority_critical: "Critical",
-    priority_warning: "Warning",
-    priority_info: "Information",
-    suppressed_shelved: "shelved",
-    suppressed_maintenance: "in maintenance",
-    suppressed_acknowledged: "acknowledged",
-    suppressed_by: "by",
-    suppressed_until: "until",
-    delivery_failed: "Delivery failed",
-    delivery_none: "No notification targets configured; alarms are annunciated here only",
-    attempts_title: "Delivery attempts",
-    acknowledge: "Acknowledge",
-    shelve: "Shelve",
-    comment: "Comment",
-    shelve_minutes: "Suppress for how many minutes?",
-    shelve_too_long: "Longer than this site allows",
-    confirm: "OK",
-    cancel: "Cancel",
-    links_title: "Context",
-    settings_title: "Alarm settings",
-    setting_default: "default",
-    schedule_title: "Schedules",
-    schedule_preview: "Effective times",
-    schedule_kind_instant: "Runs at a time",
-    schedule_kind_interval: "Operating period",
-    binding_read_only: "Read-only",
-    preview_nonexistent: "does not exist on",
-    preview_nonexistent_tail: "this entry will not run",
-    preview_ambiguous: "occurs twice on",
-    preview_ambiguous_tail: "this entry runs once, at",
-    preview_normal: "runs at",
-  },
-  de: {
-    alarms_title: "Alarme",
-    no_alarms: "Keine aktiven Alarme",
-    state_active: "aktiv",
-    state_returned: "zurückgestellt",
-    state_acknowledged: "quittiert",
-    state_indeterminate: "Zustand unbekannt",
-    state_suppressed: "unterdrückt",
-    priority_critical: "Störung",
-    priority_warning: "Warnung",
-    priority_info: "Hinweis",
-    suppressed_shelved: "geschelft",
-    suppressed_maintenance: "in Wartung",
-    suppressed_acknowledged: "quittiert",
-    suppressed_by: "von",
-    suppressed_until: "bis",
-    delivery_failed: "Zustellung fehlgeschlagen",
-    delivery_none: "Keine Benachrichtigungsziele konfiguriert; Alarme werden nur hier angezeigt",
-    attempts_title: "Zustellversuche",
-    acknowledge: "Quittieren",
-    shelve: "Unterdrücken",
-    comment: "Kommentar",
-    shelve_minutes: "Für wie viele Minuten unterdrücken?",
-    shelve_too_long: "Länger als dieser Standort erlaubt",
-    confirm: "OK",
-    cancel: "Abbrechen",
-    links_title: "Kontext",
-    settings_title: "Alarmeinstellungen",
-    setting_default: "Vorgabe",
-    schedule_title: "Zeitprogramme",
-    schedule_preview: "Wirksame Zeiten",
-    schedule_kind_instant: "Läuft zu einer Zeit",
-    schedule_kind_interval: "Betriebszeit",
-    binding_read_only: "Nur lesbar",
-    preview_nonexistent: "gibt es nicht am",
-    preview_nonexistent_tail: "dieser Eintrag läuft nicht",
-    preview_ambiguous: "kommt zweimal vor am",
-    preview_ambiguous_tail: "dieser Eintrag läuft einmal, um",
-    preview_normal: "läuft um",
-  },
-};
+/**
+ * Local wording names, mapped to their catalog keys.
+ *
+ * The wording itself lives in `catalog-de.mjs` and `catalog-en.mjs`. It used
+ * to live here as a `COPY` table, which is what made a third locale a code
+ * edit in every module that renders anything: a locale is now a catalog, and a
+ * catalog is data.
+ *
+ * This map exists so the call sites below keep naming the string they mean
+ * rather than a namespaced key, including the ones that compute a name.
+ */
+const KEYS = Object.freeze({
+  "acknowledge": "alarms.acknowledge",
+  "alarms_title": "alarms.alarms_title",
+  "attempts_title": "alarms.attempts_title",
+  "binding_read_only": "alarms.binding_read_only",
+  "cancel": "alarms.cancel",
+  "comment": "alarms.comment",
+  "confirm": "alarms.confirm",
+  "delivery_failed": "alarms.delivery_failed",
+  "delivery_none": "alarms.delivery_none",
+  "links_title": "alarms.links_title",
+  "no_alarms": "alarms.no_alarms",
+  "preview_ambiguous": "alarms.preview_ambiguous",
+  "preview_ambiguous_tail": "alarms.preview_ambiguous_tail",
+  "preview_nonexistent": "alarms.preview_nonexistent",
+  "preview_nonexistent_tail": "alarms.preview_nonexistent_tail",
+  "preview_normal": "alarms.preview_normal",
+  "priority_critical": "alarms.priority_critical",
+  "priority_info": "alarms.priority_info",
+  "priority_warning": "alarms.priority_warning",
+  "schedule_kind_instant": "alarms.schedule_kind_instant",
+  "schedule_kind_interval": "alarms.schedule_kind_interval",
+  "schedule_preview": "alarms.schedule_preview",
+  "schedule_title": "alarms.schedule_title",
+  "setting_default": "alarms.setting_default",
+  "settings_title": "alarms.settings_title",
+  "shelve": "alarms.shelve",
+  "shelve_minutes": "alarms.shelve_minutes",
+  "shelve_too_long": "alarms.shelve_too_long",
+  "state_acknowledged": "alarms.state_acknowledged",
+  "state_active": "alarms.state_active",
+  "state_indeterminate": "alarms.state_indeterminate",
+  "state_returned": "alarms.state_returned",
+  "state_suppressed": "alarms.state_suppressed",
+  "suppressed_acknowledged": "alarms.suppressed_acknowledged",
+  "suppressed_by": "alarms.suppressed_by",
+  "suppressed_maintenance": "alarms.suppressed_maintenance",
+  "suppressed_shelved": "alarms.suppressed_shelved",
+  "suppressed_until": "alarms.suppressed_until",
+});
 
 /**
  * Shapes carrying priority without colour.
@@ -155,9 +128,19 @@ const COPY = {
  */
 const PRIORITY_SHAPES = { critical: "◆", warning: "▲", info: "●" };
 
-function copy(language, key) {
-  const table = COPY[language] || COPY.en;
-  return table[key] ?? COPY.en[key] ?? key;
+/**
+ * Resolve one alarm string through the catalog.
+ *
+ * **There is no fallback.** The three spellings this replaces across nine
+ * modules resolved a missing key to the English string or to the raw key, and
+ * neither is visible to anyone except the operator it fails: a German operator
+ * saw an English sentence, indistinguishable from a term deliberately left in
+ * English. An unknown name throws instead, naming what is missing.
+ */
+function copy(language, key, values = {}) {
+  const catalogKey = KEYS[key];
+  if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+  return catalogText(catalogKey, language, values);
 }
 
 /** Build one element with text content. Never markup: operators write this. */
@@ -581,14 +564,14 @@ for (const priority of ALARM_PRIORITIES) {
     throw new Error(`alarm priority ${priority} has no non-colour shape`);
   }
   for (const language of ["en", "de"]) {
-    if (!COPY[language][`priority_${priority}`]) {
+    if (!hasWording(KEYS[`priority_${priority}`], language)) {
       throw new Error(`alarm priority ${priority} has no ${language} label`);
     }
   }
 }
 for (const reason of SUPPRESSION_REASONS) {
   for (const language of ["en", "de"]) {
-    if (!COPY[language][`suppressed_${reason}`]) {
+    if (!hasWording(KEYS[`suppressed_${reason}`], language)) {
       throw new Error(`suppression reason ${reason} has no ${language} wording`);
     }
   }

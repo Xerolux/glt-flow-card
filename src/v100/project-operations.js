@@ -10,6 +10,11 @@
  * no pointer. And a view that has lost track says so, permanently and visibly,
  * because a hidden staleness indicator is indistinguishable from a fresh view.
  */
+
+import { hasWording, template as catalogTemplate, text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
+
 import { presentOutcome } from "./command-outcome.mjs";
 import { reducePanel } from "./panel-model.mjs";
 
@@ -51,73 +56,78 @@ const STYLE = `
   }
 `;
 
-/** DE/EN copy. A missing key renders its own name, never the other language. */
-const COPY = {
-  en: {
-    no_values_declared: "No values declared",
-    no_alarms: "No alarms",
-    no_controls_available: "No controls available to you",
-    history_unavailable: "Trends are not available yet",
-    outcome_accepted: "Accepted — awaiting dispatch",
-    outcome_dispatched: "Sent — awaiting confirmation",
-    outcome_confirmed: "Confirmed",
-    outcome_timed_out: "No confirmation — effect unknown",
-    outcome_result_unknown: "Effect unknown",
-    outcome_failed_after_dispatch: "Failed after dispatch — effect unknown",
-    outcome_failed_before_dispatch: "Failed — not sent",
-    outcome_cancelled: "Cancelled — not sent",
-    outcome_denied: "Not permitted",
-    status_live: "Live",
-    status_resyncing: "Reloading",
-    status_stale: "Not live — showing last known values",
-    status_unavailable: "Unavailable",
-    last_updated: "Last updated",
-    view_not_available: "This view is not available.",
-    affordance_cancel: "Cancel",
-    affordance_dismiss: "Dismiss",
-    affordance_state: "Show current state",
-    affordance_audit: "Open trusted audit",
-  },
-  de: {
-    no_values_declared: "Keine Werte deklariert",
-    no_alarms: "Keine Alarme",
-    no_controls_available: "Keine Bedienung für Sie verfügbar",
-    history_unavailable: "Trends sind noch nicht verfügbar",
-    outcome_accepted: "Angenommen — wartet auf Absendung",
-    outcome_dispatched: "Gesendet — wartet auf Bestätigung",
-    outcome_confirmed: "Bestätigt",
-    outcome_timed_out: "Keine Bestätigung — Wirkung unbekannt",
-    outcome_result_unknown: "Wirkung unbekannt",
-    outcome_failed_after_dispatch: "Nach Absendung fehlgeschlagen — Wirkung unbekannt",
-    outcome_failed_before_dispatch: "Fehlgeschlagen — nicht gesendet",
-    outcome_cancelled: "Abgebrochen — nicht gesendet",
-    outcome_denied: "Nicht berechtigt",
-    status_live: "Live",
-    status_resyncing: "Wird neu geladen",
-    status_stale: "Nicht live — letzte bekannte Werte",
-    status_unavailable: "Nicht verfügbar",
-    last_updated: "Zuletzt aktualisiert",
-    view_not_available: "Diese Ansicht ist nicht verfügbar.",
-    affordance_cancel: "Abbrechen",
-    affordance_dismiss: "Schließen",
-    affordance_state: "Aktuellen Zustand zeigen",
-    affordance_audit: "Vertrauenswürdiges Protokoll öffnen",
-  },
-};
+/**
+ * Local wording names, mapped to their catalog keys.
+ *
+ * The wording itself lives in `catalog-de.mjs` and `catalog-en.mjs`. It used
+ * to live here as a `COPY` table, which is what made a third locale a code
+ * edit in every module that renders anything: a locale is now a catalog, and a
+ * catalog is data.
+ *
+ * This map exists so the call sites below keep naming the string they mean
+ * rather than a namespaced key, including the ones that compute a name.
+ */
+const KEYS = Object.freeze({
+  "affordance_audit": "operations.affordance_audit",
+  "affordance_cancel": "operations.affordance_cancel",
+  "affordance_dismiss": "operations.affordance_dismiss",
+  "affordance_state": "operations.affordance_state",
+  "history_unavailable": "operations.history_unavailable",
+  "last_updated": "operations.last_updated",
+  "no_alarms": "operations.no_alarms",
+  "no_controls_available": "operations.no_controls_available",
+  "no_values_declared": "operations.no_values_declared",
+  "outcome_accepted": "operations.outcome_accepted",
+  "outcome_cancelled": "operations.outcome_cancelled",
+  "outcome_confirmed": "operations.outcome_confirmed",
+  "outcome_denied": "operations.outcome_denied",
+  "outcome_dispatched": "operations.outcome_dispatched",
+  "outcome_failed_after_dispatch": "operations.outcome_failed_after_dispatch",
+  "outcome_failed_before_dispatch": "operations.outcome_failed_before_dispatch",
+  "outcome_result_unknown": "operations.outcome_result_unknown",
+  "outcome_timed_out": "operations.outcome_timed_out",
+  "status_live": "operations.status_live",
+  "status_resyncing": "operations.status_resyncing",
+  "status_stale": "operations.status_stale",
+  "status_unavailable": "operations.status_unavailable",
+  "view_not_available": "operations.view_not_available",
+});
 
-// Both languages must carry the same keys, or one of them renders key names in
-// production. Checked at module load rather than left to a translator's memory.
-{
-  const en = Object.keys(COPY.en).sort().join(",");
-  const de = Object.keys(COPY.de).sort().join(",");
-  if (en !== de) throw new Error("project-operations copy keys differ between de and en");
+// Every name this module renders must resolve in the catalog, in both
+// languages. Cross-language completeness is now computed once for every
+// namespace in `test/catalog-completeness.test.mjs`; what stays here is the
+// half only this module knows — that the names *it* uses exist at all.
+for (const catalogKey of Object.values(KEYS)) {
+  for (const language of ["de", "en"]) {
+    if (!hasWording(catalogKey, language)) {
+      throw new Error(`project-operations renders ${catalogKey}, which has no ${language} wording`);
+    }
+  }
 }
 
-export const PROJECT_OPERATIONS_COPY = COPY;
+/** The wording this module renders, by language. Assembled from the catalog. */
+export const PROJECT_OPERATIONS_COPY = Object.freeze(Object.fromEntries(
+  ["de", "en"].map((language) => [
+    language,
+    Object.freeze(Object.fromEntries(
+      Object.entries(KEYS).map(([local, catalogKey]) => [local, catalogTemplate(catalogKey, language)]),
+    )),
+  ]),
+));
 
-function textFor(language, key) {
-  const table = COPY[language] ?? COPY.en;
-  return table[key] ?? COPY.en[key] ?? key;
+/**
+ * Resolve one operations string through the catalog.
+ *
+ * **There is no fallback.** The three spellings this replaces across nine
+ * modules resolved a missing key to the English string or to the raw key, and
+ * neither is visible to anyone except the operator it fails: a German operator
+ * saw an English sentence, indistinguishable from a term deliberately left in
+ * English. An unknown name throws instead, naming what is missing.
+ */
+function textFor(language, key, values = {}) {
+  const catalogKey = KEYS[key];
+  if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+  return catalogText(catalogKey, language, values);
 }
 
 function element(name, className, text) {

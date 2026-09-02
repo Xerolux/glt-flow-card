@@ -50057,8 +50057,8 @@
   function rotateRight(value, amount) {
     return value >>> amount | value << 32 - amount;
   }
-  function sha256Hex(text4) {
-    const source = textEncoder.encode(text4);
+  function sha256Hex(text5) {
+    const source = textEncoder.encode(text5);
     const paddedLength = Math.ceil((source.length + 9) / 64) * 64;
     const bytes = new Uint8Array(paddedLength);
     bytes.set(source);
@@ -59480,11 +59480,11 @@
     return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   }
   function canonicalDocument(bytes, path) {
-    let text4;
+    let text5;
     let document2;
     try {
-      text4 = decoder.decode(bytes);
-      document2 = JSON.parse(text4);
+      text5 = decoder.decode(bytes);
+      document2 = JSON.parse(text5);
     } catch {
       failure("bundle.manifest_mismatch", path, { reason: "invalid_json" });
     }
@@ -59494,7 +59494,7 @@
     } catch {
       failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
     }
-    if (text4 !== canonical) failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
+    if (text5 !== canonical) failure("bundle.manifest_mismatch", path, { reason: "noncanonical_json" });
     return { document: document2, canonical };
   }
   function manifestErrorPath(error) {
@@ -61745,491 +61745,1161 @@
     };
   }
 
-  // src/v100/project-safety-i18n.mjs
-  var COPY = {
-    en: {
-      title: "Project safety",
-      close: "Close Project safety",
-      scope: "Project data only — no Home Assistant service or plant command is executed.",
-      standalone: "Companion unavailable — shared project operations are read-only.",
-      tabs: ["Overview", "Validate", "Migrate & compare", "Bundles", "Evidence"],
-      overview: "Project safety overview",
-      validate: "Validate project",
-      validationIdle: "Choose Validate project to inspect the raw project without changing it.",
-      validationRunning: "Validating raw project",
-      validationSuccess: "Project validation complete",
-      validationFailed: "Project validation failed",
-      validationValid: "No validation issues found. The raw project matches schema {version}.",
-      validationInvalid: "The project is invalid. Review the listed paths; the original remains unchanged.",
-      unchanged: "Original project unchanged",
-      rawContract: "Raw contract",
-      project: "Project",
-      companion: "Companion",
-      bundleSafety: "Bundle safety",
-      releaseEvidence: "Release evidence",
-      schema: "Schema",
-      revision: "Revision",
-      connected: "Connected",
-      readOnly: "Read-only",
-      notRun: "Not run",
-      inspectBundle: "Inspect .gltproject bundle",
-      bundleEmpty: "No bundle inspected. Project asset metadata is listed without rendering asset content.",
-      assetMetadata: "Opaque asset metadata",
-      path: "Path",
-      mediaType: "Media type",
-      size: "Size",
-      checksum: "SHA-256",
-      exactCardVersion: "Exact card version",
-      artifactEquality: "Artifact equality",
-      byteIdentical: "Byte-identical",
-      noEvidence: "Release evidence is incomplete. Missing or stale gates are listed below.",
-      errors: "Validation issues",
-      workflow: ["Inspect", "Preview", "Backup", "Apply", "Verify"],
-      dryRun: "Run dry run",
-      dryRunFresh: "Run fresh dry run",
-      previewReady: "Migration preview ready",
-      previewFailed: "Migration preview failed. The original project is unchanged. Run a fresh dry run after reviewing the diagnostic.",
-      categories: { add: "Added", remove: "Removed", move: "Moved", binding: "Binding", config: "Configuration" },
-      impact: "Impact",
-      requiredDependency: "Required dependency",
-      ignoredNoise: "Ignored ordering noise",
-      applySelected: "Apply selected changes",
-      confirmApplyHeading: "Confirm project changes",
-      confirmApplyBody: "Apply {count} validated changes to “{project}” at revision {revision}? A verified backup will be created first. This changes project data only and sends no plant command.",
-      cancelApply: "Cancel project changes",
-      applying: "Applying {count} project changes",
-      applySuccess: "Project changes applied",
-      applySuccessBody: "Revision {revision} was validated and verified after applying {count} changes. Verified backup {backup_id} remains available.",
-      applyFailure: "Project changes were not applied. Nothing was changed. Review the diagnostic and run a fresh dry run.",
-      revisionConflict: "Revision {expected} is no longer current; revision {actual} is active. Reload and compare again.",
-      restore: "Restore verified backup",
-      restoreBody: "Restore verified backup {backup_id} for “{project}”? The current revision {revision} will be replaced. A new evidence receipt will be created. This changes project data only and sends no plant command.",
-      restoreLabel: "Enter the project name to confirm",
-      restoreAwaiting: "Enter “{project}” to enable Restore verified backup.",
-      restoreReady: "Project name confirmed. Review the revision and backup before continuing.",
-      restoreMismatch: "The project name does not match. The project remains unchanged.",
-      rollbackRunning: "Restoring verified backup",
-      rollbackSuccess: "Verified backup restored",
-      rollbackSuccessBody: "Project revision {revision} matches verified backup {backup_id}. A rollback evidence receipt was created.",
-      rollbackFailure: "Backup restore verification failed. Both snapshots were retained. Download the rollback diagnostic and request administrator recovery.",
-      authorityBar: "Authority state",
-      modeShared: "Shared project",
-      modeLocal: "Local-only project",
-      companionStates: {
-        current: "Authority current",
-        refreshing: "Refreshing authority",
-        stale: "Authority stale",
-        unavailable: "Companion unavailable",
-        incompatible: "Policy version unsupported"
-      },
-      myRole: "My role",
-      roleNames: { viewer: "Viewer", operator: "Operator", engineer: "Engineer", admin: "Admin", none: "No assignment" },
-      editing: "Editing",
-      leaseStates: {
-        readOnly: "Read-only",
-        available: "Lease available",
-        heldSelf: "This session",
-        heldOther: "Another session is editing",
-        renewing: "Renewing",
-        expired: "Lease expired",
-        lost: "Lease lost"
-      },
-      currentRevision: "Revision",
-      expectedRevision: "Expected",
-      readOnlyReasons: {
-        authority_absent: "No server authority yet. Shared editing stays read-only until the Companion answers.",
-        authority_loading: "Refreshing server authority. Shared editing is read-only until it returns.",
-        authority_stale: "Server authority is stale. Refresh before editing.",
-        authority_rejected: "The Companion refused the authority refresh. Shared editing is read-only.",
-        authority_incompatible: "The Companion uses a policy version this card does not support.",
-        authority_sequence_gap: "An authority update was missed. Refresh before editing.",
-        role_revoked: "Your role for this project changed. Shared editing is read-only.",
-        role_missing: "You have no role on this project.",
-        lease_expired: "The editing lease expired. Your unsaved candidate is kept.",
-        lease_lost: "The editing lease was lost. Your unsaved candidate is kept.",
-        lease_required: "Acquire the editing lease to make changes.",
-        companion_disconnected: "The Companion is unavailable. Shared editing is read-only."
-      },
-      errorCodes: {
-        not_found_or_denied: "This project is not available to you.",
-        capability_denied: "Your role does not permit this action.",
-        authority_stale: "Server authority is stale. Refresh and try again.",
-        lease_required: "An editing lease is required.",
-        lease_expired: "The editing lease expired.",
-        lease_held: "Another session is editing.",
-        revision_conflict: "A newer revision exists. Your candidate is kept.",
-        invalid_input: "The request was rejected as invalid. Nothing changed.",
-        effect_unknown: "The result is unknown. Check the trusted audit before retrying.",
-        rate_limited: "Too many requests. Wait and try again.",
-        feature_unavailable: "This feature is not available in this version.",
-        not_loaded: "The Companion is not loaded."
-      },
-      sharedAuthority: "Shared authority",
-      myAccess: "My access",
-      collaboration: "Collaboration",
-      controlPolicy: "Control policy",
-      policyVersion: "Policy version",
-      lastRefresh: "Last refresh",
-      never: "Never",
-      capabilityCodes: "Show capability codes",
-      noCapabilities: "No capabilities on this project.",
-      controlsVisible: "{count} controls visible to you",
-      serverNormalization: "Server normalization active",
-      manageAccess: "Manage project access",
-      backToOverview: "Back to overview",
-      accessHeading: "Project access",
-      accessRevision: "Access revision",
-      memberColumn: "Member",
-      roleColumn: "Role",
-      capabilitiesColumn: "Effective capabilities",
-      assignmentColumn: "Assignment",
-      actionColumn: "Action",
-      assigned: "Assigned",
-      addMember: "Add member",
-      eligibleUser: "Eligible user",
-      chooseUser: "Choose an eligible user",
-      removeAccess: "Remove access",
-      roleMatrix: "Role capability matrix",
-      roleMatrixUnavailable: "The Companion did not return a capability matrix for this role.",
-      accessLoading: "Loading project access",
-      accessEmpty: "No member holds a role on this project yet.",
-      confirmAccessHeading: "Confirm access change",
-      confirmAccessBody: "Change {member} to {role} at access revision {revision}? The change is applied atomically and recorded in the trusted audit.",
-      confirmRemoveBody: "Remove all access for {member} at access revision {revision}? They keep no role on this project.",
-      cancelAccessChange: "Cancel access change",
-      applyAccessChange: "Apply access change",
-      accessSaved: "Access change applied",
-      accessDenied: "The access change was refused. Nothing changed.",
-      trustedAudit: "Trusted audit",
-      serverAuthored: "Server-authored",
-      clientTelemetry: "Client telemetry (untrusted)",
-      notEvidence: "Not security or control evidence",
-      loadNext: "Load next 50 events",
-      trustedEmpty: "No trusted audit event is visible to you yet.",
-      telemetryEmpty: "No client telemetry has been recorded in this session.",
-      rowsStale: "The next page could not be loaded. The events shown are no longer current.",
-      exportTrusted: "Export trusted audit",
-      exportTelemetry: "Export client telemetry",
-      auditAt: "Server time",
-      auditActor: "Actor",
-      auditEvent: "Event",
-      auditResult: "Result",
-      auditCorrelation: "Correlation ID",
-      telemetryReceived: "Received",
-      telemetryCategory: "Category",
-      telemetryPayload: "Payload summary",
-      announcements: {
-        authority_current: "Server authority refreshed.",
-        lease_acquired: "Editing lease acquired by this session.",
-        lease_renewed: "Editing lease renewed.",
-        lease_released: "Editing lease released.",
-        lease_held: "Another session is editing.",
-        evidence_page_failed: "The next evidence page could not be loaded."
-      },
-      leaseHeading: "Engineering lease",
-      acquireLease: "Acquire editing lease",
-      renewLease: "Renew editing lease",
-      releaseLease: "Release editing lease",
-      leaseAcquiring: "Requesting exclusive editing lease",
-      leaseExpiresIn: "Expires in {seconds}s",
-      leaseRenewDue: "Renewal is due. Renew before the lease expires.",
-      checkLease: "Check lease availability",
-      candidateHeading: "Unsaved candidate",
-      candidateStates: {
-        none: "No unsaved changes",
-        dirty: "Unsaved changes in this session",
-        preserved: "Unsaved changes kept in memory",
-        applied: "Applied"
-      },
-      revisionTriplet: "Base {base} · Current {current} · Candidate {candidate}",
-      conflictHeading: "Save blocked — a newer revision exists",
-      conflictBody: "Revision {base} is no longer current; revision {current} is active. Your candidate is kept in memory. Nothing was overwritten.",
-      conflictChoices: {
-        refresh: "Refresh from the server",
-        "merge-preview": "Preview a merge",
-        "retry-with-fresh-lease": "Retry with a fresh lease",
-        discard: "Discard my changes"
-      },
-      mergeStates: {
-        idle: "No merge preview requested.",
-        requested: "Requesting merge preview",
-        ready: "Merge preview ready. Select the changes to keep.",
-        blocked: "The same paths changed on both sides. Choose a different recovery.",
-        failed: "The merge preview failed. Your candidate is unchanged.",
-        applied: "Merge applied"
-      },
-      discardHeading: "Discard unsaved changes",
-      discardBody: "Discard the unsaved changes in this session? They cannot be recovered afterwards.",
-      cancelDiscard: "Keep my changes",
-      controlHeading: "Configured control",
-      controlPreview: "Preview control",
-      controlConfirmHeading: "Confirm configured control",
-      controlConfirmBody: "Run “{label}”? The Companion resolves the effect from the current project head; this card sends only the control name and the declared input.",
-      controlEffect: "Resolved effect",
-      controlTarget: "Target",
-      controlCancel: "Cancel control",
-      controlRun: "Run control",
-      controlStates: {
-        accepted: "Accepted and recorded. Not yet dispatched.",
-        dispatched: "Dispatched to Home Assistant. Not yet confirmed.",
-        readback_confirmed: "Confirmed by readback.",
-        timed_out: "Timed out. The effect is unknown — check the current state and the trusted audit.",
-        denied: "Denied.",
-        failed_before_dispatch: "Failed before dispatch. Nothing was sent.",
-        failed_after_dispatch: "Failed after dispatch. The effect is unknown — check the current state and the trusted audit.",
-        result_unknown: "The result is unknown — check the current state and the trusted audit before acting again.",
-        cancelled_before_dispatch: "Cancelled. Nothing was sent."
-      },
-      controlCorrelation: "Correlation ID",
-      controlNoRetry: "This card never repeats a control by itself. Decide again if the plant must move."
-    },
-    de: {
-      title: "Projektsicherheit",
-      close: "Projektsicherheit schließen",
-      scope: "Nur Projektdaten — es wird kein Home-Assistant-Dienst und kein Anlagenbefehl ausgeführt.",
-      standalone: "Companion nicht verfügbar — gemeinsame Projektaktionen sind schreibgeschützt.",
-      tabs: ["Übersicht", "Validieren", "Migrieren & vergleichen", "Pakete", "Nachweise"],
-      overview: "Übersicht Projektsicherheit",
-      validate: "Projekt validieren",
-      validationIdle: "Wählen Sie „Projekt validieren“, um das Rohprojekt unverändert zu prüfen.",
-      validationRunning: "Rohprojekt wird validiert",
-      validationSuccess: "Projektvalidierung abgeschlossen",
-      validationFailed: "Projektvalidierung fehlgeschlagen",
-      validationValid: "Keine Validierungsprobleme gefunden. Das Rohprojekt entspricht Schema {version}.",
-      validationInvalid: "Das Projekt ist ungültig. Prüfen Sie die aufgeführten Pfade; das Original bleibt unverändert.",
-      unchanged: "Originalprojekt unverändert",
-      rawContract: "Rohvertrag",
-      project: "Projekt",
-      companion: "Companion",
-      bundleSafety: "Paketsicherheit",
-      releaseEvidence: "Release-Nachweise",
-      schema: "Schema",
-      revision: "Revision",
-      connected: "Verbunden",
-      readOnly: "Schreibgeschützt",
-      notRun: "Nicht ausgeführt",
-      inspectBundle: ".gltproject-Paket prüfen",
-      bundleEmpty: "Kein Paket geprüft. Projekt-Asset-Metadaten werden ohne Darstellung der Inhalte aufgelistet.",
-      assetMetadata: "Undurchsichtige Asset-Metadaten",
-      path: "Pfad",
-      mediaType: "Medientyp",
-      size: "Größe",
-      checksum: "SHA-256",
-      exactCardVersion: "Exakte Kartenversion",
-      artifactEquality: "Artefaktgleichheit",
-      byteIdentical: "Byte-identisch",
-      noEvidence: "Die Release-Nachweise sind unvollständig. Fehlende oder veraltete Prüfungen sind unten aufgeführt.",
-      errors: "Validierungsprobleme",
-      workflow: ["Prüfen", "Vorschau", "Backup", "Übernehmen", "Verifizieren"],
-      dryRun: "Probelauf starten",
-      dryRunFresh: "Neuen Probelauf starten",
-      previewReady: "Migrationsvorschau bereit",
-      previewFailed: "Die Migrationsvorschau ist fehlgeschlagen. Das Originalprojekt bleibt unverändert. Prüfen Sie die Diagnose und starten Sie einen neuen Probelauf.",
-      categories: { add: "Hinzugefügt", remove: "Entfernt", move: "Verschoben", binding: "Bindung", config: "Konfiguration" },
-      impact: "Auswirkung",
-      requiredDependency: "Erforderliche Abhängigkeit",
-      ignoredNoise: "Ignorierte Reihenfolgenänderung",
-      applySelected: "Ausgewählte Änderungen übernehmen",
-      confirmApplyHeading: "Projektänderungen bestätigen",
-      confirmApplyBody: "{count} validierte Änderungen auf „{project}“ in Revision {revision} übernehmen? Zuerst wird ein verifiziertes Backup erstellt. Dies ändert nur Projektdaten und sendet keinen Anlagenbefehl.",
-      cancelApply: "Projektänderungen abbrechen",
-      applying: "{count} Projektänderungen werden übernommen",
-      applySuccess: "Projektänderungen übernommen",
-      applySuccessBody: "Revision {revision} wurde nach dem Übernehmen von {count} Änderungen validiert und verifiziert. Das verifizierte Backup {backup_id} bleibt verfügbar.",
-      applyFailure: "Projektänderungen wurden nicht übernommen. Es wurde nichts geändert. Prüfen Sie die Diagnose und starten Sie einen neuen Probelauf.",
-      revisionConflict: "Revision {expected} ist nicht mehr aktuell; Revision {actual} ist aktiv. Laden Sie neu und vergleichen Sie erneut.",
-      restore: "Verifiziertes Backup wiederherstellen",
-      restoreBody: "Verifiziertes Backup {backup_id} für „{project}“ wiederherstellen? Die aktuelle Revision {revision} wird ersetzt. Ein neuer Nachweis wird erstellt. Dies ändert nur Projektdaten und sendet keinen Anlagenbefehl.",
-      restoreLabel: "Projektname zur Bestätigung eingeben",
-      restoreAwaiting: "Geben Sie „{project}“ ein, um „Verifiziertes Backup wiederherstellen“ zu aktivieren.",
-      restoreReady: "Projektname bestätigt. Prüfen Sie vor dem Fortfahren die Revision und das Backup.",
-      restoreMismatch: "Der Projektname stimmt nicht überein. Das Projekt bleibt unverändert.",
-      rollbackRunning: "Verifiziertes Backup wird wiederhergestellt",
-      rollbackSuccess: "Verifiziertes Backup wiederhergestellt",
-      rollbackSuccessBody: "Projektrevision {revision} entspricht dem verifizierten Backup {backup_id}. Ein Rollback-Nachweis wurde erstellt.",
-      rollbackFailure: "Verifizierung der Backup-Wiederherstellung fehlgeschlagen. Beide Snapshots wurden beibehalten. Laden Sie die Rollback-Diagnose herunter und fordern Sie eine Wiederherstellung durch die Administration an.",
-      authorityBar: "Autoritätsstatus",
-      modeShared: "Gemeinsames Projekt",
-      modeLocal: "Nur lokales Projekt",
-      companionStates: {
-        current: "Autorität aktuell",
-        refreshing: "Autorität wird aktualisiert",
-        stale: "Autorität veraltet",
-        unavailable: "Companion nicht verfügbar",
-        incompatible: "Richtlinienversion nicht unterstützt"
-      },
-      myRole: "Meine Rolle",
-      roleNames: { viewer: "Betrachter", operator: "Bediener", engineer: "Ingenieur", admin: "Administrator", none: "Keine Zuweisung" },
-      editing: "Bearbeitung",
-      leaseStates: {
-        readOnly: "Schreibgeschützt",
-        available: "Lease verfügbar",
-        heldSelf: "Diese Sitzung",
-        heldOther: "Eine andere Sitzung bearbeitet",
-        renewing: "Wird verlängert",
-        expired: "Lease abgelaufen",
-        lost: "Lease verloren"
-      },
-      currentRevision: "Revision",
-      expectedRevision: "Erwartet",
-      readOnlyReasons: {
-        authority_absent: "Noch keine Serverautorität. Gemeinsames Bearbeiten bleibt schreibgeschützt, bis der Companion antwortet.",
-        authority_loading: "Serverautorität wird aktualisiert. Bearbeiten ist bis dahin schreibgeschützt.",
-        authority_stale: "Die Serverautorität ist veraltet. Vor dem Bearbeiten aktualisieren.",
-        authority_rejected: "Der Companion hat die Aktualisierung der Autorität abgelehnt. Gemeinsames Bearbeiten ist schreibgeschützt.",
-        authority_incompatible: "Der Companion verwendet eine Richtlinienversion, die diese Karte nicht unterstützt.",
-        authority_sequence_gap: "Eine Autoritätsaktualisierung wurde verpasst. Vor dem Bearbeiten aktualisieren.",
-        role_revoked: "Ihre Rolle für dieses Projekt hat sich geändert. Gemeinsames Bearbeiten ist schreibgeschützt.",
-        role_missing: "Sie haben keine Rolle in diesem Projekt.",
-        lease_expired: "Das Bearbeitungslease ist abgelaufen. Ihr ungespeicherter Entwurf bleibt erhalten.",
-        lease_lost: "Das Bearbeitungslease ging verloren. Ihr ungespeicherter Entwurf bleibt erhalten.",
-        lease_required: "Fordern Sie das Bearbeitungslease an, um Änderungen vorzunehmen.",
-        companion_disconnected: "Der Companion ist nicht verfügbar. Gemeinsames Bearbeiten ist schreibgeschützt."
-      },
-      errorCodes: {
-        not_found_or_denied: "Dieses Projekt ist für Sie nicht verfügbar.",
-        capability_denied: "Ihre Rolle erlaubt diese Aktion nicht.",
-        authority_stale: "Die Serverautorität ist veraltet. Aktualisieren Sie und versuchen Sie es erneut.",
-        lease_required: "Ein Bearbeitungslease ist erforderlich.",
-        lease_expired: "Das Bearbeitungslease ist abgelaufen.",
-        lease_held: "Eine andere Sitzung bearbeitet gerade.",
-        revision_conflict: "Es existiert eine neuere Revision. Ihr Entwurf bleibt erhalten.",
-        invalid_input: "Die Anfrage wurde als ungültig abgelehnt. Es wurde nichts geändert.",
-        effect_unknown: "Das Ergebnis ist unbekannt. Prüfen Sie das vertrauenswürdige Auditprotokoll vor einem erneuten Versuch.",
-        rate_limited: "Zu viele Anfragen. Warten Sie und versuchen Sie es erneut.",
-        feature_unavailable: "Diese Funktion ist in dieser Version nicht verfügbar.",
-        not_loaded: "Der Companion ist nicht geladen."
-      },
-      sharedAuthority: "Gemeinsame Autorität",
-      myAccess: "Mein Zugriff",
-      collaboration: "Zusammenarbeit",
-      controlPolicy: "Steuerungsrichtlinie",
-      policyVersion: "Richtlinienversion",
-      lastRefresh: "Letzte Aktualisierung",
-      never: "Nie",
-      capabilityCodes: "Berechtigungscodes anzeigen",
-      noCapabilities: "Keine Berechtigungen in diesem Projekt.",
-      controlsVisible: "{count} für Sie sichtbare Steuerungen",
-      serverNormalization: "Servernormalisierung aktiv",
-      manageAccess: "Projektzugriff verwalten",
-      backToOverview: "Zurück zur Übersicht",
-      accessHeading: "Projektzugriff",
-      accessRevision: "Zugriffsrevision",
-      memberColumn: "Mitglied",
-      roleColumn: "Rolle",
-      capabilitiesColumn: "Effektive Berechtigungen",
-      assignmentColumn: "Zuweisung",
-      actionColumn: "Aktion",
-      assigned: "Zugewiesen",
-      addMember: "Mitglied hinzufügen",
-      eligibleUser: "Berechtigter Benutzer",
-      chooseUser: "Berechtigten Benutzer auswählen",
-      removeAccess: "Zugriff entfernen",
-      roleMatrix: "Rollen-Berechtigungsmatrix",
-      roleMatrixUnavailable: "Der Companion hat für diese Rolle keine Berechtigungsmatrix zurückgegeben.",
-      accessLoading: "Projektzugriff wird geladen",
-      accessEmpty: "Bisher hat kein Mitglied eine Rolle in diesem Projekt.",
-      confirmAccessHeading: "Zugriffsänderung bestätigen",
-      confirmAccessBody: "{member} auf {role} ändern, Zugriffsrevision {revision}? Die Änderung wird atomar übernommen und im vertrauenswürdigen Auditprotokoll festgehalten.",
-      confirmRemoveBody: "Gesamten Zugriff für {member} entfernen, Zugriffsrevision {revision}? Es verbleibt keine Rolle in diesem Projekt.",
-      cancelAccessChange: "Zugriffsänderung abbrechen",
-      applyAccessChange: "Zugriffsänderung übernehmen",
-      accessSaved: "Zugriffsänderung übernommen",
-      accessDenied: "Die Zugriffsänderung wurde abgelehnt. Es wurde nichts geändert.",
-      trustedAudit: "Vertrauenswürdiges Auditprotokoll",
-      serverAuthored: "Serverseitig erzeugt",
-      clientTelemetry: "Client-Telemetrie (nicht vertrauenswürdig)",
-      notEvidence: "Kein Sicherheits- oder Steuerungsnachweis",
-      loadNext: "Nächste 50 Ereignisse laden",
-      trustedEmpty: "Für Sie ist noch kein vertrauenswürdiges Auditereignis sichtbar.",
-      telemetryEmpty: "In dieser Sitzung wurde keine Client-Telemetrie aufgezeichnet.",
-      rowsStale: "Die nächste Seite konnte nicht geladen werden. Die angezeigten Ereignisse sind nicht mehr aktuell.",
-      exportTrusted: "Vertrauenswürdiges Auditprotokoll exportieren",
-      exportTelemetry: "Client-Telemetrie exportieren",
-      auditAt: "Serverzeit",
-      auditActor: "Akteur",
-      auditEvent: "Ereignis",
-      auditResult: "Ergebnis",
-      auditCorrelation: "Korrelations-ID",
-      telemetryReceived: "Empfangen",
-      telemetryCategory: "Kategorie",
-      telemetryPayload: "Nutzdaten-Zusammenfassung",
-      announcements: {
-        authority_current: "Serverautorität aktualisiert.",
-        lease_acquired: "Bearbeitungslease von dieser Sitzung übernommen.",
-        lease_renewed: "Bearbeitungslease verlängert.",
-        lease_released: "Bearbeitungslease freigegeben.",
-        lease_held: "Eine andere Sitzung bearbeitet gerade.",
-        evidence_page_failed: "Die nächste Nachweisseite konnte nicht geladen werden."
-      },
-      leaseHeading: "Bearbeitungslease",
-      acquireLease: "Bearbeitungslease anfordern",
-      renewLease: "Bearbeitungslease verlängern",
-      releaseLease: "Bearbeitungslease freigeben",
-      leaseAcquiring: "Exklusives Bearbeitungslease wird angefordert",
-      leaseExpiresIn: "Läuft in {seconds}s ab",
-      leaseRenewDue: "Die Verlängerung ist fällig. Verlängern Sie vor Ablauf des Leases.",
-      checkLease: "Lease-Verfügbarkeit prüfen",
-      candidateHeading: "Ungespeicherter Entwurf",
-      candidateStates: {
-        none: "Keine ungespeicherten Änderungen",
-        dirty: "Ungespeicherte Änderungen in dieser Sitzung",
-        preserved: "Ungespeicherte Änderungen im Speicher erhalten",
-        applied: "Übernommen"
-      },
-      revisionTriplet: "Basis {base} · Aktuell {current} · Entwurf {candidate}",
-      conflictHeading: "Speichern blockiert — es existiert eine neuere Revision",
-      conflictBody: "Revision {base} ist nicht mehr aktuell; Revision {current} ist aktiv. Ihr Entwurf bleibt im Speicher erhalten. Es wurde nichts überschrieben.",
-      conflictChoices: {
-        refresh: "Vom Server aktualisieren",
-        "merge-preview": "Zusammenführung als Vorschau",
-        "retry-with-fresh-lease": "Mit neuem Lease erneut versuchen",
-        discard: "Meine Änderungen verwerfen"
-      },
-      mergeStates: {
-        idle: "Keine Zusammenführungsvorschau angefordert.",
-        requested: "Zusammenführungsvorschau wird angefordert",
-        ready: "Zusammenführungsvorschau bereit. Wählen Sie die zu behaltenden Änderungen.",
-        blocked: "Dieselben Pfade wurden auf beiden Seiten geändert. Wählen Sie eine andere Wiederherstellung.",
-        failed: "Die Zusammenführungsvorschau ist fehlgeschlagen. Ihr Entwurf bleibt unverändert.",
-        applied: "Zusammenführung übernommen"
-      },
-      discardHeading: "Ungespeicherte Änderungen verwerfen",
-      discardBody: "Die ungespeicherten Änderungen dieser Sitzung verwerfen? Sie können danach nicht wiederhergestellt werden.",
-      cancelDiscard: "Änderungen behalten",
-      controlHeading: "Konfigurierte Steuerung",
-      controlPreview: "Steuerung als Vorschau",
-      controlConfirmHeading: "Konfigurierte Steuerung bestätigen",
-      controlConfirmBody: "„{label}“ ausführen? Der Companion löst die Wirkung aus dem aktuellen Projektstand auf; diese Karte sendet nur den Steuerungsnamen und die deklarierte Eingabe.",
-      controlEffect: "Aufgelöste Wirkung",
-      controlTarget: "Ziel",
-      controlCancel: "Steuerung abbrechen",
-      controlRun: "Steuerung ausführen",
-      controlStates: {
-        accepted: "Angenommen und protokolliert. Noch nicht abgesetzt.",
-        dispatched: "An Home Assistant abgesetzt. Noch nicht bestätigt.",
-        readback_confirmed: "Durch Rücklesung bestätigt.",
-        timed_out: "Zeitüberschreitung. Die Wirkung ist unbekannt — prüfen Sie den aktuellen Zustand und das vertrauenswürdige Auditprotokoll.",
-        denied: "Abgelehnt.",
-        failed_before_dispatch: "Vor dem Absetzen fehlgeschlagen. Es wurde nichts gesendet.",
-        failed_after_dispatch: "Nach dem Absetzen fehlgeschlagen. Die Wirkung ist unbekannt — prüfen Sie den aktuellen Zustand und das vertrauenswürdige Auditprotokoll.",
-        result_unknown: "Das Ergebnis ist unbekannt — prüfen Sie den aktuellen Zustand und das vertrauenswürdige Auditprotokoll, bevor Sie erneut handeln.",
-        cancelled_before_dispatch: "Abgebrochen. Es wurde nichts gesendet."
-      },
-      controlCorrelation: "Korrelations-ID",
-      controlNoRetry: "Diese Karte wiederholt eine Steuerung niemals von selbst. Entscheiden Sie erneut, wenn sich die Anlage bewegen soll."
+  // src/v100/catalog-lookup.mjs
+  var CATALOGS = /* @__PURE__ */ new Map();
+  var DECLARED_KEYS = /* @__PURE__ */ new Set();
+  var KEY_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*\.[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/u;
+  var PLACEHOLDER_PATTERN = /\{([a-z][a-zA-Z0-9_]*)\}/gu;
+  function registerCatalog(language, entries) {
+    if (typeof language !== "string" || language.length === 0) {
+      throw new Error(`catalog: language must be a non-empty string, got ${JSON.stringify(language)}`);
     }
-  };
+    if (CATALOGS.has(language)) {
+      throw new Error(`catalog: ${language} is already registered`);
+    }
+    const table2 = /* @__PURE__ */ new Map();
+    for (const [key, value] of Object.entries(entries)) {
+      if (!KEY_PATTERN.test(key)) {
+        throw new Error(`catalog ${language}: "${key}" is not a namespace.name key`);
+      }
+      if (typeof value !== "string") {
+        throw new Error(`catalog ${language}: "${key}" must be a string, got ${typeof value}`);
+      }
+      table2.set(key, value);
+      DECLARED_KEYS.add(key);
+    }
+    CATALOGS.set(language, table2);
+    return table2;
+  }
+  function fill(template2, values, context) {
+    return template2.replace(PLACEHOLDER_PATTERN, (_match, name) => {
+      if (!Object.hasOwn(values ?? {}, name)) {
+        throw new Error(`catalog ${context}: no value for placeholder {${name}}`);
+      }
+      const value = values[name];
+      if (value === null || value === void 0) {
+        throw new Error(`catalog ${context}: placeholder {${name}} is ${String(value)}`);
+      }
+      return String(value);
+    });
+  }
+  function text(key, language, values = {}) {
+    const table2 = CATALOGS.get(language);
+    if (!table2) {
+      throw new Error(`catalog: no catalog registered for ${JSON.stringify(language)}`);
+    }
+    if (!DECLARED_KEYS.has(key)) {
+      throw new Error(`catalog: no such key ${JSON.stringify(key)}`);
+    }
+    const template2 = table2.get(key);
+    if (template2 === void 0) {
+      throw new Error(`catalog: ${JSON.stringify(key)} has no ${language} wording`);
+    }
+    return fill(template2, values, `${language}/${key}`);
+  }
+  function template(key, language) {
+    const table2 = CATALOGS.get(language);
+    if (!table2) throw new Error(`catalog: no catalog registered for ${JSON.stringify(language)}`);
+    const value = table2.get(key);
+    if (value === void 0) throw new Error(`catalog: ${JSON.stringify(key)} has no ${language} wording`);
+    return value;
+  }
+  function hasWording(key, language) {
+    return CATALOGS.get(language)?.has(key) ?? false;
+  }
+
+  // src/v100/catalog-de.mjs
+  var ENTRIES = Object.freeze({
+    "alarms.acknowledge": "Quittieren",
+    "alarms.alarms_title": "Alarme",
+    "alarms.attempts_title": "Zustellversuche",
+    "alarms.binding_read_only": "Nur lesbar",
+    "alarms.cancel": "Abbrechen",
+    "alarms.comment": "Kommentar",
+    "alarms.confirm": "OK",
+    "alarms.delivery_failed": "Zustellung fehlgeschlagen",
+    "alarms.delivery_none": "Keine Benachrichtigungsziele konfiguriert; Alarme werden nur hier angezeigt",
+    "alarms.links_title": "Kontext",
+    "alarms.no_alarms": "Keine aktiven Alarme",
+    "alarms.preview_ambiguous": "kommt zweimal vor am",
+    "alarms.preview_ambiguous_tail": "dieser Eintrag läuft einmal, um",
+    "alarms.preview_nonexistent": "gibt es nicht am",
+    "alarms.preview_nonexistent_tail": "dieser Eintrag läuft nicht",
+    "alarms.preview_normal": "läuft um",
+    "alarms.priority_critical": "Störung",
+    "alarms.priority_info": "Hinweis",
+    "alarms.priority_warning": "Warnung",
+    "alarms.schedule_kind_instant": "Läuft zu einer Zeit",
+    "alarms.schedule_kind_interval": "Betriebszeit",
+    "alarms.schedule_preview": "Wirksame Zeiten",
+    "alarms.schedule_title": "Zeitprogramme",
+    "alarms.setting_default": "Vorgabe",
+    "alarms.settings_title": "Alarmeinstellungen",
+    "alarms.shelve": "Unterdrücken",
+    "alarms.shelve_minutes": "Für wie viele Minuten unterdrücken?",
+    "alarms.shelve_too_long": "Länger als dieser Standort erlaubt",
+    "alarms.state_acknowledged": "quittiert",
+    "alarms.state_active": "aktiv",
+    "alarms.state_indeterminate": "Zustand unbekannt",
+    "alarms.state_returned": "zurückgestellt",
+    "alarms.state_suppressed": "unterdrückt",
+    "alarms.suppressed_acknowledged": "quittiert",
+    "alarms.suppressed_by": "von",
+    "alarms.suppressed_maintenance": "in Wartung",
+    "alarms.suppressed_shelved": "geschelft",
+    "alarms.suppressed_until": "bis",
+    "assets.attachment_limits": "Höchstens {count} Anhänge, je bis {megabytes} MB.",
+    "assets.diagnosis_duplicate_binding": "doppelte Zuordnung",
+    "assets.diagnosis_missing": "fehlt",
+    "assets.diagnosis_present": "vorhanden",
+    "assets.diagnosis_registered_not_loaded": "registriert, aber nicht geladen",
+    "assets.diagnosis_service_missing": "Dienst fehlt",
+    "assets.diagnosis_stale": "veraltet",
+    "assets.diagnosis_unregistered": "ohne Registry-Eintrag",
+    "assets.diagnosis_wrong_device_class": "falsche Geräteklasse",
+    "assets.diagnosis_wrong_unit": "falsche Einheit",
+    "assets.measured": "gemessen",
+    "assets.no_entries": "Keine Einträge.",
+    "assets.read_only": "Diese Ansicht ändert nichts. Alle Hinweise sind Verweise, keine Aktionen.",
+    "assets.refused_simulating": "Nicht ausgeführt: eine Simulation läuft.",
+    "assets.refused_unknown": "Nicht ausgeführt: der Simulationszustand war nicht feststellbar. Bitte erneut versuchen.",
+    "assets.session_active": "Simulation aktiv — gestartet von {who}, endet {until}. Die Anlage wird nicht bedient.",
+    "assets.session_expired": "Die Simulation ist abgelaufen. Die Anlage wird wieder bedient.",
+    "assets.simulated": "simuliert",
+    "assets.simulated_shape": "◈",
+    "catalog.catalog_title": "Symbolkatalog",
+    "catalog.direction_bidirectional": "Beide Richtungen",
+    "catalog.direction_in": "Eingang",
+    "catalog.direction_out": "Ausgang",
+    "catalog.filter_all": "Alle",
+    "catalog.filter_category": "Kategorie",
+    "catalog.filter_domain": "Gewerk",
+    "catalog.filter_style": "Stil",
+    "catalog.filter_text": "Suche",
+    "catalog.kind_power": "Energie",
+    "catalog.kind_process": "Prozess",
+    "catalog.kind_signal": "Signal",
+    "catalog.multiplicity_full": "Bereits belegt",
+    "catalog.multiplicity_many": "Mehrere Verbindungen",
+    "catalog.multiplicity_one": "Eine Verbindung",
+    "catalog.no_matches": "Kein Symbol passt zu diesen Filtern",
+    "catalog.port_direction": "Richtung",
+    "catalog.port_kind": "Art",
+    "catalog.port_medium": "Medium",
+    "catalog.port_multiplicity": "Verbindungen",
+    "catalog.port_side": "Seite",
+    "catalog.published_variants": "veröffentlichte Varianten",
+    "catalog.refusal_direction_conflict": "Die Richtungen widersprechen sich: beide Ports zeigen gleich.",
+    "catalog.refusal_duplicate_connection": "Diese beiden Ports sind bereits verbunden.",
+    "catalog.refusal_kind_mismatch": "Die Arten unterscheiden sich: Prozess passt nicht zu Signal oder Energie.",
+    "catalog.refusal_medium_mismatch": "Die Medien unterscheiden sich: die Ports führen Verschiedenes.",
+    "catalog.refusal_multiplicity_exceeded": "Dieser Port hat die eine Verbindung bereits, die er zulässt.",
+    "catalog.refusal_self_connection": "Ein Port kann nicht mit sich selbst verbunden werden.",
+    "catalog.refusal_title": "Diese Verbindung ist nicht möglich",
+    "catalog.refusal_unknown": "Die Verbindung wurde abgelehnt.",
+    "designer.add": "Objekt hinzufügen",
+    "designer.align": "Ausrichten",
+    "designer.canvas_label": "Konstruktionsfläche",
+    "designer.confirm_delete": "Ausgewählte Objekte löschen?",
+    "designer.confirm_remove_pack": "Dieses Erweiterungspaket entfernen?",
+    "designer.conflict": "Konflikt",
+    "designer.connect": "Ports verbinden",
+    "designer.connect_choose_source": "Quell-Port wählen",
+    "designer.connect_choose_target": "Ziel-Port wählen",
+    "designer.connect_refused": "Verbindung abgelehnt",
+    "designer.contributes": "Enthält",
+    "designer.delete": "Löschen",
+    "designer.disconnect": "Verbindung trennen",
+    "designer.distribute": "Verteilen",
+    "designer.extend_selection": "Auswahl erweitern",
+    "designer.extensions": "Installierte Erweiterungen",
+    "designer.group": "Gruppieren",
+    "designer.instantiate_master": "Master-Instanz setzen",
+    "designer.keyboard_help": "Tastatur",
+    "designer.layer_hidden": "Ausgeblendet",
+    "designer.layer_locked": "Gesperrt",
+    "designer.layer_unlocked": "Entsperrt",
+    "designer.layer_visible": "Sichtbar",
+    "designer.layers": "Ebenen",
+    "designer.minimap_label": "Übersicht",
+    "designer.no_extensions": "Es sind keine Erweiterungspakete installiert",
+    "designer.nothing_selected": "Nichts ausgewählt",
+    "designer.nudge_coarse": "Verschieben, grob",
+    "designer.nudge_fine": "Verschieben",
+    "designer.objects": "Objekte",
+    "designer.ready": "Bereit",
+    "designer.redo": "Wiederherstellen",
+    "designer.reorder": "Nach vorn holen",
+    "designer.resize": "Größe ändern",
+    "designer.select": "Auswählen",
+    "designer.supports": "Unterstützt Projektschema",
+    "designer.undo": "Rückgängig",
+    "designer.undo_depth": "Aufbewahrte Schritte",
+    "designer.ungroup": "Gruppierung aufheben",
+    "designer.viewport": "Aktueller Ausschnitt",
+    "operations.affordance_audit": "Vertrauenswürdiges Protokoll öffnen",
+    "operations.affordance_cancel": "Abbrechen",
+    "operations.affordance_dismiss": "Schließen",
+    "operations.affordance_state": "Aktuellen Zustand zeigen",
+    "operations.history_unavailable": "Trends sind noch nicht verfügbar",
+    "operations.last_updated": "Zuletzt aktualisiert",
+    "operations.no_alarms": "Keine Alarme",
+    "operations.no_controls_available": "Keine Bedienung für Sie verfügbar",
+    "operations.no_values_declared": "Keine Werte deklariert",
+    "operations.outcome_accepted": "Angenommen — wartet auf Absendung",
+    "operations.outcome_cancelled": "Abgebrochen — nicht gesendet",
+    "operations.outcome_confirmed": "Bestätigt",
+    "operations.outcome_denied": "Nicht berechtigt",
+    "operations.outcome_dispatched": "Gesendet — wartet auf Bestätigung",
+    "operations.outcome_failed_after_dispatch": "Nach Absendung fehlgeschlagen — Wirkung unbekannt",
+    "operations.outcome_failed_before_dispatch": "Fehlgeschlagen — nicht gesendet",
+    "operations.outcome_result_unknown": "Wirkung unbekannt",
+    "operations.outcome_timed_out": "Keine Bestätigung — Wirkung unbekannt",
+    "operations.status_live": "Live",
+    "operations.status_resyncing": "Wird neu geladen",
+    "operations.status_stale": "Nicht live — letzte bekannte Werte",
+    "operations.status_unavailable": "Nicht verfügbar",
+    "operations.view_not_available": "Diese Ansicht ist nicht verfügbar.",
+    "safety.access_denied": "Die Zugriffsänderung wurde abgelehnt. Es wurde nichts geändert.",
+    "safety.access_empty": "Bisher hat kein Mitglied eine Rolle in diesem Projekt.",
+    "safety.access_heading": "Projektzugriff",
+    "safety.access_loading": "Projektzugriff wird geladen",
+    "safety.access_revision": "Zugriffsrevision",
+    "safety.access_saved": "Zugriffsänderung übernommen",
+    "safety.acquire_lease": "Bearbeitungslease anfordern",
+    "safety.action_column": "Aktion",
+    "safety.add_member": "Mitglied hinzufügen",
+    "safety.announcements_authority_current": "Serverautorität aktualisiert.",
+    "safety.announcements_evidence_page_failed": "Die nächste Nachweisseite konnte nicht geladen werden.",
+    "safety.announcements_lease_acquired": "Bearbeitungslease von dieser Sitzung übernommen.",
+    "safety.announcements_lease_held": "Eine andere Sitzung bearbeitet gerade.",
+    "safety.announcements_lease_released": "Bearbeitungslease freigegeben.",
+    "safety.announcements_lease_renewed": "Bearbeitungslease verlängert.",
+    "safety.apply_access_change": "Zugriffsänderung übernehmen",
+    "safety.apply_failure": "Projektänderungen wurden nicht übernommen. Es wurde nichts geändert. Prüfen Sie die Diagnose und starten Sie einen neuen Probelauf.",
+    "safety.apply_selected": "Ausgewählte Änderungen übernehmen",
+    "safety.apply_success": "Projektänderungen übernommen",
+    "safety.apply_success_body": "Revision {revision} wurde nach dem Übernehmen von {count} Änderungen validiert und verifiziert. Das verifizierte Backup {backup_id} bleibt verfügbar.",
+    "safety.applying": "{count} Projektänderungen werden übernommen",
+    "safety.artifact_equality": "Artefaktgleichheit",
+    "safety.asset_metadata": "Undurchsichtige Asset-Metadaten",
+    "safety.assigned": "Zugewiesen",
+    "safety.assignment_column": "Zuweisung",
+    "safety.audit_actor": "Akteur",
+    "safety.audit_at": "Serverzeit",
+    "safety.audit_correlation": "Korrelations-ID",
+    "safety.audit_event": "Ereignis",
+    "safety.audit_result": "Ergebnis",
+    "safety.authority_bar": "Autoritätsstatus",
+    "safety.back_to_overview": "Zurück zur Übersicht",
+    "safety.bundle_empty": "Kein Paket geprüft. Projekt-Asset-Metadaten werden ohne Darstellung der Inhalte aufgelistet.",
+    "safety.bundle_safety": "Paketsicherheit",
+    "safety.byte_identical": "Byte-identisch",
+    "safety.cancel_access_change": "Zugriffsänderung abbrechen",
+    "safety.cancel_apply": "Projektänderungen abbrechen",
+    "safety.cancel_discard": "Änderungen behalten",
+    "safety.candidate_heading": "Ungespeicherter Entwurf",
+    "safety.candidate_states_applied": "Übernommen",
+    "safety.candidate_states_dirty": "Ungespeicherte Änderungen in dieser Sitzung",
+    "safety.candidate_states_none": "Keine ungespeicherten Änderungen",
+    "safety.candidate_states_preserved": "Ungespeicherte Änderungen im Speicher erhalten",
+    "safety.capabilities_column": "Effektive Berechtigungen",
+    "safety.capability_codes": "Berechtigungscodes anzeigen",
+    "safety.categories_add": "Hinzugefügt",
+    "safety.categories_binding": "Bindung",
+    "safety.categories_config": "Konfiguration",
+    "safety.categories_move": "Verschoben",
+    "safety.categories_remove": "Entfernt",
+    "safety.check_lease": "Lease-Verfügbarkeit prüfen",
+    "safety.checksum": "SHA-256",
+    "safety.choose_user": "Berechtigten Benutzer auswählen",
+    "safety.client_telemetry": "Client-Telemetrie (nicht vertrauenswürdig)",
+    "safety.close": "Projektsicherheit schließen",
+    "safety.collaboration": "Zusammenarbeit",
+    "safety.companion": "Companion",
+    "safety.companion_states_current": "Autorität aktuell",
+    "safety.companion_states_incompatible": "Richtlinienversion nicht unterstützt",
+    "safety.companion_states_refreshing": "Autorität wird aktualisiert",
+    "safety.companion_states_stale": "Autorität veraltet",
+    "safety.companion_states_unavailable": "Companion nicht verfügbar",
+    "safety.confirm_access_body": "{member} auf {role} ändern, Zugriffsrevision {revision}? Die Änderung wird atomar übernommen und im vertrauenswürdigen Auditprotokoll festgehalten.",
+    "safety.confirm_access_heading": "Zugriffsänderung bestätigen",
+    "safety.confirm_apply_body": "{count} validierte Änderungen auf „{project}“ in Revision {revision} übernehmen? Zuerst wird ein verifiziertes Backup erstellt. Dies ändert nur Projektdaten und sendet keinen Anlagenbefehl.",
+    "safety.confirm_apply_heading": "Projektänderungen bestätigen",
+    "safety.confirm_remove_body": "Gesamten Zugriff für {member} entfernen, Zugriffsrevision {revision}? Es verbleibt keine Rolle in diesem Projekt.",
+    "safety.conflict_body": "Revision {base} ist nicht mehr aktuell; Revision {current} ist aktiv. Ihr Entwurf bleibt im Speicher erhalten. Es wurde nichts überschrieben.",
+    "safety.conflict_choices_discard": "Meine Änderungen verwerfen",
+    "safety.conflict_choices_merge_preview": "Zusammenführung als Vorschau",
+    "safety.conflict_choices_refresh": "Vom Server aktualisieren",
+    "safety.conflict_choices_retry_with_fresh_lease": "Mit neuem Lease erneut versuchen",
+    "safety.conflict_heading": "Speichern blockiert — es existiert eine neuere Revision",
+    "safety.connected": "Verbunden",
+    "safety.control_cancel": "Steuerung abbrechen",
+    "safety.control_confirm_body": "„{label}“ ausführen? Der Companion löst die Wirkung aus dem aktuellen Projektstand auf; diese Karte sendet nur den Steuerungsnamen und die deklarierte Eingabe.",
+    "safety.control_confirm_heading": "Konfigurierte Steuerung bestätigen",
+    "safety.control_correlation": "Korrelations-ID",
+    "safety.control_effect": "Aufgelöste Wirkung",
+    "safety.control_heading": "Konfigurierte Steuerung",
+    "safety.control_no_retry": "Diese Karte wiederholt eine Steuerung niemals von selbst. Entscheiden Sie erneut, wenn sich die Anlage bewegen soll.",
+    "safety.control_policy": "Steuerungsrichtlinie",
+    "safety.control_preview": "Steuerung als Vorschau",
+    "safety.control_run": "Steuerung ausführen",
+    "safety.control_states_accepted": "Angenommen und protokolliert. Noch nicht abgesetzt.",
+    "safety.control_states_cancelled_before_dispatch": "Abgebrochen. Es wurde nichts gesendet.",
+    "safety.control_states_denied": "Abgelehnt.",
+    "safety.control_states_dispatched": "An Home Assistant abgesetzt. Noch nicht bestätigt.",
+    "safety.control_states_failed_after_dispatch": "Nach dem Absetzen fehlgeschlagen. Die Wirkung ist unbekannt — prüfen Sie den aktuellen Zustand und das vertrauenswürdige Auditprotokoll.",
+    "safety.control_states_failed_before_dispatch": "Vor dem Absetzen fehlgeschlagen. Es wurde nichts gesendet.",
+    "safety.control_states_readback_confirmed": "Durch Rücklesung bestätigt.",
+    "safety.control_states_result_unknown": "Das Ergebnis ist unbekannt — prüfen Sie den aktuellen Zustand und das vertrauenswürdige Auditprotokoll, bevor Sie erneut handeln.",
+    "safety.control_states_timed_out": "Zeitüberschreitung. Die Wirkung ist unbekannt — prüfen Sie den aktuellen Zustand und das vertrauenswürdige Auditprotokoll.",
+    "safety.control_target": "Ziel",
+    "safety.controls_visible": "{count} für Sie sichtbare Steuerungen",
+    "safety.current_revision": "Revision",
+    "safety.discard_body": "Die ungespeicherten Änderungen dieser Sitzung verwerfen? Sie können danach nicht wiederhergestellt werden.",
+    "safety.discard_heading": "Ungespeicherte Änderungen verwerfen",
+    "safety.dry_run": "Probelauf starten",
+    "safety.dry_run_fresh": "Neuen Probelauf starten",
+    "safety.editing": "Bearbeitung",
+    "safety.eligible_user": "Berechtigter Benutzer",
+    "safety.error_codes_authority_stale": "Die Serverautorität ist veraltet. Aktualisieren Sie und versuchen Sie es erneut.",
+    "safety.error_codes_capability_denied": "Ihre Rolle erlaubt diese Aktion nicht.",
+    "safety.error_codes_effect_unknown": "Das Ergebnis ist unbekannt. Prüfen Sie das vertrauenswürdige Auditprotokoll vor einem erneuten Versuch.",
+    "safety.error_codes_feature_unavailable": "Diese Funktion ist in dieser Version nicht verfügbar.",
+    "safety.error_codes_invalid_input": "Die Anfrage wurde als ungültig abgelehnt. Es wurde nichts geändert.",
+    "safety.error_codes_lease_expired": "Das Bearbeitungslease ist abgelaufen.",
+    "safety.error_codes_lease_held": "Eine andere Sitzung bearbeitet gerade.",
+    "safety.error_codes_lease_required": "Ein Bearbeitungslease ist erforderlich.",
+    "safety.error_codes_not_found_or_denied": "Dieses Projekt ist für Sie nicht verfügbar.",
+    "safety.error_codes_not_loaded": "Der Companion ist nicht geladen.",
+    "safety.error_codes_rate_limited": "Zu viele Anfragen. Warten Sie und versuchen Sie es erneut.",
+    "safety.error_codes_revision_conflict": "Es existiert eine neuere Revision. Ihr Entwurf bleibt erhalten.",
+    "safety.errors": "Validierungsprobleme",
+    "safety.exact_card_version": "Exakte Kartenversion",
+    "safety.expected_revision": "Erwartet",
+    "safety.export_telemetry": "Client-Telemetrie exportieren",
+    "safety.export_trusted": "Vertrauenswürdiges Auditprotokoll exportieren",
+    "safety.ignored_noise": "Ignorierte Reihenfolgenänderung",
+    "safety.impact": "Auswirkung",
+    "safety.inspect_bundle": ".gltproject-Paket prüfen",
+    "safety.last_refresh": "Letzte Aktualisierung",
+    "safety.lease_acquiring": "Exklusives Bearbeitungslease wird angefordert",
+    "safety.lease_expires_in": "Läuft in {seconds}s ab",
+    "safety.lease_heading": "Bearbeitungslease",
+    "safety.lease_renew_due": "Die Verlängerung ist fällig. Verlängern Sie vor Ablauf des Leases.",
+    "safety.lease_states_available": "Lease verfügbar",
+    "safety.lease_states_expired": "Lease abgelaufen",
+    "safety.lease_states_held_other": "Eine andere Sitzung bearbeitet",
+    "safety.lease_states_held_self": "Diese Sitzung",
+    "safety.lease_states_lost": "Lease verloren",
+    "safety.lease_states_read_only": "Schreibgeschützt",
+    "safety.lease_states_renewing": "Wird verlängert",
+    "safety.load_next": "Nächste 50 Ereignisse laden",
+    "safety.manage_access": "Projektzugriff verwalten",
+    "safety.media_type": "Medientyp",
+    "safety.member_column": "Mitglied",
+    "safety.merge_states_applied": "Zusammenführung übernommen",
+    "safety.merge_states_blocked": "Dieselben Pfade wurden auf beiden Seiten geändert. Wählen Sie eine andere Wiederherstellung.",
+    "safety.merge_states_failed": "Die Zusammenführungsvorschau ist fehlgeschlagen. Ihr Entwurf bleibt unverändert.",
+    "safety.merge_states_idle": "Keine Zusammenführungsvorschau angefordert.",
+    "safety.merge_states_ready": "Zusammenführungsvorschau bereit. Wählen Sie die zu behaltenden Änderungen.",
+    "safety.merge_states_requested": "Zusammenführungsvorschau wird angefordert",
+    "safety.mode_local": "Nur lokales Projekt",
+    "safety.mode_shared": "Gemeinsames Projekt",
+    "safety.my_access": "Mein Zugriff",
+    "safety.my_role": "Meine Rolle",
+    "safety.never": "Nie",
+    "safety.no_capabilities": "Keine Berechtigungen in diesem Projekt.",
+    "safety.no_evidence": "Die Release-Nachweise sind unvollständig. Fehlende oder veraltete Prüfungen sind unten aufgeführt.",
+    "safety.not_evidence": "Kein Sicherheits- oder Steuerungsnachweis",
+    "safety.not_run": "Nicht ausgeführt",
+    "safety.overview": "Übersicht Projektsicherheit",
+    "safety.path": "Pfad",
+    "safety.policy_version": "Richtlinienversion",
+    "safety.preview_failed": "Die Migrationsvorschau ist fehlgeschlagen. Das Originalprojekt bleibt unverändert. Prüfen Sie die Diagnose und starten Sie einen neuen Probelauf.",
+    "safety.preview_ready": "Migrationsvorschau bereit",
+    "safety.project": "Projekt",
+    "safety.raw_contract": "Rohvertrag",
+    "safety.read_only": "Schreibgeschützt",
+    "safety.read_only_reasons_authority_absent": "Noch keine Serverautorität. Gemeinsames Bearbeiten bleibt schreibgeschützt, bis der Companion antwortet.",
+    "safety.read_only_reasons_authority_incompatible": "Der Companion verwendet eine Richtlinienversion, die diese Karte nicht unterstützt.",
+    "safety.read_only_reasons_authority_loading": "Serverautorität wird aktualisiert. Bearbeiten ist bis dahin schreibgeschützt.",
+    "safety.read_only_reasons_authority_rejected": "Der Companion hat die Aktualisierung der Autorität abgelehnt. Gemeinsames Bearbeiten ist schreibgeschützt.",
+    "safety.read_only_reasons_authority_sequence_gap": "Eine Autoritätsaktualisierung wurde verpasst. Vor dem Bearbeiten aktualisieren.",
+    "safety.read_only_reasons_authority_stale": "Die Serverautorität ist veraltet. Vor dem Bearbeiten aktualisieren.",
+    "safety.read_only_reasons_companion_disconnected": "Der Companion ist nicht verfügbar. Gemeinsames Bearbeiten ist schreibgeschützt.",
+    "safety.read_only_reasons_lease_expired": "Das Bearbeitungslease ist abgelaufen. Ihr ungespeicherter Entwurf bleibt erhalten.",
+    "safety.read_only_reasons_lease_lost": "Das Bearbeitungslease ging verloren. Ihr ungespeicherter Entwurf bleibt erhalten.",
+    "safety.read_only_reasons_lease_required": "Fordern Sie das Bearbeitungslease an, um Änderungen vorzunehmen.",
+    "safety.read_only_reasons_role_missing": "Sie haben keine Rolle in diesem Projekt.",
+    "safety.read_only_reasons_role_revoked": "Ihre Rolle für dieses Projekt hat sich geändert. Gemeinsames Bearbeiten ist schreibgeschützt.",
+    "safety.release_evidence": "Release-Nachweise",
+    "safety.release_lease": "Bearbeitungslease freigeben",
+    "safety.remove_access": "Zugriff entfernen",
+    "safety.renew_lease": "Bearbeitungslease verlängern",
+    "safety.required_dependency": "Erforderliche Abhängigkeit",
+    "safety.restore": "Verifiziertes Backup wiederherstellen",
+    "safety.restore_awaiting": "Geben Sie „{project}“ ein, um „Verifiziertes Backup wiederherstellen“ zu aktivieren.",
+    "safety.restore_body": "Verifiziertes Backup {backup_id} für „{project}“ wiederherstellen? Die aktuelle Revision {revision} wird ersetzt. Ein neuer Nachweis wird erstellt. Dies ändert nur Projektdaten und sendet keinen Anlagenbefehl.",
+    "safety.restore_label": "Projektname zur Bestätigung eingeben",
+    "safety.restore_mismatch": "Der Projektname stimmt nicht überein. Das Projekt bleibt unverändert.",
+    "safety.restore_ready": "Projektname bestätigt. Prüfen Sie vor dem Fortfahren die Revision und das Backup.",
+    "safety.revision": "Revision",
+    "safety.revision_conflict": "Revision {expected} ist nicht mehr aktuell; Revision {actual} ist aktiv. Laden Sie neu und vergleichen Sie erneut.",
+    "safety.revision_triplet": "Basis {base} · Aktuell {current} · Entwurf {candidate}",
+    "safety.role_column": "Rolle",
+    "safety.role_matrix": "Rollen-Berechtigungsmatrix",
+    "safety.role_matrix_unavailable": "Der Companion hat für diese Rolle keine Berechtigungsmatrix zurückgegeben.",
+    "safety.role_names_admin": "Administrator",
+    "safety.role_names_engineer": "Ingenieur",
+    "safety.role_names_none": "Keine Zuweisung",
+    "safety.role_names_operator": "Bediener",
+    "safety.role_names_viewer": "Betrachter",
+    "safety.rollback_failure": "Verifizierung der Backup-Wiederherstellung fehlgeschlagen. Beide Snapshots wurden beibehalten. Laden Sie die Rollback-Diagnose herunter und fordern Sie eine Wiederherstellung durch die Administration an.",
+    "safety.rollback_running": "Verifiziertes Backup wird wiederhergestellt",
+    "safety.rollback_success": "Verifiziertes Backup wiederhergestellt",
+    "safety.rollback_success_body": "Projektrevision {revision} entspricht dem verifizierten Backup {backup_id}. Ein Rollback-Nachweis wurde erstellt.",
+    "safety.rows_stale": "Die nächste Seite konnte nicht geladen werden. Die angezeigten Ereignisse sind nicht mehr aktuell.",
+    "safety.schema": "Schema",
+    "safety.scope": "Nur Projektdaten — es wird kein Home-Assistant-Dienst und kein Anlagenbefehl ausgeführt.",
+    "safety.server_authored": "Serverseitig erzeugt",
+    "safety.server_normalization": "Servernormalisierung aktiv",
+    "safety.shared_authority": "Gemeinsame Autorität",
+    "safety.size": "Größe",
+    "safety.standalone": "Companion nicht verfügbar — gemeinsame Projektaktionen sind schreibgeschützt.",
+    "safety.tabs_0": "Übersicht",
+    "safety.tabs_1": "Validieren",
+    "safety.tabs_2": "Migrieren & vergleichen",
+    "safety.tabs_3": "Pakete",
+    "safety.tabs_4": "Nachweise",
+    "safety.telemetry_category": "Kategorie",
+    "safety.telemetry_empty": "In dieser Sitzung wurde keine Client-Telemetrie aufgezeichnet.",
+    "safety.telemetry_payload": "Nutzdaten-Zusammenfassung",
+    "safety.telemetry_received": "Empfangen",
+    "safety.title": "Projektsicherheit",
+    "safety.trusted_audit": "Vertrauenswürdiges Auditprotokoll",
+    "safety.trusted_empty": "Für Sie ist noch kein vertrauenswürdiges Auditereignis sichtbar.",
+    "safety.unchanged": "Originalprojekt unverändert",
+    "safety.validate": "Projekt validieren",
+    "safety.validation_failed": "Projektvalidierung fehlgeschlagen",
+    "safety.validation_idle": "Wählen Sie „Projekt validieren“, um das Rohprojekt unverändert zu prüfen.",
+    "safety.validation_invalid": "Das Projekt ist ungültig. Prüfen Sie die aufgeführten Pfade; das Original bleibt unverändert.",
+    "safety.validation_running": "Rohprojekt wird validiert",
+    "safety.validation_success": "Projektvalidierung abgeschlossen",
+    "safety.validation_valid": "Keine Validierungsprobleme gefunden. Das Rohprojekt entspricht Schema {version}.",
+    "safety.workflow_0": "Prüfen",
+    "safety.workflow_1": "Vorschau",
+    "safety.workflow_2": "Backup",
+    "safety.workflow_3": "Übernehmen",
+    "safety.workflow_4": "Verifizieren",
+    "sites.age": "Stand vor {seconds} s",
+    "sites.completeness": "{answered} von {total} Standorten geantwortet",
+    "sites.effect_unknown": "Wirkung unbekannt — der Befehl kann ausgeführt worden sein. Prüfen Sie den Anlagenzustand, bevor Sie etwas erneut senden.",
+    "sites.missing_sites": "Fehlende Standorte:",
+    "sites.no_value": "kein Messwert",
+    "sites.shape_circuit_open": "✕",
+    "sites.shape_healthy": "●",
+    "sites.shape_slow": "◐",
+    "sites.shape_unreachable": "○",
+    "sites.site_circuit_open": "ausgesetzt nach wiederholten Fehlern",
+    "sites.site_healthy": "erreichbar",
+    "sites.site_slow": "langsam",
+    "sites.site_unreachable": "nicht erreichbar",
+    "sites.unverified_tls": "unverschlüsselt geprüft: Zertifikat wird für diesen Standort nicht geprüft",
+    "trends.coverage": "Abdeckung {percent} %",
+    "trends.coverage_gaps": "Abdeckung {percent} % · {gaps} {gapWord}",
+    "trends.gap_one": "Lücke",
+    "trends.gap_other": "Lücken",
+    "trends.gap_row": "Keine Daten von {start} bis {end}",
+    "trends.no_data": "Keine Daten",
+    "trends.span_day23": "Dieser Tag hat 23 Stunden — die Zeitumstellung fällt hinein.",
+    "trends.span_day25": "Dieser Tag hat 25 Stunden — die Zeitumstellung fällt hinein.",
+    "trends.span_month": "Dieser Monat hat {hours} Stunden — die Zeitumstellung fällt hinein.",
+    "trends.unreadable": "Nicht lesbar"
+  });
+  registerCatalog("de", ENTRIES);
+
+  // src/v100/catalog-en.mjs
+  var ENTRIES2 = Object.freeze({
+    "alarms.acknowledge": "Acknowledge",
+    "alarms.alarms_title": "Alarms",
+    "alarms.attempts_title": "Delivery attempts",
+    "alarms.binding_read_only": "Read-only",
+    "alarms.cancel": "Cancel",
+    "alarms.comment": "Comment",
+    "alarms.confirm": "OK",
+    "alarms.delivery_failed": "Delivery failed",
+    "alarms.delivery_none": "No notification targets configured; alarms are annunciated here only",
+    "alarms.links_title": "Context",
+    "alarms.no_alarms": "No active alarms",
+    "alarms.preview_ambiguous": "occurs twice on",
+    "alarms.preview_ambiguous_tail": "this entry runs once, at",
+    "alarms.preview_nonexistent": "does not exist on",
+    "alarms.preview_nonexistent_tail": "this entry will not run",
+    "alarms.preview_normal": "runs at",
+    "alarms.priority_critical": "Critical",
+    "alarms.priority_info": "Information",
+    "alarms.priority_warning": "Warning",
+    "alarms.schedule_kind_instant": "Runs at a time",
+    "alarms.schedule_kind_interval": "Operating period",
+    "alarms.schedule_preview": "Effective times",
+    "alarms.schedule_title": "Schedules",
+    "alarms.setting_default": "default",
+    "alarms.settings_title": "Alarm settings",
+    "alarms.shelve": "Shelve",
+    "alarms.shelve_minutes": "Suppress for how many minutes?",
+    "alarms.shelve_too_long": "Longer than this site allows",
+    "alarms.state_acknowledged": "acknowledged",
+    "alarms.state_active": "active",
+    "alarms.state_indeterminate": "state unknown",
+    "alarms.state_returned": "returned",
+    "alarms.state_suppressed": "suppressed",
+    "alarms.suppressed_acknowledged": "acknowledged",
+    "alarms.suppressed_by": "by",
+    "alarms.suppressed_maintenance": "in maintenance",
+    "alarms.suppressed_shelved": "shelved",
+    "alarms.suppressed_until": "until",
+    "assets.attachment_limits": "At most {count} attachments, each up to {megabytes} MB.",
+    "assets.diagnosis_duplicate_binding": "duplicate binding",
+    "assets.diagnosis_missing": "missing",
+    "assets.diagnosis_present": "present",
+    "assets.diagnosis_registered_not_loaded": "registered but not loaded",
+    "assets.diagnosis_service_missing": "service missing",
+    "assets.diagnosis_stale": "stale",
+    "assets.diagnosis_unregistered": "no registry entry",
+    "assets.diagnosis_wrong_device_class": "wrong device class",
+    "assets.diagnosis_wrong_unit": "wrong unit",
+    "assets.measured": "measured",
+    "assets.no_entries": "No entries.",
+    "assets.read_only": "This view changes nothing. Every remediation is a link, not an action.",
+    "assets.refused_simulating": "Not performed: a simulation is running.",
+    "assets.refused_unknown": "Not performed: the simulation state could not be determined. Please try again.",
+    "assets.session_active": "Simulation active — started by {who}, ends {until}. The plant is not being operated.",
+    "assets.session_expired": "The simulation has expired. The plant is being operated again.",
+    "assets.simulated": "simulated",
+    "assets.simulated_shape": "◈",
+    "catalog.catalog_title": "Symbol catalog",
+    "catalog.direction_bidirectional": "Both ways",
+    "catalog.direction_in": "Inlet",
+    "catalog.direction_out": "Outlet",
+    "catalog.filter_all": "All",
+    "catalog.filter_category": "Category",
+    "catalog.filter_domain": "Domain",
+    "catalog.filter_style": "Style",
+    "catalog.filter_text": "Search",
+    "catalog.kind_power": "Power",
+    "catalog.kind_process": "Process",
+    "catalog.kind_signal": "Signal",
+    "catalog.multiplicity_full": "At its limit",
+    "catalog.multiplicity_many": "Many connections",
+    "catalog.multiplicity_one": "One connection",
+    "catalog.no_matches": "No symbol matches these filters",
+    "catalog.port_direction": "Direction",
+    "catalog.port_kind": "Kind",
+    "catalog.port_medium": "Medium",
+    "catalog.port_multiplicity": "Connections",
+    "catalog.port_side": "Side",
+    "catalog.published_variants": "published variants",
+    "catalog.refusal_direction_conflict": "The directions conflict: both ports point the same way.",
+    "catalog.refusal_duplicate_connection": "These two ports are already connected.",
+    "catalog.refusal_kind_mismatch": "The kinds differ: a process port cannot join a signal or power port.",
+    "catalog.refusal_medium_mismatch": "The media differ: these two ports carry different things.",
+    "catalog.refusal_multiplicity_exceeded": "That port already has the one connection it admits.",
+    "catalog.refusal_self_connection": "A port cannot be connected to itself.",
+    "catalog.refusal_title": "This connection is not possible",
+    "catalog.refusal_unknown": "The connection was refused.",
+    "designer.add": "Add object",
+    "designer.align": "Align",
+    "designer.canvas_label": "Designer canvas",
+    "designer.confirm_delete": "Delete the selected objects?",
+    "designer.confirm_remove_pack": "Remove this extension pack?",
+    "designer.conflict": "Conflict",
+    "designer.connect": "Connect ports",
+    "designer.connect_choose_source": "Choose the source port",
+    "designer.connect_choose_target": "Choose the target port",
+    "designer.connect_refused": "Connection refused",
+    "designer.contributes": "Contributes",
+    "designer.delete": "Delete",
+    "designer.disconnect": "Disconnect",
+    "designer.distribute": "Distribute",
+    "designer.extend_selection": "Extend selection",
+    "designer.extensions": "Installed extensions",
+    "designer.group": "Group",
+    "designer.instantiate_master": "Place master instance",
+    "designer.keyboard_help": "Keyboard",
+    "designer.layer_hidden": "Hidden",
+    "designer.layer_locked": "Locked",
+    "designer.layer_unlocked": "Unlocked",
+    "designer.layer_visible": "Visible",
+    "designer.layers": "Layers",
+    "designer.minimap_label": "Diagram overview",
+    "designer.no_extensions": "No extension packs are installed",
+    "designer.nothing_selected": "Nothing selected",
+    "designer.nudge_coarse": "Nudge, coarse",
+    "designer.nudge_fine": "Nudge",
+    "designer.objects": "objects",
+    "designer.ready": "Ready",
+    "designer.redo": "Redo",
+    "designer.reorder": "Bring forward",
+    "designer.resize": "Resize",
+    "designer.select": "Select",
+    "designer.supports": "Supports project schema",
+    "designer.undo": "Undo",
+    "designer.undo_depth": "Undo steps kept",
+    "designer.ungroup": "Ungroup",
+    "designer.viewport": "Current view",
+    "operations.affordance_audit": "Open trusted audit",
+    "operations.affordance_cancel": "Cancel",
+    "operations.affordance_dismiss": "Dismiss",
+    "operations.affordance_state": "Show current state",
+    "operations.history_unavailable": "Trends are not available yet",
+    "operations.last_updated": "Last updated",
+    "operations.no_alarms": "No alarms",
+    "operations.no_controls_available": "No controls available to you",
+    "operations.no_values_declared": "No values declared",
+    "operations.outcome_accepted": "Accepted — awaiting dispatch",
+    "operations.outcome_cancelled": "Cancelled — not sent",
+    "operations.outcome_confirmed": "Confirmed",
+    "operations.outcome_denied": "Not permitted",
+    "operations.outcome_dispatched": "Sent — awaiting confirmation",
+    "operations.outcome_failed_after_dispatch": "Failed after dispatch — effect unknown",
+    "operations.outcome_failed_before_dispatch": "Failed — not sent",
+    "operations.outcome_result_unknown": "Effect unknown",
+    "operations.outcome_timed_out": "No confirmation — effect unknown",
+    "operations.status_live": "Live",
+    "operations.status_resyncing": "Reloading",
+    "operations.status_stale": "Not live — showing last known values",
+    "operations.status_unavailable": "Unavailable",
+    "operations.view_not_available": "This view is not available.",
+    "safety.access_denied": "The access change was refused. Nothing changed.",
+    "safety.access_empty": "No member holds a role on this project yet.",
+    "safety.access_heading": "Project access",
+    "safety.access_loading": "Loading project access",
+    "safety.access_revision": "Access revision",
+    "safety.access_saved": "Access change applied",
+    "safety.acquire_lease": "Acquire editing lease",
+    "safety.action_column": "Action",
+    "safety.add_member": "Add member",
+    "safety.announcements_authority_current": "Server authority refreshed.",
+    "safety.announcements_evidence_page_failed": "The next evidence page could not be loaded.",
+    "safety.announcements_lease_acquired": "Editing lease acquired by this session.",
+    "safety.announcements_lease_held": "Another session is editing.",
+    "safety.announcements_lease_released": "Editing lease released.",
+    "safety.announcements_lease_renewed": "Editing lease renewed.",
+    "safety.apply_access_change": "Apply access change",
+    "safety.apply_failure": "Project changes were not applied. Nothing was changed. Review the diagnostic and run a fresh dry run.",
+    "safety.apply_selected": "Apply selected changes",
+    "safety.apply_success": "Project changes applied",
+    "safety.apply_success_body": "Revision {revision} was validated and verified after applying {count} changes. Verified backup {backup_id} remains available.",
+    "safety.applying": "Applying {count} project changes",
+    "safety.artifact_equality": "Artifact equality",
+    "safety.asset_metadata": "Opaque asset metadata",
+    "safety.assigned": "Assigned",
+    "safety.assignment_column": "Assignment",
+    "safety.audit_actor": "Actor",
+    "safety.audit_at": "Server time",
+    "safety.audit_correlation": "Correlation ID",
+    "safety.audit_event": "Event",
+    "safety.audit_result": "Result",
+    "safety.authority_bar": "Authority state",
+    "safety.back_to_overview": "Back to overview",
+    "safety.bundle_empty": "No bundle inspected. Project asset metadata is listed without rendering asset content.",
+    "safety.bundle_safety": "Bundle safety",
+    "safety.byte_identical": "Byte-identical",
+    "safety.cancel_access_change": "Cancel access change",
+    "safety.cancel_apply": "Cancel project changes",
+    "safety.cancel_discard": "Keep my changes",
+    "safety.candidate_heading": "Unsaved candidate",
+    "safety.candidate_states_applied": "Applied",
+    "safety.candidate_states_dirty": "Unsaved changes in this session",
+    "safety.candidate_states_none": "No unsaved changes",
+    "safety.candidate_states_preserved": "Unsaved changes kept in memory",
+    "safety.capabilities_column": "Effective capabilities",
+    "safety.capability_codes": "Show capability codes",
+    "safety.categories_add": "Added",
+    "safety.categories_binding": "Binding",
+    "safety.categories_config": "Configuration",
+    "safety.categories_move": "Moved",
+    "safety.categories_remove": "Removed",
+    "safety.check_lease": "Check lease availability",
+    "safety.checksum": "SHA-256",
+    "safety.choose_user": "Choose an eligible user",
+    "safety.client_telemetry": "Client telemetry (untrusted)",
+    "safety.close": "Close Project safety",
+    "safety.collaboration": "Collaboration",
+    "safety.companion": "Companion",
+    "safety.companion_states_current": "Authority current",
+    "safety.companion_states_incompatible": "Policy version unsupported",
+    "safety.companion_states_refreshing": "Refreshing authority",
+    "safety.companion_states_stale": "Authority stale",
+    "safety.companion_states_unavailable": "Companion unavailable",
+    "safety.confirm_access_body": "Change {member} to {role} at access revision {revision}? The change is applied atomically and recorded in the trusted audit.",
+    "safety.confirm_access_heading": "Confirm access change",
+    "safety.confirm_apply_body": "Apply {count} validated changes to “{project}” at revision {revision}? A verified backup will be created first. This changes project data only and sends no plant command.",
+    "safety.confirm_apply_heading": "Confirm project changes",
+    "safety.confirm_remove_body": "Remove all access for {member} at access revision {revision}? They keep no role on this project.",
+    "safety.conflict_body": "Revision {base} is no longer current; revision {current} is active. Your candidate is kept in memory. Nothing was overwritten.",
+    "safety.conflict_choices_discard": "Discard my changes",
+    "safety.conflict_choices_merge_preview": "Preview a merge",
+    "safety.conflict_choices_refresh": "Refresh from the server",
+    "safety.conflict_choices_retry_with_fresh_lease": "Retry with a fresh lease",
+    "safety.conflict_heading": "Save blocked — a newer revision exists",
+    "safety.connected": "Connected",
+    "safety.control_cancel": "Cancel control",
+    "safety.control_confirm_body": "Run “{label}”? The Companion resolves the effect from the current project head; this card sends only the control name and the declared input.",
+    "safety.control_confirm_heading": "Confirm configured control",
+    "safety.control_correlation": "Correlation ID",
+    "safety.control_effect": "Resolved effect",
+    "safety.control_heading": "Configured control",
+    "safety.control_no_retry": "This card never repeats a control by itself. Decide again if the plant must move.",
+    "safety.control_policy": "Control policy",
+    "safety.control_preview": "Preview control",
+    "safety.control_run": "Run control",
+    "safety.control_states_accepted": "Accepted and recorded. Not yet dispatched.",
+    "safety.control_states_cancelled_before_dispatch": "Cancelled. Nothing was sent.",
+    "safety.control_states_denied": "Denied.",
+    "safety.control_states_dispatched": "Dispatched to Home Assistant. Not yet confirmed.",
+    "safety.control_states_failed_after_dispatch": "Failed after dispatch. The effect is unknown — check the current state and the trusted audit.",
+    "safety.control_states_failed_before_dispatch": "Failed before dispatch. Nothing was sent.",
+    "safety.control_states_readback_confirmed": "Confirmed by readback.",
+    "safety.control_states_result_unknown": "The result is unknown — check the current state and the trusted audit before acting again.",
+    "safety.control_states_timed_out": "Timed out. The effect is unknown — check the current state and the trusted audit.",
+    "safety.control_target": "Target",
+    "safety.controls_visible": "{count} controls visible to you",
+    "safety.current_revision": "Revision",
+    "safety.discard_body": "Discard the unsaved changes in this session? They cannot be recovered afterwards.",
+    "safety.discard_heading": "Discard unsaved changes",
+    "safety.dry_run": "Run dry run",
+    "safety.dry_run_fresh": "Run fresh dry run",
+    "safety.editing": "Editing",
+    "safety.eligible_user": "Eligible user",
+    "safety.error_codes_authority_stale": "Server authority is stale. Refresh and try again.",
+    "safety.error_codes_capability_denied": "Your role does not permit this action.",
+    "safety.error_codes_effect_unknown": "The result is unknown. Check the trusted audit before retrying.",
+    "safety.error_codes_feature_unavailable": "This feature is not available in this version.",
+    "safety.error_codes_invalid_input": "The request was rejected as invalid. Nothing changed.",
+    "safety.error_codes_lease_expired": "The editing lease expired.",
+    "safety.error_codes_lease_held": "Another session is editing.",
+    "safety.error_codes_lease_required": "An editing lease is required.",
+    "safety.error_codes_not_found_or_denied": "This project is not available to you.",
+    "safety.error_codes_not_loaded": "The Companion is not loaded.",
+    "safety.error_codes_rate_limited": "Too many requests. Wait and try again.",
+    "safety.error_codes_revision_conflict": "A newer revision exists. Your candidate is kept.",
+    "safety.errors": "Validation issues",
+    "safety.exact_card_version": "Exact card version",
+    "safety.expected_revision": "Expected",
+    "safety.export_telemetry": "Export client telemetry",
+    "safety.export_trusted": "Export trusted audit",
+    "safety.ignored_noise": "Ignored ordering noise",
+    "safety.impact": "Impact",
+    "safety.inspect_bundle": "Inspect .gltproject bundle",
+    "safety.last_refresh": "Last refresh",
+    "safety.lease_acquiring": "Requesting exclusive editing lease",
+    "safety.lease_expires_in": "Expires in {seconds}s",
+    "safety.lease_heading": "Engineering lease",
+    "safety.lease_renew_due": "Renewal is due. Renew before the lease expires.",
+    "safety.lease_states_available": "Lease available",
+    "safety.lease_states_expired": "Lease expired",
+    "safety.lease_states_held_other": "Another session is editing",
+    "safety.lease_states_held_self": "This session",
+    "safety.lease_states_lost": "Lease lost",
+    "safety.lease_states_read_only": "Read-only",
+    "safety.lease_states_renewing": "Renewing",
+    "safety.load_next": "Load next 50 events",
+    "safety.manage_access": "Manage project access",
+    "safety.media_type": "Media type",
+    "safety.member_column": "Member",
+    "safety.merge_states_applied": "Merge applied",
+    "safety.merge_states_blocked": "The same paths changed on both sides. Choose a different recovery.",
+    "safety.merge_states_failed": "The merge preview failed. Your candidate is unchanged.",
+    "safety.merge_states_idle": "No merge preview requested.",
+    "safety.merge_states_ready": "Merge preview ready. Select the changes to keep.",
+    "safety.merge_states_requested": "Requesting merge preview",
+    "safety.mode_local": "Local-only project",
+    "safety.mode_shared": "Shared project",
+    "safety.my_access": "My access",
+    "safety.my_role": "My role",
+    "safety.never": "Never",
+    "safety.no_capabilities": "No capabilities on this project.",
+    "safety.no_evidence": "Release evidence is incomplete. Missing or stale gates are listed below.",
+    "safety.not_evidence": "Not security or control evidence",
+    "safety.not_run": "Not run",
+    "safety.overview": "Project safety overview",
+    "safety.path": "Path",
+    "safety.policy_version": "Policy version",
+    "safety.preview_failed": "Migration preview failed. The original project is unchanged. Run a fresh dry run after reviewing the diagnostic.",
+    "safety.preview_ready": "Migration preview ready",
+    "safety.project": "Project",
+    "safety.raw_contract": "Raw contract",
+    "safety.read_only": "Read-only",
+    "safety.read_only_reasons_authority_absent": "No server authority yet. Shared editing stays read-only until the Companion answers.",
+    "safety.read_only_reasons_authority_incompatible": "The Companion uses a policy version this card does not support.",
+    "safety.read_only_reasons_authority_loading": "Refreshing server authority. Shared editing is read-only until it returns.",
+    "safety.read_only_reasons_authority_rejected": "The Companion refused the authority refresh. Shared editing is read-only.",
+    "safety.read_only_reasons_authority_sequence_gap": "An authority update was missed. Refresh before editing.",
+    "safety.read_only_reasons_authority_stale": "Server authority is stale. Refresh before editing.",
+    "safety.read_only_reasons_companion_disconnected": "The Companion is unavailable. Shared editing is read-only.",
+    "safety.read_only_reasons_lease_expired": "The editing lease expired. Your unsaved candidate is kept.",
+    "safety.read_only_reasons_lease_lost": "The editing lease was lost. Your unsaved candidate is kept.",
+    "safety.read_only_reasons_lease_required": "Acquire the editing lease to make changes.",
+    "safety.read_only_reasons_role_missing": "You have no role on this project.",
+    "safety.read_only_reasons_role_revoked": "Your role for this project changed. Shared editing is read-only.",
+    "safety.release_evidence": "Release evidence",
+    "safety.release_lease": "Release editing lease",
+    "safety.remove_access": "Remove access",
+    "safety.renew_lease": "Renew editing lease",
+    "safety.required_dependency": "Required dependency",
+    "safety.restore": "Restore verified backup",
+    "safety.restore_awaiting": "Enter “{project}” to enable Restore verified backup.",
+    "safety.restore_body": "Restore verified backup {backup_id} for “{project}”? The current revision {revision} will be replaced. A new evidence receipt will be created. This changes project data only and sends no plant command.",
+    "safety.restore_label": "Enter the project name to confirm",
+    "safety.restore_mismatch": "The project name does not match. The project remains unchanged.",
+    "safety.restore_ready": "Project name confirmed. Review the revision and backup before continuing.",
+    "safety.revision": "Revision",
+    "safety.revision_conflict": "Revision {expected} is no longer current; revision {actual} is active. Reload and compare again.",
+    "safety.revision_triplet": "Base {base} · Current {current} · Candidate {candidate}",
+    "safety.role_column": "Role",
+    "safety.role_matrix": "Role capability matrix",
+    "safety.role_matrix_unavailable": "The Companion did not return a capability matrix for this role.",
+    "safety.role_names_admin": "Admin",
+    "safety.role_names_engineer": "Engineer",
+    "safety.role_names_none": "No assignment",
+    "safety.role_names_operator": "Operator",
+    "safety.role_names_viewer": "Viewer",
+    "safety.rollback_failure": "Backup restore verification failed. Both snapshots were retained. Download the rollback diagnostic and request administrator recovery.",
+    "safety.rollback_running": "Restoring verified backup",
+    "safety.rollback_success": "Verified backup restored",
+    "safety.rollback_success_body": "Project revision {revision} matches verified backup {backup_id}. A rollback evidence receipt was created.",
+    "safety.rows_stale": "The next page could not be loaded. The events shown are no longer current.",
+    "safety.schema": "Schema",
+    "safety.scope": "Project data only — no Home Assistant service or plant command is executed.",
+    "safety.server_authored": "Server-authored",
+    "safety.server_normalization": "Server normalization active",
+    "safety.shared_authority": "Shared authority",
+    "safety.size": "Size",
+    "safety.standalone": "Companion unavailable — shared project operations are read-only.",
+    "safety.tabs_0": "Overview",
+    "safety.tabs_1": "Validate",
+    "safety.tabs_2": "Migrate & compare",
+    "safety.tabs_3": "Bundles",
+    "safety.tabs_4": "Evidence",
+    "safety.telemetry_category": "Category",
+    "safety.telemetry_empty": "No client telemetry has been recorded in this session.",
+    "safety.telemetry_payload": "Payload summary",
+    "safety.telemetry_received": "Received",
+    "safety.title": "Project safety",
+    "safety.trusted_audit": "Trusted audit",
+    "safety.trusted_empty": "No trusted audit event is visible to you yet.",
+    "safety.unchanged": "Original project unchanged",
+    "safety.validate": "Validate project",
+    "safety.validation_failed": "Project validation failed",
+    "safety.validation_idle": "Choose Validate project to inspect the raw project without changing it.",
+    "safety.validation_invalid": "The project is invalid. Review the listed paths; the original remains unchanged.",
+    "safety.validation_running": "Validating raw project",
+    "safety.validation_success": "Project validation complete",
+    "safety.validation_valid": "No validation issues found. The raw project matches schema {version}.",
+    "safety.workflow_0": "Inspect",
+    "safety.workflow_1": "Preview",
+    "safety.workflow_2": "Backup",
+    "safety.workflow_3": "Apply",
+    "safety.workflow_4": "Verify",
+    "sites.age": "read {seconds} s ago",
+    "sites.completeness": "{answered} of {total} sites answered",
+    "sites.effect_unknown": "Effect unknown — the command may have run. Check the plant state before sending anything again.",
+    "sites.missing_sites": "Missing sites:",
+    "sites.no_value": "no reading",
+    "sites.shape_circuit_open": "✕",
+    "sites.shape_healthy": "●",
+    "sites.shape_slow": "◐",
+    "sites.shape_unreachable": "○",
+    "sites.site_circuit_open": "suspended after repeated failures",
+    "sites.site_healthy": "reachable",
+    "sites.site_slow": "slow",
+    "sites.site_unreachable": "unreachable",
+    "sites.unverified_tls": "unverified: this site's certificate is not checked",
+    "trends.coverage": "Coverage {percent} %",
+    "trends.coverage_gaps": "Coverage {percent} % · {gaps} {gapWord}",
+    "trends.gap_one": "gap",
+    "trends.gap_other": "gaps",
+    "trends.gap_row": "No data from {start} to {end}",
+    "trends.no_data": "No data",
+    "trends.span_day23": "This day has 23 hours — the clock change falls inside it.",
+    "trends.span_day25": "This day has 25 hours — the clock change falls inside it.",
+    "trends.span_month": "This month has {hours} hours — the clock change falls inside it.",
+    "trends.unreadable": "Unreadable"
+  });
+  registerCatalog("en", ENTRIES2);
+
+  // src/v100/project-safety-i18n.mjs
+  var KEYS = Object.freeze({
+    "accessDenied": "safety.access_denied",
+    "accessEmpty": "safety.access_empty",
+    "accessHeading": "safety.access_heading",
+    "accessLoading": "safety.access_loading",
+    "accessRevision": "safety.access_revision",
+    "accessSaved": "safety.access_saved",
+    "acquireLease": "safety.acquire_lease",
+    "actionColumn": "safety.action_column",
+    "addMember": "safety.add_member",
+    "announcements.authority_current": "safety.announcements_authority_current",
+    "announcements.evidence_page_failed": "safety.announcements_evidence_page_failed",
+    "announcements.lease_acquired": "safety.announcements_lease_acquired",
+    "announcements.lease_held": "safety.announcements_lease_held",
+    "announcements.lease_released": "safety.announcements_lease_released",
+    "announcements.lease_renewed": "safety.announcements_lease_renewed",
+    "applyAccessChange": "safety.apply_access_change",
+    "applyFailure": "safety.apply_failure",
+    "applying": "safety.applying",
+    "applySelected": "safety.apply_selected",
+    "applySuccess": "safety.apply_success",
+    "applySuccessBody": "safety.apply_success_body",
+    "artifactEquality": "safety.artifact_equality",
+    "assetMetadata": "safety.asset_metadata",
+    "assigned": "safety.assigned",
+    "assignmentColumn": "safety.assignment_column",
+    "auditActor": "safety.audit_actor",
+    "auditAt": "safety.audit_at",
+    "auditCorrelation": "safety.audit_correlation",
+    "auditEvent": "safety.audit_event",
+    "auditResult": "safety.audit_result",
+    "authorityBar": "safety.authority_bar",
+    "backToOverview": "safety.back_to_overview",
+    "bundleEmpty": "safety.bundle_empty",
+    "bundleSafety": "safety.bundle_safety",
+    "byteIdentical": "safety.byte_identical",
+    "cancelAccessChange": "safety.cancel_access_change",
+    "cancelApply": "safety.cancel_apply",
+    "cancelDiscard": "safety.cancel_discard",
+    "candidateHeading": "safety.candidate_heading",
+    "candidateStates.applied": "safety.candidate_states_applied",
+    "candidateStates.dirty": "safety.candidate_states_dirty",
+    "candidateStates.none": "safety.candidate_states_none",
+    "candidateStates.preserved": "safety.candidate_states_preserved",
+    "capabilitiesColumn": "safety.capabilities_column",
+    "capabilityCodes": "safety.capability_codes",
+    "categories.add": "safety.categories_add",
+    "categories.binding": "safety.categories_binding",
+    "categories.config": "safety.categories_config",
+    "categories.move": "safety.categories_move",
+    "categories.remove": "safety.categories_remove",
+    "checkLease": "safety.check_lease",
+    "checksum": "safety.checksum",
+    "chooseUser": "safety.choose_user",
+    "clientTelemetry": "safety.client_telemetry",
+    "close": "safety.close",
+    "collaboration": "safety.collaboration",
+    "companion": "safety.companion",
+    "companionStates.current": "safety.companion_states_current",
+    "companionStates.incompatible": "safety.companion_states_incompatible",
+    "companionStates.refreshing": "safety.companion_states_refreshing",
+    "companionStates.stale": "safety.companion_states_stale",
+    "companionStates.unavailable": "safety.companion_states_unavailable",
+    "confirmAccessBody": "safety.confirm_access_body",
+    "confirmAccessHeading": "safety.confirm_access_heading",
+    "confirmApplyBody": "safety.confirm_apply_body",
+    "confirmApplyHeading": "safety.confirm_apply_heading",
+    "confirmRemoveBody": "safety.confirm_remove_body",
+    "conflictBody": "safety.conflict_body",
+    "conflictChoices.discard": "safety.conflict_choices_discard",
+    "conflictChoices.merge-preview": "safety.conflict_choices_merge_preview",
+    "conflictChoices.refresh": "safety.conflict_choices_refresh",
+    "conflictChoices.retry-with-fresh-lease": "safety.conflict_choices_retry_with_fresh_lease",
+    "conflictHeading": "safety.conflict_heading",
+    "connected": "safety.connected",
+    "controlCancel": "safety.control_cancel",
+    "controlConfirmBody": "safety.control_confirm_body",
+    "controlConfirmHeading": "safety.control_confirm_heading",
+    "controlCorrelation": "safety.control_correlation",
+    "controlEffect": "safety.control_effect",
+    "controlHeading": "safety.control_heading",
+    "controlNoRetry": "safety.control_no_retry",
+    "controlPolicy": "safety.control_policy",
+    "controlPreview": "safety.control_preview",
+    "controlRun": "safety.control_run",
+    "controlStates.accepted": "safety.control_states_accepted",
+    "controlStates.cancelled_before_dispatch": "safety.control_states_cancelled_before_dispatch",
+    "controlStates.denied": "safety.control_states_denied",
+    "controlStates.dispatched": "safety.control_states_dispatched",
+    "controlStates.failed_after_dispatch": "safety.control_states_failed_after_dispatch",
+    "controlStates.failed_before_dispatch": "safety.control_states_failed_before_dispatch",
+    "controlStates.readback_confirmed": "safety.control_states_readback_confirmed",
+    "controlStates.result_unknown": "safety.control_states_result_unknown",
+    "controlStates.timed_out": "safety.control_states_timed_out",
+    "controlsVisible": "safety.controls_visible",
+    "controlTarget": "safety.control_target",
+    "currentRevision": "safety.current_revision",
+    "discardBody": "safety.discard_body",
+    "discardHeading": "safety.discard_heading",
+    "dryRun": "safety.dry_run",
+    "dryRunFresh": "safety.dry_run_fresh",
+    "editing": "safety.editing",
+    "eligibleUser": "safety.eligible_user",
+    "errorCodes.authority_stale": "safety.error_codes_authority_stale",
+    "errorCodes.capability_denied": "safety.error_codes_capability_denied",
+    "errorCodes.effect_unknown": "safety.error_codes_effect_unknown",
+    "errorCodes.feature_unavailable": "safety.error_codes_feature_unavailable",
+    "errorCodes.invalid_input": "safety.error_codes_invalid_input",
+    "errorCodes.lease_expired": "safety.error_codes_lease_expired",
+    "errorCodes.lease_held": "safety.error_codes_lease_held",
+    "errorCodes.lease_required": "safety.error_codes_lease_required",
+    "errorCodes.not_found_or_denied": "safety.error_codes_not_found_or_denied",
+    "errorCodes.not_loaded": "safety.error_codes_not_loaded",
+    "errorCodes.rate_limited": "safety.error_codes_rate_limited",
+    "errorCodes.revision_conflict": "safety.error_codes_revision_conflict",
+    "errors": "safety.errors",
+    "exactCardVersion": "safety.exact_card_version",
+    "expectedRevision": "safety.expected_revision",
+    "exportTelemetry": "safety.export_telemetry",
+    "exportTrusted": "safety.export_trusted",
+    "ignoredNoise": "safety.ignored_noise",
+    "impact": "safety.impact",
+    "inspectBundle": "safety.inspect_bundle",
+    "lastRefresh": "safety.last_refresh",
+    "leaseAcquiring": "safety.lease_acquiring",
+    "leaseExpiresIn": "safety.lease_expires_in",
+    "leaseHeading": "safety.lease_heading",
+    "leaseRenewDue": "safety.lease_renew_due",
+    "leaseStates.available": "safety.lease_states_available",
+    "leaseStates.expired": "safety.lease_states_expired",
+    "leaseStates.heldOther": "safety.lease_states_held_other",
+    "leaseStates.heldSelf": "safety.lease_states_held_self",
+    "leaseStates.lost": "safety.lease_states_lost",
+    "leaseStates.readOnly": "safety.lease_states_read_only",
+    "leaseStates.renewing": "safety.lease_states_renewing",
+    "loadNext": "safety.load_next",
+    "manageAccess": "safety.manage_access",
+    "mediaType": "safety.media_type",
+    "memberColumn": "safety.member_column",
+    "mergeStates.applied": "safety.merge_states_applied",
+    "mergeStates.blocked": "safety.merge_states_blocked",
+    "mergeStates.failed": "safety.merge_states_failed",
+    "mergeStates.idle": "safety.merge_states_idle",
+    "mergeStates.ready": "safety.merge_states_ready",
+    "mergeStates.requested": "safety.merge_states_requested",
+    "modeLocal": "safety.mode_local",
+    "modeShared": "safety.mode_shared",
+    "myAccess": "safety.my_access",
+    "myRole": "safety.my_role",
+    "never": "safety.never",
+    "noCapabilities": "safety.no_capabilities",
+    "noEvidence": "safety.no_evidence",
+    "notEvidence": "safety.not_evidence",
+    "notRun": "safety.not_run",
+    "overview": "safety.overview",
+    "path": "safety.path",
+    "policyVersion": "safety.policy_version",
+    "previewFailed": "safety.preview_failed",
+    "previewReady": "safety.preview_ready",
+    "project": "safety.project",
+    "rawContract": "safety.raw_contract",
+    "readOnly": "safety.read_only",
+    "readOnlyReasons.authority_absent": "safety.read_only_reasons_authority_absent",
+    "readOnlyReasons.authority_incompatible": "safety.read_only_reasons_authority_incompatible",
+    "readOnlyReasons.authority_loading": "safety.read_only_reasons_authority_loading",
+    "readOnlyReasons.authority_rejected": "safety.read_only_reasons_authority_rejected",
+    "readOnlyReasons.authority_sequence_gap": "safety.read_only_reasons_authority_sequence_gap",
+    "readOnlyReasons.authority_stale": "safety.read_only_reasons_authority_stale",
+    "readOnlyReasons.companion_disconnected": "safety.read_only_reasons_companion_disconnected",
+    "readOnlyReasons.lease_expired": "safety.read_only_reasons_lease_expired",
+    "readOnlyReasons.lease_lost": "safety.read_only_reasons_lease_lost",
+    "readOnlyReasons.lease_required": "safety.read_only_reasons_lease_required",
+    "readOnlyReasons.role_missing": "safety.read_only_reasons_role_missing",
+    "readOnlyReasons.role_revoked": "safety.read_only_reasons_role_revoked",
+    "releaseEvidence": "safety.release_evidence",
+    "releaseLease": "safety.release_lease",
+    "removeAccess": "safety.remove_access",
+    "renewLease": "safety.renew_lease",
+    "requiredDependency": "safety.required_dependency",
+    "restore": "safety.restore",
+    "restoreAwaiting": "safety.restore_awaiting",
+    "restoreBody": "safety.restore_body",
+    "restoreLabel": "safety.restore_label",
+    "restoreMismatch": "safety.restore_mismatch",
+    "restoreReady": "safety.restore_ready",
+    "revision": "safety.revision",
+    "revisionConflict": "safety.revision_conflict",
+    "revisionTriplet": "safety.revision_triplet",
+    "roleColumn": "safety.role_column",
+    "roleMatrix": "safety.role_matrix",
+    "roleMatrixUnavailable": "safety.role_matrix_unavailable",
+    "roleNames.admin": "safety.role_names_admin",
+    "roleNames.engineer": "safety.role_names_engineer",
+    "roleNames.none": "safety.role_names_none",
+    "roleNames.operator": "safety.role_names_operator",
+    "roleNames.viewer": "safety.role_names_viewer",
+    "rollbackFailure": "safety.rollback_failure",
+    "rollbackRunning": "safety.rollback_running",
+    "rollbackSuccess": "safety.rollback_success",
+    "rollbackSuccessBody": "safety.rollback_success_body",
+    "rowsStale": "safety.rows_stale",
+    "schema": "safety.schema",
+    "scope": "safety.scope",
+    "serverAuthored": "safety.server_authored",
+    "serverNormalization": "safety.server_normalization",
+    "sharedAuthority": "safety.shared_authority",
+    "size": "safety.size",
+    "standalone": "safety.standalone",
+    "tabs_0": "safety.tabs_0",
+    "tabs_1": "safety.tabs_1",
+    "tabs_2": "safety.tabs_2",
+    "tabs_3": "safety.tabs_3",
+    "tabs_4": "safety.tabs_4",
+    "telemetryCategory": "safety.telemetry_category",
+    "telemetryEmpty": "safety.telemetry_empty",
+    "telemetryPayload": "safety.telemetry_payload",
+    "telemetryReceived": "safety.telemetry_received",
+    "title": "safety.title",
+    "trustedAudit": "safety.trusted_audit",
+    "trustedEmpty": "safety.trusted_empty",
+    "unchanged": "safety.unchanged",
+    "validate": "safety.validate",
+    "validationFailed": "safety.validation_failed",
+    "validationIdle": "safety.validation_idle",
+    "validationInvalid": "safety.validation_invalid",
+    "validationRunning": "safety.validation_running",
+    "validationSuccess": "safety.validation_success",
+    "validationValid": "safety.validation_valid",
+    "workflow_0": "safety.workflow_0",
+    "workflow_1": "safety.workflow_1",
+    "workflow_2": "safety.workflow_2",
+    "workflow_3": "safety.workflow_3",
+    "workflow_4": "safety.workflow_4"
+  });
   function projectSafetyLocale(hass, documentLanguage = "en") {
     const language = hass?.locale?.language || documentLanguage || "en";
     return String(language).toLowerCase().startsWith("de") ? "de" : "en";
   }
-  function projectSafetyCopy(locale, key, values = {}) {
-    const value = COPY[locale]?.[key] ?? COPY.en[key] ?? key;
-    if (Array.isArray(value)) return [...value];
-    if (value && typeof value === "object") return { ...value };
-    return String(value).replace(/\{([a-z_]+)\}/giu, (_match, name) => String(values[name] ?? ""));
+  function groupMembers(key) {
+    const prefix = `${key}_`;
+    return Object.keys(KEYS).filter((local) => local.startsWith(prefix)).sort((a, b) => Number(a.slice(prefix.length)) - Number(b.slice(prefix.length)));
   }
+  function tableMembers(key) {
+    const prefix = `${key}.`;
+    return Object.keys(KEYS).filter((local) => local.startsWith(prefix));
+  }
+  function projectSafetyCopy(locale, key, values = {}) {
+    if (KEYS[key]) return text(KEYS[key], locale, values);
+    const ordered = groupMembers(key);
+    if (ordered.length > 0 && /^\d+$/u.test(ordered[0].slice(key.length + 1))) {
+      return ordered.map((local) => text(KEYS[local], locale, values));
+    }
+    const members = tableMembers(key);
+    if (members.length > 0) {
+      return Object.fromEntries(members.map((local) => [
+        local.slice(key.length + 1),
+        text(KEYS[local], locale, values)
+      ]));
+    }
+    throw new Error(`project-safety has no wording named ${JSON.stringify(key)}`);
+  }
+  var PROJECT_SAFETY_COPY = Object.freeze(Object.fromEntries(
+    ["de", "en"].map((language) => [
+      language,
+      Object.freeze(Object.fromEntries(
+        Object.entries(KEYS).map(([local, catalogKey]) => [local, template(catalogKey, language)])
+      ))
+    ])
+  ));
 
   // src/v100/project-safety.js
   var Editor = customElements.get("glt-flow-card-editor");
@@ -62268,10 +62938,10 @@
     const locale = projectSafetyLocale(editor._hass || editor._glt4Hass, document.documentElement.lang);
     return projectSafetyCopy(locale, key, values);
   }
-  function element(name, className, text4) {
+  function element(name, className, text5) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text4 !== void 0) node.textContent = String(text4);
+    if (text5 !== void 0) node.textContent = String(text5);
     return node;
   }
   function button(label, className = "glt-safe-btn") {
@@ -62285,11 +62955,11 @@
     if (detail) node.append(element("div", "glt-safe-help", detail));
     return node;
   }
-  function status(kind, text4) {
+  function status(kind, text5) {
     const node = element("div", `glt-safe-status ${kind}`);
     node.setAttribute("role", "status");
     node.setAttribute("aria-live", "polite");
-    node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text4));
+    node.append(element("span", "", kind === "pass" ? "✓" : kind === "fail" ? "×" : "○"), element("strong", "", text5));
     return node;
   }
   var COMPANION_STATE = {
@@ -62311,12 +62981,12 @@
     "lease_lost",
     "companion_disconnected"
   ]);
-  function chip(glyph, text4, state) {
+  function chip(glyph, text5, state) {
     const node = element("span", "glt-safe-chip");
     node.dataset.state = state;
     const icon = element("span", "", glyph);
     icon.setAttribute("aria-hidden", "true");
-    node.append(icon, element("span", "", text4));
+    node.append(icon, element("span", "", text5));
     return node;
   }
   function leaseChipState(state, affordances) {
@@ -62405,10 +63075,10 @@
       const announcement = state.announcement;
       if (!announcement || announcement.code === this._announced) return;
       this._announced = announcement.code;
-      const text4 = t("announcements")[announcement.code] || t("readOnlyReasons")[announcement.code] || t("errorCodes")[announcement.code] || "";
-      if (!text4) return;
+      const text5 = t("announcements")[announcement.code] || t("readOnlyReasons")[announcement.code] || t("errorCodes")[announcement.code] || "";
+      if (!text5) return;
       const assertive = announcement.level === "assertive";
-      (assertive ? this._assertive : this._polite).textContent = text4;
+      (assertive ? this._assertive : this._polite).textContent = text5;
       (assertive ? this._polite : this._assertive).textContent = "";
     }
   };
@@ -63748,10 +64418,10 @@
   .glt-sem-weak{font-style:italic}
   @media(forced-colors:active){.glt-sem-badge{border:1px solid CanvasText}}
 `;
-  function element2(name, className, text4) {
+  function element2(name, className, text5) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text4 !== void 0) node.textContent = String(text4);
+    if (text5 !== void 0) node.textContent = String(text5);
     return node;
   }
   var GltSemanticElement = class extends HTMLElement {
@@ -64053,71 +64723,55 @@
     .glt-ops-outcome,.glt-ops-stale,.glt-ops-count{border:1px solid CanvasText}
   }
 `;
-  var COPY2 = {
-    en: {
-      no_values_declared: "No values declared",
-      no_alarms: "No alarms",
-      no_controls_available: "No controls available to you",
-      history_unavailable: "Trends are not available yet",
-      outcome_accepted: "Accepted — awaiting dispatch",
-      outcome_dispatched: "Sent — awaiting confirmation",
-      outcome_confirmed: "Confirmed",
-      outcome_timed_out: "No confirmation — effect unknown",
-      outcome_result_unknown: "Effect unknown",
-      outcome_failed_after_dispatch: "Failed after dispatch — effect unknown",
-      outcome_failed_before_dispatch: "Failed — not sent",
-      outcome_cancelled: "Cancelled — not sent",
-      outcome_denied: "Not permitted",
-      status_live: "Live",
-      status_resyncing: "Reloading",
-      status_stale: "Not live — showing last known values",
-      status_unavailable: "Unavailable",
-      last_updated: "Last updated",
-      view_not_available: "This view is not available.",
-      affordance_cancel: "Cancel",
-      affordance_dismiss: "Dismiss",
-      affordance_state: "Show current state",
-      affordance_audit: "Open trusted audit"
-    },
-    de: {
-      no_values_declared: "Keine Werte deklariert",
-      no_alarms: "Keine Alarme",
-      no_controls_available: "Keine Bedienung für Sie verfügbar",
-      history_unavailable: "Trends sind noch nicht verfügbar",
-      outcome_accepted: "Angenommen — wartet auf Absendung",
-      outcome_dispatched: "Gesendet — wartet auf Bestätigung",
-      outcome_confirmed: "Bestätigt",
-      outcome_timed_out: "Keine Bestätigung — Wirkung unbekannt",
-      outcome_result_unknown: "Wirkung unbekannt",
-      outcome_failed_after_dispatch: "Nach Absendung fehlgeschlagen — Wirkung unbekannt",
-      outcome_failed_before_dispatch: "Fehlgeschlagen — nicht gesendet",
-      outcome_cancelled: "Abgebrochen — nicht gesendet",
-      outcome_denied: "Nicht berechtigt",
-      status_live: "Live",
-      status_resyncing: "Wird neu geladen",
-      status_stale: "Nicht live — letzte bekannte Werte",
-      status_unavailable: "Nicht verfügbar",
-      last_updated: "Zuletzt aktualisiert",
-      view_not_available: "Diese Ansicht ist nicht verfügbar.",
-      affordance_cancel: "Abbrechen",
-      affordance_dismiss: "Schließen",
-      affordance_state: "Aktuellen Zustand zeigen",
-      affordance_audit: "Vertrauenswürdiges Protokoll öffnen"
+  var KEYS2 = Object.freeze({
+    "affordance_audit": "operations.affordance_audit",
+    "affordance_cancel": "operations.affordance_cancel",
+    "affordance_dismiss": "operations.affordance_dismiss",
+    "affordance_state": "operations.affordance_state",
+    "history_unavailable": "operations.history_unavailable",
+    "last_updated": "operations.last_updated",
+    "no_alarms": "operations.no_alarms",
+    "no_controls_available": "operations.no_controls_available",
+    "no_values_declared": "operations.no_values_declared",
+    "outcome_accepted": "operations.outcome_accepted",
+    "outcome_cancelled": "operations.outcome_cancelled",
+    "outcome_confirmed": "operations.outcome_confirmed",
+    "outcome_denied": "operations.outcome_denied",
+    "outcome_dispatched": "operations.outcome_dispatched",
+    "outcome_failed_after_dispatch": "operations.outcome_failed_after_dispatch",
+    "outcome_failed_before_dispatch": "operations.outcome_failed_before_dispatch",
+    "outcome_result_unknown": "operations.outcome_result_unknown",
+    "outcome_timed_out": "operations.outcome_timed_out",
+    "status_live": "operations.status_live",
+    "status_resyncing": "operations.status_resyncing",
+    "status_stale": "operations.status_stale",
+    "status_unavailable": "operations.status_unavailable",
+    "view_not_available": "operations.view_not_available"
+  });
+  for (const catalogKey of Object.values(KEYS2)) {
+    for (const language of ["de", "en"]) {
+      if (!hasWording(catalogKey, language)) {
+        throw new Error(`project-operations renders ${catalogKey}, which has no ${language} wording`);
+      }
     }
-  };
-  {
-    const en2 = Object.keys(COPY2.en).sort().join(",");
-    const de2 = Object.keys(COPY2.de).sort().join(",");
-    if (en2 !== de2) throw new Error("project-operations copy keys differ between de and en");
   }
-  function textFor(language, key) {
-    const table2 = COPY2[language] ?? COPY2.en;
-    return table2[key] ?? COPY2.en[key] ?? key;
+  var PROJECT_OPERATIONS_COPY = Object.freeze(Object.fromEntries(
+    ["de", "en"].map((language) => [
+      language,
+      Object.freeze(Object.fromEntries(
+        Object.entries(KEYS2).map(([local, catalogKey]) => [local, template(catalogKey, language)])
+      ))
+    ])
+  ));
+  function textFor(language, key, values = {}) {
+    const catalogKey = KEYS2[key];
+    if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+    return text(catalogKey, language, values);
   }
-  function element3(name, className, text4) {
+  function element3(name, className, text5) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text4 !== void 0) node.textContent = String(text4);
+    if (text5 !== void 0) node.textContent = String(text5);
     return node;
   }
   var GltOperationsElement = class extends HTMLElement {
@@ -64490,85 +65144,62 @@
     .glt-cat-card,.glt-cat-port,.glt-cat-refusal,.glt-cat-count{border:1px solid CanvasText}
   }
 `;
-  var COPY3 = {
-    en: {
-      catalog_title: "Symbol catalog",
-      published_variants: "published variants",
-      filter_category: "Category",
-      filter_domain: "Domain",
-      filter_style: "Style",
-      filter_text: "Search",
-      filter_all: "All",
-      no_matches: "No symbol matches these filters",
-      port_medium: "Medium",
-      port_direction: "Direction",
-      port_kind: "Kind",
-      port_multiplicity: "Connections",
-      port_side: "Side",
-      direction_in: "Inlet",
-      direction_out: "Outlet",
-      direction_bidirectional: "Both ways",
-      kind_process: "Process",
-      kind_signal: "Signal",
-      kind_power: "Power",
-      multiplicity_one: "One connection",
-      multiplicity_many: "Many connections",
-      multiplicity_full: "At its limit",
-      refusal_title: "This connection is not possible",
-      refusal_medium_mismatch: "The media differ: these two ports carry different things.",
-      refusal_direction_conflict: "The directions conflict: both ports point the same way.",
-      refusal_kind_mismatch: "The kinds differ: a process port cannot join a signal or power port.",
-      refusal_multiplicity_exceeded: "That port already has the one connection it admits.",
-      refusal_self_connection: "A port cannot be connected to itself.",
-      refusal_duplicate_connection: "These two ports are already connected.",
-      refusal_unknown: "The connection was refused."
-    },
-    de: {
-      catalog_title: "Symbolkatalog",
-      published_variants: "veröffentlichte Varianten",
-      filter_category: "Kategorie",
-      filter_domain: "Gewerk",
-      filter_style: "Stil",
-      filter_text: "Suche",
-      filter_all: "Alle",
-      no_matches: "Kein Symbol passt zu diesen Filtern",
-      port_medium: "Medium",
-      port_direction: "Richtung",
-      port_kind: "Art",
-      port_multiplicity: "Verbindungen",
-      port_side: "Seite",
-      direction_in: "Eingang",
-      direction_out: "Ausgang",
-      direction_bidirectional: "Beide Richtungen",
-      kind_process: "Prozess",
-      kind_signal: "Signal",
-      kind_power: "Energie",
-      multiplicity_one: "Eine Verbindung",
-      multiplicity_many: "Mehrere Verbindungen",
-      multiplicity_full: "Bereits belegt",
-      refusal_title: "Diese Verbindung ist nicht möglich",
-      refusal_medium_mismatch: "Die Medien unterscheiden sich: die Ports führen Verschiedenes.",
-      refusal_direction_conflict: "Die Richtungen widersprechen sich: beide Ports zeigen gleich.",
-      refusal_kind_mismatch: "Die Arten unterscheiden sich: Prozess passt nicht zu Signal oder Energie.",
-      refusal_multiplicity_exceeded: "Dieser Port hat die eine Verbindung bereits, die er zulässt.",
-      refusal_self_connection: "Ein Port kann nicht mit sich selbst verbunden werden.",
-      refusal_duplicate_connection: "Diese beiden Ports sind bereits verbunden.",
-      refusal_unknown: "Die Verbindung wurde abgelehnt."
+  var KEYS3 = Object.freeze({
+    "catalog_title": "catalog.catalog_title",
+    "direction_bidirectional": "catalog.direction_bidirectional",
+    "direction_in": "catalog.direction_in",
+    "direction_out": "catalog.direction_out",
+    "filter_all": "catalog.filter_all",
+    "filter_category": "catalog.filter_category",
+    "filter_domain": "catalog.filter_domain",
+    "filter_style": "catalog.filter_style",
+    "filter_text": "catalog.filter_text",
+    "kind_power": "catalog.kind_power",
+    "kind_process": "catalog.kind_process",
+    "kind_signal": "catalog.kind_signal",
+    "multiplicity_full": "catalog.multiplicity_full",
+    "multiplicity_many": "catalog.multiplicity_many",
+    "multiplicity_one": "catalog.multiplicity_one",
+    "no_matches": "catalog.no_matches",
+    "port_direction": "catalog.port_direction",
+    "port_kind": "catalog.port_kind",
+    "port_medium": "catalog.port_medium",
+    "port_multiplicity": "catalog.port_multiplicity",
+    "port_side": "catalog.port_side",
+    "published_variants": "catalog.published_variants",
+    "refusal_direction_conflict": "catalog.refusal_direction_conflict",
+    "refusal_duplicate_connection": "catalog.refusal_duplicate_connection",
+    "refusal_kind_mismatch": "catalog.refusal_kind_mismatch",
+    "refusal_medium_mismatch": "catalog.refusal_medium_mismatch",
+    "refusal_multiplicity_exceeded": "catalog.refusal_multiplicity_exceeded",
+    "refusal_self_connection": "catalog.refusal_self_connection",
+    "refusal_title": "catalog.refusal_title",
+    "refusal_unknown": "catalog.refusal_unknown"
+  });
+  for (const catalogKey of Object.values(KEYS3)) {
+    for (const language of ["de", "en"]) {
+      if (!hasWording(catalogKey, language)) {
+        throw new Error(`project-catalog renders ${catalogKey}, which has no ${language} wording`);
+      }
     }
-  };
-  {
-    const en2 = Object.keys(COPY3.en).sort().join(",");
-    const de2 = Object.keys(COPY3.de).sort().join(",");
-    if (en2 !== de2) throw new Error("project-catalog copy keys differ between de and en");
   }
   for (const reason of REFUSAL_REASONS) {
-    if (!(`refusal_${reason}` in COPY3.en)) {
+    if (!(`refusal_${reason}` in KEYS3)) {
       throw new Error(`project-catalog has no wording for refusal ${reason}`);
     }
   }
-  function textFor2(language, key) {
-    const table2 = COPY3[language] ?? COPY3.en;
-    return table2[key] ?? COPY3.en[key] ?? key;
+  var PROJECT_CATALOG_COPY = Object.freeze(Object.fromEntries(
+    ["de", "en"].map((language) => [
+      language,
+      Object.freeze(Object.fromEntries(
+        Object.entries(KEYS3).map(([local, catalogKey]) => [local, template(catalogKey, language)])
+      ))
+    ])
+  ));
+  function textFor2(language, key, values = {}) {
+    const catalogKey = KEYS3[key];
+    if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+    return text(catalogKey, language, values);
   }
   function parseSymbol(markup) {
     if (typeof DOMParser === "undefined") return null;
@@ -64578,10 +65209,10 @@
     return document.importNode(root, true);
   }
   var PUBLISHED = symbolCatalogStats();
-  function element4(name, className, text4) {
+  function element4(name, className, text5) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text4 !== void 0) node.textContent = String(text4);
+    if (text5 !== void 0) node.textContent = String(text5);
     return node;
   }
   var GltCatalogElement = class extends HTMLElement {
@@ -64680,8 +65311,8 @@
         const all = element4("option", null, textFor2(language, "filter_all"));
         all.value = "";
         select.append(all);
-        for (const [value, text4] of options) {
-          const option2 = element4("option", null, text4);
+        for (const [value, text5] of options) {
+          const option2 = element4("option", null, text5);
           option2.value = value;
           if (active[name] === value) option2.selected = true;
           select.append(option2);
@@ -65574,107 +66205,74 @@
       throw new Error(`designer command ${kind} has no keyboard path`);
     }
   }
-  var COPY4 = {
-    en: {
-      canvas_label: "Designer canvas",
-      objects: "objects",
-      keyboard_help: "Keyboard",
-      nudge_fine: "Nudge",
-      nudge_coarse: "Nudge, coarse",
-      resize: "Resize",
-      select: "Select",
-      extend_selection: "Extend selection",
-      group: "Group",
-      ungroup: "Ungroup",
-      align: "Align",
-      distribute: "Distribute",
-      reorder: "Bring forward",
-      connect: "Connect ports",
-      disconnect: "Disconnect",
-      add: "Add object",
-      instantiate_master: "Place master instance",
-      delete: "Delete",
-      undo: "Undo",
-      redo: "Redo",
-      ready: "Ready",
-      nothing_selected: "Nothing selected",
-      connect_choose_source: "Choose the source port",
-      connect_choose_target: "Choose the target port",
-      connect_refused: "Connection refused",
-      undo_depth: "Undo steps kept",
-      layers: "Layers",
-      layer_visible: "Visible",
-      layer_hidden: "Hidden",
-      layer_locked: "Locked",
-      layer_unlocked: "Unlocked",
-      minimap_label: "Diagram overview",
-      viewport: "Current view",
-      extensions: "Installed extensions",
-      no_extensions: "No extension packs are installed",
-      contributes: "Contributes",
-      supports: "Supports project schema",
-      conflict: "Conflict",
-      confirm_delete: "Delete the selected objects?",
-      confirm_remove_pack: "Remove this extension pack?"
-    },
-    de: {
-      canvas_label: "Konstruktionsfläche",
-      objects: "Objekte",
-      keyboard_help: "Tastatur",
-      nudge_fine: "Verschieben",
-      nudge_coarse: "Verschieben, grob",
-      resize: "Größe ändern",
-      select: "Auswählen",
-      extend_selection: "Auswahl erweitern",
-      group: "Gruppieren",
-      ungroup: "Gruppierung aufheben",
-      align: "Ausrichten",
-      distribute: "Verteilen",
-      reorder: "Nach vorn holen",
-      connect: "Ports verbinden",
-      disconnect: "Verbindung trennen",
-      add: "Objekt hinzufügen",
-      instantiate_master: "Master-Instanz setzen",
-      delete: "Löschen",
-      undo: "Rückgängig",
-      redo: "Wiederherstellen",
-      ready: "Bereit",
-      nothing_selected: "Nichts ausgewählt",
-      connect_choose_source: "Quell-Port wählen",
-      connect_choose_target: "Ziel-Port wählen",
-      connect_refused: "Verbindung abgelehnt",
-      undo_depth: "Aufbewahrte Schritte",
-      layers: "Ebenen",
-      layer_visible: "Sichtbar",
-      layer_hidden: "Ausgeblendet",
-      layer_locked: "Gesperrt",
-      layer_unlocked: "Entsperrt",
-      minimap_label: "Übersicht",
-      viewport: "Aktueller Ausschnitt",
-      extensions: "Installierte Erweiterungen",
-      no_extensions: "Es sind keine Erweiterungspakete installiert",
-      contributes: "Enthält",
-      supports: "Unterstützt Projektschema",
-      conflict: "Konflikt",
-      confirm_delete: "Ausgewählte Objekte löschen?",
-      confirm_remove_pack: "Dieses Erweiterungspaket entfernen?"
+  var KEYS4 = Object.freeze({
+    "add": "designer.add",
+    "align": "designer.align",
+    "canvas_label": "designer.canvas_label",
+    "confirm_delete": "designer.confirm_delete",
+    "confirm_remove_pack": "designer.confirm_remove_pack",
+    "conflict": "designer.conflict",
+    "connect": "designer.connect",
+    "connect_choose_source": "designer.connect_choose_source",
+    "connect_choose_target": "designer.connect_choose_target",
+    "connect_refused": "designer.connect_refused",
+    "contributes": "designer.contributes",
+    "delete": "designer.delete",
+    "disconnect": "designer.disconnect",
+    "distribute": "designer.distribute",
+    "extend_selection": "designer.extend_selection",
+    "extensions": "designer.extensions",
+    "group": "designer.group",
+    "instantiate_master": "designer.instantiate_master",
+    "keyboard_help": "designer.keyboard_help",
+    "layer_hidden": "designer.layer_hidden",
+    "layer_locked": "designer.layer_locked",
+    "layer_unlocked": "designer.layer_unlocked",
+    "layer_visible": "designer.layer_visible",
+    "layers": "designer.layers",
+    "minimap_label": "designer.minimap_label",
+    "no_extensions": "designer.no_extensions",
+    "nothing_selected": "designer.nothing_selected",
+    "nudge_coarse": "designer.nudge_coarse",
+    "nudge_fine": "designer.nudge_fine",
+    "objects": "designer.objects",
+    "ready": "designer.ready",
+    "redo": "designer.redo",
+    "reorder": "designer.reorder",
+    "resize": "designer.resize",
+    "select": "designer.select",
+    "supports": "designer.supports",
+    "undo": "designer.undo",
+    "undo_depth": "designer.undo_depth",
+    "ungroup": "designer.ungroup",
+    "viewport": "designer.viewport"
+  });
+  for (const catalogKey of Object.values(KEYS4)) {
+    for (const language of ["de", "en"]) {
+      if (!hasWording(catalogKey, language)) {
+        throw new Error(`project-designer renders ${catalogKey}, which has no ${language} wording`);
+      }
     }
-  };
-  {
-    const en2 = Object.keys(COPY4.en).sort().join(",");
-    const de2 = Object.keys(COPY4.de).sort().join(",");
-    if (en2 !== de2) throw new Error("project-designer copy keys differ between de and en");
   }
+  var PROJECT_DESIGNER_COPY = Object.freeze(Object.fromEntries(
+    ["de", "en"].map((language) => [
+      language,
+      Object.freeze(Object.fromEntries(
+        Object.entries(KEYS4).map(([local, catalogKey]) => [local, template(catalogKey, language)])
+      ))
+    ])
+  ));
   var FINE_STEP = 1;
   var COARSE_STEP = 20;
-  function textFor3(language, key) {
-    const table2 = COPY4[language] ?? COPY4.en;
-    return table2[key] ?? COPY4.en[key] ?? key;
+  function textFor3(language, key, values = {}) {
+    const catalogKey = KEYS4[key];
+    if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+    return text(catalogKey, language, values);
   }
-  function element5(name, className, text4) {
+  function element5(name, className, text5) {
     const node = document.createElement(name);
     if (className) node.className = className;
-    if (text4 !== void 0) node.textContent = String(text4);
+    if (text5 !== void 0) node.textContent = String(text5);
     return node;
   }
   var GltDesignerElement = class extends HTMLElement {
@@ -65942,7 +66540,7 @@
       if (existing) existing.remove();
       const confirm = document.createElement("glt-flow-card-control-confirm");
       confirm.dataset.confirm = messageKey;
-      confirm.copy = (key, values) => key === "controlConfirmBody" ? textFor3(this.language, messageKey) : textFor3(this.language, key) || key;
+      confirm.copy = (key, values) => key === "controlConfirmBody" ? textFor3(this.language, messageKey) : projectSafetyCopy(this.language, key, values);
       this.append(confirm);
       confirm.props = {
         control: {
@@ -66251,97 +66849,56 @@
     .glt-alm-row,.glt-alm-failed,.glt-alm-preview li{border:1px solid CanvasText}
   }
 `;
-  var COPY5 = {
-    en: {
-      alarms_title: "Alarms",
-      no_alarms: "No active alarms",
-      state_active: "active",
-      state_returned: "returned",
-      state_acknowledged: "acknowledged",
-      state_indeterminate: "state unknown",
-      state_suppressed: "suppressed",
-      priority_critical: "Critical",
-      priority_warning: "Warning",
-      priority_info: "Information",
-      suppressed_shelved: "shelved",
-      suppressed_maintenance: "in maintenance",
-      suppressed_acknowledged: "acknowledged",
-      suppressed_by: "by",
-      suppressed_until: "until",
-      delivery_failed: "Delivery failed",
-      delivery_none: "No notification targets configured; alarms are annunciated here only",
-      attempts_title: "Delivery attempts",
-      acknowledge: "Acknowledge",
-      shelve: "Shelve",
-      comment: "Comment",
-      shelve_minutes: "Suppress for how many minutes?",
-      shelve_too_long: "Longer than this site allows",
-      confirm: "OK",
-      cancel: "Cancel",
-      links_title: "Context",
-      settings_title: "Alarm settings",
-      setting_default: "default",
-      schedule_title: "Schedules",
-      schedule_preview: "Effective times",
-      schedule_kind_instant: "Runs at a time",
-      schedule_kind_interval: "Operating period",
-      binding_read_only: "Read-only",
-      preview_nonexistent: "does not exist on",
-      preview_nonexistent_tail: "this entry will not run",
-      preview_ambiguous: "occurs twice on",
-      preview_ambiguous_tail: "this entry runs once, at",
-      preview_normal: "runs at"
-    },
-    de: {
-      alarms_title: "Alarme",
-      no_alarms: "Keine aktiven Alarme",
-      state_active: "aktiv",
-      state_returned: "zurückgestellt",
-      state_acknowledged: "quittiert",
-      state_indeterminate: "Zustand unbekannt",
-      state_suppressed: "unterdrückt",
-      priority_critical: "Störung",
-      priority_warning: "Warnung",
-      priority_info: "Hinweis",
-      suppressed_shelved: "geschelft",
-      suppressed_maintenance: "in Wartung",
-      suppressed_acknowledged: "quittiert",
-      suppressed_by: "von",
-      suppressed_until: "bis",
-      delivery_failed: "Zustellung fehlgeschlagen",
-      delivery_none: "Keine Benachrichtigungsziele konfiguriert; Alarme werden nur hier angezeigt",
-      attempts_title: "Zustellversuche",
-      acknowledge: "Quittieren",
-      shelve: "Unterdrücken",
-      comment: "Kommentar",
-      shelve_minutes: "Für wie viele Minuten unterdrücken?",
-      shelve_too_long: "Länger als dieser Standort erlaubt",
-      confirm: "OK",
-      cancel: "Abbrechen",
-      links_title: "Kontext",
-      settings_title: "Alarmeinstellungen",
-      setting_default: "Vorgabe",
-      schedule_title: "Zeitprogramme",
-      schedule_preview: "Wirksame Zeiten",
-      schedule_kind_instant: "Läuft zu einer Zeit",
-      schedule_kind_interval: "Betriebszeit",
-      binding_read_only: "Nur lesbar",
-      preview_nonexistent: "gibt es nicht am",
-      preview_nonexistent_tail: "dieser Eintrag läuft nicht",
-      preview_ambiguous: "kommt zweimal vor am",
-      preview_ambiguous_tail: "dieser Eintrag läuft einmal, um",
-      preview_normal: "läuft um"
-    }
-  };
+  var KEYS5 = Object.freeze({
+    "acknowledge": "alarms.acknowledge",
+    "alarms_title": "alarms.alarms_title",
+    "attempts_title": "alarms.attempts_title",
+    "binding_read_only": "alarms.binding_read_only",
+    "cancel": "alarms.cancel",
+    "comment": "alarms.comment",
+    "confirm": "alarms.confirm",
+    "delivery_failed": "alarms.delivery_failed",
+    "delivery_none": "alarms.delivery_none",
+    "links_title": "alarms.links_title",
+    "no_alarms": "alarms.no_alarms",
+    "preview_ambiguous": "alarms.preview_ambiguous",
+    "preview_ambiguous_tail": "alarms.preview_ambiguous_tail",
+    "preview_nonexistent": "alarms.preview_nonexistent",
+    "preview_nonexistent_tail": "alarms.preview_nonexistent_tail",
+    "preview_normal": "alarms.preview_normal",
+    "priority_critical": "alarms.priority_critical",
+    "priority_info": "alarms.priority_info",
+    "priority_warning": "alarms.priority_warning",
+    "schedule_kind_instant": "alarms.schedule_kind_instant",
+    "schedule_kind_interval": "alarms.schedule_kind_interval",
+    "schedule_preview": "alarms.schedule_preview",
+    "schedule_title": "alarms.schedule_title",
+    "setting_default": "alarms.setting_default",
+    "settings_title": "alarms.settings_title",
+    "shelve": "alarms.shelve",
+    "shelve_minutes": "alarms.shelve_minutes",
+    "shelve_too_long": "alarms.shelve_too_long",
+    "state_acknowledged": "alarms.state_acknowledged",
+    "state_active": "alarms.state_active",
+    "state_indeterminate": "alarms.state_indeterminate",
+    "state_returned": "alarms.state_returned",
+    "state_suppressed": "alarms.state_suppressed",
+    "suppressed_acknowledged": "alarms.suppressed_acknowledged",
+    "suppressed_by": "alarms.suppressed_by",
+    "suppressed_maintenance": "alarms.suppressed_maintenance",
+    "suppressed_shelved": "alarms.suppressed_shelved",
+    "suppressed_until": "alarms.suppressed_until"
+  });
   var PRIORITY_SHAPES = { critical: "◆", warning: "▲", info: "●" };
-  function copy(language, key) {
-    const table2 = COPY5[language] || COPY5.en;
-    return table2[key] ?? COPY5.en[key] ?? key;
+  function copy(language, key, values = {}) {
+    const catalogKey = KEYS5[key];
+    if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+    return text(catalogKey, language, values);
   }
-  function element6(tag, className, text4) {
+  function element6(tag, className, text5) {
     const node = document.createElement(tag);
     if (className) node.className = className;
-    if (text4 !== void 0 && text4 !== null) node.textContent = String(text4);
+    if (text5 !== void 0 && text5 !== null) node.textContent = String(text5);
     return node;
   }
   function priorityOf(row) {
@@ -66665,14 +67222,14 @@
       throw new Error(`alarm priority ${priority} has no non-colour shape`);
     }
     for (const language of ["en", "de"]) {
-      if (!COPY5[language][`priority_${priority}`]) {
+      if (!hasWording(KEYS5[`priority_${priority}`], language)) {
         throw new Error(`alarm priority ${priority} has no ${language} label`);
       }
     }
   }
   for (const reason of SUPPRESSION_REASONS) {
     for (const language of ["en", "de"]) {
-      if (!COPY5[language][`suppressed_${reason}`]) {
+      if (!hasWording(KEYS5[`suppressed_${reason}`], language)) {
         throw new Error(`suppression reason ${reason} has no ${language} wording`);
       }
     }
@@ -66809,47 +67366,36 @@
   function labelFor(group, member, language = "de") {
     const wording = LABELS2[group]?.[member];
     if (!wording) throw new Error(`no wording for ${group} "${member}"`);
-    const text4 = wording[language] ?? wording.en;
-    if (!text4) throw new Error(`no ${language} wording for ${group} "${member}"`);
-    return text4;
+    const text5 = wording[language] ?? wording.en;
+    if (!text5) throw new Error(`no ${language} wording for ${group} "${member}"`);
+    return text5;
   }
 
   // src/v100/project-trends.js
   var LANGUAGES2 = ["de", "en"];
-  var TEXT = {
-    coverage: {
-      de: (percent, gaps) => gaps ? `Abdeckung ${percent} % · ${gaps} ${gaps === 1 ? "Lücke" : "Lücken"}` : `Abdeckung ${percent} %`,
-      en: (percent, gaps) => gaps ? `Coverage ${percent} % · ${gaps} ${gaps === 1 ? "gap" : "gaps"}` : `Coverage ${percent} %`
-    },
-    gapRow: {
-      de: (start, end) => `Keine Daten von ${start} bis ${end}`,
-      en: (start, end) => `No data from ${start} to ${end}`
-    },
-    noData: { de: "Keine Daten", en: "No data" },
-    spanDay23: {
-      de: "Dieser Tag hat 23 Stunden — die Zeitumstellung fällt hinein.",
-      en: "This day has 23 hours — the clock change falls inside it."
-    },
-    spanDay25: {
-      de: "Dieser Tag hat 25 Stunden — die Zeitumstellung fällt hinein.",
-      en: "This day has 25 hours — the clock change falls inside it."
-    },
-    spanMonth: {
-      de: (hours) => `Dieser Monat hat ${hours} Stunden — die Zeitumstellung fällt hinein.`,
-      en: (hours) => `This month has ${hours} hours — the clock change falls inside it.`
-    },
-    unreadable: { de: "Nicht lesbar", en: "Unreadable" }
-  };
-  for (const key of Object.keys(TEXT)) {
+  var KEYS6 = Object.freeze({
+    "coverage": "trends.coverage",
+    "coverageGaps": "trends.coverage_gaps",
+    "gapOne": "trends.gap_one",
+    "gapOther": "trends.gap_other",
+    "gapRow": "trends.gap_row",
+    "noData": "trends.no_data",
+    "spanDay23": "trends.span_day23",
+    "spanDay25": "trends.span_day25",
+    "spanMonth": "trends.span_month",
+    "unreadable": "trends.unreadable"
+  });
+  for (const catalogKey of Object.values(KEYS6)) {
     for (const language of LANGUAGES2) {
-      if (TEXT[key][language] === void 0) {
-        throw new Error(`trend surfaces: "${key}" has no ${language} wording`);
+      if (!hasWording(catalogKey, language)) {
+        throw new Error(`trend surfaces: ${catalogKey} has no ${language} wording`);
       }
     }
   }
-  function text(key, language, ...args) {
-    const entry = TEXT[key]?.[language] ?? TEXT[key]?.en;
-    return typeof entry === "function" ? entry(...args) : entry;
+  function text2(key, language, values = {}) {
+    const catalogKey = KEYS6[key];
+    if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+    return text(catalogKey, language, values);
   }
   function append2(parent, tag, value, attributes = {}) {
     const node = document.createElement(tag);
@@ -66863,11 +67409,19 @@
   function percentOf(coverage) {
     return Math.round((Number(coverage) || 0) * 100);
   }
+  function coverageText(language, percent, gaps) {
+    if (gaps === 0) return text2("coverage", language, { percent });
+    return text2("coverageGaps", language, {
+      gapWord: text2(gaps === 1 ? "gapOne" : "gapOther", language),
+      gaps,
+      percent
+    });
+  }
   var CoverageBadge = class extends HTMLElement {
     set props({ coverage, gaps = [], language = "de" }) {
       this.replaceChildren();
       this.setAttribute("data-coverage", String(coverage ?? 0));
-      append2(this, "span", text("coverage", language, percentOf(coverage), gaps.length), {
+      append2(this, "span", coverageText(language, percentOf(coverage), gaps.length), {
         "data-coverage-text": ""
       });
     }
@@ -66922,19 +67476,19 @@
         }
       }
       for (const gap of gaps) {
-        append2(plot, "span", text("gapRow", language, gap.start, gap.end), { "data-gap": "" });
+        append2(plot, "span", text2("gapRow", language, { end: gap.end, start: gap.start }), { "data-gap": "" });
       }
       if (!series.some((entry) => (entry.points ?? []).some((point) => point.value !== null))) {
-        append2(plot, "span", text("noData", language), { "data-empty": "" });
+        append2(plot, "span", text2("noData", language), { "data-empty": "" });
       }
     }
   };
   function unusualSpan(period, language) {
     const hours = Number(period?.span_hours);
-    if (period?.name === "day" && hours === 23) return text("spanDay23", language);
-    if (period?.name === "day" && hours === 25) return text("spanDay25", language);
+    if (period?.name === "day" && hours === 23) return text2("spanDay23", language);
+    if (period?.name === "day" && hours === 25) return text2("spanDay25", language);
     if (period?.name === "month" && hours !== 720 && Number.isFinite(hours)) {
-      return text("spanMonth", language, hours);
+      return text2("spanMonth", language, { hours });
     }
     return null;
   }
@@ -66958,7 +67512,7 @@
           if (point && point.value !== null && point.state !== "indeterminate") {
             append2(row, "td", point.value);
           } else {
-            append2(row, "td", text("unreadable", language), { "data-unreadable": "" });
+            append2(row, "td", text2("unreadable", language), { "data-unreadable": "" });
           }
         }
       }
@@ -66966,7 +67520,7 @@
         const row = document.createElement("tr");
         row.setAttribute("data-gap-row", "");
         table2.append(row);
-        const cell = append2(row, "td", text("gapRow", language, gap.start, gap.end));
+        const cell = append2(row, "td", text2("gapRow", language, { end: gap.end, start: gap.start }));
         cell.setAttribute("colspan", String(series.length + 1));
       }
     }
@@ -67003,7 +67557,7 @@
           append2(line, "span", labelFor("refusal", row.refused, language), { "data-refused": row.refused });
           continue;
         }
-        append2(line, "span", row.value === null || row.value === void 0 ? text("noData", language) : `${row.value} ${row.unit ?? ""}`.trim(), { "data-value": "" });
+        append2(line, "span", row.value === null || row.value === void 0 ? text2("noData", language) : `${row.value} ${row.unit ?? ""}`.trim(), { "data-value": "" });
         const badge = document.createElement("glt-flow-card-coverage-badge");
         line.append(badge);
         badge.props = { coverage: row.coverage ?? 0, gaps: row.gaps ?? [], language };
@@ -67012,7 +67566,7 @@
         const line = document.createElement("div");
         line.setAttribute("data-total", "");
         this.append(line);
-        append2(line, "span", total.value === null || total.value === void 0 ? text("noData", language) : `${total.value} ${total.unit ?? ""}`.trim(), { "data-value": "" });
+        append2(line, "span", total.value === null || total.value === void 0 ? text2("noData", language) : `${total.value} ${total.unit ?? ""}`.trim(), { "data-value": "" });
         const badge = document.createElement("glt-flow-card-coverage-badge");
         line.append(badge);
         badge.props = { coverage: total.coverage ?? 0, gaps: total.gaps ?? [], language };
@@ -67077,70 +67631,43 @@
 
   // src/v100/project-assets.js
   var LANGUAGES3 = ["de", "en"];
-  var TEXT2 = {
-    simulated: { de: "simuliert", en: "simulated" },
-    simulatedShape: { de: "◈", en: "◈" },
-    measured: { de: "gemessen", en: "measured" },
-    sessionActive: {
-      de: (who, until) => `Simulation aktiv — gestartet von ${who}, endet ${until}. Die Anlage wird nicht bedient.`,
-      en: (who, until) => `Simulation active — started by ${who}, ends ${until}. The plant is not being operated.`
-    },
-    sessionExpired: {
-      de: "Die Simulation ist abgelaufen. Die Anlage wird wieder bedient.",
-      en: "The simulation has expired. The plant is being operated again."
-    },
-    refusedSimulating: {
-      de: "Nicht ausgeführt: eine Simulation läuft.",
-      en: "Not performed: a simulation is running."
-    },
-    refusedUnknown: {
-      de: "Nicht ausgeführt: der Simulationszustand war nicht feststellbar. Bitte erneut versuchen.",
-      en: "Not performed: the simulation state could not be determined. Please try again."
-    },
-    diagnosis: {
-      de: {
-        present: "vorhanden",
-        registered_not_loaded: "registriert, aber nicht geladen",
-        unregistered: "ohne Registry-Eintrag",
-        missing: "fehlt",
-        wrong_unit: "falsche Einheit",
-        wrong_device_class: "falsche Geräteklasse",
-        duplicate_binding: "doppelte Zuordnung",
-        stale: "veraltet",
-        service_missing: "Dienst fehlt"
-      },
-      en: {
-        present: "present",
-        registered_not_loaded: "registered but not loaded",
-        unregistered: "no registry entry",
-        missing: "missing",
-        wrong_unit: "wrong unit",
-        wrong_device_class: "wrong device class",
-        duplicate_binding: "duplicate binding",
-        stale: "stale",
-        service_missing: "service missing"
-      }
-    },
-    readOnly: {
-      de: "Diese Ansicht ändert nichts. Alle Hinweise sind Verweise, keine Aktionen.",
-      en: "This view changes nothing. Every remediation is a link, not an action."
-    },
-    attachmentLimits: {
-      de: (count, megabytes) => `Höchstens ${count} Anhänge, je bis ${megabytes} MB.`,
-      en: (count, megabytes) => `At most ${count} attachments, each up to ${megabytes} MB.`
-    },
-    noEntries: { de: "Keine Einträge.", en: "No entries." }
-  };
-  for (const key of Object.keys(TEXT2)) {
+  var KEYS7 = Object.freeze({
+    "attachmentLimits": "assets.attachment_limits",
+    "diagnosis.duplicate_binding": "assets.diagnosis_duplicate_binding",
+    "diagnosis.missing": "assets.diagnosis_missing",
+    "diagnosis.present": "assets.diagnosis_present",
+    "diagnosis.registered_not_loaded": "assets.diagnosis_registered_not_loaded",
+    "diagnosis.service_missing": "assets.diagnosis_service_missing",
+    "diagnosis.stale": "assets.diagnosis_stale",
+    "diagnosis.unregistered": "assets.diagnosis_unregistered",
+    "diagnosis.wrong_device_class": "assets.diagnosis_wrong_device_class",
+    "diagnosis.wrong_unit": "assets.diagnosis_wrong_unit",
+    "measured": "assets.measured",
+    "noEntries": "assets.no_entries",
+    "readOnly": "assets.read_only",
+    "refusedSimulating": "assets.refused_simulating",
+    "refusedUnknown": "assets.refused_unknown",
+    "sessionActive": "assets.session_active",
+    "sessionExpired": "assets.session_expired",
+    "simulated": "assets.simulated",
+    "simulatedShape": "assets.simulated_shape"
+  });
+  for (const catalogKey of Object.values(KEYS7)) {
     for (const language of LANGUAGES3) {
-      if (TEXT2[key][language] === void 0) {
-        throw new Error(`asset surfaces: "${key}" has no ${language} wording`);
+      if (!hasWording(catalogKey, language)) {
+        throw new Error(`asset surfaces: ${catalogKey} has no ${language} wording`);
       }
     }
   }
-  function text2(key, language, ...args) {
-    const entry = TEXT2[key]?.[language] ?? TEXT2[key]?.en;
-    return typeof entry === "function" ? entry(...args) : entry;
+  function text3(key, language, values = {}) {
+    const catalogKey = KEYS7[key];
+    if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+    return text(catalogKey, language, values);
+  }
+  function diagnosisText(code, language) {
+    const key = `diagnosis.${code}`;
+    if (!KEYS7[key]) throw new Error(`asset surfaces: no wording for diagnosis ${JSON.stringify(code)}`);
+    return text3(key, language);
   }
   function append3(parent, tag, value, attributes = {}) {
     const node = document.createElement(tag);
@@ -67156,7 +67683,7 @@
       this.replaceChildren();
       if (expired) {
         this.setAttribute("data-simulation", "expired");
-        append3(this, "span", text2("sessionExpired", language), { "data-banner-text": "" });
+        append3(this, "span", text3("sessionExpired", language), { "data-banner-text": "" });
         return;
       }
       if (!session) {
@@ -67164,11 +67691,14 @@
         return;
       }
       this.setAttribute("data-simulation", "active");
-      append3(this, "span", TEXT2.simulatedShape[language], { "data-simulation-shape": "" });
+      append3(this, "span", text3("simulatedShape", language), { "data-simulation-shape": "" });
       append3(
         this,
         "span",
-        text2("sessionActive", language, session.actor_name || session.actor_user_id, session.expires_at),
+        text3("sessionActive", language, {
+          until: session.expires_at,
+          who: session.actor_name || session.actor_user_id
+        }),
         { "data-banner-text": "" }
       );
     }
@@ -67181,9 +67711,9 @@
       append3(this, "span", value === null || value === void 0 ? "—" : value, { "data-value": "" });
       if (unit) append3(this, "span", unit, { "data-unit": "" });
       if (simulated) {
-        append3(this, "span", TEXT2.simulatedShape[language], { "data-provider-shape": "" });
+        append3(this, "span", text3("simulatedShape", language), { "data-provider-shape": "" });
       }
-      append3(this, "span", text2(simulated ? "simulated" : "measured", language), {
+      append3(this, "span", text3(simulated ? "simulated" : "measured", language), {
         "data-provider-text": ""
       });
     }
@@ -67204,20 +67734,20 @@
         append3(row, "td", entry.slot);
         append3(row, "td", entry.value);
         const marker = append3(row, "td", null, { "data-provider": entry.provider ?? "simulated" });
-        append3(marker, "span", TEXT2.simulatedShape[language], { "data-provider-shape": "" });
-        append3(marker, "span", text2("simulated", language), { "data-provider-text": "" });
+        append3(marker, "span", text3("simulatedShape", language), { "data-provider-shape": "" });
+        append3(marker, "span", text3("simulated", language), { "data-provider-text": "" });
       }
     }
   };
   var CommissioningTable = class extends HTMLElement {
     set props({ findings = [], summary = null, language = "de" }) {
       this.replaceChildren();
-      append3(this, "p", text2("readOnly", language), { "data-read-only": "" });
+      append3(this, "p", text3("readOnly", language), { "data-read-only": "" });
       if (summary) {
         const counts = append3(this, "ul", null, { "data-summary": "" });
         for (const [code, count] of Object.entries(summary.counts ?? {})) {
           if (!count) continue;
-          append3(counts, "li", `${text2("diagnosis", language)[code] ?? code}: ${count}`, {
+          append3(counts, "li", `${diagnosisText(code, language)}: ${count}`, {
             "data-count": code
           });
         }
@@ -67232,7 +67762,7 @@
         const row = append3(body, "tr", null, { "data-diagnosis": finding.code });
         append3(row, "td", finding.reference, { "data-reference": "" });
         append3(row, "td", finding.site ?? finding.evidence?.site ?? "", { "data-site": "" });
-        append3(row, "td", text2("diagnosis", language)[finding.code] ?? finding.code, {
+        append3(row, "td", diagnosisText(finding.code, language), {
           "data-diagnosis-text": ""
         });
         append3(row, "td", finding.evidence?.platform ?? "", { "data-evidence": "" });
@@ -67245,7 +67775,7 @@
       this.replaceChildren();
       const entries = order?.entries ?? [];
       if (!entries.length) {
-        append3(this, "p", text2("noEntries", language), { "data-empty": "" });
+        append3(this, "p", text3("noEntries", language), { "data-empty": "" });
         return;
       }
       this.setAttribute("data-status", entries[entries.length - 1].status);
@@ -67280,12 +67810,10 @@
         append3(wrapper, "input", null, { "data-field": field, id, name: field, type: "text" });
       }
       if (limits) {
-        append3(form, "p", text2(
-          "attachmentLimits",
-          language,
-          limits.max_attachments,
-          Math.round(limits.max_bytes / (1024 * 1024))
-        ), { "data-attachment-limits": "" });
+        append3(form, "p", text3("attachmentLimits", language, {
+          count: limits.max_attachments,
+          megabytes: Math.round(limits.max_bytes / (1024 * 1024))
+        }), { "data-attachment-limits": "" });
       }
     }
   };
@@ -67296,7 +67824,7 @@
       append3(
         this,
         "span",
-        text2(reason === "simulation_state_unavailable" ? "refusedUnknown" : "refusedSimulating", language),
+        text3(reason === "simulation_state_unavailable" ? "refusedUnknown" : "refusedSimulating", language),
         { "data-refusal-text": "" }
       );
     }
@@ -67316,47 +67844,33 @@
 
   // src/v100/project-sites.js
   var LANGUAGES4 = ["de", "en"];
-  var TEXT3 = {
-    siteHealthy: { de: "erreichbar", en: "reachable" },
-    siteSlow: { de: "langsam", en: "slow" },
-    siteUnreachable: { de: "nicht erreichbar", en: "unreachable" },
-    siteCircuitOpen: { de: "ausgesetzt nach wiederholten Fehlern", en: "suspended after repeated failures" },
-    shapeHealthy: { de: "●", en: "●" },
-    shapeSlow: { de: "◐", en: "◐" },
-    shapeUnreachable: { de: "○", en: "○" },
-    shapeCircuitOpen: { de: "✕", en: "✕" },
-    age: {
-      de: (seconds) => `Stand vor ${seconds} s`,
-      en: (seconds) => `read ${seconds} s ago`
-    },
-    unverifiedTls: {
-      de: "unverschlüsselt geprüft: Zertifikat wird für diesen Standort nicht geprüft",
-      en: "unverified: this site's certificate is not checked"
-    },
-    completeness: {
-      de: (answered, total) => `${answered} von ${total} Standorten geantwortet`,
-      en: (answered, total) => `${answered} of ${total} sites answered`
-    },
-    missingSites: {
-      de: "Fehlende Standorte:",
-      en: "Missing sites:"
-    },
-    effectUnknown: {
-      de: "Wirkung unbekannt — der Befehl kann ausgeführt worden sein. Prüfen Sie den Anlagenzustand, bevor Sie etwas erneut senden.",
-      en: "Effect unknown — the command may have run. Check the plant state before sending anything again."
-    },
-    noValue: { de: "kein Messwert", en: "no reading" }
-  };
-  for (const key of Object.keys(TEXT3)) {
+  var KEYS8 = Object.freeze({
+    "age": "sites.age",
+    "completeness": "sites.completeness",
+    "effectUnknown": "sites.effect_unknown",
+    "missingSites": "sites.missing_sites",
+    "noValue": "sites.no_value",
+    "shapeCircuitOpen": "sites.shape_circuit_open",
+    "shapeHealthy": "sites.shape_healthy",
+    "shapeSlow": "sites.shape_slow",
+    "shapeUnreachable": "sites.shape_unreachable",
+    "siteCircuitOpen": "sites.site_circuit_open",
+    "siteHealthy": "sites.site_healthy",
+    "siteSlow": "sites.site_slow",
+    "siteUnreachable": "sites.site_unreachable",
+    "unverifiedTls": "sites.unverified_tls"
+  });
+  for (const catalogKey of Object.values(KEYS8)) {
     for (const language of LANGUAGES4) {
-      if (TEXT3[key][language] === void 0) {
-        throw new Error(`site surfaces: "${key}" has no ${language} wording`);
+      if (!hasWording(catalogKey, language)) {
+        throw new Error(`site surfaces: ${catalogKey} has no ${language} wording`);
       }
     }
   }
-  function text3(key, language, ...args) {
-    const entry = TEXT3[key]?.[language] ?? TEXT3[key]?.en;
-    return typeof entry === "function" ? entry(...args) : entry;
+  function text4(key, language, values = {}) {
+    const catalogKey = KEYS8[key];
+    if (!catalogKey) throw new Error(`no wording named ${JSON.stringify(key)}`);
+    return text(catalogKey, language, values);
   }
   function append4(parent, tag, value, attributes = {}) {
     const node = document.createElement(tag);
@@ -67382,15 +67896,15 @@
       this.setAttribute("data-site", site.site_id ?? "");
       this.setAttribute("data-site-state", state);
       append4(this, "span", site.site_id, { "data-site-name": "" });
-      append4(this, "span", TEXT3[shapeKey][language], { "data-site-shape": "" });
-      append4(this, "span", text3(wordKey, language), { "data-site-state-text": "" });
+      append4(this, "span", text4(shapeKey, language), { "data-site-shape": "" });
+      append4(this, "span", text4(wordKey, language), { "data-site-state-text": "" });
       if (Number.isFinite(site.age_seconds)) {
-        append4(this, "span", text3("age", language, Math.round(site.age_seconds)), {
+        append4(this, "span", text4("age", language, { seconds: Math.round(site.age_seconds) }), {
           "data-site-age": ""
         });
       }
       if (site.verified_tls === false) {
-        append4(this, "span", text3("unverifiedTls", language), { "data-unverified-tls": "" });
+        append4(this, "span", text4("unverifiedTls", language), { "data-unverified-tls": "" });
       }
     }
   };
@@ -67402,19 +67916,19 @@
       const absent = rollup.absent_sites ?? [];
       this.setAttribute("data-complete", String(Boolean(rollup.complete)));
       append4(this, "span", rollup.label ?? "", { "data-rollup-label": "" });
-      append4(this, "span", rollup.total ?? text3("noValue", language), { "data-rollup-total": "" });
-      append4(this, "span", text3("completeness", language, answered.length, rollup.total_sites ?? 0), {
+      append4(this, "span", rollup.total ?? text4("noValue", language), { "data-rollup-total": "" });
+      append4(this, "span", text4("completeness", language, { answered: answered.length, total: rollup.total_sites ?? 0 }), {
         "data-completeness": ""
       });
       if (absent.length > 0) {
-        append4(this, "span", text3("missingSites", language), { "data-missing-label": "" });
+        append4(this, "span", text4("missingSites", language), { "data-missing-label": "" });
         const list = append4(this, "ul", null, { "data-missing": "" });
         for (const entry of absent) {
           const item = append4(list, "li", null, { "data-missing-site": entry.site_id });
           append4(item, "span", entry.site_id, { "data-site-name": "" });
           const state = STATE_KEYS[entry.state] ? entry.state : "unreachable";
-          append4(item, "span", TEXT3[STATE_KEYS[state][1]][language], { "data-site-shape": "" });
-          append4(item, "span", text3(STATE_KEYS[state][0], language), { "data-site-state-text": "" });
+          append4(item, "span", text4(STATE_KEYS[state][1], language), { "data-site-shape": "" });
+          append4(item, "span", text4(STATE_KEYS[state][0], language), { "data-site-state-text": "" });
         }
       }
     }
@@ -67425,7 +67939,7 @@
       const state = site && STATE_KEYS[site.state] ? site.state : "unreachable";
       this.setAttribute("data-site-state", state);
       const missing = value === null || value === void 0;
-      append4(this, "span", missing ? text3("noValue", language) : value, { "data-value": "" });
+      append4(this, "span", missing ? text4("noValue", language) : value, { "data-value": "" });
       if (!missing && unit) append4(this, "span", unit, { "data-unit": "" });
       const badge = document.createElement("glt-flow-card-site-health-badge");
       this.append(badge);
@@ -67438,7 +67952,7 @@
       this.setAttribute("data-outcome", outcome);
       if (reason) this.setAttribute("data-reason", reason);
       if (outcome === "effect_unknown") {
-        append4(this, "span", text3("effectUnknown", language), { "data-effect-unknown": "" });
+        append4(this, "span", text4("effectUnknown", language), { "data-effect-unknown": "" });
         return;
       }
       append4(this, "span", outcome, { "data-outcome-text": "" });
