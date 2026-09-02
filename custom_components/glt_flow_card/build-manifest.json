@@ -107,7 +107,7 @@
     }
   ],
   "build": {
-    "commit": "6edc9ac3110158931efb53d76659b0122cd28c32",
+    "commit": "01a052cdf36a158cd5b8ba0691b4690d2ab2f754",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -136,8 +136,8 @@
     },
     {
       "path": "package.json",
-      "sha256": "59c432ad3c4bcac1167daedb0af7d0caf210de71cad02421b14412a7e7897eec",
-      "size": 3839
+      "sha256": "0ca7c3231d0728f08e60ad7be2d824fef9d38a0c7abaaf0b09f29e809af8fedf",
+      "size": 3989
     },
     {
       "path": "schemas/bundle-manifest.schema.json",
@@ -293,6 +293,11 @@
       "path": "src/v100/project-semantics.js",
       "sha256": "6e392a1d3e50ca42305cfee5d2b3f9fad3ea55af789aec402940dce3be3a28c9",
       "size": 8409
+    },
+    {
+      "path": "src/v100/sdk-manifest.mjs",
+      "sha256": "8aa7ad9254679aecf8de477dc2d3f9791fdb2d804c98b7fbd37bdb5648bb86fc",
+      "size": 14760
     },
     {
       "path": "src/v100/semantic-model.mjs",
