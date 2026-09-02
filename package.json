@@ -37,7 +37,10 @@
     "test:assert-red": "node --test test/assert-red.test.mjs",
     "test:phase2:quick": "npm run test:assert-red && node tools/phase2-red-gate.mjs",
     "test:phase2": "node tools/verify-phase2.mjs",
-    "test:phase2:release": "npm run validate:hacs-staging && npm run test:ha-artifacts && npm run verify:release && npm run test:release-acceptance"
+    "test:phase2:release": "npm run validate:hacs-staging && npm run test:ha-artifacts && npm run verify:release && npm run test:release-acceptance",
+    "test:phase3:quick": "npm run test:assert-red && node tools/phase3-red-gate.mjs",
+    "test:phase3": "node tools/verify-phase3.mjs",
+    "test:phase3:release": "npm run validate:hacs-staging && npm run test:ha-artifacts && npm run verify:release && npm run test:release-acceptance"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",

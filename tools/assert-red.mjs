@@ -137,6 +137,45 @@ export const EXPECTED_RED = Object.freeze(Object.fromEntries([
     "complete exact-dist Phase-2 UI is unavailable",
     "PHASE2_UI_EFFECTS ",
   ),
+  // -- Phase 3 -----------------------------------------------------------
+  browserEntry(
+    "phase3-semantic-model",
+    "the validated semantic hierarchy is unavailable",
+    "PHASE3_SEMANTIC_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase3-provenance",
+    `${TESTS}/test_provenance.py`,
+    "registry-derived provenance and communication health are unavailable",
+    "PHASE3_PROVENANCE_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase3-provenance-policy",
+    `${TESTS}/test_provenance_policy.py`,
+    "authorized non-enumerating provenance reads are unavailable",
+    "PHASE3_PROVENANCE_POLICY_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase3-profiles",
+    `${TESTS}/test_equipment_profiles.py`,
+    "versioned override-preserving profiles are unavailable",
+    "PHASE3_PROFILE_EFFECTS ",
+  ),
+  browserEntry(
+    "phase3-mapping",
+    "explained dual-runtime entity mapping is unavailable",
+    "PHASE3_MAPPING_EFFECTS ",
+  ),
+  browserEntry(
+    "phase3-equipment-state",
+    "the deterministic operational state is unavailable",
+    "PHASE3_STATE_EFFECTS ",
+  ),
+  browserEntry(
+    "phase3-ui",
+    "complete exact-dist Phase-3 UI is unavailable",
+    "PHASE3_UI_EFFECTS ",
+  ),
 ]));
 
 const HARNESS_FAILURES = [
