@@ -1,0 +1,307 @@
+{
+  "type": "custom:glt-flow-card",
+  "schema_version": 3,
+  "project": {
+    "id": "operations-corpus",
+    "name": "Operations corpus",
+    "revision": 1
+  },
+  "title": "Operations corpus",
+  "sites": [
+    {
+      "id": "site-north",
+      "name": "North Plant"
+    },
+    {
+      "id": "site-south",
+      "name": "South Plant"
+    }
+  ],
+  "semantic_model": {
+    "nodes": [
+      {
+        "id": "site-north",
+        "level": "site",
+        "parent": null,
+        "name": "North Plant"
+      },
+      {
+        "id": "site-south",
+        "level": "site",
+        "parent": null,
+        "name": "South Plant"
+      },
+      {
+        "id": "bldg-north-1",
+        "level": "building",
+        "parent": "site-north",
+        "name": "Hall 1"
+      },
+      {
+        "id": "floor-north-1",
+        "level": "floor",
+        "parent": "bldg-north-1",
+        "name": "Level 0"
+      },
+      {
+        "id": "sys-heat",
+        "level": "system",
+        "parent": "floor-north-1",
+        "name": "Heating"
+      },
+      {
+        "id": "sub-primary",
+        "level": "subsystem",
+        "parent": "sys-heat",
+        "name": "Primary"
+      },
+      {
+        "id": "sub-backup",
+        "level": "subsystem",
+        "parent": "sys-heat",
+        "name": "Backup"
+      },
+      {
+        "id": "eq-hp-primary",
+        "level": "equipment",
+        "parent": "sub-primary",
+        "name": "Heat pump 1"
+      },
+      {
+        "id": "eq-hp-secondary",
+        "level": "equipment",
+        "parent": "sub-primary",
+        "name": "Heat pump 2"
+      },
+      {
+        "id": "eq-boiler-backup",
+        "level": "equipment",
+        "parent": "sub-backup",
+        "name": "Backup boiler"
+      },
+      {
+        "id": "dp-hp1-flow",
+        "level": "datapoint",
+        "parent": "eq-hp-primary",
+        "name": "Flow temperature",
+        "unit": "degC",
+        "medium": "heating_flow",
+        "direction": "input",
+        "semantic_tags": [
+          "measurement"
+        ],
+        "entity_id": "sensor.hp1_flow_temperature",
+        "freshness_seconds": 120
+      },
+      {
+        "id": "dp-hp1-hours",
+        "level": "datapoint",
+        "parent": "eq-hp-primary",
+        "name": "Operating hours",
+        "unit": "h",
+        "direction": "input",
+        "semantic_tags": [
+          "measurement"
+        ],
+        "entity_id": "sensor.hp1_operating_hours",
+        "freshness_seconds": 3600
+      },
+      {
+        "id": "dp-hp1-starts",
+        "level": "datapoint",
+        "parent": "eq-hp-primary",
+        "name": "Starts",
+        "unit": "count",
+        "direction": "input",
+        "semantic_tags": [
+          "measurement"
+        ],
+        "entity_id": "sensor.hp1_starts",
+        "freshness_seconds": 3600
+      },
+      {
+        "id": "dp-hp2-flow",
+        "level": "datapoint",
+        "parent": "eq-hp-secondary",
+        "name": "Flow temperature",
+        "unit": "degC",
+        "medium": "heating_flow",
+        "direction": "input",
+        "semantic_tags": [
+          "measurement"
+        ],
+        "entity_id": "sensor.hp2_flow_temperature",
+        "freshness_seconds": 120
+      },
+      {
+        "id": "dp-hp2-hours",
+        "level": "datapoint",
+        "parent": "eq-hp-secondary",
+        "name": "Operating hours",
+        "unit": "h",
+        "direction": "input",
+        "semantic_tags": [
+          "measurement"
+        ],
+        "entity_id": "sensor.hp2_operating_hours",
+        "freshness_seconds": 3600
+      },
+      {
+        "id": "dp-hp2-starts",
+        "level": "datapoint",
+        "parent": "eq-hp-secondary",
+        "name": "Starts",
+        "unit": "count",
+        "direction": "input",
+        "semantic_tags": [
+          "measurement"
+        ],
+        "entity_id": "sensor.hp2_starts",
+        "freshness_seconds": 3600
+      },
+      {
+        "id": "dp-boiler-flow",
+        "level": "datapoint",
+        "parent": "eq-boiler-backup",
+        "name": "Flow temperature",
+        "unit": "degC",
+        "medium": "heating_flow",
+        "direction": "input",
+        "semantic_tags": [
+          "measurement"
+        ],
+        "entity_id": "sensor.boiler_flow_temperature",
+        "freshness_seconds": 120
+      },
+      {
+        "id": "dp-boiler-hours",
+        "level": "datapoint",
+        "parent": "eq-boiler-backup",
+        "name": "Operating hours",
+        "unit": "h",
+        "direction": "input",
+        "semantic_tags": [
+          "measurement"
+        ],
+        "entity_id": "sensor.boiler_operating_hours",
+        "freshness_seconds": 3600
+      },
+      {
+        "id": "dp-boiler-starts",
+        "level": "datapoint",
+        "parent": "eq-boiler-backup",
+        "name": "Starts",
+        "unit": "count",
+        "direction": "input",
+        "semantic_tags": [
+          "measurement"
+        ],
+        "entity_id": "sensor.boiler_starts",
+        "freshness_seconds": 3600
+      }
+    ]
+  },
+  "profiles": [
+    {
+      "id": "profile-heat-pump",
+      "equipment_type": "heat_pump",
+      "version": "2.0.0",
+      "slots": [
+        {
+          "id": "flow_temperature",
+          "unit": "degC",
+          "required": true
+        },
+        {
+          "id": "operating_hours",
+          "unit": "h",
+          "required": false
+        },
+        {
+          "id": "starts",
+          "unit": "count",
+          "required": false
+        }
+      ],
+      "controls": [
+        {
+          "id": "set_flow_setpoint",
+          "label": {
+            "de": "Vorlauf-Sollwert",
+            "en": "Flow setpoint"
+          },
+          "input_schema": {
+            "type": "number",
+            "minimum": 20,
+            "maximum": 70
+          }
+        },
+        {
+          "id": "enable",
+          "label": {
+            "de": "Freigabe",
+            "en": "Enable"
+          }
+        }
+      ]
+    },
+    {
+      "id": "profile-boiler",
+      "equipment_type": "boiler",
+      "version": "1.0.0",
+      "slots": [
+        {
+          "id": "flow_temperature",
+          "unit": "degC",
+          "required": true
+        }
+      ],
+      "controls": [
+        {
+          "id": "enable",
+          "label": {
+            "de": "Freigabe",
+            "en": "Enable"
+          }
+        }
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "id": "eq-hp-primary",
+      "type": "heat_pump",
+      "profile": "profile-heat-pump",
+      "entity_id": "sensor.hp1_flow_temperature"
+    },
+    {
+      "id": "eq-hp-secondary",
+      "type": "heat_pump",
+      "profile": "profile-heat-pump",
+      "entity_id": "sensor.hp2_flow_temperature"
+    },
+    {
+      "id": "eq-boiler-backup",
+      "type": "boiler",
+      "profile": "profile-boiler",
+      "entity_id": "sensor.boiler_flow_temperature"
+    }
+  ],
+  "alarms": [
+    {
+      "id": "alm-hp1-lowflow",
+      "equipment_id": "eq-hp-primary",
+      "severity": "warning",
+      "state": "active",
+      "label": "Low flow"
+    },
+    {
+      "id": "alm-boiler-fault",
+      "equipment_id": "eq-boiler-backup",
+      "severity": "fault",
+      "state": "active",
+      "label": "Burner fault"
+    }
+  ],
+  "datapoints": []
+}

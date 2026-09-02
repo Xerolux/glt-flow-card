@@ -176,6 +176,62 @@ export const EXPECTED_RED = Object.freeze(Object.fromEntries([
     "complete exact-dist Phase-3 UI is unavailable",
     "PHASE3_UI_EFFECTS ",
   ),
+  // -- Phase 4 -----------------------------------------------------------
+  pythonEntry(
+    "phase4-panels",
+    `${TESTS}/test_panels.py`,
+    "the server-composed profile-driven object panel is unavailable",
+    "PHASE4_PANEL_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase4-panel-enumeration",
+    `${TESTS}/test_panel_enumeration.py`,
+    "non-enumerating panel reads are unavailable",
+    "PHASE4_PANEL_ENUM_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase4-view-stream",
+    `${TESTS}/test_view_stream.py`,
+    "the sequenced bounded view stream is unavailable",
+    "PHASE4_STREAM_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase4-navigation",
+    `${TESTS}/test_navigation.py`,
+    "authorized non-enumerating address resolution is unavailable",
+    "PHASE4_NAVIGATION_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase4-navigation-counts",
+    `${TESTS}/test_navigation_counts.py`,
+    "authorized-scope aggregate counts are unavailable",
+    "PHASE4_COUNT_EFFECTS ",
+  ),
+  browserEntry(
+    "phase4-panel-model",
+    "the panel render model is unavailable",
+    "PHASE4_PANEL_MODEL_EFFECTS ",
+  ),
+  browserEntry(
+    "phase4-navigation-reducer",
+    "address-as-state navigation is unavailable",
+    "PHASE4_NAV_REDUCER_EFFECTS ",
+  ),
+  browserEntry(
+    "phase4-command-outcome",
+    "separated command outcome presentation is unavailable",
+    "PHASE4_OUTCOME_EFFECTS ",
+  ),
+  browserEntry(
+    "phase4-view-resync",
+    "honest gap detection and resync are unavailable",
+    "PHASE4_RESYNC_EFFECTS ",
+  ),
+  browserEntry(
+    "phase4-ui",
+    "complete exact-dist Phase-4 UI is unavailable",
+    "PHASE4_UI_EFFECTS ",
+  ),
 ]));
 
 const HARNESS_FAILURES = [

@@ -116,6 +116,8 @@ export async function installFakeHomeAssistant(page, options = {}) {
       websocketRequests: [],
       subscriptions: [],
       service: [],
+      api: [],
+      dialogs: [],
       tasks: [],
       listeners: [],
       sessions: [{ kind: "fake-ha", id: "exact-dist" }],
@@ -270,7 +272,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
       return structuredClone(wsResults[message.type] ?? {});
     };
     const callService = async (domain, service, data) => {
-      const effect = { domain, service, data: structuredClone(data ?? {}) };
+      const effect = { domain, service, data: structuredClone(data ?? {}), origin: attribute() };
       effects.service.push(effect);
       prohibited("service", effect);
     };
@@ -284,6 +286,44 @@ export async function installFakeHomeAssistant(page, options = {}) {
       };
     };
 
+    // Which module reached for a forbidden capability. The legacy base card
+    // still calls `history/period` directly and Phase 7 owns replacing it, so
+    // a ledger that only counted effects would let a new Phase-4 call hide
+    // behind the known legacy one. Every effect carries its own origin.
+    const attribute = () => {
+      const frames = String(new Error().stack ?? "").split("\n").slice(2);
+      const source = frames.find((line) => /glt-flow-card\.js|project-|navigation|panel/.test(line));
+      if (!source) return "unknown";
+      if (/v040|legacy|base/.test(source)) return "legacy";
+      return "card";
+    };
+
+    // The legacy card reaches the Recorder through hass.callApi. It did not
+    // exist on this shim at all, so such a call threw a TypeError and was
+    // classified as a broken harness rather than as the prohibited effect it
+    // is. It is recorded and refused here.
+    const callApi = async (method, path, parameters) => {
+      const effect = {
+        method: String(method), path: String(path), origin: attribute(),
+        parameters: parameters === undefined ? null : structuredClone(parameters),
+      };
+      effects.api.push(effect);
+      prohibited("api", effect);
+    };
+
+    // A window dialog standing in for authorization is one of the defects
+    // Phase 4 retires, so it is recorded rather than silently answered.
+    for (const kind of ["confirm", "alert", "prompt"]) {
+      Object.defineProperty(window, kind, {
+        configurable: true,
+        value: (message) => {
+          const effect = { kind, message: String(message ?? ""), origin: attribute() };
+          effects.dialogs.push(effect);
+          prohibited("dialog", effect);
+        },
+      });
+    }
+
     window.__fakeHass = {
       states: structuredClone(states),
       services: {},
@@ -293,6 +333,7 @@ export async function installFakeHomeAssistant(page, options = {}) {
       themes: { darkMode: false, themes: {} },
       callWS,
       callService,
+      callApi,
       connection: {
         sendMessagePromise: callWS,
         subscribeEvents: (callback, eventType) => subscribe(callback, { type: "subscribe_events", event_type: eventType }),

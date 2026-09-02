@@ -69,7 +69,11 @@ test("registry binds one marker, evidence prefix and naming-rule identity per ke
   for (const [key, entry] of Object.entries(EXPECTED_RED)) {
     assert.ok(entry.marker.startsWith(`EXPECTED_RED[${key}]: `), `${key} marker`);
     assert.ok(entry.evidence.endsWith(" "), `${key} evidence prefix keeps its separator`);
-    if (!key.startsWith("phase2-")) continue;
+    // The identity rule applies to every generated phase entry. It was scoped
+    // to phase2- when only Phase 2 used the helpers; Phases 3 and 4 use the
+    // same ones, so an entry that quietly stopped conforming would have gone
+    // unnoticed.
+    if (!/^phase[234]-/.test(key)) continue;
     if (entry.runtime === "python") {
       assert.ok(
         entry.identity.endsWith(`::test_expected_red_${key.replaceAll("-", "_")}`),
@@ -81,8 +85,10 @@ test("registry binds one marker, evidence prefix and naming-rule identity per ke
   }
   const markers = Object.values(EXPECTED_RED).map((entry) => entry.marker);
   assert.equal(new Set(markers).size, markers.length, "markers are unique");
-  const phase2 = Object.keys(EXPECTED_RED).filter((key) => key.startsWith("phase2-"));
-  assert.equal(phase2.length, 12, "all twelve Phase-2 registry entries exist");
+  const countFor = (prefix) => Object.keys(EXPECTED_RED).filter((key) => key.startsWith(prefix)).length;
+  assert.equal(countFor("phase2-"), 12, "all twelve Phase-2 registry entries exist");
+  assert.equal(countFor("phase3-"), 7, "all seven Phase-3 registry entries exist");
+  assert.equal(countFor("phase4-"), 10, "all ten Phase-4 registry entries exist");
 });
 
 test("accepts the exact named sentinel with its effect-ledger evidence", () => {
