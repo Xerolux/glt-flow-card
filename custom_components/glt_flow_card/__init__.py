@@ -30,7 +30,12 @@ from .const import (
     STORE_VERSION,
     normalize_options,
 )
-from .policy import PolicyCoordinator, PolicyDenied, capabilities_for
+from .policy import (
+    POLICY_VERSION,
+    PolicyCoordinator,
+    PolicyDenied,
+    capabilities_for,
+)
 from .policy_sessions import EvidenceCursorRegistry, SubscriptionRegistry
 from .project_access import AccessConflict, ProjectAccessRepository
 from .policy import ROLES
@@ -47,7 +52,12 @@ from .project_leases import (
     LeaseRegistry,
 )
 from .project_repository import ProjectRepository
-from .project_transactions import ProjectTransactionCoordinator, TransactionConflict
+from .project_transactions import (
+    MutationDenied,
+    MutationGuard,
+    ProjectTransactionCoordinator,
+    TransactionConflict,
+)
 
 
 def _utc() -> str:
@@ -204,17 +214,29 @@ class GltStore:
     def project(self, project_id: str) -> dict[str, Any] | None:
         return self.project_repository.get_head(project_id)
 
-    async def save_project(self, project: dict[str, Any], autosave: bool, user_id: str | None, expected_revision: int | None = None) -> dict[str, Any]:
+    async def save_project(
+        self,
+        project: dict[str, Any],
+        autosave: bool,
+        user_id: str | None,
+        expected_revision: int | None = None,
+        guard: MutationGuard | None = None,
+    ) -> dict[str, Any]:
         entry = await self.project_transactions.compatibility_save(
             user_id=user_id,
             project=project,
             expected_revision=expected_revision,
             autosave=autosave,
+            lease=guard,
         )
         self.data["projects"][entry["id"]] = deepcopy(entry)
         return entry
 
-    async def delete_project(self, project_id: str) -> bool:
+    async def delete_project(
+        self, project_id: str, guard: MutationGuard | None = None
+    ) -> bool:
+        """Delete one project, re-authorizing immediately before the write."""
+        await self.project_transactions._check_guard(guard)
         existed = await self.project_repository.delete_head(project_id)
         self.data["projects"].pop(project_id, None)
         self.data["locks"].pop(project_id, None)
@@ -549,6 +571,23 @@ async def ws_projects_get(hass, connection, msg):
     connection.send_result(msg["id"], project)
 
 
+def _mutation_guard(hass, connection, msg, *, capability: str) -> MutationGuard:
+    """Build the authority evidence a mutation carries into the commit lock."""
+    decision = msg[DECISION_KEY]
+    return MutationGuard(
+        project_id=decision.project_id,
+        user_id=decision.actor.user_id,
+        session_id=str(decision.actor.session_id or decision.actor.connection_id),
+        purpose=PURPOSE_ENGINEERING,
+        effective_capability=capability,
+        access_revision=decision.access_revision,
+        lease=str(msg.get("lease_token", "")),
+        revision=int(msg.get("expected_revision", 0)),
+        digest=msg.get("expected_digest"),
+        policy_version=decision.policy_version,
+    )
+
+
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/save", vol.Required("project"): dict, vol.Optional("autosave", default=False): bool, vol.Optional("expected_revision"): int, vol.Required("lease_token"): str})
 @websocket_api.async_response
 async def ws_projects_save(hass, connection, msg):
@@ -556,7 +595,13 @@ async def ws_projects_save(hass, connection, msg):
         user_id, user_name, _is_admin = _user(connection)
         project = msg["project"]
         pid = str(project.get("id") or project.get("config", {}).get("project", {}).get("id") or "")
-        result = await _manager(hass).save_project(project, msg["autosave"], user_id, msg.get("expected_revision"))
+        result = await _manager(hass).save_project(
+            project,
+            msg["autosave"],
+            user_id,
+            msg.get("expected_revision"),
+            guard=_mutation_guard(hass, connection, msg, capability="project.write"),
+        )
         await _manager(hass).add_audit({"action":"project.save","detail":{"project_id":pid,"revision":result["revision"]}}, user_id, user_name)
         connection.send_result(msg["id"], result)
     except PermissionError:
@@ -577,11 +622,7 @@ async def ws_projects_save(hass, connection, msg):
 @websocket_api.async_response
 async def ws_projects_preview(hass, connection, msg):
     try:
-        project, uid, _uname, admin = _require_project_role(
-            hass, connection, msg, "designer"
-        )
-        if project is None and not admin:
-            raise PermissionError("designer role required")
+        uid, _uname, _admin = _user(connection)
         result = await _manager(hass).project_transactions.preview(
             user_id=uid,
             project_id=msg["project_id"],
@@ -608,15 +649,14 @@ async def ws_projects_preview(hass, connection, msg):
 @websocket_api.async_response
 async def ws_projects_apply(hass, connection, msg):
     try:
-        _project, uid, _uname, _admin = _require_project_role(
-            hass, connection, msg, "designer"
-        )
+        uid, _uname, _admin = _user(connection)
         result = await _manager(hass).project_transactions.apply(
             user_id=uid,
             project_id=msg["project_id"],
             preview_id=msg["preview_id"],
             expected_revision=msg["expected_revision"],
             selected_ids=msg["selected_ids"],
+            guard=_mutation_guard(hass, connection, msg, capability="project.write"),
         )
         _manager(hass).data["projects"][msg["project_id"]] = deepcopy(result)
         connection.send_result(msg["id"], result)
@@ -639,15 +679,14 @@ async def ws_projects_apply(hass, connection, msg):
 @websocket_api.async_response
 async def ws_projects_rollback(hass, connection, msg):
     try:
-        _project, uid, _uname, _admin = _require_project_role(
-            hass, connection, msg, "designer"
-        )
+        uid, _uname, _admin = _user(connection)
         result = await _manager(hass).project_transactions.rollback(
             user_id=uid,
             project_id=msg["project_id"],
             snapshot_id=msg["snapshot_id"],
             expected_revision=msg["expected_revision"],
             confirmation=msg["confirmation"],
+            guard=_mutation_guard(hass, connection, msg, capability="project.write"),
         )
         _manager(hass).data["projects"][msg["project_id"]] = deepcopy(result)
         connection.send_result(msg["id"], result)
@@ -663,8 +702,12 @@ async def ws_projects_rollback(hass, connection, msg):
 @websocket_api.async_response
 async def ws_projects_delete(hass, connection, msg):
     try:
-        _require_project_role(hass, connection, msg, "designer")
-        connection.send_result(msg["id"], await _manager(hass).delete_project(msg["project_id"]))
+        # Delete carries the same evidence as any other shared mutation, so a
+        # revoked role or an expired lease stops it at the commit boundary too.
+        guard = _mutation_guard(hass, connection, msg, capability="project.delete")
+        connection.send_result(msg["id"], await _manager(hass).delete_project(
+            msg["project_id"], guard=guard
+        ))
     except PermissionError:
         connection.send_error(msg["id"], "capability_denied", "capability_denied")
 
@@ -1259,6 +1302,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         role = access.get(project_id).role_of(user_id)
         return "project.read" in capabilities_for(role, is_ha_admin=False)
 
+    def recheck_before_commit(evidence: MutationGuard) -> None:
+        """Re-authorize a mutation immediately before anything durable exists.
+
+        The boundary already authorized this request. This runs inside the
+        coordinator's lock, after the candidate is computed and before the
+        PREPARED journal, so it is the only place that can prove none of the
+        authority inputs moved in between.
+        """
+        state = access.get(evidence.project_id)
+        if state.access_revision != evidence.access_revision:
+            raise MutationDenied("authority_stale")
+        if evidence.effective_capability not in capabilities_for(
+            state.role_of(evidence.user_id), is_ha_admin=False
+        ):
+            raise MutationDenied("capability_denied")
+        if not runtime.leases.validate(
+            token=evidence.lease,
+            project_id=evidence.project_id,
+            user_id=evidence.user_id,
+            session_id=evidence.session_id,
+            purpose=evidence.purpose,
+            access_revision=evidence.access_revision,
+        ):
+            raise MutationDenied("lease_expired")
+        if evidence.policy_version != POLICY_VERSION:
+            raise MutationDenied("authority_stale")
+
     runtime = CompanionRuntime(
         entry_id=entry.entry_id,
         manager=manager,
@@ -1271,6 +1341,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         cursors=EvidenceCursorRegistry(generation=generation),
         generation=generation,
     )
+    manager.project_transactions.set_mutation_guard(recheck_before_commit)
     data["runtimes"][entry.entry_id] = runtime
     data["manager"] = manager
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))

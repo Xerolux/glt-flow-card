@@ -16,6 +16,10 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from .conftest import LifecycleEffects
+from custom_components.glt_flow_card.project_transactions import (
+    MutationGuard as MutationGuardEvidence,
+)
+
 from .policy_contract import COMMAND_POLICY_CONTRACT
 
 pytestmark = [
@@ -177,7 +181,8 @@ async def collaboration_gaps(hass: HomeAssistant, phase2_users: Any) -> list[str
 
     guard = getattr(transactions, "MutationGuard", None)
     if guard is not None:
-        missing = [name for name in GUARD_INPUTS if not hasattr(guard, name)]
+        declared = set(getattr(guard, "__annotations__", {}))
+        missing = [name for name in GUARD_INPUTS if name not in declared]
         if missing:
             gaps.append(f"MutationGuard does not carry {missing}")
     return gaps
@@ -200,3 +205,113 @@ async def test_expected_red_phase2_collaboration_guard(
         for gap in gaps:
             print(f"  guard gap: {gap}")
     assert not gaps, "immediate-precommit collaboration guard is unavailable"
+
+
+async def test_authority_lost_between_authorization_and_commit_is_refused(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    phase2_users,
+) -> None:
+    """The boundary check alone is not enough, and this proves it.
+
+    The request is authorized, the candidate is computed, and only then is the
+    engineer's role revoked. Without the in-lock recheck the write would land;
+    with it the transaction is refused and nothing durable changes.
+    """
+    from custom_components.glt_flow_card.project_transactions import MutationDenied
+
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    runtime = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id]
+    manager = hass.data["glt_flow_card"]["manager"]
+
+    engineer = phase2_users.principal("engineer")
+    admin = phase2_users.principal("admin")
+    await runtime.access.async_assign(
+        project_id=PROJECT_ID, user_id=admin.user_id, role="admin"
+    )
+    await runtime.access.async_assign(
+        project_id=PROJECT_ID, user_id=engineer.user_id, role="engineer"
+    )
+    state = await runtime.access.async_get(PROJECT_ID)
+
+    lease = runtime.leases.acquire(
+        project_id=PROJECT_ID,
+        user_id=engineer.user_id,
+        session_id="commit-race",
+        purpose="engineering",
+        ttl_seconds=300,
+        access_revision=state.access_revision,
+    )
+    guard = MutationGuardEvidence(
+        project_id=PROJECT_ID,
+        user_id=engineer.user_id,
+        session_id="commit-race",
+        purpose="engineering",
+        effective_capability="project.write",
+        access_revision=state.access_revision,
+        lease=lease.token,
+        revision=0,
+        digest=None,
+        policy_version=1,
+    )
+
+    # The guard admits the mutation while the engineer still holds the role.
+    await manager.project_transactions._check_guard(guard)
+
+    # The role disappears mid-flight, exactly as a concurrent admin change would.
+    await runtime.access.async_revoke(project_id=PROJECT_ID, user_id=engineer.user_id)
+
+    with pytest.raises(MutationDenied) as refused:
+        await manager.project_transactions._check_guard(guard)
+    assert refused.value.code in {"authority_stale", "capability_denied"}
+    assert manager.project_repository.get_head(PROJECT_ID) is None
+
+
+async def test_every_declared_mutation_reaches_the_guarded_coordinator(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    phase2_users,
+) -> None:
+    """No mutation route may reach a durable write without guard evidence."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    manager = hass.data["glt_flow_card"]["manager"]
+
+    assert manager.project_transactions._mutation_guard is not None
+
+    engineer = phase2_users.principal("engineer")
+    runtime = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id]
+    await runtime.access.async_assign(
+        project_id=PROJECT_ID, user_id=engineer.user_id, role="admin"
+    )
+    connection = await phase2_users.async_connect("engineer")
+
+    before = manager.project_repository.list_heads()
+    for route in mutation_routes():
+        payload = {"type": route, "lease_token": "never-issued"}
+        if route == "glt_flow_card/projects/save":
+            payload.update({
+                "project": {"id": PROJECT_ID, "config": {}},
+                "expected_revision": 0,
+            })
+        else:
+            payload["project_id"] = PROJECT_ID
+        if route == "glt_flow_card/projects/preview":
+            payload.update({"expected_revision": 0, "candidate": {}})
+        if route == "glt_flow_card/projects/apply":
+            payload.update({
+                "preview_id": "x", "expected_revision": 0, "selected_ids": [],
+            })
+        if route == "glt_flow_card/projects/rollback":
+            payload.update({
+                "snapshot_id": "sha256:" + "0" * 64,
+                "expected_revision": 0,
+                "confirmation": f"ROLLBACK {PROJECT_ID}",
+            })
+        response = await connection.command(payload)
+        assert response["success"] is False, route
+        assert response["error"]["code"] == "lease_expired", route
+
+    assert manager.project_repository.list_heads() == before
+    await phase2_users.async_close()
