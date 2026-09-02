@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 5 execution complete; all 20 plans implemented, T5-16/T4-14/T3-14/T2-16 await a Docker-capable environment
-last_updated: "2026-09-02T09:00:00.000Z"
-last_activity: 2026-09-02 -- Phase 5 planned and executed end to end; generated catalog evidence, typed ports, a deterministic obstacle-aware router, transactional editing, the data-only SDK and the Phase-5 gate are committed, and four false claims already in the product were found and closed
+stopped_at: Phase 6 planning complete; 20 plans written and the roadmap's Plans: TBD replaced, execution not started
+last_updated: "2026-09-02T14:00:00.000Z"
+last_activity: 2026-09-02 -- Phase 6 planned: source audit (14 defects), context, research (HA authoring APIs confirmed by execution, DST behaviour measured), patterns, 21 threats, validation map, UI contract and 20 plans; the alarms/list authorization leak found during the audit was fixed separately in 9f53bcb
 progress:
   total_phases: 10
   completed_phases: 4
-  total_plans: 64
+  total_plans: 84
   completed_plans: 64
   percent: 38
 ---
@@ -21,18 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-31)
 
 **Core value:** Operators and engineers can safely understand, operate, engineer, and diagnose a real building plant from one trustworthy Home Assistant interface.
-**Current focus:** Phase 04 — runtime-operations-drilldown
+**Current focus:** Phase 06 — alarms-notifications-schedules
 
 ## Current Position
 
-Phase: 04 (runtime-operations-drilldown) — EXECUTING
-Plan: 17 of 17 implemented (17 plans across 13 waves)
-Status: every Phase-4 plan is implemented and T4-01 through T4-13 are verified.
-T4-14 stays planned, together with T3-14 and T2-16: all three are owned by the
-composed `test:phaseN:release` leaf, which needs a Docker engine this
-environment does not have. `ha-artifacts` is green on this branch, but that is
-one of the leaf's four parts.
-Last activity: 2026-09-02 -- plans 04-01 through 04-17 committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+Phase: 06 (alarms-notifications-schedules) — PLANNED
+Plan: 0 of 20 implemented (20 plans across 5 waves)
+Status: every Phase-6 planning artifact is committed and the roadmap's
+`Plans: TBD` is replaced with the itemised list, so the gate has plan text to
+bind. The research flag is resolved in both halves: the Home Assistant
+authoring APIs were confirmed against the vendored 2026.2.3 and the DST
+behaviour was measured by execution, and the alarm philosophy was settled with
+the user as configuration with conservative defaults.
+
+Phases 2 through 5 are executed. T5-16, T4-14, T3-14 and T2-16 all stay
+`planned`: each is owned by the composed `test:phaseN:release` leaf, which needs
+a Docker engine this environment does not have.
+Last activity: 2026-09-02 -- Phase 6 planning committed on `claude/chatgpt-continuation-hi3y86` (PR #3)
 
 Progress: [████░░░░░░] 38%
 
@@ -187,13 +192,13 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 - [Phase 4]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T4-14 row and the review passes remain.
 - [Phase 5]: No known technical blocker. All 20 plans are implemented; the Docker-dependent T5-16 row, the review passes, and three recorded limitations remain (two diagonals a lane offset cannot separate, five editor naming prompts, and v040 extension parts 05/06 still absent from the shipped artifact).
-- [Phase 6]: Alarms, Notifications & Schedules still carries `Plans: TBD`; it needs its planning artifacts before execution.
+- [Phase 6]: Planning is complete; execution has not started. The audit found the three areas are not greenfield and named 14 locatable defects, one of which (`alarms/list` returning every project's alarm state to any caller) was a live authorization hole and was fixed separately in `9f53bcb`.
 - [Phase 3]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T3-14 row and the review passes remain.
 - [Phase 2]: No known technical blocker. The bounded plan check passed on 2026-09-02 (see `02-PLAN-CHECK.md`); execution is complete.
 - [Phase 2]: Shared mutation routes now require a valid bearer at the policy boundary. Plan 02-09 must still add the decisive in-lock recheck; the boundary check alone cannot see authority that changes mid-request.
 - [Phase 1]: Resolved in planning — lanes are discovered and digest-pinned at execution, and Companion packaging is validated as a local integration-category artifact without unauthorized publication.
 - [Phase 5]: SDK trust, distribution, and compatibility policy must forbid project-bundled privileged execution.
-- [Phase 6]: Deployment alarm philosophy and supported schedule/calendar authoring APIs require decisions.
+- [Phase 6]: RESOLVED. Schedule authoring is `schedule/create|update|delete` (admin-gated), calendar authoring is `calendar.create_event` gated on `CalendarEntityFeature.CREATE_EVENT`, holidays bind to `binary_sensor.workday` with its per-Bundesland `province`. The alarm philosophy is configuration with conservative defaults, decided with the user on 2026-09-02; the priority vocabulary is the one deliberate exception.
 - [Phase 7]: Recorder API lanes and energy/report calculation contracts must be pinned.
 - [Phase 9]: Remote authentication, SSRF allowlisting, and partial-failure budgets require prototyping.
 - [Phase 10]: Numeric 100/500/2,000-object budgets require representative hardware measurements.
@@ -213,6 +218,6 @@ Two capabilities are deliberately out of v1.1 and recorded in
 
 ## Session Continuity
 
-Last session: 2026-09-02T09:00:00.000Z
-Stopped at: Phase 5 execution complete; plans 05-01 through 05-20 pushed
-Resume file: .planning/phases/04-runtime-operations-drilldown/.continue-here.md
+Last session: 2026-09-02T14:00:00.000Z
+Stopped at: Phase 6 planning complete; 20 plans and the roadmap entry pushed
+Resume file: .planning/phases/06-alarms-notifications-schedules/.continue-here.md

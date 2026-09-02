@@ -220,8 +220,28 @@ Plans:
   5. Python HA and exact-card browser tests exercise transitions, denial, malformed input, restart, notifier failure, schedule failure, German/English text, keyboard/focus announcements, and generated-artifact equality rather than checking for lifecycle keywords.
 
 **Known defects closed**: Shelving that does not suppress processing/notifications, loop-closure delay tasks using the wrong delay, full alarm scans on every state change, split browser/backend lifecycle truth, duplicate restart notifications, and swallowed schedule/notification failures.
-**Research flag**: Confirm supported HA schedule/calendar authoring APIs and the deployment alarm philosophy, priorities, shelving/escalation limits, recipients, and retention.
-**Plans**: TBD
+**Research flag**: RESOLVED 2026-09-02 — see `06-RESEARCH.md`. HA 2026.2.3 supports schedule authoring over `schedule/create|update|delete` (admin-gated), calendar authoring via `calendar.create_event` gated on `CalendarEntityFeature.CREATE_EVENT`, and per-Bundesland holidays via `binary_sensor.workday`. The alarm philosophy is configuration with conservative defaults, decided with the user; the priority vocabulary is the one deliberate exception.
+Plans:
+- [ ] 06-01-PLAN.md — Stand up the Phase-6 gate, the notification-aware effect ledger and the alarm corpus.
+- [ ] 06-02-PLAN.md — Close the alarm vocabulary and migrate the four that disagree.
+- [ ] 06-03-PLAN.md — Introduce schema 5 and the sequential 4-5 migration.
+- [ ] 06-04-PLAN.md — Specify the lifecycle, suppression, restart, index and retention RED contracts.
+- [ ] 06-05-PLAN.md — Specify the notification, escalation, schedule, DST and shipped-truth RED contracts.
+- [ ] 06-06-PLAN.md — Build the lifecycle engine with per-alarm and anchored delays.
+- [ ] 06-07-PLAN.md — Make suppression real, consulted where the decision is made.
+- [ ] 06-08-PLAN.md — Make the lifecycle restart-safe and re-arm pending delays.
+- [ ] 06-09-PLAN.md — Index the alarm scan and prove the index cannot go stale.
+- [ ] 06-10-PLAN.md — Bound retention and reconcile alarm state against the project.
+- [ ] 06-11-PLAN.md — Make notification and escalation recorded, allowlisted and failure-visible.
+- [ ] 06-12-PLAN.md — Resolve schedules to instants and prove both runtimes agree across DST.
+- [ ] 06-13-PLAN.md — Give schedules routes, authorization, enumeration filtering and audit.
+- [ ] 06-14-PLAN.md — Bind schedules to supported Home Assistant capabilities.
+- [ ] 06-15-PLAN.md — Retire the second, third and fourth alarm evaluators.
+- [ ] 06-16-PLAN.md — Ship the alarm surface: list, detail, acknowledgement and shelving.
+- [ ] 06-17-PLAN.md — Ship the schedule surface and the DST preview.
+- [ ] 06-18-PLAN.md — Ship the alarm philosophy as configuration with conservative defaults.
+- [ ] 06-19-PLAN.md — Document the Phase-6 contract in English and German.
+- [ ] 06-20-PLAN.md — Build out the Phase-6 gate and close the phase honestly.
 **UI hint**: yes
 
 ### Phase 7: Trends, Energy & Reproducible Reports
