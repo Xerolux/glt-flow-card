@@ -11,7 +11,7 @@ from typing import Any
 from .alarm_vocabulary import migrate_severity
 from .project_contract import digest_canonical_json, evaluate_project_contract
 
-CURRENT_PROJECT_SCHEMA_VERSION = 6
+CURRENT_PROJECT_SCHEMA_VERSION = 7
 
 
 def _clone_canonical(value: Any) -> Any:
@@ -418,6 +418,48 @@ def _step_five_to_six(source: Mapping[str, Any]) -> dict[str, Any]:
     return _clone_canonical(candidate)
 
 
+def _step_six_to_seven(source: Mapping[str, Any]) -> dict[str, Any]:
+    candidate = _clone_canonical(source)
+    candidate["schema_version"] = 7
+    reported: list[str] = []
+
+    # `simulation.enabled` was a safety property living in operator data: no
+    # server path read it, and the one gate that existed read `gates.simulation`
+    # from the project document too. Phase 6 established that a safety-relevant
+    # policy is site configuration and never project data, after a notification
+    # service name in a project document was found acting as an authorization.
+    # This is the same shape with plant writes behind it.
+    #
+    # Quarantined rather than deleted, so a site can see what it had. Carrying
+    # it forward as a field anything reads would preserve the defect under a new
+    # schema version.
+    simulation = candidate.get("simulation")
+    if isinstance(simulation, dict):
+        _quarantine(candidate, "simulation", simulation, reported)
+        del candidate["simulation"]
+
+    # Work orders move to the Companion's store. Two stores that never
+    # reconcile (D20) meant the table an engineer saw and the one the Companion
+    # held were different lists both claiming to be the work orders.
+    work_orders = candidate.get("work_orders")
+    if isinstance(work_orders, list) and work_orders:
+        _quarantine(candidate, "work_orders", work_orders, reported)
+    if "work_orders" in candidate:
+        del candidate["work_orders"]
+
+    # A per-control simulation gate is quarantined for the same reason: it is
+    # the authorization, not a preference.
+    for control in candidate.get("controls") or []:
+        if not isinstance(control, dict):
+            continue
+        gates = control.get("gates")
+        if isinstance(gates, dict) and "simulation" in gates:
+            _quarantine(control, "gates_simulation", gates["simulation"], reported)
+            del gates["simulation"]
+
+    return _clone_canonical(candidate)
+
+
 PROJECT_MIGRATIONS: dict[int, dict[str, int | Callable[[Mapping[str, Any]], dict[str, Any]]]] = {
     0: {"from": 0, "to": 1, "migrate": _step_zero_to_one},
     1: {"from": 1, "to": 2, "migrate": _step_one_to_two},
@@ -425,6 +467,7 @@ PROJECT_MIGRATIONS: dict[int, dict[str, int | Callable[[Mapping[str, Any]], dict
     3: {"from": 3, "to": 4, "migrate": _step_three_to_four},
     4: {"from": 4, "to": 5, "migrate": _step_four_to_five},
     5: {"from": 5, "to": 6, "migrate": _step_five_to_six},
+    6: {"from": 6, "to": 7, "migrate": _step_six_to_seven},
 }
 
 

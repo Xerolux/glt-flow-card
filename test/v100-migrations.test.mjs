@@ -39,15 +39,15 @@ const currentProject = () => ({
   semantic_model: { nodes: [] },
 });
 
-test("migration executes exact 0→1→2→3→4→5→6 copy-on-write steps with receipted evidence", () => {
+test("migration executes exact 0→1→2→3→4→5→6→7 copy-on-write steps with receipted evidence", () => {
   const source = legacyProject();
   const before = JSON.stringify(source);
   const result = migrateProjectDocument(source, { dryRun: true });
 
-  assert.equal(CURRENT_PROJECT_SCHEMA_VERSION, 6);
+  assert.equal(CURRENT_PROJECT_SCHEMA_VERSION, 7);
   assert.equal(JSON.stringify(source), before);
   assert.notStrictEqual(result.candidate, source);
-  assert.deepEqual(result.receipt.steps.map(({ from, to }) => [from, to]), [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]);
+  assert.deepEqual(result.receipt.steps.map(({ from, to }) => [from, to]), [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]]);
   assert.equal(result.receipt.source_schema_version, 0);
   assert.equal(result.receipt.candidate_schema_version, CURRENT_PROJECT_SCHEMA_VERSION);
   assert.match(result.receipt.source_digest, /^[a-f0-9]{64}$/);
@@ -67,7 +67,7 @@ test("dry-run and apply modes are pure and return identical candidate and receip
   const apply = migrateProjectDocument(source, { dryRun: false });
 
   assert.deepEqual(apply, dryRun);
-  assert.deepEqual(dryRun.receipt.steps.map(({ from, to }) => [from, to]), [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]);
+  assert.deepEqual(dryRun.receipt.steps.map(({ from, to }) => [from, to]), [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]]);
   assert.equal(source.schema_version, 1);
   assert.equal("project" in source, false);
 });
@@ -152,7 +152,7 @@ test("the migration's field lists and schema 6 declare the same fields", () => {
   // nothing, because the migration quarantined a field the schema kept. A
   // mismatch is silent by nature, so it is asserted rather than reviewed.
   const schema = JSON.parse(readFileSync(
-    new URL("../schemas/project/6.schema.json", import.meta.url), "utf8",
+    new URL("../schemas/project/7.schema.json", import.meta.url), "utf8",
   ));
   for (const [shape, fields] of Object.entries(SCHEMA_MIRRORED_FIELDS)) {
     const declared = Object.keys(schema.$defs[shape].properties).sort();

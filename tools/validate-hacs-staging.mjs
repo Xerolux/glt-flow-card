@@ -54,6 +54,7 @@ const COMPONENT_FILES = [
   "period_vocabulary.py",
   "history_bounds.py",
   "history_routes.py",
+  "dispatch_vocabulary.py",
   "period_resolution.py",
   "schedule_time.py",
   "schedule_bindings.py",

@@ -50,11 +50,11 @@ def test_migration_is_sequential_copy_on_write_and_receipted() -> None:
 
     result = migrate_project_document(source, dry_run=True)
 
-    assert CURRENT_PROJECT_SCHEMA_VERSION == 6
+    assert CURRENT_PROJECT_SCHEMA_VERSION == 7
     assert source == original
     assert result["candidate"] is not source
     assert [(step["from"], step["to"]) for step in result["receipt"]["steps"]] == [
-        (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6),
+        (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7),
     ]
     assert result["receipt"]["warnings"] == []
     assert result["receipt"]["loss"] == {"dropped": [], "preserved": []}

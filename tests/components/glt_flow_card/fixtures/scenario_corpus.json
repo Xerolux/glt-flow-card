@@ -1,0 +1,115 @@
+{
+  "cases": [
+    {
+      "definition": {
+        "device_class": "temperature",
+        "from": 20.0,
+        "kind": "ramp",
+        "slot": "flow_temperature",
+        "ticks": 10,
+        "to": 65.0,
+        "unit": "°C"
+      },
+      "expected": [
+        20.0,
+        25.0,
+        30.0,
+        35.0,
+        40.0,
+        45.0,
+        50.0,
+        55.0,
+        60.0,
+        65.0
+      ],
+      "id": "ramp-flow-temperature",
+      "why": "The varying case. Its value changes every tick, so reproducibility is proven on something that could differ."
+    },
+    {
+      "definition": {
+        "kind": "sequence",
+        "slot": "pump_state",
+        "states": [
+          "off",
+          "starting",
+          "running",
+          "running",
+          "stopping",
+          "off"
+        ]
+      },
+      "expected": [
+        "off",
+        "starting",
+        "running",
+        "running",
+        "stopping",
+        "off"
+      ],
+      "id": "pump-start-sequence",
+      "why": "A state sequence rather than a value, so the evaluator cannot assume numbers."
+    },
+    {
+      "definition": {
+        "kind": "sequence",
+        "slot": "valve_state",
+        "states": [
+          "closed",
+          "opening",
+          "fault",
+          "fault",
+          "closed"
+        ]
+      },
+      "expected": [
+        "closed",
+        "opening",
+        "fault",
+        "fault",
+        "closed"
+      ],
+      "id": "valve-fault-injection",
+      "why": "A fault must be expressible, and must not read as a value."
+    },
+    {
+      "definition": {
+        "device_class": "pressure",
+        "from": 0.0,
+        "kind": "ramp",
+        "slot": "not_yet_created",
+        "ticks": 6,
+        "to": 2.5,
+        "unit": "bar"
+      },
+      "expected": [
+        0.0,
+        0.5,
+        1.0,
+        1.5,
+        2.0,
+        2.5
+      ],
+      "id": "entities-that-do-not-exist-yet",
+      "why": "SIM-01 requires building a scenario BEFORE its entities exist. This case names entities absent from the state machine and must still evaluate."
+    },
+    {
+      "definition": {
+        "device_class": "temperature",
+        "from": 21.0,
+        "kind": "ramp",
+        "slot": "setpoint",
+        "ticks": 1,
+        "to": 21.0,
+        "unit": "°C"
+      },
+      "expected": [
+        21.0
+      ],
+      "id": "single-tick-hold",
+      "why": "A one-tick scenario. The degenerate case where a ramp has no interval to divide by, which is where an off-by-one lives."
+    }
+  ],
+  "format": "glt-flow-card-scenario-corpus",
+  "note": "A scenario is a pure function of definition and tick. At least one case must VARY per tick: a corpus of constants would prove reproducibility on something that cannot change, which is the vacuous pass this project has corrected twice.",
+  "version": 1
+}

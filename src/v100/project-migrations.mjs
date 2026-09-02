@@ -5,7 +5,7 @@ import {
 } from "./project-contract.mjs";
 import { migrateSeverity } from "./alarm-vocabulary.mjs";
 
-export const CURRENT_PROJECT_SCHEMA_VERSION = 6;
+export const CURRENT_PROJECT_SCHEMA_VERSION = 7;
 
 const cloneCanonical = (value) => JSON.parse(digestCanonicalJson(value).canonical);
 
@@ -419,6 +419,47 @@ function stepFiveToSix(source) {
   return cloneCanonical(candidate);
 }
 
+function stepSixToSeven(source) {
+  const candidate = cloneCanonical(source);
+  candidate.schema_version = 7;
+  const reported = [];
+
+  // `simulation.enabled` was a safety property living in operator data: no
+  // server path read it, and the one gate that existed read `gates.simulation`
+  // from the project document too. Phase 6 established that a safety-relevant
+  // policy is site configuration and never project data, after a notification
+  // service name in a project document was found acting as an authorization.
+  // This is the same shape with plant writes behind it.
+  //
+  // Quarantined rather than deleted, so a site can see what it had. Carrying it
+  // forward as a field anything reads would preserve the defect under a new
+  // schema version.
+  if (candidate.simulation && typeof candidate.simulation === "object") {
+    quarantine(candidate, "simulation", candidate.simulation, reported);
+    delete candidate.simulation;
+  }
+
+  // Work orders move to the Companion's store. Two stores that never reconcile
+  // (D20) meant the table an engineer saw and the one the Companion held were
+  // different lists both claiming to be the work orders.
+  if (Array.isArray(candidate.work_orders) && candidate.work_orders.length > 0) {
+    quarantine(candidate, "work_orders", candidate.work_orders, reported);
+  }
+  delete candidate.work_orders;
+
+  // A per-control simulation gate goes for the same reason: it is the
+  // authorization, not a preference.
+  for (const control of candidate.controls ?? []) {
+    if (!control || typeof control !== "object") continue;
+    if (control.gates && typeof control.gates === "object" && "simulation" in control.gates) {
+      quarantine(control, "gates_simulation", control.gates.simulation, reported);
+      delete control.gates.simulation;
+    }
+  }
+
+  return cloneCanonical(candidate);
+}
+
 export const PROJECT_MIGRATIONS = new Map([
   [0, { from: 0, to: 1, migrate: stepZeroToOne }],
   [1, { from: 1, to: 2, migrate: stepOneToTwo }],
@@ -426,6 +467,7 @@ export const PROJECT_MIGRATIONS = new Map([
   [3, { from: 3, to: 4, migrate: stepThreeToFour }],
   [4, { from: 4, to: 5, migrate: stepFourToFive }],
   [5, { from: 5, to: 6, migrate: stepFiveToSix }],
+  [6, { from: 6, to: 7, migrate: stepSixToSeven }],
 ]);
 
 function contractFailure(prefix, evidence) {

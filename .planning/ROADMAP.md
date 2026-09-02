@@ -298,8 +298,25 @@ Plans:
   5. Deterministic backend/browser tests prove virtual-time replay, all service denials, diagnostic accuracy, due/reset math, invalid transitions, oversized/unsafe attachment rejection, German/English accessible workflows, and exact generated-card behavior.
 
 **Known defects closed**: Simulation/commissioning write reachability risk, non-repeatable diagnostic claims, weak work-order input bounds, uncontrolled attachment/storage growth, and maintenance calculations without executable evidence.
-**Plans**: TBD
+**Plans**: 16
 **UI hint**: yes
+
+- [ ] 08-01-PLAN.md — Stand up the Phase-8 gate, the dispatch effect ledger and the scenario and registry corpora.
+- [ ] 08-02-PLAN.md — Close the dispatch, diagnosis and transition vocabularies, and introduce schema 7.
+- [ ] 08-03-PLAN.md — Derive record identity from content, in one helper both runtimes use.
+- [ ] 08-04-PLAN.md — Make a scenario a pure function of definition and tick, validated against the profile.
+- [ ] 08-05-PLAN.md — Give the simulation session an owner, a bounded TTL and an end.
+- [ ] 08-06-PLAN.md — Consult one dispatch decision at the point of dispatch, and fail closed.
+- [ ] 08-07-PLAN.md — Enumerate every dispatch path and prove none escapes the gate.
+- [ ] 08-08-PLAN.md — Mark notifications during a rehearsal rather than silencing them.
+- [ ] 08-09-PLAN.md — Move the commissioning diagnostic to the Companion and stop it inventing findings.
+- [ ] 08-10-PLAN.md — Check services, units, device classes and duplicates, and bound the suggestions.
+- [ ] 08-11-PLAN.md — Prove commissioning writes nothing, and replace the invented score with counts.
+- [ ] 08-12-PLAN.md — Make work orders append-only with a closed transition table.
+- [ ] 08-13-PLAN.md — Bound attachments, completion history and the work-order store.
+- [ ] 08-14-PLAN.md — Ship the simulation, commissioning and asset surfaces.
+- [ ] 08-15-PLAN.md — Compute due and next-due from interval and operating-hour plans.
+- [ ] 08-16-PLAN.md — Document the contract and close the Phase-8 register from commands.
 
 ### Phase 9: Failure-Isolated Multi-Site Supervision
 

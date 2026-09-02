@@ -1,0 +1,67 @@
+{
+  "cases": [
+    {
+      "device_class": "temperature",
+      "entity_id": "sensor.present_flow",
+      "expected": "present",
+      "in_registry": true,
+      "in_states": true,
+      "platform": "modbus",
+      "unit": "°C",
+      "why": "the ordinary case"
+    },
+    {
+      "device_class": "temperature",
+      "entity_id": "sensor.disabled_return",
+      "expected": "registered_not_loaded",
+      "in_registry": true,
+      "in_states": false,
+      "platform": "modbus",
+      "unit": "°C",
+      "why": "disabled, or its integration failed to set up -- NOT a typo"
+    },
+    {
+      "device_class": null,
+      "entity_id": "sensor.template_delta",
+      "expected": "unregistered",
+      "in_registry": false,
+      "in_states": true,
+      "platform": null,
+      "unit": "K",
+      "why": "a template or YAML entity: fine, but it has no provenance to report"
+    },
+    {
+      "device_class": null,
+      "entity_id": "sensor.typo_flwo",
+      "expected": "missing",
+      "in_registry": false,
+      "in_states": false,
+      "platform": null,
+      "unit": null,
+      "why": "the only one of the four that is actually a typo"
+    },
+    {
+      "device_class": "temperature",
+      "entity_id": "sensor.wrong_unit",
+      "expected": "wrong_unit",
+      "in_registry": true,
+      "in_states": true,
+      "platform": "knx",
+      "unit": "%",
+      "why": "the profile expects °C; both sides must be named in the finding"
+    },
+    {
+      "device_class": "humidity",
+      "entity_id": "sensor.wrong_class",
+      "expected": "wrong_device_class",
+      "in_registry": true,
+      "in_states": true,
+      "platform": "bacnet",
+      "unit": "°C",
+      "why": "distinct from a unit mismatch, because they have different causes"
+    }
+  ],
+  "format": "glt-flow-card-registry-corpus",
+  "note": "Registry membership and state-machine membership are independent questions. The shipped diagnostic collapses all four combinations into `missing`, sending an engineer to look for a typo when an integration failed to load.",
+  "version": 1
+}
