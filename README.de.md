@@ -59,6 +59,40 @@ Die folgenden Bilder werden automatisch aus der **aktuellen GitHub-Pages-Oberfl�
 - Energie, Wartung/Arbeitsaufträge, Reports, Multi-Site/Remote-HA, Plugin-SDK, Projekt-Diff und `.gltproject`-Bundles;
 - Config Flow, serverseitiges Audit, Projekt-Locking sowie Deutsch/Englisch-Grundlage.
 
+### Alarme, Benachrichtigungen und Zeitprogramme
+
+Ein Alarm-Lebenszyklus im Backend, und jede Oberfläche zeigt an, was er
+entschieden hat. Der Companion wertet Bedingung, Hysterese und Verzögerung aus;
+die Karte stellt das Ergebnis dar. Die Verzögerung ist auf die erste Aktivierung
+verankert — sie unterdrückt einen Ausreißer, nicht eine dauerhafte Störung, die
+zufällig unruhig ist. Shelving, Wartung und Quittierung werden dort geprüft, wo
+entschieden wird, und ein unterdrückter Alarm hält fest, **welche**
+Unterdrückung galt und bis wann.
+
+Jeder Zustellversuch wird mit Dienst, Empfänger, Ergebnis und Fehlertext
+aufgezeichnet. Eine fehlgeschlagene Zustellung entfernt, entwertet oder verbirgt
+den Alarm nie: Einer, über den niemand informiert werden konnte, ist dringender
+als einer, über den informiert wurde.
+
+**Die Alarmphilosophie ist Ihre Entscheidung, nicht unsere.** Shelving-Grenzen,
+Eskalationsstufen, Empfänger und Aufbewahrung sind Konfiguration, und jede
+Vorgabe ist konservativ und als Standortentscheidung dokumentiert. Eine frisch
+installierte Anlage ist still und sicher — sie meldet in der Oberfläche,
+schreibt Historie und benachrichtigt niemanden, bis Sie ein Ziel konfigurieren.
+
+Zeitprogramme lösen mit der Zeitzone des Standorts zu Zeitpunkten auf, damit die
+zwei seltsamen Tage im Jahr vorhersagbar sind: Eine 02:30-Absenkung meldet an
+einem Umstellungstag im Frühjahr, dass es diese Zeit nicht gibt, statt einfach
+auszufallen; im Herbst läuft sie einmal — durch die Auflösung, nicht durch
+Zufall. Die Vorschau sagt beides in Worten.
+
+**Was diese Karte nicht tut:** Sie liefert keine Feiertagstabelle mit —
+deutsche Feiertage sind Ländersache, und `binary_sensor.workday` trägt Land,
+Bundesland und lokale Ergänzungen bereits — und sie baut keinen Kalender nach.
+Feiertage, Ausnahmen, Ferien, Sondertage und Betriebszeiten binden an die
+`schedule`-, `calendar`- und Workday-Fähigkeiten von Home Assistant, und eine
+Bindung sagt, was sie nicht kann, bevor Sie es versuchen.
+
 > Für sichere Bedienungen, geräteübergreifende Projekte, Alarme, Zeitprogramme, Audit, Locks und Remote-Home-Assistant wird der **GLT Flow Card Companion** empfohlen. Die reine Dashboard-Card bleibt weiterhin ohne Backend nutzbar.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**

@@ -8,6 +8,7 @@
 - [YAML, Projekte & Versionen](YAML-Projects)
 - [Symbole, Gruppen & Routing](Symbols-Routing)
 - [Alarme & Bedienung](Alarms-Controls)
+- [Zeitprogramme](Schedules)
 - [Trends & Reports](Trends-Reports)
 - [Wartung & Assets](Assets-Maintenance)
 - [Rechte & Audit](Permissions-Audit)

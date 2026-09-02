@@ -56,6 +56,38 @@ The following images are generated automatically from the **current GitHub Pages
 - drill-down, Historian aggregation, simulation, commissioning diagnostics, energy, maintenance/work orders and reports;
 - remote Home Assistant sites, plugin SDK, project diff, `.gltproject` bundles, server audit/locking and i18n foundation.
 
+### Alarms, notifications and schedules
+
+One backend alarm lifecycle, and every surface renders what it decided. The
+Companion evaluates conditions, hysteresis and delays; the card displays the
+result. A delay is anchored to the first activation, so it suppresses a
+transient rather than a persistent fault that happens to be noisy. Shelving,
+maintenance and acknowledgement are consulted where the decision is made, and a
+suppressed alarm records *which* suppression applied and until when.
+
+Every notification attempt records its service, target, outcome and error. A
+delivery failure never removes, downgrades or hides the alarm: one nobody could
+be told about is more urgent than one they were told about.
+
+**The alarm philosophy is your decision, not ours.** Shelving limits, escalation
+stages, recipients and retention are configuration, and every default ships
+conservative and documented as a site decision. A fresh installation is quiet
+and safe — it annunciates in the UI, records history, and notifies nobody until
+you configure a target.
+
+Schedules resolve to instants using the site's timezone, so the two days a year
+that are strange behave predictably: a 02:30 setback on a spring-forward date
+reports that the time does not exist instead of silently not running, and on a
+fall-back date it runs once by the resolution rather than by luck. The preview
+says both in words.
+
+**What this does not do:** it ships no holiday table — German public holidays
+are per-Bundesland and `binary_sensor.workday` already carries country, province
+and local additions — and it reimplements no calendar. Holidays, exceptions,
+vacations, special days and operating periods bind to Home Assistant's own
+`schedule`, `calendar` and workday capabilities, and a binding says what it
+cannot do before you attempt it.
+
 > The **GLT Flow Card Companion** is recommended for secure controls, cross-device projects, alarms, schedules, audit, locks and remote Home Assistant sites. The dashboard card still works standalone.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**
