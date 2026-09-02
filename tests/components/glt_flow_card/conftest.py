@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import pytest
+from homeassistant.exceptions import HomeAssistantError
 
 if sys.platform == "win32" and "fcntl" not in sys.modules:
     fcntl = ModuleType("fcntl")
@@ -271,6 +272,66 @@ def controlled_service(hass: HomeAssistant) -> Generator[Any]:
 
     with patch.object(type(hass.services), "async_call", side_effect=guarded_call):
         yield controlled
+
+
+@pytest.fixture
+def notification_ledger(hass: HomeAssistant) -> Generator[Any]:
+    """Record every notification attempt and fail the test if one escaped.
+
+    Phase 6 is the first phase whose subject is a service call that is
+    *intended*, so the Phase-2 rule -- zero unintended effects -- no longer
+    settles the question. A suite can assert everything it meant to assert and
+    still have paged somebody.
+
+    The containment check therefore runs in **teardown**, after the test body
+    has finished. A test that reached a real notification service or named a
+    real recipient fails even when every one of its own assertions passed.
+
+    The fixture registers exactly one notifier, `glt_fake_notify.send`, which
+    exists nowhere in Home Assistant, and permits exactly one recipient. A test
+    that needs a delivery failure calls `fail_next()`; the raised error is
+    recorded as an outcome rather than escaping, because "the notifier threw" is
+    the behaviour under test, not a broken harness.
+    """
+    from .user_factory import (
+        FAKE_NOTIFY_DOMAIN,
+        FAKE_NOTIFY_SERVICE,
+        NotificationLedger,
+    )
+
+    ledger = NotificationLedger()
+    original_call = PRISTINE_SERVICE_CALL
+    failures: list[str] = []
+
+    def fail_next(message: str = "notifier unavailable") -> None:
+        """Make the next fixture notification attempt raise, once."""
+        failures.append(message)
+
+    async def fake_notifier(call: Any) -> None:
+        if failures:
+            raise HomeAssistantError(failures.pop(0))
+
+    hass.services.async_register(FAKE_NOTIFY_DOMAIN, FAKE_NOTIFY_SERVICE, fake_notifier)
+
+    async def guarded_call(domain, service, data=None, *args, **kwargs):
+        domain, service = str(domain), str(service)
+        payload = dict(data or {})
+        if not ledger.is_notification(domain, service):
+            return await original_call(hass.services, domain, service, data, *args, **kwargs)
+        try:
+            result = await original_call(hass.services, domain, service, data, *args, **kwargs)
+        except Exception as error:  # noqa: BLE001 - the outcome is the subject
+            ledger.record(domain, service, payload, "failed", str(error))
+            raise
+        ledger.record(domain, service, payload, "delivered")
+        return result
+
+    ledger.fail_next = fail_next  # type: ignore[attr-defined]
+    with patch.object(type(hass.services), "async_call", side_effect=guarded_call):
+        yield ledger
+    # Teardown, not the test body: this is what turns a passing test that
+    # reached outside the fixture into a failing one.
+    ledger.assert_contained()
 
 
 @pytest.fixture

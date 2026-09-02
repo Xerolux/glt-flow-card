@@ -283,6 +283,93 @@ export const EXPECTED_RED = Object.freeze(Object.fromEntries([
     "complete exact-dist Phase-5 UI is unavailable",
     "PHASE5_UI_EFFECTS ",
   ),
+  // -- Phase 6 -----------------------------------------------------------
+  //
+  // The notification sentinels carry a NOTIFY ledger prefix rather than the
+  // usual EFFECTS one. Phase 6 is the first phase whose subject is a service
+  // call that is *intended*, so "zero unintended effects" no longer settles the
+  // question: the ledger must also say which targets were reached, and a run
+  // that reached a real recipient is broken even when its assertions pass.
+  browserEntry(
+    "phase6-vocabulary",
+    "one closed alarm priority vocabulary is unavailable",
+    "PHASE6_VOCABULARY_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase6-lifecycle",
+    `${TESTS}/test_alarm_lifecycle.py`,
+    "per-alarm anchored delays and hysteresis transitions are unavailable",
+    "PHASE6_LIFECYCLE_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase6-suppression",
+    `${TESTS}/test_alarm_suppression.py`,
+    "suppression consulted at the point of decision is unavailable",
+    "PHASE6_SUPPRESSION_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase6-restart",
+    `${TESTS}/test_alarm_restart.py`,
+    "restart-safe alarm state is unavailable",
+    "PHASE6_RESTART_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase6-index",
+    `${TESTS}/test_alarm_index.py`,
+    "the entity to alarm index is unavailable",
+    "PHASE6_INDEX_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase6-retention",
+    `${TESTS}/test_alarm_retention.py`,
+    "bounded retention and alarm state reconciliation are unavailable",
+    "PHASE6_RETENTION_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase6-notifications",
+    `${TESTS}/test_notification_delivery.py`,
+    "recorded, allowlisted notification delivery is unavailable",
+    "PHASE6_NOTIFY_LEDGER ",
+  ),
+  pythonEntry(
+    "phase6-escalation",
+    `${TESTS}/test_escalation.py`,
+    "configured escalation stages are unavailable",
+    "PHASE6_NOTIFY_LEDGER ",
+  ),
+  pythonEntry(
+    "phase6-schedule-dst",
+    `${TESTS}/test_schedule_dst.py`,
+    "schedules resolved to instants across DST are unavailable",
+    "PHASE6_SCHEDULE_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase6-schedule-routes",
+    `${TESTS}/test_schedule_routes.py`,
+    "authorized, audited schedule routes are unavailable",
+    "PHASE6_SCHEDULE_EFFECTS ",
+  ),
+  pythonEntry(
+    "phase6-schedule-bindings",
+    `${TESTS}/test_schedule_bindings.py`,
+    "Home Assistant schedule and calendar bindings are unavailable",
+    "PHASE6_SCHEDULE_EFFECTS ",
+  ),
+  browserEntry(
+    "phase6-schedule-parity",
+    "dual-runtime schedule resolution parity is unavailable",
+    "PHASE6_SCHEDULE_EFFECTS ",
+  ),
+  browserEntry(
+    "phase6-shipped-truth",
+    "the shipped card still derives alarm state for itself",
+    "PHASE6_SHIPPED_EFFECTS ",
+  ),
+  browserEntry(
+    "phase6-ui",
+    "complete exact-dist Phase-6 alarm and schedule UI is unavailable",
+    "PHASE6_UI_EFFECTS ",
+  ),
 ]));
 
 const HARNESS_FAILURES = [

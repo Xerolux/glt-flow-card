@@ -239,3 +239,141 @@ class ControlledService:
     def reset(self) -> None:
         """Clear recorded calls without widening the allowlist."""
         self.calls.clear()
+
+
+#: The one notification service a Phase-6 test may reach, and the one recipient
+#: it may name. Both are fixture-owned strings that exist nowhere in Home
+#: Assistant, so a call that lands on either could not have reached a person.
+FAKE_NOTIFY_DOMAIN = "glt_fake_notify"
+FAKE_NOTIFY_SERVICE = "send"
+FAKE_NOTIFY_RECIPIENT = "glt-test-recipient"
+
+#: Service domains whose calls are treated as notification attempts. A call in
+#: any of these reaches a person unless the fixture owns it.
+NOTIFICATION_DOMAINS = frozenset({"notify", "persistent_notification", FAKE_NOTIFY_DOMAIN})
+
+
+class RealRecipientReached(AssertionError):
+    """Raised when a test caused a notification that could reach a person.
+
+    This is deliberately an ``AssertionError`` raised from the fixture's
+    teardown rather than from the call site. Phase 6 is the first phase whose
+    subject is a service call that is *intended*, so "the test passed" no longer
+    settles the question: a suite can assert everything it meant to assert and
+    still have paged somebody. Failing at teardown makes a passing test fail.
+    """
+
+
+@dataclass
+class NotificationLedger:
+    """Record every notification attempt, and prove none of them left the fixture.
+
+    The Phase-2 ledger proves *zero unintended* service calls, which is
+    necessary and no longer sufficient here. This ledger answers the other
+    question: of the calls that were intended, did any of them name a service or
+    a recipient that exists outside the test?
+    """
+
+    attempts: list[dict[str, Any]] = field(default_factory=list)
+
+    @staticmethod
+    def is_notification(domain: str, service: str) -> bool:
+        """Return whether a call is a notification attempt.
+
+        `notify.notify`, `notify.mobile_app_x`, `notify.send_message` and
+        `persistent_notification.create` all reach somebody; so does any service
+        in a notifier's own domain. The fixture domain is included so an
+        intended, contained attempt is recorded rather than invisible.
+        """
+        return domain in NOTIFICATION_DOMAINS
+
+    @staticmethod
+    def recipients(data: dict[str, Any]) -> tuple[str, ...]:
+        """Return the recipients a notification payload names.
+
+        For the legacy per-service API the recipient is `data["target"]`; for
+        the entity API it is `entity_id`. Both are normalised to a tuple of
+        strings so one assertion covers both shapes.
+        """
+        found: list[str] = []
+        for key in ("target", "entity_id"):
+            value = data.get(key)
+            if value is None:
+                continue
+            if isinstance(value, str):
+                found.append(value)
+            elif isinstance(value, (list, tuple, set)):
+                found.extend(str(entry) for entry in value)
+            else:
+                found.append(str(value))
+        return tuple(found)
+
+    def record(
+        self,
+        domain: str,
+        service: str,
+        data: dict[str, Any],
+        outcome: str,
+        error: str | None = None,
+    ) -> None:
+        """Record one notification attempt with its outcome."""
+        self.attempts.append(
+            {
+                "domain": domain,
+                "service": service,
+                "recipients": list(self.recipients(data)),
+                "outcome": outcome,
+                "error": error,
+            }
+        )
+
+    @property
+    def services(self) -> tuple[str, ...]:
+        """Return the distinct `domain.service` pairs this suite reached."""
+        return tuple(sorted({f"{a['domain']}.{a['service']}" for a in self.attempts}))
+
+    @property
+    def reached_recipients(self) -> tuple[str, ...]:
+        """Return the distinct recipients this suite named."""
+        return tuple(sorted({r for a in self.attempts for r in a["recipients"]}))
+
+    def assert_contained(self) -> None:
+        """Fail if any attempt could have reached a real service or person.
+
+        Called from the fixture's teardown, so it converts a passing test that
+        reached outside the fixture into a failing one.
+        """
+        escaped_services = [
+            f"{a['domain']}.{a['service']}"
+            for a in self.attempts
+            if (a["domain"], a["service"]) != (FAKE_NOTIFY_DOMAIN, FAKE_NOTIFY_SERVICE)
+        ]
+        if escaped_services:
+            raise RealRecipientReached(
+                "a test reached a notification service outside the fixture: "
+                f"{sorted(set(escaped_services))}"
+            )
+        escaped_recipients = [
+            recipient
+            for attempt in self.attempts
+            for recipient in attempt["recipients"]
+            if recipient != FAKE_NOTIFY_RECIPIENT
+        ]
+        if escaped_recipients:
+            raise RealRecipientReached(
+                "a test named a notification recipient outside the fixture: "
+                f"{sorted(set(escaped_recipients))}"
+            )
+
+    def evidence(self) -> dict[str, Any]:
+        """Return the canonical ledger evidence a RED sentinel prints."""
+        return {
+            "attempts": len(self.attempts),
+            "services": list(self.services),
+            "recipients": list(self.reached_recipients),
+            "outcomes": sorted({a["outcome"] for a in self.attempts}),
+        }
+
+    def reset(self) -> None:
+        """Clear recorded attempts without widening anything."""
+        self.attempts.clear()
