@@ -11,7 +11,7 @@ from typing import Any
 from .alarm_vocabulary import migrate_severity
 from .project_contract import digest_canonical_json, evaluate_project_contract
 
-CURRENT_PROJECT_SCHEMA_VERSION = 5
+CURRENT_PROJECT_SCHEMA_VERSION = 6
 
 
 def _clone_canonical(value: Any) -> Any:
@@ -124,10 +124,67 @@ _SCHEDULE_FIELDS = (
     "legacy", "name", "service", "time", "to",
 )
 
+#: Fields schema 6 declares on a meter.
+_METER_FIELDS = (
+    "co2_factor_g_per_unit", "entity", "id", "legacy", "medium", "model", "name",
+    "price_per_unit", "price_unit", "unit",
+)
+
+#: Fields schema 6 declares on a report definition.
+_REPORT_FIELDS = (
+    "content", "formats", "id", "legacy", "name", "period", "schedule", "version",
+)
+
+#: Settings blocks schema 6 closes, with the fields each declares.
+_SETTINGS_FIELDS: dict[str, tuple[str, ...]] = {
+    "energy": ("co2_factor_g_per_kwh", "currency", "enabled", "legacy", "meters", "period"),
+    "historian": ("aggregate", "bucket_minutes", "deadband", "legacy", "max_points", "retention_days"),
+    "replay": ("enabled", "hours", "legacy", "speed"),
+    "reports": ("definitions", "enabled", "legacy", "runs_retained"),
+    "trend": (
+        "aggregate", "deadband", "enabled", "height", "hours", "legacy",
+        "max_entities", "max_raw_window_hours", "max_rows", "period",
+    ),
+}
+
+#: Units whose meter model can be read off the unit without guessing.
+#:
+#: A rate is an instantaneous measurement and is integrated over a period; a
+#: counter accumulates and is differenced across one. Getting this wrong is
+#: exactly D14: the shipped code multiplies a cumulative reading by a price and
+#: calls the result a cost. Anything not listed is *reported*, not guessed --
+#: a wrong model produces a plausible number, and a plausible number is what
+#: this phase exists to stop.
+_UNIT_METER_MODELS: dict[str, str] = {
+    "kwh": "counter", "wh": "counter", "mwh": "counter",
+    "m³": "counter", "m3": "counter", "l": "counter", "kg": "counter",
+    "w": "rate", "kw": "rate", "mw": "rate",
+    "m³/h": "rate", "m3/h": "rate", "l/min": "rate", "l/h": "rate",
+}
+
+#: Bucket minutes that name a period exactly. Anything else is reported.
+_BUCKET_PERIOD_MINUTES = {1440: "day", 10080: "week"}
+
+#: The period names schema 6 declares. Mirrored from the vocabulary module.
+_PERIOD_NAMES_6 = ("day", "week", "month", "year", "custom")
+
 _TIME_PATTERN = re.compile(r"^([01][0-9]|2[0-3]):[0-5][0-9]$")
 
 #: Exported so a test can compare them against the schema they mirror.
-SCHEMA_MIRRORED_FIELDS = {"alarm": _ALARM_FIELDS, "schedule": _SCHEDULE_FIELDS}
+#: Keyed by the ``$defs`` name in the schema, not by the project property, so
+#: the test can look each shape up directly. A mapping layer between the two
+#: would be one more place for them to disagree.
+SCHEMA_MIRRORED_FIELDS = {
+    "alarm": _ALARM_FIELDS,
+    "energySettings": _SETTINGS_FIELDS["energy"],
+    "historianSettings": _SETTINGS_FIELDS["historian"],
+    "meter": _METER_FIELDS,
+    "replaySettings": _SETTINGS_FIELDS["replay"],
+    "reportDefinition": _REPORT_FIELDS,
+    "reportSettings": _SETTINGS_FIELDS["reports"],
+    "schedule": _SCHEDULE_FIELDS,
+    "trendSettings": _SETTINGS_FIELDS["trend"],
+}
 
 
 def _alarm_collections(candidate: dict[str, Any]) -> list[list[Any]]:
@@ -239,12 +296,135 @@ def _step_four_to_five(source: Mapping[str, Any]) -> dict[str, Any]:
     return _clone_canonical(candidate)
 
 
+def _migrate_settings(candidate: dict[str, Any], key: str, reported: list[str]) -> None:
+    """Quarantine every key a closed settings block does not declare.
+
+    Same rule as 4->5: a rejected value moves into ``legacy`` and is reported. A
+    site's misconfiguration is still its data, and the receipt is where it
+    learns.
+    """
+    block = candidate.get(key)
+    if not isinstance(block, dict):
+        return
+    declared = _SETTINGS_FIELDS[key]
+    moved = [field for field in block if field not in declared]
+    for field in moved:
+        _quarantine(block, field, block[field], reported)
+        del block[field]
+
+
+def _infer_meter_model(meter: dict[str, Any]) -> str | None:
+    """Read a meter's model off its unit, or report that nobody can."""
+    unit = str(meter.get("unit") or "").strip().lower()
+    return _UNIT_METER_MODELS.get(unit)
+
+
+def _migrate_meter(meter: Any, reported: list[str]) -> None:
+    if not isinstance(meter, dict):
+        return
+    moved = [key for key in meter if key not in _METER_FIELDS]
+    for key in moved:
+        _quarantine(meter, key, meter[key], reported)
+        del meter[key]
+
+    # `kind` was the schema-5-era name and carried the medium, not the model.
+    legacy = meter.get("legacy")
+    if "medium" not in meter and isinstance(legacy, dict) and isinstance(legacy.get("kind"), str):
+        meter["medium"] = legacy["kind"]
+    if "model" not in meter:
+        inferred = _infer_meter_model(meter)
+        if inferred:
+            meter["model"] = inferred
+        else:
+            # Reported rather than guessed. Guessing `counter` would make every
+            # power sensor's lifetime reading a cost; guessing `rate` would
+            # integrate a meter that was never a rate. Both produce a plausible
+            # number, which is the failure this phase exists to stop.
+            _quarantine(meter, "model", meter.get("unit"), reported)
+            meter["model"] = "counter"
+    if "price_per_unit" in meter and not isinstance(meter["price_per_unit"], (int, float)):
+        _quarantine(meter, "price_per_unit", meter["price_per_unit"], reported)
+        del meter["price_per_unit"]
+
+
+def _migrate_report_definition(definition: Any, reported: list[str]) -> None:
+    if not isinstance(definition, dict):
+        return
+    moved = [key for key in definition if key not in _REPORT_FIELDS]
+    for key in moved:
+        _quarantine(definition, key, definition[key], reported)
+        del definition[key]
+
+    # Schema 5 stored `period` as a bare string and `schedule` as free text from
+    # a `prompt()` that nothing ever parsed. The string becomes a period object
+    # where it names one; the schedule is quarantined rather than reinterpreted,
+    # because 07-15 is what gives it a parser and a runner.
+    period = definition.get("period")
+    if isinstance(period, str):
+        if period in _PERIOD_NAMES_6:
+            definition["period"] = {"name": period}
+        else:
+            _quarantine(definition, "period", period, reported)
+            del definition["period"]
+    if "schedule" in definition and not isinstance(definition["schedule"], dict):
+        _quarantine(definition, "schedule", definition["schedule"], reported)
+        del definition["schedule"]
+    if "version" not in definition:
+        definition["version"] = 1
+
+
+def _step_five_to_six(source: Mapping[str, Any]) -> dict[str, Any]:
+    candidate = _clone_canonical(source)
+    candidate["schema_version"] = 6
+    # Schema 5 left `trend`, `energy`, `historian`, `reports` and `replay` as
+    # open objects, so every field the series code, the energy code and the
+    # report code read was undeclared. `period: "sometimes"` and
+    # `deadband: "a bit"` were both schema-valid and failed inside a computed
+    # figure, which is the worst place for a validation error to surface.
+    reported: list[str] = []
+    for key in _SETTINGS_FIELDS:
+        _migrate_settings(candidate, key, reported)
+
+    energy = candidate.get("energy")
+    if isinstance(energy, dict):
+        for meter in energy.get("meters") or []:
+            _migrate_meter(meter, reported)
+    reports = candidate.get("reports")
+    if isinstance(reports, dict):
+        for definition in reports.get("definitions") or []:
+            _migrate_report_definition(definition, reported)
+
+    # A bucket that names a period becomes one; a bucket that does not is
+    # reported rather than mapped. 43 200 minutes is not a month -- a month is
+    # 720, 743 or 745 hours depending on where the transition falls -- and
+    # pretending otherwise would carry D9 forward under a new name.
+    historian = candidate.get("historian")
+    if isinstance(historian, dict):
+        # `raw` was the shipped name for "every sample, no bucketing". It is
+        # renamed rather than kept, because `raw` already means something else
+        # in this phase: `source: "raw"` says an answer came from raw states
+        # rather than from long-term statistics.
+        if historian.get("aggregate") == "raw":
+            historian["aggregate"] = "none"
+        bucket = historian.get("bucket_minutes")
+        if (
+            isinstance(bucket, int)
+            and not isinstance(bucket, bool)
+            and bucket not in _BUCKET_PERIOD_MINUTES
+            and bucket >= 40_000
+        ):
+            _quarantine(historian, "bucket_minutes", bucket, reported)
+            del historian["bucket_minutes"]
+    return _clone_canonical(candidate)
+
+
 PROJECT_MIGRATIONS: dict[int, dict[str, int | Callable[[Mapping[str, Any]], dict[str, Any]]]] = {
     0: {"from": 0, "to": 1, "migrate": _step_zero_to_one},
     1: {"from": 1, "to": 2, "migrate": _step_one_to_two},
     2: {"from": 2, "to": 3, "migrate": _step_two_to_three},
     3: {"from": 3, "to": 4, "migrate": _step_three_to_four},
     4: {"from": 4, "to": 5, "migrate": _step_four_to_five},
+    5: {"from": 5, "to": 6, "migrate": _step_five_to_six},
 }
 
 

@@ -58,7 +58,7 @@ export function ensureV1(raw = {}) {
   c.sites = arr(c.sites);
   c.assets = arr(c.assets);
   c.routing = { automatic: true, orthogonal: true, padding: 28, obstacle_avoidance: true, ...(c.routing || {}) };
-  c.historian = { aggregate: "raw", deadband: 0, max_points: 4000, ...(c.historian || {}) };
+  c.historian = { aggregate: "none", deadband: 0, max_points: 4000, ...(c.historian || {}) };
   c.simulation = { enabled: false, states: {}, ...(c.simulation || {}) };
   c.ui = { kiosk: false, widescreen: false, minimap: true, locale: "de", ...(c.ui || {}) };
   return c;
@@ -310,12 +310,13 @@ export function diagnoseConfig(config, hassStates = {}, now = Date.now()) {
 }
 
 export function aggregateSeries(points, options = {}) {
-  const agg = options.aggregate || "raw", deadband = Number(options.deadband || 0), bucketMs = Number(options.bucket_ms || 0);
+  const agg = options.aggregate || "none", deadband = Number(options.deadband || 0), bucketMs = Number(options.bucket_ms || 0);
   let src = arr(points).filter((p) => Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y))).map((p) => ({ x: Number(p.x), y: Number(p.y) })).sort((a,b)=>a.x-b.x);
   if (deadband > 0 && src.length) {
     const out = [src[0]]; for (const p of src.slice(1)) if (Math.abs(p.y - out.at(-1).y) >= deadband) out.push(p); src = out;
   }
-  if (agg === "raw" || !bucketMs) return src;
+  // `raw` is still honoured for a project that has not been migrated yet.
+  if (agg === "none" || agg === "raw" || !bucketMs) return src;
   const buckets = new Map();
   for (const p of src) { const k = Math.floor(p.x / bucketMs) * bucketMs; const a = buckets.get(k) || []; a.push(p.y); buckets.set(k, a); }
   return [...buckets.entries()].map(([x, ys]) => ({ x, y: agg === "min" ? Math.min(...ys) : agg === "max" ? Math.max(...ys) : agg === "sum" ? ys.reduce((a,b)=>a+b,0) : ys.reduce((a,b)=>a+b,0)/ys.length }));

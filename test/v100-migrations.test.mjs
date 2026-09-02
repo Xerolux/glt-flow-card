@@ -9,6 +9,7 @@ import {
   SCHEMA_MIRRORED_FIELDS,
   migrateProjectDocument,
 } from "../src/v100/project-migrations.mjs";
+import { evaluateProjectContract } from "../src/v100/project-contract.mjs";
 import { ensureV1, migrateProject } from "../src/v100/core.mjs";
 import { pythonArgs, resolvePython } from "../tools/python-launcher.mjs";
 
@@ -38,15 +39,15 @@ const currentProject = () => ({
   semantic_model: { nodes: [] },
 });
 
-test("migration executes exact 0→1→2→3→4→5 copy-on-write steps with receipted evidence", () => {
+test("migration executes exact 0→1→2→3→4→5→6 copy-on-write steps with receipted evidence", () => {
   const source = legacyProject();
   const before = JSON.stringify(source);
   const result = migrateProjectDocument(source, { dryRun: true });
 
-  assert.equal(CURRENT_PROJECT_SCHEMA_VERSION, 5);
+  assert.equal(CURRENT_PROJECT_SCHEMA_VERSION, 6);
   assert.equal(JSON.stringify(source), before);
   assert.notStrictEqual(result.candidate, source);
-  assert.deepEqual(result.receipt.steps.map(({ from, to }) => [from, to]), [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]);
+  assert.deepEqual(result.receipt.steps.map(({ from, to }) => [from, to]), [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]);
   assert.equal(result.receipt.source_schema_version, 0);
   assert.equal(result.receipt.candidate_schema_version, CURRENT_PROJECT_SCHEMA_VERSION);
   assert.match(result.receipt.source_digest, /^[a-f0-9]{64}$/);
@@ -66,7 +67,7 @@ test("dry-run and apply modes are pure and return identical candidate and receip
   const apply = migrateProjectDocument(source, { dryRun: false });
 
   assert.deepEqual(apply, dryRun);
-  assert.deepEqual(dryRun.receipt.steps.map(({ from, to }) => [from, to]), [[1, 2], [2, 3], [3, 4], [4, 5]]);
+  assert.deepEqual(dryRun.receipt.steps.map(({ from, to }) => [from, to]), [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]);
   assert.equal(source.schema_version, 1);
   assert.equal("project" in source, false);
 });
@@ -144,17 +145,99 @@ test("existing YAML examples retain identities and references through ensureV1",
   }
 });
 
-test("the migration's field lists and schema 5 declare the same fields", () => {
+test("the migration's field lists and schema 6 declare the same fields", () => {
   // Two lists that must agree. They disagreed once during development --
   // `state` was declared in the schema and missing from the migration's list --
   // and the symptom was not a validation error but a Phase-4 roll-up counting
   // nothing, because the migration quarantined a field the schema kept. A
   // mismatch is silent by nature, so it is asserted rather than reviewed.
   const schema = JSON.parse(readFileSync(
-    new URL("../schemas/project/5.schema.json", import.meta.url), "utf8",
+    new URL("../schemas/project/6.schema.json", import.meta.url), "utf8",
   ));
   for (const [shape, fields] of Object.entries(SCHEMA_MIRRORED_FIELDS)) {
     const declared = Object.keys(schema.$defs[shape].properties).sort();
     assert.deepEqual([...fields].sort(), declared, shape);
   }
+});
+
+test("schema 6 closes the shapes that were open objects, and refuses what they used to accept", () => {
+  // T7-21. Before schema 6, `trend`, `energy`, `historian`, `reports` and
+  // `replay` were all `openObject`, so every field the series code, the energy
+  // code and the report code read was undeclared. `period: "sometimes"` and
+  // `deadband: "a bit"` were schema-valid and failed inside a computed figure,
+  // which is the worst place for a validation error to surface.
+  const base = {
+    project: { id: "p1", name: "P", revision: 1 },
+    schema_version: 6,
+    title: "T",
+    type: "custom:glt-flow-card",
+  };
+  const accepted = evaluateProjectContract({
+    ...base,
+    energy: { meters: [{ id: "m1", model: "counter", unit: "kWh" }] },
+    trend: { aggregate: "mean", deadband: 0.5, enabled: true },
+  });
+  assert.equal(accepted.valid, true, JSON.stringify(accepted.errors));
+
+  for (const [label, patch] of [
+    ["an undeclared aggregate", { trend: { aggregate: "p95" } }],
+    ["a non-numeric deadband", { trend: { deadband: "a bit" } }],
+    ["an undeclared trend field", { trend: { sometimes: true } }],
+    ["a meter with no model", { energy: { meters: [{ id: "m1", unit: "kWh" }] } }],
+    ["a meter with an unknown model", { energy: { meters: [{ id: "m1", model: "guess" }] } }],
+    ["an undeclared period name", { energy: { period: { name: "sometimes" } } }],
+    ["a report format nobody renders", { reports: { definitions: [{ formats: ["fax"], id: "r1" }] } }],
+  ]) {
+    const evidence = evaluateProjectContract({ ...base, ...patch });
+    assert.equal(evidence.valid, false, `schema 6 accepted ${label}`);
+  }
+});
+
+test("the 5→6 migration reports what it cannot decide rather than guessing", () => {
+  // A meter's model cannot be read off every unit, and guessing either way
+  // produces a plausible number: `counter` makes a power sensor's lifetime
+  // reading a cost, `rate` integrates something that was never a rate.
+  const migrated = migrateProjectDocument({
+    energy: {
+      meters: [
+        { entity: "sensor.a", id: "known", unit: "kWh" },
+        { entity: "sensor.b", id: "unknown", unit: "BTU/h" },
+      ],
+    },
+    project: { id: "p1", name: "P", revision: 1 },
+    schema_version: 5,
+    title: "T",
+    type: "custom:glt-flow-card",
+  }, { dryRun: true });
+
+  const [known, unknown] = migrated.candidate.energy.meters;
+  assert.equal(known.model, "counter", "kWh is a counter and needs no guess");
+  // The undecidable one still gets a model, because the schema requires one,
+  // but the unit it could not be read from is quarantined so the receipt says
+  // an operator has to choose.
+  assert.ok(unknown.legacy?.model !== undefined, "an undecidable model was guessed silently");
+});
+
+test("the 5→6 migration refuses to call 43 200 minutes a month", () => {
+  // A month is 720, 743 or 745 hours depending on where the transition falls.
+  // Mapping a fixed bucket onto it would carry D9 forward under a new name.
+  const migrated = migrateProjectDocument({
+    historian: { bucket_minutes: 43_200 },
+    project: { id: "p1", name: "P", revision: 1 },
+    schema_version: 5,
+    title: "T",
+    type: "custom:glt-flow-card",
+  }, { dryRun: true });
+
+  assert.equal(migrated.candidate.historian.bucket_minutes, undefined);
+  assert.equal(migrated.candidate.historian.legacy.bucket_minutes, 43_200);
+  // A bucket that *does* name a period is kept as-is.
+  const daily = migrateProjectDocument({
+    historian: { bucket_minutes: 1440 },
+    project: { id: "p1", name: "P", revision: 1 },
+    schema_version: 5,
+    title: "T",
+    type: "custom:glt-flow-card",
+  }, { dryRun: true });
+  assert.equal(daily.candidate.historian.bucket_minutes, 1440);
 });

@@ -50,10 +50,12 @@ def test_migration_is_sequential_copy_on_write_and_receipted() -> None:
 
     result = migrate_project_document(source, dry_run=True)
 
-    assert CURRENT_PROJECT_SCHEMA_VERSION == 5
+    assert CURRENT_PROJECT_SCHEMA_VERSION == 6
     assert source == original
     assert result["candidate"] is not source
-    assert [(step["from"], step["to"]) for step in result["receipt"]["steps"]] == [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)]
+    assert [(step["from"], step["to"]) for step in result["receipt"]["steps"]] == [
+        (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6),
+    ]
     assert result["receipt"]["warnings"] == []
     assert result["receipt"]["loss"] == {"dropped": [], "preserved": []}
     assert result["candidate"]["project"] == {"id": "werk-sud", "name": "Werk Süd", "revision": 0}
@@ -121,7 +123,7 @@ def test_synthesized_empty_project_matches_a_migrated_one() -> None:
     assert migrated == template
 
 
-def test_the_migrations_field_lists_and_schema_5_declare_the_same_fields() -> None:
+def test_the_migrations_field_lists_and_schema_6_declare_the_same_fields() -> None:
     """Two lists that must agree, asserted rather than reviewed.
 
     They disagreed once during development -- ``state`` was declared in the
@@ -142,7 +144,7 @@ def test_the_migrations_field_lists_and_schema_5_declare_the_same_fields() -> No
     # so a repo-relative path passes here and fails there, which is precisely
     # the divergence the lane exists to catch.
     schemas = Path(component.__file__).resolve().parent / "schemas" / "project"
-    schema = json.loads((schemas / "5.schema.json").read_text(encoding="utf-8"))
+    schema = json.loads((schemas / "6.schema.json").read_text(encoding="utf-8"))
     for shape, fields in SCHEMA_MIRRORED_FIELDS.items():
         declared = sorted(schema["$defs"][shape]["properties"])
         assert sorted(fields) == declared, shape

@@ -42,8 +42,17 @@ export const PERIOD_CONTRACTS = Object.freeze({
   year: "statistic",
 });
 
-/** The aggregates a series or a total may be computed with. Closed. */
-export const AGGREGATES = Object.freeze(["min", "max", "mean", "change", "state"]);
+/**
+ * The aggregates a series or a total may be computed with. Closed.
+ *
+ * `none` is the identity: every sample, no bucketing. The shipped default is
+ * spelled `raw`, and the 5->6 migration renames it, because `raw` already means
+ * something else in this phase -- `source: "raw"` says the answer came from raw
+ * states rather than long-term statistics. One word meaning two things in two
+ * closed sets next to each other is how the four disagreeing alarm vocabularies
+ * started.
+ */
+export const AGGREGATES = Object.freeze(["none", "min", "max", "mean", "change", "state"]);
 
 /**
  * Where an answer came from. Closed, and three members rather than two on
@@ -78,6 +87,7 @@ export const LABELS = Object.freeze({
     change: { de: "Verbrauch", en: "Consumption" },
     max: { de: "Maximum", en: "Maximum" },
     mean: { de: "Mittelwert", en: "Mean" },
+    none: { de: "Alle Messwerte", en: "Every sample" },
     min: { de: "Minimum", en: "Minimum" },
     state: { de: "Zählerstand", en: "Meter reading" },
   },

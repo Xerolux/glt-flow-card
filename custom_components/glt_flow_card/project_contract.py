@@ -23,6 +23,7 @@ _SCHEMA_PATHS = (
     _ROOT / "schemas" / "project" / "3.schema.json",
     _ROOT / "schemas" / "project" / "4.schema.json",
     _ROOT / "schemas" / "project" / "5.schema.json",
+    _ROOT / "schemas" / "project" / "6.schema.json",
     _ROOT / "schemas" / "bundle-manifest.schema.json",
 )
 _LIMITS = json.loads((_ROOT / "schemas" / "limits.json").read_text(encoding="utf-8"))

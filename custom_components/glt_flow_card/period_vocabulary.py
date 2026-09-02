@@ -41,7 +41,12 @@ PERIOD_CONTRACTS: dict[str, str] = {
 #: reset-corrected running sum, and it is how a counter's consumption for a
 #: period is obtained. Including it here keeps a caller from reaching for
 #: ``sum``, which over instantaneous samples is dimensionally meaningless (D11).
-AGGREGATES: tuple[str, ...] = ("min", "max", "mean", "change", "state")
+#:
+#: ``none`` is the identity: every sample, no bucketing. The shipped default is
+#: spelled ``raw`` and the 5->6 migration renames it, because ``raw`` already
+#: means something else here -- ``source: "raw"`` says the answer came from raw
+#: states rather than long-term statistics.
+AGGREGATES: tuple[str, ...] = ("none", "min", "max", "mean", "change", "state")
 
 #: Where an answer came from. Three members rather than two on purpose: "we have
 #: no data" and "we did not ask" are different answers.
@@ -71,6 +76,7 @@ LABELS: dict[str, dict[str, dict[str, str]]] = {
         "change": {"de": "Verbrauch", "en": "Consumption"},
         "max": {"de": "Maximum", "en": "Maximum"},
         "mean": {"de": "Mittelwert", "en": "Mean"},
+        "none": {"de": "Alle Messwerte", "en": "Every sample"},
         "min": {"de": "Minimum", "en": "Minimum"},
         "state": {"de": "Zählerstand", "en": "Meter reading"},
     },
