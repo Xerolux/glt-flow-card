@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from .control_contract import (
     MAX_TELEMETRY_BYTES,
@@ -136,3 +137,80 @@ async def trusted_evidence_gaps(hass: HomeAssistant) -> list[str]:
                     f"bound {field} is {getattr(bounds, field, None)!r}, expected {expected}"
                 )
     return gaps
+
+
+@pytest.mark.enable_socket
+@pytest.mark.allow_hosts(["127.0.0.1", "localhost"])
+async def test_telemetry_cannot_reach_or_resemble_the_trusted_stream(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    phase2_users,
+) -> None:
+    """A browser row stays untrusted, and it is never served as trusted."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    runtime = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id]
+
+    operator = phase2_users.principal("operator")
+    await runtime.access.async_assign(
+        project_id="evidence-plant", user_id=operator.user_id, role="operator"
+    )
+    manager = hass.data["glt_flow_card"]["manager"]
+    await manager.save_project(
+        {
+            "id": "evidence-plant",
+            "config": {
+                "type": "custom:glt-flow-card",
+                "schema_version": 2,
+                "project": {"id": "evidence-plant", "name": "Evidence", "revision": 0},
+                "views": [],
+                "equipment": [],
+                "paths": [],
+                "datapoints": [],
+            },
+        },
+        autosave=False,
+        user_id=operator.user_id,
+        expected_revision=0,
+    )
+
+    # One genuine server-authored event.
+    await runtime.evidence.async_record(
+        action="project.apply",
+        project_id="evidence-plant",
+        actor_user_id=operator.user_id,
+        result="committed",
+    )
+
+    connection = await phase2_users.async_connect("operator")
+    forged = await connection.command({
+        "type": "glt_flow_card/telemetry/add",
+        "project_id": "evidence-plant",
+        "payload": dict(FORGED_TELEMETRY),
+    })
+    assert forged["success"] is True
+    assert forged["result"]["trusted"] is False
+
+    telemetry = await connection.command({
+        "type": "glt_flow_card/telemetry/list",
+        "project_id": "evidence-plant",
+    })
+    assert telemetry["result"]["provenance"] == "untrusted"
+    row = telemetry["result"]["rows"][0]
+    assert row["trusted"] is False
+    assert row["user_id"] == operator.user_id
+    assert row["at"] != FORGED_TELEMETRY["at"]
+    for claimed in ("action", "result", "correlation_id", "kind", "trusted"):
+        assert claimed not in row["payload"], claimed
+
+    evidence = await connection.command({
+        "type": "glt_flow_card/evidence/list",
+        "project_id": "evidence-plant",
+    })
+    assert evidence["result"]["provenance"] == "trusted"
+    assert all(entry["trusted"] is True for entry in evidence["result"]["rows"])
+    assert "total" not in evidence["result"]
+    # The two streams never appear in one another's pages.
+    assert all(entry["id"] != row["id"] for entry in evidence["result"]["rows"])
+
+    await phase2_users.async_close()

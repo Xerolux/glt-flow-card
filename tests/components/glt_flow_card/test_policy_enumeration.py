@@ -35,6 +35,9 @@ MISSING_PROJECT_ID = "policy-matrix-does-not-exist"
 ROUTE_PAYLOADS: dict[str, dict[str, Any]] = {
     "glt_flow_card/projects/get": {"project_id": PROJECT_ID},
     "glt_flow_card/access/get": {"project_id": PROJECT_ID},
+    "glt_flow_card/evidence/list": {"project_id": PROJECT_ID},
+    "glt_flow_card/telemetry/list": {"project_id": PROJECT_ID},
+    "glt_flow_card/telemetry/add": {"project_id": PROJECT_ID, "payload": {"view": "plant"}},
     "glt_flow_card/access/set": {
         "project_id": PROJECT_ID,
         "user_id": "probe-user",

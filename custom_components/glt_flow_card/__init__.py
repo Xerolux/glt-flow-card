@@ -36,7 +36,17 @@ from .policy import (
     PolicyDenied,
     capabilities_for,
 )
-from .policy_sessions import EvidenceCursorRegistry, SubscriptionRegistry
+from .policy_sessions import (
+    CursorInvalid,
+    EvidenceCursorRegistry,
+    SubscriptionRegistry,
+)
+from .trusted_evidence import (
+    ControlEvidenceRecorder,
+    TelemetryRejected,
+    TelemetryStore,
+    TrustedEvidenceStore,
+)
 from .project_access import AccessConflict, ProjectAccessRepository
 from .policy import ROLES
 from .project_leases import (
@@ -475,6 +485,9 @@ class CompanionRuntime:
     leases: LeaseRegistry | None = None
     subscriptions: SubscriptionRegistry | None = None
     cursors: EvidenceCursorRegistry | None = None
+    evidence: TrustedEvidenceStore | None = None
+    telemetry: TelemetryStore | None = None
+    controls: ControlEvidenceRecorder | None = None
     generation: int = 0
     available: bool = True
 
@@ -710,6 +723,76 @@ async def ws_projects_delete(hass, connection, msg):
         ))
     except PermissionError:
         connection.send_error(msg["id"], "capability_denied", "capability_denied")
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/evidence/list",
+    vol.Required("project_id"): str,
+    vol.Optional("cursor"): vol.Any(str, None),
+})
+@websocket_api.async_response
+async def ws_evidence_list(hass, connection, msg):
+    """Return one authorized page of trusted evidence.
+
+    Rows are filtered by project before pagination, so a project the caller
+    cannot read never influences a page, an offset or a cursor.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    session_id = str(decision.actor.session_id or decision.actor.connection_id)
+    scope = {
+        "user_id": decision.actor.user_id,
+        "session_id": session_id,
+        "project_id": decision.project_id,
+        "filter": "trusted",
+    }
+    try:
+        cursor = msg.get("cursor")
+        if cursor:
+            page = await runtime.cursors.async_next_page(cursor=cursor, **scope)
+        else:
+            page = await runtime.cursors.async_first_page(**scope)
+    except CursorInvalid:
+        connection.send_error(msg["id"], "invalid_input", "cursor_invalid")
+        return
+    connection.send_result(msg["id"], {**page, "provenance": "trusted"})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/telemetry/list",
+    vol.Required("project_id"): str,
+})
+@websocket_api.async_response
+async def ws_telemetry_list(hass, connection, msg):
+    """Return this caller's own untrusted telemetry, labelled as such."""
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    rows = runtime.telemetry.rows(decision.actor.user_id)
+    # A separate route, a separate result shape and an explicit provenance
+    # label: nothing here can be mistaken for, or merged with, trusted history.
+    connection.send_result(msg["id"], {"rows": rows, "provenance": "untrusted"})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/telemetry/add",
+    vol.Required("project_id"): str,
+    vol.Required("payload"): dict,
+})
+@websocket_api.async_response
+async def ws_telemetry_add(hass, connection, msg):
+    """Append one bounded, rate-limited, permanently untrusted telemetry row."""
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    try:
+        row = await runtime.telemetry.async_add(
+            user_id=decision.actor.user_id,
+            session_id=str(decision.actor.session_id or decision.actor.connection_id),
+            payload=msg["payload"],
+        )
+    except TelemetryRejected as rejected:
+        connection.send_error(msg["id"], str(rejected), str(rejected))
+        return
+    connection.send_result(msg["id"], {"id": row["id"], "trusted": False})
 
 
 @websocket_api.websocket_command({
@@ -1112,13 +1195,24 @@ async def ws_audit_add(hass, connection, msg):
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/audit/list", vol.Optional("limit", default=250): vol.All(int, vol.Range(min=1, max=5000))})
 @websocket_api.async_response
 async def ws_audit_list(hass, connection, msg):
-    connection.send_result(msg["id"], deepcopy(_manager(hass).data["audit"][:msg["limit"]]))
+    """Return trusted evidence for the projects this caller may read.
+
+    The route keeps its legacy name so an older card still works, but the broad
+    read is gone: rows are filtered to authorized projects before serialization.
+    """
+    runtime = _runtime_for(hass)
+    visible = set(runtime.policy.visible_projects(
+        connection, [head["id"] for head in _manager(hass).projects()]
+    ))
+    rows = runtime.evidence.rows(visible)[: msg["limit"]]
+    connection.send_result(msg["id"], rows)
 
 
 _COMMAND_HANDLERS = (
     ws_projects_list, ws_projects_get, ws_projects_save, ws_projects_preview,
     ws_projects_apply, ws_projects_rollback, ws_projects_delete,
     ws_access_get, ws_access_set,
+    ws_evidence_list, ws_telemetry_list, ws_telemetry_add,
     ws_projects_lock, ws_projects_unlock,
     ws_leases_acquire, ws_leases_renew, ws_leases_release, ws_leases_status,
     ws_templates_list, ws_templates_save,
@@ -1284,8 +1378,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise
 
     access = ProjectAccessRepository(hass)
+    evidence = TrustedEvidenceStore(hass, max_rows=options["max_audit"])
+    telemetry = TelemetryStore(hass)
     try:
         await access.async_initialize()
+        await evidence.async_initialize()
+        await telemetry.async_initialize()
     except Exception:
         await manager.async_close()
         raise
@@ -1338,7 +1436,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         subscriptions=SubscriptionRegistry(
             authorize=may_read_project, generation=generation
         ),
-        cursors=EvidenceCursorRegistry(generation=generation),
+        cursors=EvidenceCursorRegistry(
+            rows_for=lambda scope: evidence.rows({scope.project_id}),
+            generation=generation,
+        ),
+        evidence=evidence,
+        telemetry=telemetry,
+        controls=ControlEvidenceRecorder(hass, evidence=evidence),
         generation=generation,
     )
     manager.project_transactions.set_mutation_guard(recheck_before_commit)

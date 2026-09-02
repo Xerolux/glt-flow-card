@@ -13,6 +13,13 @@ PROJECT_LEGACY_BACKUP_STORE_VERSION = 1
 PROJECT_LEGACY_BACKUP_STORE_KEY = "glt_flow_card.project_legacy_backup"
 PROJECT_ACCESS_STORE_VERSION = 1
 PROJECT_ACCESS_STORE_KEY = "glt_flow_card.project_access"
+TRUSTED_EVIDENCE_STORE_VERSION = 1
+TRUSTED_EVIDENCE_STORE_KEY = "glt_flow_card.trusted_evidence"
+# A separate key, version and schema: trusted evidence and browser telemetry
+# must never share a store, because a shared store is one bug away from a
+# shared trust level.
+TELEMETRY_STORE_VERSION = 1
+TELEMETRY_STORE_KEY = "glt_flow_card.telemetry"
 MAX_AUDIT = 5000
 MAX_VERSIONS = 60
 DEFAULT_LOCK_TTL = 300
