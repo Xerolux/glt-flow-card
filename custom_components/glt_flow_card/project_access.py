@@ -207,6 +207,16 @@ class ProjectAccessRepository:
         if existing is not None:
             return deepcopy(existing)
 
+        if entry["assignments"]:
+            # The project already has server-owned membership, so the legacy
+            # block is just content now. Adopting from it here is exactly the
+            # self-grant this store exists to prevent.
+            receipt = {"source": "legacy_permissions", "adopted": 0, "roles": [],
+                       "skipped": "acl_already_exists"}
+            entry["bootstrap"] = receipt
+            await self._persist(project_id)
+            return deepcopy(receipt)
+
         adopted: dict[str, str] = {}
         permissions = (head_config or {}).get("permissions")
         if isinstance(permissions, Mapping):
@@ -229,6 +239,7 @@ class ProjectAccessRepository:
             "source": "legacy_permissions",
             "adopted": len(adopted),
             "roles": sorted({role for role in adopted.values()}),
+            "skipped": None,
         }
 
         if adopted:
@@ -255,6 +266,24 @@ class ProjectAccessRepository:
                 {"user_id": user, "role": role} for user, role in state.assignments
             ],
         }
+
+    async def async_eligible_users(self, hass: Any) -> list[dict[str, str]]:
+        """List the Home Assistant users a role may be assigned to.
+
+        The set comes from Home Assistant's own user store, so a request can
+        never introduce an arbitrary identifier. System-generated and inactive
+        users are excluded: an assignment must name a person who can actually
+        sign in.
+        """
+        users = await hass.auth.async_get_users()
+        return sorted(
+            (
+                {"user_id": user.id, "name": user.name or ""}
+                for user in users
+                if user.is_active and not user.system_generated
+            ),
+            key=lambda entry: entry["user_id"],
+        )
 
     def project_ids(self) -> tuple[str, ...]:
         """Return every project the ACL knows about."""

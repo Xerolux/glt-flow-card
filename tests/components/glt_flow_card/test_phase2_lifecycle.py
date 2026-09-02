@@ -125,7 +125,7 @@ async def lifecycle_gaps(hass: HomeAssistant) -> list[str]:
         ("project_access", "access_repository"),
         ("project_leases", "lease_registry"),
         ("policy_sessions", "subscription_registry"),
-        ("trusted_evidence", "cursor_registry"),
+        ("policy_sessions", "cursor_registry"),
     ):
         loaded = load(module)
         if loaded is None:

@@ -89,17 +89,17 @@ def test_bounds_are_declared_and_ordered() -> None:
 
 async def pagination_gaps(hass: HomeAssistant, phase2_users: Any) -> list[str]:
     """Return every unmet opaque-cursor guarantee."""
-    evidence = load("trusted_evidence")
+    evidence = load("policy_sessions")
     if evidence is None:
         return [
-            "custom_components.glt_flow_card.trusted_evidence does not exist, so "
+            "custom_components.glt_flow_card.policy_sessions does not exist, so "
             "scoped opaque pagination cannot be enforced"
         ]
 
     gaps: list[str] = []
     for name in ("EvidenceCursorRegistry", "cursor_registry", "CursorInvalid"):
         if not hasattr(evidence, name):
-            gaps.append(f"trusted_evidence.{name} is missing")
+            gaps.append(f"policy_sessions.{name} is missing")
     if gaps:
         return gaps
 

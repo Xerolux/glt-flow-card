@@ -30,14 +30,17 @@ from .const import (
     STORE_VERSION,
     normalize_options,
 )
-from .policy import PolicyCoordinator, PolicyDenied
-from .project_access import ProjectAccessRepository
+from .policy import PolicyCoordinator, PolicyDenied, capabilities_for
+from .policy_sessions import EvidenceCursorRegistry, SubscriptionRegistry
+from .project_access import AccessConflict, ProjectAccessRepository
+from .policy import ROLES
 from .project_leases import (
     DEFAULT_TTL_SECONDS,
     MAX_TTL_SECONDS,
     MIN_TTL_SECONDS,
     PURPOSE_CAPABILITY,
     PURPOSE_ENGINEERING,
+    PURPOSE_MEMBERSHIP_ADMIN,
     PURPOSES,
     LeaseDenied,
     LeaseInvalid,
@@ -448,6 +451,8 @@ class CompanionRuntime:
     access: ProjectAccessRepository | None = None
     policy: PolicyCoordinator | None = None
     leases: LeaseRegistry | None = None
+    subscriptions: SubscriptionRegistry | None = None
+    cursors: EvidenceCursorRegistry | None = None
     generation: int = 0
     available: bool = True
 
@@ -460,8 +465,9 @@ class CompanionRuntime:
         against the next setup.
         """
         self.available = False
-        if self.leases is not None:
-            self.leases.invalidate_generation()
+        for owned in (self.leases, self.subscriptions, self.cursors):
+            if owned is not None:
+                owned.invalidate_generation()
 
     async def async_close(self) -> None:
         """Close the complete entry-owned runtime, tolerating repetition."""
@@ -661,6 +667,103 @@ async def ws_projects_delete(hass, connection, msg):
         connection.send_result(msg["id"], await _manager(hass).delete_project(msg["project_id"]))
     except PermissionError:
         connection.send_error(msg["id"], "capability_denied", "capability_denied")
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/access/get",
+    vol.Required("project_id"): str,
+})
+@websocket_api.async_response
+async def ws_access_get(hass, connection, msg):
+    """Return the minimal membership inventory for one project.
+
+    Resolved A2: this is the whole surface a Home Assistant administrator
+    without a project assignment may see - the project id, who holds what, and
+    the access revision that guards the next change. No title, no content, no
+    counts, no evidence.
+    """
+    runtime = _runtime_for(hass)
+    inventory = await runtime.access.async_membership_inventory(msg["project_id"])
+    inventory["eligible_users"] = await runtime.access.async_eligible_users(hass)
+    connection.send_result(msg["id"], inventory)
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/access/set",
+    vol.Required("project_id"): str,
+    vol.Required("user_id"): str,
+    vol.Required("role"): vol.Any(vol.In(ROLES), None),
+    vol.Required("expected_access_revision"): vol.All(int, vol.Range(min=0)),
+    vol.Required("lease_token"): str,
+})
+@websocket_api.async_response
+async def ws_access_set(hass, connection, msg):
+    """Assign or revoke one fixed role under a guarded, exact-revision commit.
+
+    Resolved A3: the access revision and the content revision are separate
+    streams. This route advances only the access revision, and it validates the
+    administration-purpose lease that scopes the change - never the engineering
+    lease that guards content.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    session_id = str(decision.actor.session_id or decision.actor.connection_id)
+
+    if not runtime.leases.validate(
+        token=msg["lease_token"],
+        project_id=msg["project_id"],
+        user_id=decision.actor.user_id,
+        session_id=session_id,
+        purpose=PURPOSE_MEMBERSHIP_ADMIN,
+        access_revision=decision.access_revision,
+    ):
+        connection.send_error(msg["id"], "lease_expired", "lease_expired")
+        return
+
+    if msg["user_id"] == decision.actor.user_id and msg["role"] is not None:
+        # Self-grant is the one change membership administration may never make.
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
+        return
+
+    eligible = {entry["user_id"] for entry in await runtime.access.async_eligible_users(hass)}
+    if msg["role"] is not None and msg["user_id"] not in eligible:
+        connection.send_error(msg["id"], "invalid_input", "invalid_input")
+        return
+
+    try:
+        if msg["role"] is None:
+            state = await runtime.access.async_revoke(
+                project_id=msg["project_id"],
+                user_id=msg["user_id"],
+                expected_access_revision=msg["expected_access_revision"],
+            )
+        else:
+            state = await runtime.access.async_assign(
+                project_id=msg["project_id"],
+                user_id=msg["user_id"],
+                role=msg["role"],
+                expected_access_revision=msg["expected_access_revision"],
+            )
+    except AccessConflict:
+        connection.send_error(msg["id"], "revision_conflict", "revision_conflict")
+        return
+    except ValueError:
+        connection.send_error(msg["id"], "invalid_input", "invalid_input")
+        return
+
+    # The membership change is itself an authority change, so every lease and
+    # subscription bound to the previous access revision must stop being valid.
+    runtime.leases.invalidate_access_revision(msg["project_id"], state.access_revision)
+    await runtime.subscriptions.async_publish(
+        msg["project_id"], {"type": "access_changed", "project_id": msg["project_id"]}
+    )
+    connection.send_result(msg["id"], {
+        "project_id": msg["project_id"],
+        "access_revision": state.access_revision,
+        "assignments": [
+            {"user_id": user, "role": role} for user, role in state.assignments
+        ],
+    })
 
 
 @websocket_api.websocket_command({
@@ -972,6 +1075,7 @@ async def ws_audit_list(hass, connection, msg):
 _COMMAND_HANDLERS = (
     ws_projects_list, ws_projects_get, ws_projects_save, ws_projects_preview,
     ws_projects_apply, ws_projects_rollback, ws_projects_delete,
+    ws_access_get, ws_access_set,
     ws_projects_lock, ws_projects_unlock,
     ws_leases_acquire, ws_leases_renew, ws_leases_release, ws_leases_status,
     ws_templates_list, ws_templates_save,
@@ -1144,12 +1248,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise
 
     generation = next(_GENERATION)
+
+    def may_read_project(project_id: str, user_id: str) -> bool:
+        """Re-authorize one subscriber against the current ACL.
+
+        The Home Assistant administrator ceiling is deliberately not applied:
+        it grants membership recovery, never project content, so it must not
+        keep a subscription alive.
+        """
+        role = access.get(project_id).role_of(user_id)
+        return "project.read" in capabilities_for(role, is_ha_admin=False)
+
     runtime = CompanionRuntime(
         entry_id=entry.entry_id,
         manager=manager,
         access=access,
         policy=PolicyCoordinator(access, hass=hass),
         leases=LeaseRegistry(generation=generation),
+        subscriptions=SubscriptionRegistry(
+            authorize=may_read_project, generation=generation
+        ),
+        cursors=EvidenceCursorRegistry(generation=generation),
         generation=generation,
     )
     data["runtimes"][entry.entry_id] = runtime

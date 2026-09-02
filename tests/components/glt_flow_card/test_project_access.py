@@ -228,3 +228,141 @@ async def test_expected_red_phase2_access_revocation(
         for gap in gaps:
             print(f"  access gap: {gap}")
     assert not gaps, "server-owned access and revocation are unavailable"
+
+
+async def test_ha_admin_can_bootstrap_the_first_admin_but_reads_no_content(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    phase2_users,
+) -> None:
+    """Resolved A2 end to end, over the real WebSocket boundary.
+
+    An unassigned Home Assistant administrator can see who holds what, take an
+    administration lease, and assign the first project Admin - and remains
+    unable to read the project itself before or after doing so.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    manager = hass.data["glt_flow_card"]["manager"]
+    await manager.save_project(
+        {"id": PROJECT_ID, "config": SELF_GRANTING_PROJECT},
+        autosave=False,
+        user_id=phase2_users.principal("ha_admin").user_id,
+        expected_revision=0,
+    )
+
+    ha_admin = await phase2_users.async_connect("ha_admin")
+    inventory = await ha_admin.command({
+        "type": "glt_flow_card/access/get",
+        "project_id": PROJECT_ID,
+    })
+    assert inventory["success"] is True
+    assert inventory["result"]["assignments"] == []
+    assert inventory["result"]["access_revision"] == 0
+    for forbidden in ("config", "title", "revision", "audit", "counts"):
+        assert forbidden not in inventory["result"]
+
+    # The project body is unreadable to this principal, before the change.
+    denied = await ha_admin.command({
+        "type": "glt_flow_card/projects/get",
+        "project_id": PROJECT_ID,
+    })
+    assert denied["success"] is False
+    assert denied["error"]["code"] == "not_found_or_denied"
+
+    lease = await ha_admin.command({
+        "type": "glt_flow_card/leases/acquire",
+        "project_id": PROJECT_ID,
+        "purpose": "membership_admin",
+        "ttl_seconds": 300,
+    })
+    assert lease["success"] is True
+
+    first_admin = phase2_users.principal("admin")
+    assigned = await ha_admin.command({
+        "type": "glt_flow_card/access/set",
+        "project_id": PROJECT_ID,
+        "user_id": first_admin.user_id,
+        "role": "admin",
+        "expected_access_revision": 0,
+        "lease_token": lease["result"]["lease_token"],
+    })
+    assert assigned["success"] is True
+    assert assigned["result"]["access_revision"] == 1
+    assert assigned["result"]["assignments"] == [
+        {"user_id": first_admin.user_id, "role": "admin"}
+    ]
+
+    # ... and still unreadable afterwards: recovery is not membership.
+    still_denied = await ha_admin.command({
+        "type": "glt_flow_card/projects/get",
+        "project_id": PROJECT_ID,
+    })
+    assert still_denied["success"] is False
+    assert still_denied["error"]["code"] == "not_found_or_denied"
+    await phase2_users.async_close()
+
+
+async def test_membership_administration_refuses_self_grant_and_stale_revisions(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    phase2_users,
+) -> None:
+    """A membership change cannot elevate its own author or race another."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    runtime = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id]
+
+    ha_admin = await phase2_users.async_connect("ha_admin")
+    lease = await ha_admin.command({
+        "type": "glt_flow_card/leases/acquire",
+        "project_id": PROJECT_ID,
+        "purpose": "membership_admin",
+        "ttl_seconds": 300,
+    })
+    token = lease["result"]["lease_token"]
+
+    self_grant = await ha_admin.command({
+        "type": "glt_flow_card/access/set",
+        "project_id": PROJECT_ID,
+        "user_id": phase2_users.principal("ha_admin").user_id,
+        "role": "admin",
+        "expected_access_revision": 0,
+        "lease_token": token,
+    })
+    assert self_grant["success"] is False
+    assert self_grant["error"]["code"] == "capability_denied"
+
+    unknown_user = await ha_admin.command({
+        "type": "glt_flow_card/access/set",
+        "project_id": PROJECT_ID,
+        "user_id": "not-a-home-assistant-user",
+        "role": "viewer",
+        "expected_access_revision": 0,
+        "lease_token": token,
+    })
+    assert unknown_user["success"] is False
+    assert unknown_user["error"]["code"] == "invalid_input"
+
+    stale = await ha_admin.command({
+        "type": "glt_flow_card/access/set",
+        "project_id": PROJECT_ID,
+        "user_id": phase2_users.principal("viewer").user_id,
+        "role": "viewer",
+        "expected_access_revision": 7,
+        "lease_token": token,
+    })
+    assert stale["success"] is False
+    assert stale["error"]["code"] == "revision_conflict"
+
+    assert (await runtime.access.async_get(PROJECT_ID)).assignments == ()
+
+    ordinary = await phase2_users.async_connect("unassigned")
+    hidden = await ordinary.command({
+        "type": "glt_flow_card/access/get",
+        "project_id": PROJECT_ID,
+    })
+    assert hidden["success"] is False
+    assert hidden["error"]["code"] == "not_found_or_denied"
+    await phase2_users.async_close()

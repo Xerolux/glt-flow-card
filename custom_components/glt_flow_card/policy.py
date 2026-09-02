@@ -213,6 +213,9 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     # Legacy user-only locks are replaced by connection-bound leases (02-08).
     _route("glt_flow_card/projects/lock", None, state="retired"),
     _route("glt_flow_card/projects/unlock", None, state="retired"),
+    # -- membership administration ----------------------------------------
+    _route("glt_flow_card/access/get", "project.access.read"),
+    _route("glt_flow_card/access/set", "project.access.write"),
     # -- leases (02-08) ---------------------------------------------------
     _route("glt_flow_card/leases/acquire", "lease.engineering", rate_class="lease",
            any_of=("lease.engineering", "lease.administration")),

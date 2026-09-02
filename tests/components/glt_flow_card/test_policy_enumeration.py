@@ -34,6 +34,14 @@ MISSING_PROJECT_ID = "policy-matrix-does-not-exist"
 #: rather than being rejected by voluptuous before authorization runs.
 ROUTE_PAYLOADS: dict[str, dict[str, Any]] = {
     "glt_flow_card/projects/get": {"project_id": PROJECT_ID},
+    "glt_flow_card/access/get": {"project_id": PROJECT_ID},
+    "glt_flow_card/access/set": {
+        "project_id": PROJECT_ID,
+        "user_id": "probe-user",
+        "role": "viewer",
+        "expected_access_revision": 0,
+        "lease_token": "probe",
+    },
     "glt_flow_card/leases/acquire": {"project_id": PROJECT_ID, "purpose": "engineering"},
     "glt_flow_card/leases/renew": {
         "project_id": PROJECT_ID, "lease_token": "probe", "purpose": "engineering",

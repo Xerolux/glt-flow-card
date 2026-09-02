@@ -189,6 +189,9 @@ COMMAND_POLICY_CONTRACT: tuple[RoutePolicy, ...] = (
     # Legacy user-only locks are replaced by connection-bound leases.
     _route("glt_flow_card/projects/lock", None, state="retired"),
     _route("glt_flow_card/projects/unlock", None, state="retired"),
+    # -- membership administration ----------------------------------------
+    _route("glt_flow_card/access/get", "project.access.read"),
+    _route("glt_flow_card/access/set", "project.access.write"),
     # -- leases -----------------------------------------------------------
     _route("glt_flow_card/leases/acquire", "lease.engineering",
            any_of=("lease.engineering", "lease.administration")),
