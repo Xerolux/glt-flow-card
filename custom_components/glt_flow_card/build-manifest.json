@@ -47,13 +47,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "1207862f4e150003d45d1fb8acdac65b06b0a5e36f1554b5047f02353acdfd78",
-      "size": 1704030
+      "sha256": "740da55372788151b0a5e1d533bf73ab7a4b6c5cfcaa50f695a2735d8f72579e",
+      "size": 1724843
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "1207862f4e150003d45d1fb8acdac65b06b0a5e36f1554b5047f02353acdfd78",
-      "size": 1704030
+      "sha256": "740da55372788151b0a5e1d533bf73ab7a4b6c5cfcaa50f695a2735d8f72579e",
+      "size": 1724843
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -107,7 +107,7 @@
     }
   ],
   "build": {
-    "commit": "98fbe48208bb0bc75ecbc57d32aecae264f3b578",
+    "commit": "6edc9ac3110158931efb53d76659b0122cd28c32",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -136,8 +136,8 @@
     },
     {
       "path": "package.json",
-      "sha256": "31721753a181cc258d22ee7e1b22e5e266f7b7e2de3af70f7ff8bfc5a83a433d",
-      "size": 3679
+      "sha256": "59c432ad3c4bcac1167daedb0af7d0caf210de71cad02421b14412a7e7897eec",
+      "size": 3839
     },
     {
       "path": "schemas/bundle-manifest.schema.json",
@@ -181,8 +181,8 @@
     },
     {
       "path": "src/v100/catalog.mjs",
-      "sha256": "864c2b27032a31121915e0ea2106651ce7e4975b56fb509320fe448a65ca79b9",
-      "size": 10677
+      "sha256": "b4c2eab569a3be10925671c8dfab8e45942706859917410b82690cd92c7666d3",
+      "size": 33674
     },
     {
       "path": "src/v100/command-outcome.mjs",
@@ -196,8 +196,13 @@
     },
     {
       "path": "src/v100/core.mjs",
-      "sha256": "992b9f14730f547e3ebb63b134caa47d03957c67642cd1d35422c401f88e8024",
-      "size": 22633
+      "sha256": "21cfd757e4874a8b00310b6827bb64c987bcfdd54da1ea92d18a58619d75eabd",
+      "size": 23309
+    },
+    {
+      "path": "src/v100/designer-commands.mjs",
+      "sha256": "f8a99648784983dbac505a38a52293b21fd17386f968712e6f43592d67857687",
+      "size": 14746
     },
     {
       "path": "src/v100/entity-mapping.mjs",
@@ -233,6 +238,11 @@
       "path": "src/v100/panel-model.mjs",
       "sha256": "85138d601d98011ce316175e8a363ebaa392538fbd7ae074af749a592f90fa0f",
       "size": 3070
+    },
+    {
+      "path": "src/v100/ports.mjs",
+      "sha256": "c6140528d6d1628e0cdc22f33e9c3ff27dfaf81095acef956243e9ac24072fe9",
+      "size": 6859
     },
     {
       "path": "src/v100/project-authority.mjs",
