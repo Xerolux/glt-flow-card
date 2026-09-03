@@ -5863,6 +5863,20 @@
     "catalog.refusal_self_connection": "Ein Port kann nicht mit sich selbst verbunden werden.",
     "catalog.refusal_title": "Diese Verbindung ist nicht möglich",
     "catalog.refusal_unknown": "Die Verbindung wurde abgelehnt.",
+    "contract.dangling_reference": "Verweis auf {id} in {collection} zeigt ins Leere",
+    "contract.depth": "Verschachtelung zu tief: {actual}, höchstens {limit}",
+    "contract.duplicate_id": "Die ID {id} kommt in {collection} mehrfach vor",
+    "contract.error_limit": "{actual} Befunde gefunden; nur die ersten {limit} werden angezeigt",
+    "contract.id_length": "ID zu lang: {actual} Zeichen, höchstens {limit}",
+    "contract.json_bytes": "Projekt zu groß: {actual} Bytes, höchstens {limit}",
+    "contract.nodes": "Zu viele Elemente: {actual}, höchstens {limit}",
+    "contract.path_length": "Pfad zu lang: {actual} Zeichen, höchstens {limit}",
+    "contract.required": "Pflichtangabe fehlt: {property}",
+    "contract.schema_version": "Schemaversion {actual} wird nicht unterstützt. Zulässig: {allowed}",
+    "contract.string_bytes": "Text zu lang: {actual} Bytes, höchstens {limit}",
+    "contract.type": "Falscher Datentyp — erwartet wird {expected}",
+    "contract.type_keyword": "Wert verletzt die Regel {keyword}",
+    "contract.unknown": "Unbekannter Befund: {code}",
     "designer.add": "Objekt hinzufügen",
     "designer.align": "Ausrichten",
     "designer.canvas_label": "Konstruktionsfläche",
@@ -6107,6 +6121,7 @@
     "safety.conflict_choices_retry_with_fresh_lease": "Mit neuem Lease erneut versuchen",
     "safety.conflict_heading": "Speichern blockiert — es existiert eine neuere Revision",
     "safety.connected": "Verbunden",
+    "safety.contract_unknown": "Unbekannter Befund: {code}",
     "safety.control_cancel": "Steuerung abbrechen",
     "safety.control_confirm_body": "„{label}“ ausführen? Der Companion löst die Wirkung aus dem aktuellen Projektstand auf; diese Karte sendet nur den Steuerungsnamen und die deklarierte Eingabe.",
     "safety.control_confirm_heading": "Konfigurierte Steuerung bestätigen",
@@ -6152,6 +6167,7 @@
     "safety.expected_revision": "Erwartet",
     "safety.export_telemetry": "Client-Telemetrie exportieren",
     "safety.export_trusted": "Vertrauenswürdiges Auditprotokoll exportieren",
+    "safety.finding": "Befund",
     "safety.ignored_noise": "Ignorierte Reihenfolgenänderung",
     "safety.impact": "Auswirkung",
     "safety.inspect_bundle": ".gltproject-Paket prüfen",
@@ -6551,6 +6567,20 @@
     "catalog.refusal_self_connection": "A port cannot be connected to itself.",
     "catalog.refusal_title": "This connection is not possible",
     "catalog.refusal_unknown": "The connection was refused.",
+    "contract.dangling_reference": "A reference to {id} in {collection} points at nothing",
+    "contract.depth": "Nesting too deep: {actual}, at most {limit}",
+    "contract.duplicate_id": "The id {id} appears more than once in {collection}",
+    "contract.error_limit": "{actual} findings; only the first {limit} are shown",
+    "contract.id_length": "Id too long: {actual} characters, at most {limit}",
+    "contract.json_bytes": "Project too large: {actual} bytes, at most {limit}",
+    "contract.nodes": "Too many elements: {actual}, at most {limit}",
+    "contract.path_length": "Path too long: {actual} characters, at most {limit}",
+    "contract.required": "Required field missing: {property}",
+    "contract.schema_version": "Schema version {actual} is not supported. Allowed: {allowed}",
+    "contract.string_bytes": "Text too long: {actual} bytes, at most {limit}",
+    "contract.type": "Wrong data type — {expected} expected",
+    "contract.type_keyword": "The value breaks the {keyword} rule",
+    "contract.unknown": "Unknown finding: {code}",
     "designer.add": "Add object",
     "designer.align": "Align",
     "designer.canvas_label": "Designer canvas",
@@ -6795,6 +6825,7 @@
     "safety.conflict_choices_retry_with_fresh_lease": "Retry with a fresh lease",
     "safety.conflict_heading": "Save blocked — a newer revision exists",
     "safety.connected": "Connected",
+    "safety.contract_unknown": "Unknown finding: {code}",
     "safety.control_cancel": "Cancel control",
     "safety.control_confirm_body": "Run “{label}”? The Companion resolves the effect from the current project head; this card sends only the control name and the declared input.",
     "safety.control_confirm_heading": "Confirm configured control",
@@ -6840,6 +6871,7 @@
     "safety.expected_revision": "Expected",
     "safety.export_telemetry": "Export client telemetry",
     "safety.export_trusted": "Export trusted audit",
+    "safety.finding": "Finding",
     "safety.ignored_noise": "Ignored ordering noise",
     "safety.impact": "Impact",
     "safety.inspect_bundle": "Inspect .gltproject bundle",
@@ -63451,7 +63483,9 @@ ${declare("dark")}
     "conflictHeading": "safety.conflict_heading",
     "connected": "safety.connected",
     "controlCancel": "safety.control_cancel",
+    "contractUnknown": "safety.contract_unknown",
     "controlConfirmBody": "safety.control_confirm_body",
+    "finding": "safety.finding",
     "controlConfirmHeading": "safety.control_confirm_heading",
     "controlCorrelation": "safety.control_correlation",
     "controlEffect": "safety.control_effect",
@@ -64470,6 +64504,19 @@ ${declare("dark")}
     }
     content.append(actions);
   }
+  function contractIssueText(issue2, language) {
+    const params = issue2?.params ?? {};
+    const values = Object.fromEntries(
+      Object.entries(params).map(([name, value]) => [
+        name,
+        Array.isArray(value) ? value.join(", ") : value
+      ])
+    );
+    if (!issue2?.code || !hasWording(issue2.code, language)) {
+      return projectSafetyCopy(language, "contractUnknown", { code: issue2?.code ?? "?" });
+    }
+    return text(issue2.code, language, values);
+  }
   function renderValidation(editor, state, content) {
     content.append(element("h3", "", copyFor(editor, "validate")));
     if (!state.validation) {
@@ -64490,7 +64537,11 @@ ${declare("dark")}
       const body = element("tbody");
       for (const issue2 of state.validation.errors || []) {
         const row = element("tr");
-        for (const [label, value] of [["Code", issue2.code], [copyFor(editor, "path"), issue2.path], ["Message", issue2.message || JSON.stringify(issue2.params || {})]]) {
+        for (const [label, value] of [
+          ["Code", issue2.code],
+          [copyFor(editor, "path"), issue2.path],
+          [copyFor(editor, "finding"), contractIssueText(issue2, projectSafetyLocale(editor?._hass))]
+        ]) {
           const cell = element("td", "glt-safe-code", value);
           cell.dataset.label = label;
           row.append(cell);

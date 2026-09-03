@@ -72,13 +72,31 @@ const ALLOWED = new Map(Object.entries({
  * A dependency's user-facing text is a real concern and a different one: it is
  * not translatable by moving a string, and it is 10-09's supply-chain question.
  */
+/**
+ * Regions whose strings are the product's own but reach no screen.
+ *
+ * `src/v100/generated/project-validators.mjs` is ajv's compiled output, and it
+ * carries ajv's English diagnostics — "must have required property 'id'". They
+ * are excluded because the product **provably never renders them**:
+ * `project-contract.mjs` maps every ajv keyword to a stable `contract.*` code
+ * with structured params, an issue object carries no `message` field at all,
+ * and the validation table renders the catalogued sentence for that code.
+ *
+ * That was not true before this phase — the table rendered
+ * `issue.message || JSON.stringify(issue.params)`, so an engineer read raw JSON.
+ * The exclusion is earned by the fix, not asserted around the problem.
+ */
+const UNRENDERED = ["src/v100/generated/"];
+
 function ownRegions(source) {
   const banners = [...source.matchAll(/^\s*\/\/ ((?:node_modules|src|dist|tools)\/\S+)$/gmu)];
   const regions = [];
   banners.forEach((banner, index) => {
     const from = banner.index;
     const to = index + 1 < banners.length ? banners[index + 1].index : source.length;
-    if (!banner[1].startsWith("node_modules/")) regions.push([from, to]);
+    if (banner[1].startsWith("node_modules/")) return;
+    if (UNRENDERED.some((prefix) => banner[1].startsWith(prefix))) return;
+    regions.push([from, to]);
   });
   // Everything before the first banner is the bundle's own preamble.
   if (banners.length > 0) regions.unshift([0, banners[0].index]);

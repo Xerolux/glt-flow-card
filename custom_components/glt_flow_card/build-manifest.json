@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "f68e59033273cae8e8537e32d4d63ae55460609f2d412d1477df0391733c6db6",
-      "size": 3092735
+      "sha256": "92d76c06bc793e6d37c37dbf58dc36cfcbafe5fa4ecae4b4f910cf779dbb06fa",
+      "size": 3095703
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "f68e59033273cae8e8537e32d4d63ae55460609f2d412d1477df0391733c6db6",
-      "size": 3092735
+      "sha256": "92d76c06bc793e6d37c37dbf58dc36cfcbafe5fa4ecae4b4f910cf779dbb06fa",
+      "size": 3095703
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -138,7 +138,7 @@
   ],
   "build": {
     "commit": "a9c5c68650934ba786be8d3e1d25b07cebaa7dd0",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -219,13 +219,13 @@
     },
     {
       "path": "src/v100/catalog-de.mjs",
-      "sha256": "710396ccaccef927a5506c07e82a3ba412a63dc131b8e49135b2a6efe8c37d23",
-      "size": 40360
+      "sha256": "7d85b133bda13c1a4716b90eb50aa433143cca41f324553e792d2f0aed48176c",
+      "size": 41515
     },
     {
       "path": "src/v100/catalog-en.mjs",
-      "sha256": "4bf7aeb0202c3e98827e93b1ccc317a96580609bcf2c842741f030a9c5d0ac2e",
-      "size": 37416
+      "sha256": "1c9e5a95c85ac4303a0c7ae0b9154da95753290a1c4d377160249f4f65f9ec67",
+      "size": 38535
     },
     {
       "path": "src/v100/catalog-lookup.mjs",
@@ -394,13 +394,13 @@
     },
     {
       "path": "src/v100/project-safety-i18n.mjs",
-      "sha256": "144c6c6682a2dffdeb777156cb55caaffa6c05f5ff7b4fb56d453a10692e7d1c",
-      "size": 14416
+      "sha256": "078363245b954b9f20f3a5eec05e0929e4df4ae3ba95d696655ae7aa8c77accb",
+      "size": 14495
     },
     {
       "path": "src/v100/project-safety.js",
-      "sha256": "5f94ca67a4dc324d28d2ef13a628d0d3996756f3f5807ae857d5793a1e64adbb",
-      "size": 68706
+      "sha256": "bd5b02aad32d5343aea024db1d7abb0890079d00c5bd85fbc060010180a25d0e",
+      "size": 69975
     },
     {
       "path": "src/v100/project-semantics.js",

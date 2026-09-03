@@ -20,6 +20,9 @@ import {
   isControlSuccess,
   isControlUnknown,
 } from "./configured-control.mjs";
+import { hasWording, text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
 import { projectSafetyCopy, projectSafetyLocale } from "./project-safety-i18n.mjs";
 
 const Editor = customElements.get("glt-flow-card-editor");
@@ -1017,6 +1020,32 @@ function renderOverview(editor, state, content) {
   content.append(actions);
 }
 
+/**
+ * One validation finding, as a sentence rather than as raw JSON.
+ *
+ * The table used to render `issue.message || JSON.stringify(issue.params)`.
+ * `issue` never carries a `message` — `project-contract.mjs` maps every ajv
+ * keyword to a stable `contract.*` code with structured params precisely so the
+ * library's English prose never reaches a screen — so the fallback always won,
+ * and an engineer importing a project read `{"property":"entity_id"}`.
+ *
+ * The code and the path stay beside it: the sentence says what is wrong, the
+ * path says where, and the code is what you search the documentation for.
+ */
+function contractIssueText(issue, language) {
+  const params = issue?.params ?? {};
+  const values = Object.fromEntries(
+    Object.entries(params).map(([name, value]) => [
+      name,
+      Array.isArray(value) ? value.join(", ") : value,
+    ]),
+  );
+  if (!issue?.code || !hasWording(issue.code, language)) {
+    return projectSafetyCopy(language, "contractUnknown", { code: issue?.code ?? "?" });
+  }
+  return catalogText(issue.code, language, values);
+}
+
 function renderValidation(editor, state, content) {
   content.append(element("h3", "", copyFor(editor, "validate")));
   if (!state.validation) {
@@ -1037,7 +1066,11 @@ function renderValidation(editor, state, content) {
     const body = element("tbody");
     for (const issue of state.validation.errors || []) {
       const row = element("tr");
-      for (const [label, value] of [["Code", issue.code], [copyFor(editor, "path"), issue.path], ["Message", issue.message || JSON.stringify(issue.params || {})]]) {
+      for (const [label, value] of [
+        ["Code", issue.code],
+        [copyFor(editor, "path"), issue.path],
+        [copyFor(editor, "finding"), contractIssueText(issue, projectSafetyLocale(editor?._hass))],
+      ]) {
         const cell = element("td", "glt-safe-code", value);
         cell.dataset.label = label;
         row.append(cell);
