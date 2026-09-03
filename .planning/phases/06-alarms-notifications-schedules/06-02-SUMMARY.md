@@ -32,6 +32,17 @@ classes they use, and this ships three. Which of them escalate, and at what
 delay, remains configuration — so the constraint is on the vocabulary's size,
 not on the philosophy built from it.
 
+> **Closed 2026-09-03.** The limitation rested on a conflation. The invariant
+> the closed vocabulary established is *exactly one declared vocabulary, read by
+> both runtimes* — it never required exactly three members. A site now declares
+> its own ordered scale of two to six tiers in site **options** (not project
+> documents, for the reason `notify_allowlist` is not project data), both
+> runtimes resolve it from that one place, and the parity corpus compares every
+> acceptance **and every refusal** across fourteen scales. A stored priority the
+> site does not declare is reported, never silently re-tiered. A site that
+> declares nothing is byte-identical to before, asserted rather than assumed.
+
+
 ## The counting defect, closed and proven
 
 The test that matters reproduces `navigation.py`'s old rule beside the new one

@@ -13,6 +13,9 @@ import test from "node:test";
 import {
   ALARM_PRIORITIES,
   ALARM_STATES,
+  AlarmScaleRejected,
+  MAX_PRIORITY_TIERS,
+  MIN_PRIORITY_TIERS,
   ESCALATION_STAGE_KINDS,
   NOTIFICATION_OUTCOMES,
   SCHEDULE_BINDING_KINDS,
@@ -23,6 +26,7 @@ import {
   countByPriority,
   isAlarmState,
   isEscalationStageKind,
+  resolvePriorityScale,
   isNotificationOutcome,
   isPriority,
   isScheduleBindingKind,
@@ -45,6 +49,11 @@ const SETS = {
   ESCALATION_STAGE_KINDS,
   SCHEDULE_BINDING_KINDS,
 };
+
+// Compared as canonical JSON with sorted keys, not field by field: Phase 3
+// found two runtimes agreeing on every value and disagreeing on the bytes, and
+// only a canonical comparison exposed it.
+const canonical = (value) => JSON.stringify(value, Object.keys(value).sort());
 
 test("every vocabulary is frozen and rejects an unknown member", () => {
   for (const [name, members] of Object.entries(SETS)) {
@@ -174,7 +183,7 @@ test("[expected-red:phase6-vocabulary] both runtimes export identical vocabulari
   // Compared as canonical JSON, not field by field: Phase 3 found two runtimes
   // agreeing on a verdict while building different models, and only comparing
   // canonical bytes exposed it.
-  const canonical = (value) => JSON.stringify(value, Object.keys(value).sort());
+  // `canonical` is defined at module scope; see the note beside it.
   console.log(`${EFFECT_PREFIX}${JSON.stringify({
     sets: Object.keys(SETS).length,
     priorities: ALARM_PRIORITIES.length,
@@ -195,5 +204,150 @@ test("the migration table covers every value it maps to", () => {
   const reachable = new Set(Object.values(SEVERITY_MIGRATION));
   for (const priority of ALARM_PRIORITIES) {
     assert.ok(reachable.has(priority), `no stored string maps to ${priority}`);
+  }
+});
+
+
+/**
+ * A site-declared scale, resolved identically by both runtimes (2026-09-03).
+ *
+ * Phase 6 closed the vocabulary because four components disagreed about what a
+ * word meant. That invariant is "exactly one declared vocabulary, read by both
+ * runtimes" -- it never required exactly three members, and the phase conflated
+ * the two. A site now declares its own scale.
+ *
+ * The comparison covers **refusals as well as acceptances**, because a scale one
+ * runtime rejects and the other accepts is the same class of defect as two
+ * runtimes counting differently: the browser would draw a badge row the
+ * Companion refuses to serve.
+ */
+const SCALE_CASES = Object.freeze([
+  {},
+  { alarm_priorities: undefined },
+  { alarm_priorities: ["safety", "critical", "warning", "info"] },
+  { alarm_priorities: ["a", "b", "c", "d", "e"], alarm_unknown_severity: "c" },
+  { alarm_priorities: ["safety", "critical", "warning", "info"],
+    alarm_severity_mapping: { shutdown: "safety", trip: "safety" } },
+  { alarm_priorities: ["hoch", "mittel", "niedrig"] },
+  { alarm_priorities: ["only"] },
+  { alarm_priorities: ["a", "b", "c", "d", "e", "f", "g"] },
+  { alarm_priorities: ["a", "a"] },
+  { alarm_priorities: ["a", "B"] },
+  { alarm_priorities: "nope" },
+  { alarm_priorities: ["a", "b"], alarm_severity_mapping: { x: "zz" } },
+  { alarm_priorities: ["a", "b"], alarm_unknown_severity: "zz" },
+  { alarm_priorities: ["a", "b"], alarm_severity_mapping: [] },
+]);
+
+const SCALE_ALARMS = Object.freeze([
+  { priority: "shutdown" }, { priority: "fault" }, { severity: "warn" },
+  { priority: "nonsense" }, { severity: "" }, {},
+]);
+
+function resolveInJavaScript() {
+  return SCALE_CASES.map((config) => {
+    try {
+      const scale = resolvePriorityScale(config);
+      const counted = countByPriority(SCALE_ALARMS, scale);
+      return {
+        ok: true,
+        priorities: [...scale.priorities],
+        fallback: scale.fallback,
+        declared: scale.declared,
+        migration: Object.fromEntries(Object.entries(scale.migration).sort()),
+        counts: counted.counts,
+        unrecognised: counted.unrecognised.map((value) => value ?? null),
+      };
+    } catch (error) {
+      return { ok: false, code: error.code ?? String(error) };
+    }
+  });
+}
+
+test("a site may declare four or five priority tiers", () => {
+  const four = resolvePriorityScale({
+    alarm_priorities: ["safety", "critical", "warning", "info"],
+  });
+  assert.deepEqual([...four.priorities], ["safety", "critical", "warning", "info"]);
+  assert.equal(four.declared, true);
+  // Rank is position, so the new top tier outranks what used to be the top.
+  assert.ok(atLeastAsSevere("safety", "critical", four));
+  assert.ok(!atLeastAsSevere("critical", "safety", four));
+  // And the tiers it kept still read their old data.
+  assert.equal(four.migration.fault, "critical");
+
+  const five = resolvePriorityScale({ alarm_priorities: ["a", "b", "c", "d", "e"] });
+  assert.equal(five.priorities.length, 5);
+});
+
+test("a project that declares nothing is unchanged", () => {
+  // The whole backwards-compatibility claim, asserted rather than assumed.
+  const scale = resolvePriorityScale({});
+  assert.deepEqual([...scale.priorities], [...ALARM_PRIORITIES]);
+  assert.equal(scale.fallback, UNKNOWN_SEVERITY_FALLBACK);
+  assert.equal(scale.declared, false);
+  assert.deepEqual(
+    countByPriority(SCALE_ALARMS, scale).counts,
+    countByPriority(SCALE_ALARMS).counts,
+    "resolving the default scale must equal not resolving one at all",
+  );
+});
+
+test("an undeclared priority is refused, never silently re-tiered", () => {
+  const scale = resolvePriorityScale({ alarm_priorities: ["hoch", "niedrig"] });
+  // The failure Phase 6 was right to fear: a stored `critical` on a scale that
+  // does not declare it must not quietly become `hoch`.
+  assert.throws(() => priorityRank("critical", scale), /unknown alarm priority/u);
+  const counted = countByPriority([{ priority: "critical" }], scale);
+  assert.deepEqual(counted.unrecognised, ["critical"],
+    "an undeclared stored priority must be reported, not absorbed");
+});
+
+test("the scale bounds are stated, and enforced at both ends", () => {
+  assert.equal(MIN_PRIORITY_TIERS, 2);
+  assert.equal(MAX_PRIORITY_TIERS, 6);
+  const tiers = (n) => Array.from({ length: n }, (_, i) => `t${i}`);
+  assert.throws(() => resolvePriorityScale({ alarm_priorities: tiers(1) }), AlarmScaleRejected);
+  assert.throws(() => resolvePriorityScale({ alarm_priorities: tiers(7) }), AlarmScaleRejected);
+  assert.ok(resolvePriorityScale({ alarm_priorities: tiers(2) }).declared);
+  assert.ok(resolvePriorityScale({ alarm_priorities: tiers(6) }).declared);
+});
+
+test("both runtimes resolve every scale, and every refusal, identically", () => {
+  const script = `
+import json, sys
+sys.path.insert(0, ${JSON.stringify(process.cwd())})
+from custom_components.glt_flow_card import alarm_vocabulary as av
+cases = json.loads(${JSON.stringify(JSON.stringify(SCALE_CASES))})
+alarms = json.loads(${JSON.stringify(JSON.stringify(SCALE_ALARMS))})
+out = []
+for config in cases:
+    try:
+        scale = av.resolve_priority_scale(config)
+        counted = av.count_by_priority(alarms, scale)
+        out.append({"ok": True, "priorities": list(scale["priorities"]),
+                    "fallback": scale["fallback"], "declared": scale["declared"],
+                    "migration": dict(sorted(scale["migration"].items())),
+                    "counts": counted["counts"],
+                    "unrecognised": [v if v is not None else None for v in counted["unrecognised"]]})
+    except av.AlarmScaleRejected as error:
+        out.append({"ok": False, "code": error.code})
+print(json.dumps(out, sort_keys=True))
+`;
+  const [command, ...args] = pythonCommand().split(" ");
+  const python = JSON.parse(execFileSync(command, [...args, "-c", script], { encoding: "utf8" }));
+  const javascript = resolveInJavaScript();
+
+  assert.equal(python.length, SCALE_CASES.length);
+  // Not vacuous in either direction: the corpus must contain both.
+  assert.ok(javascript.some((entry) => entry.ok), "no case was accepted");
+  assert.ok(javascript.some((entry) => !entry.ok), "no case was refused");
+
+  for (let index = 0; index < SCALE_CASES.length; index += 1) {
+    assert.equal(
+      canonical(javascript[index]),
+      canonical(python[index]),
+      `case ${index} (${JSON.stringify(SCALE_CASES[index])}) differs between runtimes`,
+    );
   }
 });

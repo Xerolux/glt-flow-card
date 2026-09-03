@@ -34,6 +34,7 @@ from homeassistant.util import dt as dt_util
 
 from . import (
     alarm_engine,
+    alarm_vocabulary,
     dispatch_gate,
     remote_fanout,
     history_bounds,
@@ -494,7 +495,28 @@ class GltStore:
             "notify_attempt_bound": int(options.get(
                 "notify_attempt_bound", notifications.DEFAULT_ATTEMPT_BOUND,
             )),
+            # The priority scale this site runs on. The docstring above has
+            # always called priorities a site decision; until 2026-09-03 the
+            # product did not let a site make it, so a plant with a separate
+            # safety-shutdown class above its faults had to record two different
+            # things under one word.
+            #
+            # A malformed scale resolves to the default rather than raising:
+            # this is read on every roll-up and every badge, and a site that
+            # mistyped one option must not lose its alarm display entirely. The
+            # refusal is surfaced instead, so the mistake is visible and the
+            # plant stays legible.
+            "priority_scale": self._resolved_priority_scale(options),
         }
+
+    @staticmethod
+    def _resolved_priority_scale(options: Mapping[str, Any]) -> dict[str, Any]:
+        """Resolve the site scale, degrading to the default and saying so."""
+        try:
+            return alarm_vocabulary.resolve_priority_scale(options)
+        except alarm_vocabulary.AlarmScaleRejected as rejected:
+            scale = alarm_vocabulary.resolve_priority_scale({})
+            return {**scale, "rejected": {"code": rejected.code, **rejected.detail}}
 
     def _append_history(self, row: dict[str, Any]) -> list[dict[str, Any]]:
         """Append one alarm-history row through the single bounded path.
@@ -2045,7 +2067,10 @@ async def ws_navigation_portfolio(hass, connection, msg):
     permitted = [
         manager.with_alarm_runtime(head) for head in heads if head["id"] in visible
     ]
-    connection.send_result(msg["id"], roll_up_portfolio(permitted))
+    # One scale for the whole roll-up: it is a site setting, and totals summed
+    # across projects tiered differently would be a number with no meaning.
+    scale = manager.alarm_settings()["priority_scale"]
+    connection.send_result(msg["id"], roll_up_portfolio(permitted, scale))
 
 
 @websocket_api.websocket_command({

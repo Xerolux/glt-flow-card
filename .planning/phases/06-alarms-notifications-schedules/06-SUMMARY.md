@@ -134,6 +134,17 @@ T5-16, T4-14, T3-14 and T2-16 stand unmarked for the same reason.
 express that today. Extending the closed set is a schema change, not a setting,
 and it is raised rather than taken.
 
+> **Closed 2026-09-03.** The limitation rested on a conflation. The invariant
+> the closed vocabulary established is *exactly one declared vocabulary, read by
+> both runtimes* — it never required exactly three members. A site now declares
+> its own ordered scale of two to six tiers in site **options** (not project
+> documents, for the reason `notify_allowlist` is not project data), both
+> runtimes resolve it from that one place, and the parity corpus compares every
+> acceptance **and every refusal** across fourteen scales. A stored priority the
+> site does not declare is reported, never silently re-tiered. A site that
+> declares nothing is byte-identical to before, asserted rather than assumed.
+
+
 **Measured capacity is still outstanding.** The index bounds the *shape* of the
 scan cost. What it costs at thousands of alarms is Phase 10's measurement.
 

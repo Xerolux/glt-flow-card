@@ -179,11 +179,16 @@ def _is_active(alarm: Mapping[str, Any], runtime: Mapping[str, Any]) -> bool:
     return bool(row.get("active"))
 
 
-def _counts_for(config: Mapping[str, Any]) -> dict[str, int]:
-    """Alarm counts for one project. Zero counts are omitted, not reported.
+def _counts_for(config: Mapping[str, Any], scale: Any = None) -> dict[str, int]:
+    """Alarm counts for one project, on the site's own priority scale.
 
-    A rendered zero is an oracle one level up: it distinguishes an authorized
-    empty scope from an unauthorized one.
+    Zero counts are omitted, not reported. A rendered zero is an oracle one
+    level up: it distinguishes an authorized empty scope from an unauthorized
+    one -- which is why this cannot simply report every declared tier the way
+    the panel badges do.
+
+    `scale` is the site's resolved scale; omitted, the default applies, so a
+    site that never declared one rolls up exactly as it always did.
     """
     counts: dict[str, int] = {}
     runtime = _alarm_runtime_state(config)
@@ -199,23 +204,30 @@ def _counts_for(config: Mapping[str, Any]) -> dict[str, int]:
         # Migrated, not matched. A stored string nobody declared still lands in
         # a bucket -- the most severe one -- rather than vanishing from the
         # total, which is what a membership test did to `critical`.
-        priority = migrate_severity(alarm.get("priority", alarm.get("severity")))["priority"]
+        priority = migrate_severity(
+            alarm.get("priority", alarm.get("severity")), scale,
+        )["priority"]
         counts[priority] = counts.get(priority, 0) + 1
     return {name: value for name, value in counts.items() if value > 0}
 
 
-def portfolio(projects: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def portfolio(
+    projects: Sequence[Mapping[str, Any]], scale: Any = None,
+) -> dict[str, Any]:
     """Roll up the projects the caller may open, and nothing else.
 
     `projects` must already be filtered to the caller's memberships. The totals
     are summed from that filtered set: computing them first and filtering
     afterwards is the leak this function exists to avoid.
+
+    One `scale` for the whole roll-up, because it is a *site* setting: totals
+    summed across projects tiered differently would be a number with no meaning.
     """
     rows: list[dict[str, Any]] = []
     totals: dict[str, int] = {}
     for project in projects:
         config = project.get("config") or {}
-        counts = _counts_for(config)
+        counts = _counts_for(config, scale)
         row: dict[str, Any] = {
             "project_id": project.get("id"),
             "name": (config.get("project") or {}).get("name") or project.get("id"),

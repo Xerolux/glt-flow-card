@@ -60629,6 +60629,11 @@ function gltText(key) {
     notice: "info"
   });
   var UNKNOWN_SEVERITY_FALLBACK = ALARM_PRIORITIES[0];
+  function prioritiesOf(scale) {
+    if (scale === void 0 || scale === null) return ALARM_PRIORITIES;
+    if (Array.isArray(scale)) return scale;
+    return scale.priorities ?? ALARM_PRIORITIES;
+  }
   function frozenMembership(members) {
     const set = new Set(members);
     return (value) => set.has(value);
@@ -60639,19 +60644,27 @@ function gltText(key) {
   var isNotificationOutcome = frozenMembership(NOTIFICATION_OUTCOMES);
   var isEscalationStageKind = frozenMembership(ESCALATION_STAGE_KINDS);
   var isScheduleBindingKind = frozenMembership(SCHEDULE_BINDING_KINDS);
-  function priorityRank(priority) {
-    const rank = ALARM_PRIORITIES.indexOf(priority);
-    if (rank < 0) throw new RangeError(`unknown alarm priority: ${String(priority)}`);
+  function priorityRank(priority, scale) {
+    const priorities = prioritiesOf(scale);
+    const rank = priorities.indexOf(priority);
+    if (rank < 0) {
+      throw new RangeError(
+        `unknown alarm priority: ${String(priority)} (declared: ${[...priorities].join(", ")})`
+      );
+    }
     return rank;
   }
-  function migrateSeverity(stored) {
+  function migrateSeverity(stored, scale) {
+    const resolved = scale && typeof scale === "object" && !Array.isArray(scale) ? scale : null;
+    const migration = resolved?.migration ?? SEVERITY_MIGRATION;
+    const fallback = resolved?.fallback ?? UNKNOWN_SEVERITY_FALLBACK;
     const raw = String(stored ?? "").trim().toLowerCase();
     if (raw === "") {
-      return { priority: UNKNOWN_SEVERITY_FALLBACK, recognised: false, stored: stored ?? null };
+      return { priority: fallback, recognised: false, stored: stored ?? null };
     }
-    const mapped = Object.prototype.hasOwnProperty.call(SEVERITY_MIGRATION, raw) ? SEVERITY_MIGRATION[raw] : null;
+    const mapped = Object.prototype.hasOwnProperty.call(migration, raw) ? migration[raw] : null;
     if (mapped === null) {
-      return { priority: UNKNOWN_SEVERITY_FALLBACK, recognised: false, stored };
+      return { priority: fallback, recognised: false, stored };
     }
     return { priority: mapped, recognised: true, stored };
   }
