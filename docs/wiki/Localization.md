@@ -90,8 +90,8 @@ diesem Projekt in jedem Wert übereinstimmten und in jedem Byte nicht.
 **Das ist die eine Aussage dieser Phase, die das Produkt nicht erfüllt, und sie
 steht als *fehlgeschlagen* im Nachweisregister statt zu fehlen.**
 
-Rund 150 Zeichenketten kommen noch nicht aus dem Katalog: die beiden erzeugten
-Basisdateien der Alt-Karte und das Einstiegsmodul. Der Prüflauf nennt jede
+132 Zeichenketten kommen noch nicht aus dem Katalog: die beiden erzeugten
+Basisdateien der Alt-Karte, das Einstiegsmodul und einige Diagnosetexte. Der Prüflauf nennt jede
 einzelne — mit Liste, nicht mit Anzahl, damit die Zahl nicht unbemerkt wieder
 wächst und jede Zeile eine Aufgabe ist.
 

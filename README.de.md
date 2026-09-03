@@ -330,9 +330,9 @@ Fehlen als „trifft nicht zu" lesbar machen. Kapazitätsmessungen tragen ihre
 Umgebung, und nur eine als repräsentativ markierte stützt eine Kapazitätsaussage;
 nichts im Werkzeug kann dieses Kennzeichen setzen.
 
-**Was nicht fertig ist, steht hier statt entdeckt zu werden.** Rund 150
-Zeichenketten in den erzeugten Basisdateien der Alt-Karte kommen noch nicht aus
-dem Katalog; der Prüflauf nennt jede einzelne. Screenreader-Verhalten,
+**Was nicht fertig ist, steht hier statt entdeckt zu werden.** 132 Zeichenketten
+in den erzeugten Basisdateien der Alt-Karte und im Einstiegsmodul kommen noch
+nicht aus dem Katalog; der Prüflauf nennt jede einzelne. Screenreader-Verhalten,
 repräsentative Kapazität, die festgelegten Home-Assistant-Stände und die
 Herkunftsprüfung der Abhängigkeiten wurden hier nicht ausgeführt und stehen
 jeweils mit Grund als nicht ausgeführt im Register.

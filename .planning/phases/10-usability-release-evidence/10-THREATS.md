@@ -78,7 +78,7 @@ command was run four times.
 |---|---|---|
 | `test/catalog-completeness.test.mjs` | T10-01 | 8 passed |
 | `test/pseudo-locale.test.mjs` | T10-02 | 7 passed |
-| `tools/verify-i18n-coverage.mjs` | T10-03 | **FAIL, 154 strings named** |
+| `tools/verify-i18n-coverage.mjs` | T10-03 | **FAIL, 132 strings named** |
 | `test/locale-formatting.test.mjs` | T10-04, T10-05 | 8 passed (×2) |
 | `test/catalog-parity.test.mjs` | T10-06 | 4 passed |
 | `--grep=phase-10-a11y` | T10-07, T10-08 | 8 passed (×2) |
@@ -94,15 +94,15 @@ This is the phase's own discipline applied to itself. The row is not marked
 verified, and it is not quietly left `planned` either — `planned` reads as work
 not started, and this work started and did not finish.
 
-154 user-facing strings in the shipped artifact still do not come from a
+132 user-facing strings in the shipped artifact still do not come from a
 catalog: the two generated bases of the legacy card and the entry module. The
 sweep names each one, and the claim registry publishes the corresponding claim
 **as failed** rather than omitting it.
 
-What was completed: 618 catalog keys across eight surface modules, four
-vocabulary modules and the whole symbol catalog — including the English half of
-143 symbol, profile, slot, control, style and domain labels, which existed
-nowhere in the product before.
+What was completed: 683 catalog keys across eight surface modules, four
+vocabulary modules, the whole symbol catalog and the legacy card's separate
+symbol library — including the English half of 208 labels that existed nowhere
+in the product before.
 
 ### T10-16 stays `planned`, with its exact failure
 

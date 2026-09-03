@@ -304,9 +304,9 @@ measurements carry the environment they were taken in, and only an environment
 marked representative supports a platform-capacity claim — nothing in the
 harness can set that flag.
 
-**What is not done, said here rather than discovered.** About 150 strings in the
-legacy card's generated bases still do not come from a catalog; the sweep names
-each one. Screen-reader behaviour, representative capacity, the pinned Home
+**What is not done, said here rather than discovered.** 132 strings in the legacy
+card's generated bases and entry module still do not come from a catalog; the
+sweep names each one. Screen-reader behaviour, representative capacity, the pinned Home
 Assistant lanes and dependency provenance were not exercised in this
 environment, and each is published as unexercised with its reason.
 

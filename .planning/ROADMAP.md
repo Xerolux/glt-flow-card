@@ -434,7 +434,7 @@ carry the evidence. That gap is tracked in the close-out work rather than
 papered over here.
 
 **T10-03 is the one row in the milestone marked `not met`** rather than verified
-or planned. 154 user-facing strings in the shipped artifact still do not come
+or planned. 132 user-facing strings in the shipped artifact still do not come
 from a catalog, the sweep names each one, and the claim registry publishes the
 corresponding claim as failed. `planned` would have read as work not started;
 this work started and did not finish.

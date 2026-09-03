@@ -136,7 +136,7 @@ across twelve bounded candidates; this environment has no Docker engine. Nothing
 in this repository demonstrates the artifact installing on either pinned Home
 Assistant lane.
 
-**I18N-01 is the one requirement that is not complete.** 154 user-facing strings
+**I18N-01 is the one requirement that is not complete.** 132 user-facing strings
 in the shipped artifact still do not come from a catalog — the legacy card's two
 generated bases and the entry module. `tools/verify-i18n-coverage.mjs` names
 each one, and the claim registry publishes the corresponding claim as failed

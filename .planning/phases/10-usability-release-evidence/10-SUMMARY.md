@@ -7,7 +7,7 @@ failure.
 
 **Evidence at head:** 521 Node, 691 Python, 92 exact-dist browser,
 `verify-docs-site` 28 sources / 41 byte-identical site files, claim registry
-11 passed / 1 failed / 4 not exercised.
+12 passed / 1 failed / 4 not exercised.
 
 ## What this phase was about
 
@@ -31,8 +31,8 @@ same defect from three angles:
 
 ## The headline
 
-**The registry is the phase, and its first run is honest about this product:
-11 passed, 1 failed, 4 not exercised.**
+**The registry is the phase, and its run is honest about this product:
+12 passed, 1 failed, 4 not exercised.**
 
 Every published claim cites a command and what that command said. Three rules,
 each closing a row:
@@ -56,15 +56,15 @@ the registry is a build step — a document is edited by whoever wants the claim
 
 **A locale is data now.** Wording lived in fourteen modules as `{ de, en }`
 pairs, which made adding French an edit to every module that renders anything.
-618 keys in two flat catalogs, and the lookup **refuses**: the three spellings
+683 keys in two flat catalogs, and the lookup **refuses**: the three spellings
 of `?? COPY.en[key] ?? key` it replaces showed a German operator an English
 sentence, indistinguishable from a term deliberately left in English, or the raw
 key as UI text. A pseudo-locale generated at test time proves the refusal is
 reachable.
 
-**The English half of the symbol vocabulary did not exist.** 143 labels —
-symbols, profiles, slots, controls, styles, domains — were German only. Moving
-them was also authoring them.
+**The English half of the symbol vocabulary did not exist.** 208 labels —
+symbols, profiles, slots, controls, styles, domains, and the legacy card's own
+separate symbol library — were German only. Moving them was also authoring them.
 
 **Templates, not functions.** `de: (seconds) => …` cannot be supplied as data,
 which made a locale a code edit even where the wording was already bilingual.
@@ -125,7 +125,7 @@ decided by provenance now, using the bundler's own module banners.
 
 ## What this phase did not finish
 
-**T10-03 is `not met`, and that is stated rather than rounded off.** 154
+**T10-03 is `not met`, and that is stated rather than rounded off.** 132
 user-facing strings in the shipped artifact still do not come from a catalog:
 the legacy card's two generated bases and the entry module. The sweep names each
 one — with a list, not a count, so the number cannot creep back up unnoticed and

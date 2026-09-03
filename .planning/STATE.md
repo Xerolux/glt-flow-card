@@ -33,7 +33,7 @@ remains is close-out, and one row that is honestly unfinished.
 
 ### The one row marked `not met`
 
-**T10-03.** 154 user-facing strings in the shipped artifact do not come from a
+**T10-03.** 132 user-facing strings in the shipped artifact do not come from a
 catalog — the legacy card's two generated bases and the entry module.
 `tools/verify-i18n-coverage.mjs` names each one, and the claim registry
 publishes the corresponding claim **as failed** rather than omitting it.
@@ -64,7 +64,7 @@ this environment has no Docker engine. Each carries its exact failure output.
 ### What is claimed, and by what
 
 `node tools/claim-registry.mjs` runs every claim's command and publishes the
-result: **11 passed, 1 failed, 4 not exercised** at head. The four unexercised
+result: **12 passed, 1 failed, 4 not exercised** at head. The four unexercised
 capabilities are screen-reader behaviour, representative capacity, the pinned
 Home Assistant lanes and dependency provenance — each with its reason, because a
 reader who is not told assumes they were exercised.

@@ -14,13 +14,14 @@ excluded on the same principle — they are addressed to whoever reads a stack
 trace, and translating them would put a German sentence in front of the person
 debugging the failure.
 
-**What was done:** 272 → 154. Fifty inline `{de, en}` pairs from four vocabulary
-modules, and all 143 labels of the symbol catalog — whose English half existed
-nowhere in the product, so moving them was also authoring them.
+**What was done:** 272 → 132. Fifty inline `{de, en}` pairs from four vocabulary
+modules, all 143 labels of the symbol catalog, and the 65 of the legacy card's
+separate symbol library — whose English half existed nowhere in the product, so
+moving them was also authoring them.
 
-**What is not done, and is published as failed:** 154 strings in the legacy
-card's two generated bases and the entry module. The bases carry their own
-duplicate symbol vocabulary, separate from `catalog.mjs`.
+**What is not done, and is published as failed:** 132 strings in the legacy
+card's two generated bases, the entry module and a handful of validator and
+diagnostic messages.
 
 The allowlist carries a reason per entry, and "not UI" is not a reason — say
 what the string *is*, so a later reader can check the claim rather than inherit
