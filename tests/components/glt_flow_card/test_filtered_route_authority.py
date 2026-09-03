@@ -7,6 +7,15 @@ consequence is that filtering is the handler's job, and a handler that forgets
 leaks in a way no permission test notices — the call succeeds, which is exactly
 what the policy matrix expects of a filtered route.
 
+**Since the close-out review this is enforced by the boundary rather than by the
+handlers.** `_guard_command` answers a project-scoped filtered route itself when
+the caller lacks its capability, sending the empty result the route declares in
+`RoutePolicy.empty_result`. The handler is never invoked, so it cannot forget a
+filter it is never asked to perform, and `RoutePolicy.__post_init__` refuses to
+declare such a route at all without an empty answer. The handlers keep their own
+checks as defence in depth; `test_the_boundary_filters_without_the_handlers`
+below proves the boundary alone is sufficient.
+
 That is not a hypothetical. It shipped four times:
 
 * ``alarms/list`` — fixed in ``9f53bcb`` after a probe found any authenticated
@@ -214,3 +223,85 @@ async def test_an_unassigned_caller_reads_no_row(
     )
     leaked = rows_in(response["result"])
     assert leaked == [], f"{route} returned {len(leaked)} row(s) of a project this caller cannot read"
+
+
+async def test_the_boundary_filters_without_the_handlers(
+    hass: HomeAssistant, config_entry: MockConfigEntry, phase2_users,
+) -> None:
+    """The property WR-01 asked for: omission is impossible, not merely tested for.
+
+    Every assertion above would still pass if the guarantee lived in eight
+    handlers that each happen to be correct today. This one takes the handler out
+    of the path -- it is replaced by one that returns the store unfiltered, which
+    *is* the original defect -- and requires the answer to stay empty anyway,
+    because the boundary answered before the handler ran.
+    """
+    await _seed(hass, config_entry, phase2_users)
+    from custom_components.glt_flow_card import _guard_command, _manager
+
+    ran: list[str] = []
+
+    def unfiltered(hass_, connection, msg):
+        # The shape of the leak: read the message, return everything, filter
+        # nothing. If this ever runs for an unauthorized caller, it leaks.
+        ran.append(msg["type"])
+        connection.send_result(
+            msg["id"], list(_manager(hass_).data["work_orders"].values())
+        )
+
+    class _Connection:
+        """The two methods the boundary uses, plus the principal it reads."""
+
+        def __init__(self, user):
+            self.user = user
+            self.refresh_token_id = "probe-session"
+            self.results: list = []
+            self.errors: list = []
+
+        def send_result(self, _id, result):
+            self.results.append(result)
+
+        def send_error(self, _id, code, _message):
+            self.errors.append(code)
+
+    unassigned = phase2_users.principal("unassigned")
+    connection = _Connection(unassigned.user)
+    guarded = _guard_command(unfiltered)
+    guarded(
+        hass,
+        connection,
+        {"id": 1, "type": "glt_flow_card/work_orders/list", "project_id": HIDDEN},
+    )
+
+    assert ran == [], (
+        "the unfiltered handler ran. A project-scoped filtered route must be "
+        "answered by the boundary for a caller who may not read the project, so "
+        "that no handler can leak by forgetting to filter."
+    )
+    assert connection.errors == [], (
+        "a filtered route must not deny: a refusal tells an unauthorized caller "
+        f"that rows exist. Got {connection.errors}"
+    )
+    assert connection.results == [[]], (
+        f"the boundary answered {connection.results}, not the route's declared "
+        "empty result"
+    )
+
+
+def test_every_filtered_route_declares_its_empty_answer() -> None:
+    """A filtered route cannot be declared without one, and that is the guard.
+
+    `RoutePolicy.__post_init__` refuses the declaration, so this is checked at
+    import; asserting it here says *why* the refusal exists.
+    """
+    from custom_components.glt_flow_card.policy import COMMAND_POLICIES
+
+    for policy in COMMAND_POLICIES.values():
+        if policy.enumeration == "filter" and policy.scope == "project" and policy.state == "active":
+            assert policy.empty_result, policy.route
+            answer = policy.empty_answer()
+            assert isinstance(answer, (list, dict)), policy.route
+            assert policy.empty_answer() is not policy.empty_answer(), (
+                f"{policy.route}: empty_answer must return a fresh value, or one "
+                "caller's response could be mutated into another's"
+            )

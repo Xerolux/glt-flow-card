@@ -3384,6 +3384,30 @@ def _guard_command(command):
                 connection.send_error(msg["id"], "lease_expired", "lease_expired")
                 return None
 
+        # A project-scoped filtered route answers here, not in its handler.
+        #
+        # Such a route is *admitted* on purpose even when the caller holds
+        # nothing: refusing would itself tell them that rows exist, which is the
+        # enumeration T2-04 forbids. The consequence had always been that
+        # filtering was the handler's job -- and four handlers forgot, three of
+        # them found in the close-out review, one of those handing over the
+        # trusted audit trail.
+        #
+        # The boundary sends the route's declared empty answer instead, so an
+        # unauthorized caller never reaches the handler. The handler cannot
+        # forget a filter it is never asked to perform, and a filtered route
+        # added later cannot be declared at all without saying what its empty
+        # answer looks like -- `RoutePolicy.__post_init__` refuses it at import.
+        policy = decision.policy
+        if (
+            policy.enumeration == "filter"
+            and policy.scope == "project"
+            and policy.capability is not None
+            and policy.capability not in decision.capabilities
+        ):
+            connection.send_result(msg["id"], policy.empty_answer())
+            return None
+
         # `ActiveConnection` is slotted, so the decision travels with the
         # already-validated message under a private key instead.
         msg[DECISION_KEY] = decision

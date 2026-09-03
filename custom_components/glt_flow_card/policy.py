@@ -15,6 +15,7 @@ to everyone.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any
 
@@ -168,6 +169,18 @@ class RoutePolicy:
     #: capabilities reaching the same endpoint.
     any_of: tuple[str, ...] = ()
 
+    #: What a project-scoped filtered route answers a caller who may not read
+    #: the project, as JSON. A string rather than a dict because this dataclass
+    #: is frozen and a dict default would be shared mutable state.
+    #:
+    #: **Required** for every active project-scoped ``filter`` route, and that
+    #: requirement is the point. Such a route is deliberately *admitted* by the
+    #: boundary -- refusing would itself say that rows exist -- so filtering has
+    #: always been the handler's job, and four handlers forgot. Declaring the
+    #: empty answer here lets the boundary send it, so an unauthorized caller
+    #: never reaches the handler at all and there is nothing left to forget.
+    empty_result: str = ""
+
     def __post_init__(self) -> None:
         if self.scope not in {"component", "project"}:
             raise ValueError(f"{self.route}: unknown scope {self.scope!r}")
@@ -184,6 +197,27 @@ class RoutePolicy:
         for capability in self.any_of:
             if capability not in CAPABILITIES:
                 raise ValueError(f"{self.route}: unknown capability {capability!r}")
+        needs_empty = (
+            self.state == "active"
+            and self.scope == "project"
+            and self.enumeration == "filter"
+        )
+        if needs_empty and not self.empty_result:
+            raise ValueError(
+                f"{self.route}: a project-scoped filtered route must declare the "
+                "empty result it gives a caller who may not read the project. "
+                "Without it the boundary cannot answer, and filtering falls back "
+                "to the handler remembering to do it."
+            )
+        if self.empty_result:
+            try:
+                json.loads(self.empty_result)
+            except ValueError as error:
+                raise ValueError(f"{self.route}: empty_result is not JSON: {error}") from None
+
+    def empty_answer(self) -> Any:
+        """Return a fresh copy of this route's empty answer."""
+        return json.loads(self.empty_result)
 
 
 def _route(
@@ -198,6 +232,7 @@ def _route(
     state: str = "active",
     rate_class: str = "default",
     any_of: tuple[str, ...] = (),
+    empty_result: str = "",
 ) -> RoutePolicy:
     return RoutePolicy(
         route=route,
@@ -210,6 +245,7 @@ def _route(
         state=state,
         rate_class=rate_class,
         any_of=any_of,
+        empty_result=empty_result,
     )
 
 
@@ -234,8 +270,10 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/controls/preview", "control.read", rate_class="control"),
     _route("glt_flow_card/controls/execute", "control.execute", rate_class="control"),
     # -- evidence and telemetry -------------------------------------------
-    _route("glt_flow_card/evidence/list", "evidence.read", enumeration="filter"),
-    _route("glt_flow_card/telemetry/list", "evidence.read", enumeration="filter"),
+    _route("glt_flow_card/evidence/list", "evidence.read", enumeration="filter",
+           empty_result="{\"rows\": [], \"cursor\": null, \"has_more\": false, \"provenance\": \"trusted\"}"),
+    _route("glt_flow_card/telemetry/list", "evidence.read", enumeration="filter",
+           empty_result="{\"rows\": [], \"provenance\": \"untrusted\"}"),
     _route("glt_flow_card/telemetry/add", "evidence.telemetry.write"),
     # -- membership administration ----------------------------------------
     _route("glt_flow_card/access/get", "project.access.read"),
@@ -282,13 +320,15 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     # The caller-selected service route is replaced entirely by 02-11.
     _route("glt_flow_card/control/execute", None, state="retired"),
     # -- alarms, work orders, reports -------------------------------------
-    _route("glt_flow_card/alarms/list", "alarm.read", enumeration="filter"),
+    _route("glt_flow_card/alarms/list", "alarm.read", enumeration="filter",
+           empty_result="{\"states\": [], \"history\": []}"),
     _route("glt_flow_card/alarms/ack", "alarm.write"),
     _route("glt_flow_card/alarms/shelve", "alarm.write"),
     # Schedules had no route at all: they were edited as project config, so
     # there was no authorization boundary of their own, no audit of an edit and
     # no route for a preview -- for the thing that runs the plant.
-    _route("glt_flow_card/schedules/list", "schedule.read", enumeration="filter"),
+    _route("glt_flow_card/schedules/list", "schedule.read", enumeration="filter",
+           empty_result="{\"schedules\": [], \"history\": []}"),
     _route("glt_flow_card/schedules/save", "schedule.write", rate_class="mutation"),
     _route("glt_flow_card/schedules/delete", "schedule.write", rate_class="mutation"),
     _route("glt_flow_card/schedules/preview", "schedule.read"),
@@ -300,16 +340,20 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     # `series` and `statistics` enumerate, so they filter rather than deny: a
     # refusal would tell an unauthorized caller that rows exist. The limit is
     # applied after filtering by the handler, or it becomes a count oracle.
-    _route("glt_flow_card/history/series", "history.read", enumeration="filter"),
-    _route("glt_flow_card/history/statistics", "history.read", enumeration="filter"),
+    _route("glt_flow_card/history/series", "history.read", enumeration="filter",
+           empty_result="{\"series\": [], \"coverage\": 0, \"source\": \"unavailable\"}"),
+    _route("glt_flow_card/history/statistics", "history.read", enumeration="filter",
+           empty_result="{\"series\": [], \"coverage\": 0, \"source\": \"unavailable\"}"),
     _route("glt_flow_card/history/coverage", "history.read"),
     # An export leaves the building, so it is rate-limited like a mutation even
     # though it changes nothing. What it costs is the reason, not what it writes.
     _route("glt_flow_card/history/export", "history.export", rate_class="mutation"),
-    _route("glt_flow_card/work_orders/list", "work_order.read", enumeration="filter"),
+    _route("glt_flow_card/work_orders/list", "work_order.read", enumeration="filter",
+           empty_result="[]"),
     _route("glt_flow_card/work_orders/save", "work_order.write"),
     _route("glt_flow_card/reports/run", "report.run"),
-    _route("glt_flow_card/reports/list", "report.read", enumeration="filter"),
+    _route("glt_flow_card/reports/list", "report.read", enumeration="filter",
+           empty_result="[]"),
     # -- remote sites: available from Phase 9 -------------------------------
     #
     # `remote/list` enumerates `filter` for the same reason `alarms/list` and
