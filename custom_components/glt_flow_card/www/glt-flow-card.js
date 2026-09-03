@@ -4904,7 +4904,7 @@ function gltText(key) {
       const cards = list.map((p) => `<div class="glt4-card"><b>${esc(p.name || p.id)}</b><small>${esc(p.updated || "")} \xB7 ${(p.versions || []).length} Versionen ${p.id === currentId ? "\xB7 AKTIV" : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-load="${esc(p.id)}">Laden</button><button class="glt4-btn" data-versions="${esc(p.id)}">Versionen</button><button class="glt4-btn glt4-danger" data-delete="${esc(p.id)}">L\xF6schen</button></div></div>`).join("");
       const m = modal(editor, "Projektbibliothek", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Aktuelles Projekt speichern</button><button class="glt4-btn" data-copy>Als neues Projekt speichern</button></div><div class="glt4-grid">${cards || '<div class="glt4-card">Noch keine gespeicherten Projekte.</div>'}</div><p style="font-size:9px;color:var(--mut);margin-top:12px">Mit installierter Companion-Integration werden Projekte ger\xE4te\xFCbergreifend in Home Assistant gespeichert; sonst lokal im Browser.</p>`);
       m.querySelector("[data-save]").onclick = async () => {
-        const name = editor._config.project?.name || prompt("Projektname", editor._config.title || "GLT Projekt") || "GLT Projekt";
+        const name = editor._config.project?.name || prompt(gltText("legacy.prompt_project_name"), editor._config.title || "GLT Projekt") || "GLT Projekt";
         const id = currentId || slug(name) + "-" + Date.now().toString(36);
         editor._config.project = { ...editor._config.project || {}, id, name };
         editor._glt4ProjectId = id;
@@ -4997,7 +4997,7 @@ function gltText(key) {
       m.querySelector("[data-save]").onclick = async () => {
         const obj = editor._obj?.();
         if (!obj) return editorNotice(editor, gltText("legacy.select_something_first"));
-        const name = prompt("Vorlagenname", obj.name || obj.label || obj.id);
+        const name = prompt(gltText("legacy.prompt_template_name"), obj.name || obj.label || obj.id);
         if (!name) return;
         const t = { id: slug(name) + "-" + Date.now().toString(36), name, kind: editor._sel.k, object: clone(obj) };
         await store.saveTemplate(t);
@@ -5047,7 +5047,7 @@ function gltText(key) {
           return { kind, id };
         });
         if (members.length < 2) return editorNotice(editor, gltText("legacy.select_two_first"));
-        const name = prompt("Gruppenname", "Unteranlage");
+        const name = prompt(gltText("legacy.prompt_group_name"), "Unteranlage");
         if (!name) return;
         editor._remember?.();
         editor._config.groups.push({ id: slug(name) + "-" + Date.now().toString(36), name, members });
@@ -5968,6 +5968,10 @@ function gltText(key) {
     "legacy.alarm_state_unavailable": "Alarmzustand derzeit nicht abrufbar.",
     "legacy.auto_connect": "Automatisch verbinden",
     "legacy.auto_mapping": "Auto mapping",
+    "legacy.button_energy": "⚡ Energie",
+    "legacy.button_reports": "▤ Berichte",
+    "legacy.button_z_lower": "Nach hinten stellen",
+    "legacy.button_z_raise": "Nach vorn holen",
     "legacy.category_air": "RLT / Lüftung",
     "legacy.category_building": "Gebäude",
     "legacy.category_cooling": "Kälte",
@@ -6022,6 +6026,13 @@ function gltText(key) {
     "legacy.paste_compare_json": "Vergleichskonfiguration als JSON einfügen",
     "legacy.perform_maintenance": "Wartung durchführen",
     "legacy.project_locked": "Projekt gesperrt.",
+    "legacy.prompt_group_name": "Gruppenname",
+    "legacy.prompt_layer_name": "Layername",
+    "legacy.prompt_period": "Zeitraum: day / week / month / year",
+    "legacy.prompt_project_name": "Projektname",
+    "legacy.prompt_report_name": "Reportname",
+    "legacy.prompt_task": "Aufgabe",
+    "legacy.prompt_template_name": "Vorlagenname",
     "legacy.report_designer": "Report Designer",
     "legacy.report_format_hint": "Report: 'csv' für CSV oder 'pdf' für Druck/PDF",
     "legacy.running": "Läuft",
@@ -6741,6 +6752,10 @@ function gltText(key) {
     "legacy.alarm_state_unavailable": "Alarm state is currently unavailable.",
     "legacy.auto_connect": "Connect automatically",
     "legacy.auto_mapping": "Auto mapping",
+    "legacy.button_energy": "⚡ Energy",
+    "legacy.button_reports": "▤ Reports",
+    "legacy.button_z_lower": "Send backward",
+    "legacy.button_z_raise": "Bring forward",
     "legacy.category_air": "Air handling / ventilation",
     "legacy.category_building": "Building",
     "legacy.category_cooling": "Cooling",
@@ -6795,6 +6810,13 @@ function gltText(key) {
     "legacy.paste_compare_json": "Paste the comparison configuration as JSON",
     "legacy.perform_maintenance": "Perform maintenance",
     "legacy.project_locked": "Project locked.",
+    "legacy.prompt_group_name": "Group name",
+    "legacy.prompt_layer_name": "Layer name",
+    "legacy.prompt_period": "Period: day / week / month / year",
+    "legacy.prompt_project_name": "Project name",
+    "legacy.prompt_report_name": "Report name",
+    "legacy.prompt_task": "Task",
+    "legacy.prompt_template_name": "Template name",
     "legacy.report_designer": "Report designer",
     "legacy.report_format_hint": "Report: 'csv' for CSV or 'pdf' for print/PDF",
     "legacy.running": "Running",
@@ -62396,7 +62418,7 @@ function gltText(key) {
     function showLayers(editor) {
       const cfg = editor._config, m = editorModal(editor, "Layer", `<table class="glt-v1-table"><thead><tr><th>Name</th><th>Sichtbar</th><th>Gesperrt</th></tr></thead><tbody>${cfg.layers.map((l, i) => `<tr data-l="${i}"><td><input class="glt-v1-input" data-name value="${esc(l.name || l.id)}"></td><td><input type="checkbox" data-vis ${l.visible !== false ? "checked" : ""}></td><td><input type="checkbox" data-lock ${l.locked ? "checked" : ""}></td></tr>`).join("")}</tbody></table><div class="glt-v1-actions"><button class="glt-v1-btn" data-add>Layer hinzufügen</button><button class="glt-v1-btn primary" data-save>Übernehmen</button></div>`);
       m.querySelector("[data-add]").onclick = () => {
-        const name = prompt("Layername", "Layer");
+        const name = prompt(gltText("legacy.prompt_layer_name"), "Layer");
         if (name) cfg.layers.push({ id: slug3(name), name, visible: true, locked: false, order: cfg.layers.length }), m.remove(), showLayers(editor);
       };
       m.querySelector("[data-save]").onclick = () => {
@@ -62460,7 +62482,7 @@ function gltText(key) {
     function showMaintenance(editor) {
       const cfg = editor._config, m = editorModal(editor, t(cfg, "maintenance"), `<div class="glt-v1-actions"><button class="glt-v1-btn" data-new>Arbeitsauftrag</button></div><table class="glt-v1-table"><thead><tr><th>Status</th><th>Asset</th><th>Aufgabe</th><th>Fällig</th><th>Techniker</th></tr></thead><tbody>${cfg.work_orders.map((w) => `<tr><td>${esc(w.status || "open")}</td><td>${esc(w.asset_id || "")}</td><td>${esc(w.title || "")}</td><td>${esc(w.due || "")}</td><td>${esc(w.assignee || "")}</td></tr>`).join("") || '<tr><td colspan="5">${gltText("legacy.no_work_orders")}</td></tr>'}</tbody></table>`);
       m.querySelector("[data-new]").onclick = () => {
-        const title = prompt("Aufgabe", gltText("legacy.perform_maintenance"));
+        const title = prompt(gltText("legacy.prompt_task"), gltText("legacy.perform_maintenance"));
         if (!title) return;
         cfg.work_orders.push({ id: `wo_${Date.now()}`, title, status: "open", asset_id: "", due: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), created: (/* @__PURE__ */ new Date()).toISOString() });
         emit(editor);
@@ -69046,9 +69068,9 @@ ${declare("dark")}
       c.reports.definitions = c.reports.definitions || [];
       const m = box(editor, gltText2("legacy.report_designer"), `<div class="glt-v1-actions"><button class="glt-v1-btn" data-new>Report anlegen</button></div><table class="glt-v1-table"><thead><tr><th>Name</th><th>Zeitraum</th><th>Format</th><th>Automatik</th></tr></thead><tbody>${c.reports.definitions.map((r) => `<tr><td>${esc(r.name || r.id)}</td><td>${esc(r.period || "month")}</td><td>${esc((r.formats || ["pdf", "csv"]).join(", "))}</td><td>${esc(r.schedule || "manuell")}</td></tr>`).join("") || '<tr><td colspan="4">Keine Reports.</td></tr>'}</tbody></table>`);
       m.querySelector("[data-new]").onclick = () => {
-        const name = prompt("Reportname", "Monatsbericht");
+        const name = prompt(gltText2("legacy.prompt_report_name"), "Monatsbericht");
         if (!name) return;
-        const period = prompt("Zeitraum: day / week / month / year", "month") || "month";
+        const period = prompt(gltText2("legacy.prompt_period"), "month") || "month";
         const schedule = prompt(gltText2("legacy.schedule_hint"), "") || "";
         c.reports.definitions.push({ id: `report_${Date.now()}`, name, period, formats: ["csv", "pdf"], schedule });
         editor._emit?.();
@@ -69062,7 +69084,7 @@ ${declare("dark")}
       const b = document.createElement("button");
       b.className = "glt4-pill glt-v1-btn";
       b.dataset.v1Energy = "1";
-      b.textContent = "⚡ Energie";
+      b.textContent = gltText2("legacy.button_energy");
       b.onclick = () => energyPanel(card2);
       bar.appendChild(b);
     }
@@ -69169,10 +69191,12 @@ ${declare("dark")}
         const up = document.createElement("button"), down = document.createElement("button"), rep = document.createElement("button");
         up.dataset.zup = "1";
         up.textContent = "↑ Z";
+        up.title = up.ariaLabel = gltText2("legacy.button_z_raise");
         down.dataset.zdown = "1";
         down.textContent = "↓ Z";
+        down.title = down.ariaLabel = gltText2("legacy.button_z_lower");
         rep.dataset.report = "1";
-        rep.textContent = "▤ Reports";
+        rep.textContent = gltText2("legacy.button_reports");
         up.onclick = () => reorder(editor, 1);
         down.onclick = () => reorder(editor, -1);
         rep.onclick = () => reportPanel(editor);

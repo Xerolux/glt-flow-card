@@ -229,6 +229,6 @@
     const cards = list.map((p) => `<div class="glt4-card"><b>${esc(p.name || p.id)}</b><small>${esc(p.updated || "")} · ${(p.versions || []).length} Versionen ${p.id === currentId ? "· AKTIV" : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-load="${esc(p.id)}">Laden</button><button class="glt4-btn" data-versions="${esc(p.id)}">Versionen</button><button class="glt4-btn glt4-danger" data-delete="${esc(p.id)}">Löschen</button></div></div>`).join("");
     const m = modal(editor, "Projektbibliothek", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Aktuelles Projekt speichern</button><button class="glt4-btn" data-copy>Als neues Projekt speichern</button></div><div class="glt4-grid">${cards || '<div class="glt4-card">Noch keine gespeicherten Projekte.</div>'}</div><p style="font-size:9px;color:var(--mut);margin-top:12px">Mit installierter Companion-Integration werden Projekte geräteübergreifend in Home Assistant gespeichert; sonst lokal im Browser.</p>`);
     m.querySelector("[data-save]").onclick = async () => {
-      const name = editor._config.project?.name || prompt("Projektname", editor._config.title || "GLT Projekt") || "GLT Projekt";
+      const name = editor._config.project?.name || prompt(gltText("legacy.prompt_project_name"), editor._config.title || "GLT Projekt") || "GLT Projekt";
       const id = currentId || slug(name) + "-" + Date.now().toString(36);
       editor._config.project = { ...(editor._config.project || {}), id, name };

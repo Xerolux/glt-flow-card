@@ -102,7 +102,7 @@ function gltText(key) {
     const m = modal(editor, "Vorlagen & Bauteil-Templates", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Auswahl als Vorlage speichern</button></div><div class="glt4-grid">${all.map((t) => `<div class="glt4-card"><b>${esc(t.name)}</b><small>${esc(t.kind || "equipment")}${t.updated ? ` · ${esc(t.updated)}` : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-apply="${esc(t.id)}">Einfügen</button>${t.id.startsWith("builtin-") ? "" : `<button class="glt4-btn glt4-danger" data-del="${esc(t.id)}">Löschen</button>`}</div></div>`).join("")}</div>`);
     m.querySelector("[data-save]").onclick = async () => {
       const obj = editor._obj?.(); if (!obj) return editorNotice(editor, gltText("legacy.select_something_first"));
-      const name = prompt("Vorlagenname", obj.name || obj.label || obj.id); if (!name) return;
+      const name = prompt(gltText("legacy.prompt_template_name"), obj.name || obj.label || obj.id); if (!name) return;
       const t = { id: slug(name) + "-" + Date.now().toString(36), name, kind: editor._sel.k, object: clone(obj) };
       await store.saveTemplate(t); await store.audit("template.save", { id:t.id, name }); m.remove(); showTemplates(editor);
     };
@@ -124,5 +124,5 @@ function gltText(key) {
     m.querySelector("[data-create]").onclick = () => {
       const members = Array.from(editor._glt4Multi || []).map((key) => { const [kind,id]=key.split(":"); return {kind,id}; });
       if (members.length < 2) return editorNotice(editor, gltText("legacy.select_two_first"));
-      const name = prompt("Gruppenname", "Unteranlage"); if (!name) return;
+      const name = prompt(gltText("legacy.prompt_group_name"), "Unteranlage"); if (!name) return;
       editor._remember?.(); editor._config.groups.push({ id: slug(name)+"-"+Date.now().toString(36), name, members }); editor._emit(); editor._render(); m.remove();

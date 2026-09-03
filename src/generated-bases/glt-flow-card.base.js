@@ -4904,7 +4904,7 @@ function gltText(key) {
       const cards = list.map((p) => `<div class="glt4-card"><b>${esc(p.name || p.id)}</b><small>${esc(p.updated || "")} \xB7 ${(p.versions || []).length} Versionen ${p.id === currentId ? "\xB7 AKTIV" : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-load="${esc(p.id)}">Laden</button><button class="glt4-btn" data-versions="${esc(p.id)}">Versionen</button><button class="glt4-btn glt4-danger" data-delete="${esc(p.id)}">L\xF6schen</button></div></div>`).join("");
       const m = modal(editor, "Projektbibliothek", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Aktuelles Projekt speichern</button><button class="glt4-btn" data-copy>Als neues Projekt speichern</button></div><div class="glt4-grid">${cards || '<div class="glt4-card">Noch keine gespeicherten Projekte.</div>'}</div><p style="font-size:9px;color:var(--mut);margin-top:12px">Mit installierter Companion-Integration werden Projekte ger\xE4te\xFCbergreifend in Home Assistant gespeichert; sonst lokal im Browser.</p>`);
       m.querySelector("[data-save]").onclick = async () => {
-        const name = editor._config.project?.name || prompt("Projektname", editor._config.title || "GLT Projekt") || "GLT Projekt";
+        const name = editor._config.project?.name || prompt(gltText("legacy.prompt_project_name"), editor._config.title || "GLT Projekt") || "GLT Projekt";
         const id = currentId || slug(name) + "-" + Date.now().toString(36);
         editor._config.project = { ...editor._config.project || {}, id, name };
         editor._glt4ProjectId = id;
@@ -4997,7 +4997,7 @@ function gltText(key) {
       m.querySelector("[data-save]").onclick = async () => {
         const obj = editor._obj?.();
         if (!obj) return editorNotice(editor, gltText("legacy.select_something_first"));
-        const name = prompt("Vorlagenname", obj.name || obj.label || obj.id);
+        const name = prompt(gltText("legacy.prompt_template_name"), obj.name || obj.label || obj.id);
         if (!name) return;
         const t = { id: slug(name) + "-" + Date.now().toString(36), name, kind: editor._sel.k, object: clone(obj) };
         await store.saveTemplate(t);
@@ -5047,7 +5047,7 @@ function gltText(key) {
           return { kind, id };
         });
         if (members.length < 2) return editorNotice(editor, gltText("legacy.select_two_first"));
-        const name = prompt("Gruppenname", "Unteranlage");
+        const name = prompt(gltText("legacy.prompt_group_name"), "Unteranlage");
         if (!name) return;
         editor._remember?.();
         editor._config.groups.push({ id: slug(name) + "-" + Date.now().toString(36), name, members });

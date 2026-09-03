@@ -21,6 +21,21 @@
  * allowlist below carries a **reason per entry**, and "not UI" is not a reason.
  * An allowlist that can be extended with a shrug is an allowlist that ends up
  * containing the strings someone did not want to move.
+ *
+ * ## Why there are two sweeps
+ *
+ * The first sweep asks whether a string *looks* like something a person reads.
+ * That is a linguistic judgement and it has a blind spot the close-out review
+ * found: `PROSE` needs two whitespace-separated words and `GERMAN` needs an
+ * umlaut or a stop word, so a single German label with neither -- `Projektname`,
+ * `Vorlagenname`, `Layername`, `Aufgabe` -- is invisible to it. Seven such
+ * strings sat in the shipped artifact while this tool printed PASS.
+ *
+ * The second sweep asks a structural question instead: was the literal handed
+ * to something that *shows* it? A bare string passed to `prompt`, `confirm` or
+ * `alert`, or assigned to `.textContent` or `.innerText`, reaches a person
+ * whatever it looks like. No amount of tuning a prose regex would have caught
+ * `Aufgabe`; the sink catches it because of where it goes, not what it says.
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -236,15 +251,91 @@ export async function findUncatalogued(artifactPath = ARTIFACT) {
     .sort((a, b) => a.value.localeCompare(b.value));
 }
 
+/**
+ * Sinks that display whatever they are given.
+ *
+ * `title`, `placeholder` and `aria-label` are deliberately not here: in a
+ * bundle they appear as attribute names inside template literals, not as a call
+ * with a literal argument, so matching them would be matching markup rather
+ * than a sink. The first sweep covers those, because an attribute value long
+ * enough to matter is prose.
+ */
+const DISPLAY_SINKS = [
+  { name: "prompt", pattern: /\bprompt\(\s*(?<literal>"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/gu },
+  { name: "confirm", pattern: /\bconfirm\(\s*(?<literal>"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/gu },
+  { name: "alert", pattern: /\balert\(\s*(?<literal>"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/gu },
+  { name: "textContent", pattern: /\.textContent\s*=\s*(?<literal>"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/gu },
+  { name: "innerText", pattern: /\.innerText\s*=\s*(?<literal>"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/gu },
+];
+
+/**
+ * Literals a display sink may carry as-is, each with the reason.
+ *
+ * The bar is higher than the first sweep's allowlist: this string *is* shown to
+ * a person, so the reason has to be that it reads the same in both languages,
+ * not that it is not really UI.
+ */
+const SINK_ALLOWED = new Map(Object.entries({
+  CSV: "a file format name, spelled the same in German and English",
+  "\u2191 Z": "an icon: an arrow and the z-axis. Its accessible name is `legacy.button_z_raise`",
+  "\u2193 Z": "an icon: an arrow and the z-axis. Its accessible name is `legacy.button_z_lower`",
+}));
+
+/** Bare literals handed straight to something that displays them. */
+export async function findUncataloguedSinks(artifactPath = ARTIFACT) {
+  const source = await readFile(artifactPath, "utf8");
+  const scannable = withoutComments(source);
+  const regions = ownRegions(source);
+  const isOurs = (index) => regions.some(([from, to]) => index >= from && index < to);
+
+  const found = [];
+  for (const { name, pattern } of DISPLAY_SINKS) {
+    for (const match of scannable.matchAll(pattern)) {
+      const at = match.index + match[0].indexOf(match.groups.literal);
+      if (!isOurs(at)) continue;
+      const value = decode(match.groups.literal.slice(1, -1));
+      // A single glyph or a piece of punctuation is an icon, not wording.
+      if (!/\p{L}/u.test(value)) continue;
+      if (SINK_ALLOWED.has(value)) continue;
+      found.push({ sink: name, value });
+    }
+  }
+  const seen = new Map();
+  for (const entry of found) {
+    const key = `${entry.sink}\u0000${entry.value}`;
+    seen.set(key, (seen.get(key) ?? 0) + 1);
+  }
+  return [...seen.entries()]
+    .map(([key, occurrences]) => {
+      const [sink, value] = key.split("\u0000");
+      return { occurrences, sink, value };
+    })
+    .sort((a, b) => a.value.localeCompare(b.value) || a.sink.localeCompare(b.sink));
+}
+
 async function main() {
   const uncatalogued = await findUncatalogued();
-  if (uncatalogued.length === 0) {
+  const sinks = await findUncataloguedSinks();
+  if (uncatalogued.length === 0 && sinks.length === 0) {
     console.log("PASS every user-facing string in the artifact comes from a catalog");
     return;
   }
-  console.log(`FAIL ${uncatalogued.length} user-facing strings do not come from a catalog:\n`);
-  for (const { occurrences, value } of uncatalogued) {
-    console.log(`  ${JSON.stringify(value)}${occurrences > 1 ? ` (×${occurrences})` : ""}`);
+  if (uncatalogued.length > 0) {
+    console.log(`FAIL ${uncatalogued.length} user-facing strings do not come from a catalog:\n`);
+    for (const { occurrences, value } of uncatalogued) {
+      console.log(`  ${JSON.stringify(value)}${occurrences > 1 ? ` (×${occurrences})` : ""}`);
+    }
+  }
+  if (sinks.length > 0) {
+    console.log(
+      `\nFAIL ${sinks.length} bare literals are handed straight to something that `
+      + "displays them:\n",
+    );
+    for (const { occurrences, sink, value } of sinks) {
+      console.log(
+        `  ${sink}(${JSON.stringify(value)})${occurrences > 1 ? ` (×${occurrences})` : ""}`,
+      );
+    }
   }
   console.log("\nMove each into `catalog-de.mjs` and `catalog-en.mjs`, or add it to the");
   console.log("allowlist in this file with the reason it is not user-facing.");

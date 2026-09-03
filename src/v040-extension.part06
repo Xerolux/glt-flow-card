@@ -106,7 +106,7 @@ function gltText(key) {
   `;
 
   function entityId(item){const v=item?.control_entity||item?.entity;return typeof v==="string"?v:v?.entity||"";}
-  function state(card,id){return id&&card?._hass?.states?.[id]||null:null;}
+  function state(card, id) { return id && card ? card._hass?.states?.[id] || null : null; }
   function domain(id){return String(id||"").split(".")[0]||"";}
   function isControllable(card,id){const d=domain(id);return !!(id&&card?._hass&&["switch","light","fan","input_boolean","button","input_button","cover","valve","lock","number","input_number","select","input_select","climate","humidifier","water_heater","automation","script","scene"].includes(d));}
   // Retired (04-13). This returned true whenever no permission list was
