@@ -1,12 +1,29 @@
 name: Apply Engineering Workspace v0.4.0
 
+# Retired as an automatic job, kept runnable on purpose.
+#
+# This bundles `src/v040-extension.part*` and hands the result to
+# `tools/apply-v040.mjs`, which sets `package.json` to **0.4.0**, rewrites
+# `dist/glt-flow-card.js`, both READMEs, the changelog and the smoke test, and
+# then commits and pushes to `main`.
+#
+# The product is 1.1. Running this against it is a downgrade that lands as a
+# bot commit on the default branch, so it must not be reachable by a push.
+#
+# It is presently harmless for one accidental reason rather than by design:
+# `apply-v040.mjs` looks for `const VERSION = "0.3.0"` or `"0.4.0"` in the
+# shipped bundle, finds `"1.0.0"`, and throws before the commit step. That is a
+# thrown exception standing in for a safety property, and it stops being true
+# the day anything touches that anchor.
+#
+# So the push trigger is removed rather than left to fail. `workflow_dispatch`
+# stays: the job is still reachable, still runnable by a person who means it,
+# and still the only thing that knows how to bundle the seven parts -- which is
+# the same "reachable and inert beats deleted" rule this repository applies to
+# retired routes. Re-bundling the v0.4 parts into a 1.x artifact needs
+# `apply-v040.mjs` taught the current version anchor first; that is a build
+# decision, and it is recorded in `05-SUMMARY.md` rather than taken here.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/v040-extension.part*'
-      - 'tools/apply-v040.mjs'
-      - '.github/workflows/apply-v040.yml'
   workflow_dispatch:
 
 permissions:
