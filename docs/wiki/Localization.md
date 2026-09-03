@@ -92,12 +92,30 @@ nennt jede Zeichenkette, die nicht aus dem Katalog kommt — **mit Liste, nicht
 mit Anzahl**, damit die Zahl nicht unbemerkt wieder wächst und jede Zeile eine
 Aufgabe ist.
 
-Er meldet zurzeit *bestanden*. Zehn Zeichenketten stehen auf einer Ausnahmeliste,
-jede mit dem, was sie **tatsächlich ist** — ein Schriftname in einem CSS-Stapel,
-zwei Gruppierungsschlüssel, drei Konsolenmeldungen, die Beschreibung, die Home
-Assistant für die Kartenauswahl als eine feste Zeichenkette entgegennimmt, bevor
-eine Sprache bekannt ist, und der Produktname selbst. „Kein UI" ist keine
-Begründung.
+Er meldet *bestanden* — mit **zwei** Durchläufen, und der zweite gibt es, weil
+der erste einmal falsch bestanden hat.
+
+**Der sprachliche Durchlauf** fragt: liest sich diese Zeichenkette wie ein Satz?
+Er verlangt zwei durch Leerzeichen getrennte Wörter oder einen Umlaut. Genau
+daran ist er einmal vorbeigelaufen: `Projektname`, `Layername`, `Aufgabe` und
+acht weitere deutsche Beschriftungen haben weder das eine noch das andere, und
+der Prüflauf meldete *bestanden*, während sie im ausgelieferten Artefakt standen.
+Kein Nachschärfen des Musters hätte sie gefunden — die Frage war die falsche.
+
+**Der strukturelle Durchlauf** fragt stattdessen: wohin ging die Zeichenkette?
+Was an `prompt`, `confirm`, `alert`, `.textContent` oder `.innerText` übergeben
+wird, erreicht einen Menschen, gleich wie es aussieht. Seine Ausnahmeliste hat
+eine höhere Hürde als die des ersten: die Zeichenkette **wird** angezeigt, also
+muss die Begründung sein, dass sie in beiden Sprachen gleich lautet — nicht,
+dass sie kein UI sei.
+
+Auf beiden Ausnahmelisten steht jeder Eintrag mit dem, was er **tatsächlich
+ist** — ein Schriftname in einem CSS-Stapel, Gruppierungsschlüssel,
+Konsolenmeldungen, die Beschreibung, die Home Assistant für die Kartenauswahl
+als feste Zeichenkette entgegennimmt, bevor eine Sprache bekannt ist, der
+Produktname selbst, ein Dateiformatname, der in beiden Sprachen gleich
+geschrieben wird, und zwei Symbole, deren zugängliche Namen im Katalog stehen.
+„Kein UI" ist keine Begründung.
 
 **Keine RTL-Sprache wird ausgeliefert.** Geprüft ist die *Bereitschaft*: Das
 Layout setzt keine Leserichtung voraus. Eine RTL-Sprache ist danach Daten, die
