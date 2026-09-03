@@ -1,8 +1,8 @@
 # GLT Flow Card v1.1 — Living Cross-AI Execution Handoff
 
-**Last updated:** 2026-09-02T09:00:00+02:00
+**Last updated:** 2026-09-03T08:00:00+02:00
 **Canonical scope:** Implement and verify all original roadmap items **1-30**.
-**Overall status:** Executing on `claude/chatgpt-continuation-hi3y86` (PR #3). Phase 1 implementation and all 14 reported code-review fixes are committed with full post-fix gates passing; its consolidated verification is still open. Phase 2 is implemented at 17/17 plans with T2-01..T2-15 verified. Phase 3 is implemented at 17/17 plans with T3-01..T3-13 verified. Phase 4 is planned and implemented at 17/17 plans with T4-01..T4-13 verified. T2-16, T3-14 and T4-14 all stay `planned`: their owners install the exact stage on digest-pinned Home Assistant images and need a Docker engine this environment does not have. Phases 5-10 have not started and all still carry `Plans: TBD`. No release is authorized.
+**Overall status:** All ten phases are executed, closed, summarised per plan and **reviewed**, on `claude/chatgpt-continuation-hi3y86` (PR #3). 167 of 167 plans implemented. Every phase carries a phase summary, a summary for each of its plans, and a review document. The close-out review passes found four defects, three of them security-relevant, all fixed and each guarded at the class rather than the instance — see the change log. The composed `test:phaseN:release` leaf stays unrun in every phase: it needs a Docker engine this environment does not have. Dependency provenance (F-01) is answered HTTP 403 by this session's repository scope and fails closed, so **no phase gate from 2 upward has ever completed its recursion here**. No release is authorized and none was made.
 **Maintainer rule:** Update this file whenever implementation, review, verification, or blockers change.
 
 ## Purpose and User Intent
@@ -26,14 +26,14 @@ The user explicitly requested implementation of **all original items 1-30**. No 
 
 This is a timestamped snapshot, not a substitute for a fresh `git status` when resuming.
 
-| Field | Snapshot at 2026-09-02T12:00:00+02:00 |
+| Field | Snapshot at 2026-09-03T08:00:00+02:00 |
 |---|---|
 | Repository | `/home/user/glt-flow-card` (Linux container) |
 | Branch | `claude/chatgpt-continuation-hi3y86` |
-| HEAD before this handoff update | `e4d84fe` |
-| Upstream comparison | `origin/main...HEAD`: 0 behind, 61 ahead |
-| Push/publication | Branch pushed to `origin/claude/chatgpt-continuation-hi3y86` through `e4d84fe`; open draft PR #3; no release authorized or created |
-| Working tree | Clean after committing the Phase 3 documentation, gate and rebuilt manifest |
+| HEAD before this handoff update | `5dbf347` |
+| Upstream comparison | `origin/main...HEAD`: 0 behind, 263 ahead |
+| Push/publication | Branch pushed to `origin/claude/chatgpt-continuation-hi3y86` through `5dbf347`; open draft PR #3; no release authorized or created |
+| Working tree | Clean after committing the close-out reviews, the missing summaries, the three authorization fixes and their class-level guards |
 | Active recovery marker | None |
 | Preserved local fix branch | `gsd-reviewfix/01-phase1-code-fixes` is already merged; retained only as local history |
 | Temporary worktrees/containers | None active |
@@ -71,16 +71,16 @@ The current `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` record Phase 1 as im
 
 | Phase | Name | Owned requirements | Current status | Next action |
 |---:|---|---|---|---|
-| 1 | Trusted Contract & Release Foundation | SCHEMA-01, DIFF-01, HACS-01 | ◆ 13/13 plans and 14/14 review fixes implemented; final verification open | Resume with one consolidated verification pass, not another review loop |
-| 2 | Authoritative Policy, Controls & Collaboration | SEC-01, COLLAB-01 | ◆ 17/17 plans implemented; T2-01..T2-15 verified, T2-16 needs a Docker-capable environment | Run `npm run test:phase2` where Docker and the provenance endpoints are reachable, then start the Phase-2 review pass |
-| 3 | Semantic Equipment & Provenance | OPS-01, SEM-01, MAP-01, PROF-01, PROTO-01 | ◆ 17/17 plans implemented; T3-01..T3-13 verified, T3-14 needs a Docker-capable environment | Run `npm run test:phase3` where Docker and the provenance endpoints are reachable, then start the Phase-3 review pass |
-| 4 | Runtime Operations & Drill-Down | OPS-02, NAV-01 | ◆ 17/17 plans implemented; T4-01..T4-13 verified, T4-14 needs a Docker-capable environment | Run `npm run test:phase4` where Docker and the provenance endpoints are reachable, then start the Phase-4 review pass |
-| 5 | CAD Engineering & Extension Platform | CAT-01, ENG-01, ENG-02, CAD-01, SDK-01 | ○ Not started; `Plans: TBD` | Write the Phase-5 planning artifacts, then execute |
-| 6 | Alarms, Notifications & Schedules | ALM-01, ALM-02, SCH-01 | ○ Not started | Start after Phase 5 verification |
-| 7 | Trends, Energy & Reproducible Reports | HIST-01, ENER-01, REPORT-01 | ○ Not started | Start after Phase 6 verification |
-| 8 | Safe Simulation, Commissioning & Assets | SIM-01, DIAG-01, ASSET-01 | ○ Not started | Start after Phase 7 verification |
-| 9 | Failure-Isolated Multi-Site Supervision | SITE-01 | ○ Not started | Start after Phase 8 verification |
-| 10 | Product-Wide Usability & Release Evidence | I18N-01, A11Y-01, TEST-01 | ○ Not started | Close product-wide evidence after Phase 9 verification |
+| 1 | Trusted Contract & Release Foundation | SCHEMA-01, DIFF-01, HACS-01 | ● 13/13 plans; all 14 review findings fixed and the last one **verified at head** (`01-REVIEW-VERIFY.md`) | Nothing here. What remains needs Docker or verified provenance |
+| 2 | Authoritative Policy, Controls & Collaboration | SEC-01, COLLAB-01 | ● 17/17 plans; T2-01..T2-15 verified; reviewed — **3 authorization leaks found and fixed** | Nothing here. T2-16 needs Docker |
+| 3 | Semantic Equipment & Provenance | OPS-01, SEM-01, MAP-01, PROF-01, PROTO-01 | ● 17/17 plans; T3-01..T3-13 verified; reviewed — no defects | Nothing here. T3-14 needs Docker |
+| 4 | Runtime Operations & Drill-Down | OPS-02, NAV-01 | ● 17/17 plans; T4-01..T4-13 verified; reviewed — no defects | Nothing here. T4-14 needs Docker |
+| 5 | CAD Engineering & Extension Platform | CAT-01, ENG-01, ENG-02, CAD-01, SDK-01 | ● 20/20 plans; T5-01..T5-15 verified; reviewed — 2 warnings found and fixed | Nothing here. T5-16 needs Docker |
+| 6 | Alarms, Notifications & Schedules | ALM-01, ALM-02, SCH-01 | ● 20/20 plans; T6-01..T6-20 verified; reviewed — no defects | Nothing here. T6-21 needs Docker |
+| 7 | Trends, Energy & Reproducible Reports | HIST-01, ENER-01, REPORT-01 | ● 20/20 plans plus 07-21 carry-over; T7-01..T7-22 verified; reviewed — no defects | Nothing here. T7-23 needs Docker |
+| 8 | Safe Simulation, Commissioning & Assets | SIM-01, DIAG-01, ASSET-01 | ● 16/16 plans; T8-01..T8-24 verified; reviewed — no defects | Nothing here. T8-25 needs Docker |
+| 9 | Failure-Isolated Multi-Site Supervision | SITE-01 | ● 12/12 plans; T9-01..T9-19 verified; reviewed — 1 warning found and fixed | Nothing here. T9-20 needs Docker |
+| 10 | Product-Wide Usability & Release Evidence | I18N-01, A11Y-01, TEST-01 | ● 15/15 plans; T10-01..T10-15, T10-17 verified; reviewed — **the i18n sweep's blind spot found and fixed** | Nothing here. T10-16 needs Docker |
 
 ## Requirement Checklist — Original Items 1-30
 
@@ -149,27 +149,50 @@ The last [01-REVIEW.md](phases/01-trusted-contract-release-foundation/01-REVIEW.
 - [ ] Run the independent Phase 1 goal verifier and create `.planning/phases/01-trusted-contract-release-foundation/01-VERIFICATION.md` with a passing verdict and evidence links.
 - [ ] Only after all preceding items pass, mark Phase 1 and SCHEMA-01, DIFF-01, and HACS-01 finally complete in this file and reconcile `ROADMAP.md`, `REQUIREMENTS.md`, and `STATE.md` in one evidence-linked commit.
 
-## Phases 2-10 — Remaining Work
+## Phases 2-10 — Status
 
-For each remaining phase, follow the phase's exact goal and requirements in `ROADMAP.md` and `REQUIREMENTS.md`. Do not replace behavioral evidence with source-token assertions.
+All nine are executed, closed, summarised per plan and reviewed. What follows is
+what each review found, because a clean review and an unperformed one look
+identical in a checklist.
 
-Phase 2 is implemented: all 17 plans are committed, `npm run test:phase2:quick` reports 12 implemented / 0 controlled RED / 0 broken, and T2-01 through T2-15 are marked `verified` after their owner commands ran at head. Phase 3 is planned and implemented: all 17 plans are committed, `node tools/phase3-red-gate.mjs` reports 7 implemented / 0 controlled RED / 0 broken, and T3-01 through T3-13 are marked `verified`. T2-16 and T3-14 both need a Docker engine and stay `planned`; `npm run test:phase2` and `npm run test:phase3` additionally fail closed here at the Phase-1 gate, whose dependency-provenance step is answered with HTTP 403 by this network policy. Both are environment limits, not repository defects, and the `ha-artifacts` CI job exercises them. Phases 4 through 10 still carry `Plans: TBD` in the roadmap and need their planning artifacts written before execution.
+**Found and fixed (three security-relevant):**
 
-- [ ] **Phase 2:** *(implemented; T2-16 and the review pass open)* Establish authoritative default-deny Companion permissions, configured exact control targets, trusted audit, and atomic revision-plus-lease collaboration; prove multi-user denials and fail-closed shared behavior.
-- [ ] **Phase 3:** *(implemented; T3-14 and the review pass open)* Build the validated semantic hierarchy, versioned profiles, explainable entity mapping, registry-derived provenance, and deterministic operational state shared across UI/backend.
-- [ ] **Phase 4:** *(implemented; T4-14 and the review pass open)* Deliver profile-driven operational panels, explicit command result states, contextual drill-down, deep links, breadcrumbs, and permission-filtered navigation.
-- [ ] **Phase 5:** Deliver the verified 300-plus catalog, typed ports, deterministic routing, transactional accessible CAD tools, and a bounded declarative SDK without privileged project scripts.
-- [ ] **Phase 6:** Deliver restart-safe alarms, suppression/shelving/hysteresis, observable notifications/escalations, and audited timezone/DST-safe schedule/calendar execution.
-- [ ] **Phase 7:** Deliver bounded Recorder history, honest provenance/coverage, reset-aware unit-safe energy calculations, and reproducible screen/CSV/print report models.
-- [ ] **Phase 8:** Deliver deterministic virtual-time simulation with hard service-write blocking, read-only commissioning diagnostics, and bounded maintenance/assets/work-order evidence.
-- [ ] **Phase 9:** Deliver backend-only remote credentials, allowlisted sites, bounded concurrent remote access, permission-safe partial roll-ups, failure isolation, and exact remote audit.
-- [ ] **Phase 10:** Close German/English localization, WCAG-oriented accessibility, exact release compatibility, failure injection, and measured 100/500/2,000-object capacity evidence across the complete product.
+- **Phase 2 — three filtered routes returned rows of projects the caller cannot
+  read.** `work_orders/list`, `reports/list` and `evidence/list` — the last of
+  these the trusted audit trail: who operated which entity, with what result. A
+  route declared `enumeration="filter"` is admitted by the policy guard on
+  purpose, so filtering is the handler's job, and these did none. It is the
+  `alarms/list` leak of `9f53bcb` three more times, because that fix was applied
+  to the instance rather than the class. `test_filtered_route_authority.py` now
+  closes the class: it derives its route list from `COMMAND_POLICY_CONTRACT` and
+  asserts the **rows**, so a filtered route declared later must be seeded or
+  excused with a reason before the suite passes.
+- **Phase 9 — the SSRF destination re-check was correct by memory.** Both
+  outbound sites called `check_before_connecting`; nothing made that a property
+  of the product. `test_outbound_destination_guard.py` gives it the AST
+  guarantee Phase 8 built for service dispatch.
+- **Phase 10 — the i18n sweep passed over eleven German labels.** Its test for
+  "does a person read this" was linguistic and needed two words or an umlaut, so
+  `Projektname`, `Layername`, `Aufgabe` and eight more were invisible while it
+  printed PASS — and T10-03 was closed on that PASS. A structural sweep now runs
+  beside it, asking where a literal went rather than what it looks like.
+- **Phase 5 — two claims stated in prose and never made checkable.** Twelve SVG
+  elements named "deliberately absent" of which the parity corpus exercised four,
+  and an authored v040 source that did not parse as JavaScript at all.
 
-For every phase: discuss unresolved product decisions, research unstable framework/API details from authoritative sources, create checked plans, execute in dependency order, review code, audit security and UI when applicable, run drift checks, verify the goal independently, then update all four tracking artifacts.
+**Reviewed clean:** Phases 3, 4, 6, 7 and 8, plus Phase 1's open blocker
+confirmed closed at head.
+
+**One warning left open, as a decision rather than an oversight**
+(`02-REVIEW.md` WR-01): the correct pattern for a filtered route lives in
+docstrings, not in a shape that makes the omission impossible. The structural fix
+is a refactor of eight handlers with different result shapes, which is not what a
+close-out review should trade a tested fix for. The new class-level test closes
+the hole; the refactor is a separate decision.
 
 ## How to Resume Safely
 
-1. Read, in order: `AGENTS.md`, `.planning/HANDOFF.json`, `.planning/HANDOFF.md`, `.planning/STATE.md`, `.planning/ROADMAP.md`, `.planning/REQUIREMENTS.md`, and `.planning/phases/03-semantic-equipment-provenance/.continue-here.md`, then the current phase's planning artifacts.
+1. Read, in order: `AGENTS.md`, `.planning/HANDOFF.json`, `.planning/HANDOFF.md`, `.planning/STATE.md`, `.planning/ROADMAP.md`, `.planning/REQUIREMENTS.md`, then the phase reviews in `.planning/phases/*/NN-REVIEW.md`. There is no `.continue-here.md` to resume: every phase is closed.
 2. Refresh Git state. Inspect the current branch, HEAD, upstream divergence, working tree, worktrees, active recovery markers, and recent commits. Do not discard or fold concurrent work silently.
 3. If a recovery marker exists, determine whether its worker/worktree/branch is active. Resume or reconcile that exact effort before starting an overlapping fix. Preserve the marker until recovery is complete.
 4. Treat claims in summaries as historical evidence. Re-run the relevant gates after any source, dependency, generator, test, workflow, packaging, schema, or generated-artifact change.
@@ -194,6 +217,7 @@ For every phase: discuss unresolved product decisions, research unstable framewo
 
 | Timestamp | Change | Commit/evidence |
 |---|---|---|
+| 2026-09-03T08:00:00+02:00 | Close-out. Reviewed all ten phases; wrote every missing summary (Phase 1's and Phase 2's phase summaries, Phase 3's and Phase 4's seventeen each, three in Phase 5, one in Phase 6), and verified Phase 1's open audit-persistence blocker against head. Four findings, three security-relevant: three filtered routes leaking rows of unreadable projects including the trusted audit trail; the SSRF destination re-check guarded only by memory; the i18n sweep's linguistic blind spot, on whose PASS T10-03 had been closed; and an authored v040 source that did not parse. Each fixed **and** guarded at the class, not the instance. | `5dbf347`; `phases/*/NN-REVIEW.md`; `tests/components/glt_flow_card/test_filtered_route_authority.py`; `test_outbound_destination_guard.py`; `tools/verify-i18n-coverage.mjs` |
 | 2026-09-02T09:00:00+02:00 | Planned and executed Phase 4 end to end: server-composed object panels whose control list is filtered before serialization, a sequenced bounded view stream, deep links re-authorized on every use, portfolio counts summed after the project filter, four separated command outcomes, five generated surfaces, the legacy operate path retired and proven inert, bilingual documentation and `tools/verify-phase4.mjs`. T4-01..T4-13 verified; T4-14 blocked on Docker. Corrected the phase's own threat model mid-execution after finding it assumed per-object ACLs the product does not have, and added a lane-portability guard after the same lane-only bug appeared twice. | `phases/04-runtime-operations-drilldown/04-SUMMARY.md`; `04-THREATS.md`; `tools/verify-phase4.mjs` |
 | 2026-09-02T12:00:00+02:00 | Planned and executed Phase 3 end to end: schema 3 with closed dimensioned vocabularies, the sequential 2 to 3 migration in both runtimes, the semantic hierarchy with cross-runtime verdict parity, registry-derived provenance behind a project-scoped route, versioned parametric profiles with deny-default controls, assignment-based explainable mapping, the frozen operational-state precedence table, four generated surfaces, bilingual documentation and `tools/verify-phase3.mjs`. T3-01..T3-13 verified; T3-14 blocked on Docker. Fixed four latent schema-index bugs and a HACS packaging gap the phase exposed. | `e4d84fe`; `phases/03-semantic-equipment-provenance/03-SUMMARY.md`; `03-THREATS.md`; `tools/verify-phase3.mjs` |
 | 2026-09-02T07:10:00+02:00 | Executed Phase 2 end to end on `claude/chatgpt-continuation-hi3y86`: the deny-default policy boundary, server-owned ACL, connection-bound leases, in-lock mutation guard, bounded merge, configured controls resolved from the verified head, the fail-closed browser authority reducer and its surfaces, conservative legacy retirement, hardened HA lanes, bilingual documentation and `tools/verify-phase2.mjs`. T2-01..T2-15 verified; T2-16 blocked on Docker. | `phases/02-authoritative-policy-controls-collaboration/.continue-here.md`; `02-THREATS.md`; `tools/verify-phase2.mjs` |
