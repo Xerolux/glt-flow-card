@@ -103,7 +103,7 @@ German sentence in an English interface looks deliberate."
 | `node tools/verify-i18n-coverage.mjs` | PASS, both sweeps |
 | the same, with `Layername` reinserted into a `textContent` | FAIL, naming the sink |
 | `node --test` over the six Phase-10 owner modules | 45 passed |
-| `node tools/claim-registry.mjs` | 15 passed, 0 failed, 4 not exercised at a clean head |
+| `node tools/claim-registry.mjs` | 13 passed, 0 failed, 4 not exercised at a clean head |
 | `node tools/run-exact-dist-playwright.mjs` | 92 passed |
 
 ## Verdict

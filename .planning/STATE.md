@@ -76,7 +76,7 @@ this environment has no Docker engine. Each carries its exact failure output.
 ### What is claimed, and by what
 
 `node tools/claim-registry.mjs` runs every claim's command and publishes the
-result: **15 passed, 0 failed, 4 not exercised** at head. The four unexercised
+result: **13 passed, 0 failed, 4 not exercised** at head. The four unexercised
 capabilities are screen-reader behaviour, representative capacity, the pinned
 Home Assistant lanes and dependency provenance — each with its reason, because a
 reader who is not told assumes they were exercised.
