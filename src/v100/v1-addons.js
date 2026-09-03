@@ -1,6 +1,24 @@
 /* Platform 1.0 completion layer: drill-down, lasso/Z-order, energy dashboard and report designer. */
 
 /**
+ * One text prompt, as a real dialog, through the same SDK bridge `gltText` uses.
+ *
+ * `window.prompt` blocks the page, cannot be styled or localized, carries no
+ * accessible name and does not exist in a kiosk browser — which is where this
+ * product is installed. The v1 bundle owns the modal; this file reaches it
+ * rather than growing a second one that would drift.
+ *
+ * Resolves to null on cancel, matching what `prompt()` returned, so the call
+ * sites keep their shape. The fallback is the same reasoning as `gltText`
+ * falling back to the key: a degraded control beats a dead button.
+ */
+async function ask(owner, label, initial = "") {
+  const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
+  if (sdk?.askText && owner) return sdk.askText(owner, label, initial);
+  return typeof prompt === "function" ? prompt(label, initial) : null;
+}
+
+/**
  * One catalog string, read off the SDK at call time.
  *
  * This file is concatenated before the v1 bundle, or loaded beside it, so it
@@ -36,7 +54,7 @@ function gltText(key) {
 
   function energyPanel(card){const c=card._config,e=c.energy||{},meters=e.meters||[];let totalCost=0,totalCo2=0;const rows=meters.map(m=>{const st=card._hass?.states?.[m.entity],v=Number.parseFloat(st?.state),cost=Number.isFinite(v)&&m.price_per_unit!=null?v*Number(m.price_per_unit):null,co2=Number.isFinite(v)&&m.kind==="electricity"&&e.co2_factor_g_per_kwh?v*Number(e.co2_factor_g_per_kwh)/1000:null;if(cost!=null)totalCost+=cost;if(co2!=null)totalCo2+=co2;return`<div class="glt-v1-card"><b>${esc(m.name||m.id)}</b><strong>${Number.isFinite(v)?v.toFixed(2):"–"} ${esc(st?.attributes?.unit_of_measurement||m.unit||"")}</strong><small>${esc(m.kind||"meter")}${cost!=null?` · ${cost.toFixed(2)} €`:""}${co2!=null?` · ${co2.toFixed(2)} kg CO₂`:""}</small></div>`}).join("");box(card,"Energie & Medien",`<div class="glt-v1-grid"><div class="glt-v1-card"><b>Kostenindikator</b><strong>${totalCost.toFixed(2)} €</strong><small>aus aktuell konfigurierten Zählerständen</small></div><div class="glt-v1-card"><b>CO₂-Indikator</b><strong>${totalCo2.toFixed(2)} kg</strong><small>elektrische Zähler</small></div></div><h4>Medienfluss</h4><div class="glt-v1-grid">${rows||'<div class="glt-v1-card">${gltText("legacy.no_energy_meters")}</div>'}</div>`);}
 
-  function reportPanel(editor){const c=editor._config;c.reports=c.reports||{enabled:true,definitions:[]};c.reports.definitions=c.reports.definitions||[];const m=box(editor,gltText("legacy.report_designer"),`<div class="glt-v1-actions"><button class="glt-v1-btn" data-new>Report anlegen</button></div><table class="glt-v1-table"><thead><tr><th>Name</th><th>Zeitraum</th><th>Format</th><th>Automatik</th></tr></thead><tbody>${c.reports.definitions.map(r=>`<tr><td>${esc(r.name||r.id)}</td><td>${esc(r.period||"month")}</td><td>${esc((r.formats||["pdf","csv"]).join(", "))}</td><td>${esc(r.schedule||"manuell")}</td></tr>`).join("")||'<tr><td colspan="4">Keine Reports.</td></tr>'}</tbody></table>`);m.querySelector("[data-new]").onclick=()=>{const name=prompt(gltText("legacy.prompt_report_name"),"Monatsbericht");if(!name)return;const period=prompt(gltText("legacy.prompt_period"),"month")||"month";const schedule=prompt(gltText("legacy.schedule_hint"),"")||"";c.reports.definitions.push({id:`report_${Date.now()}`,name,period,formats:["csv","pdf"],schedule});editor._emit?.();editor._render?.();m.remove();};}
+  function reportPanel(editor){const c=editor._config;c.reports=c.reports||{enabled:true,definitions:[]};c.reports.definitions=c.reports.definitions||[];const m=box(editor,gltText("legacy.report_designer"),`<div class="glt-v1-actions"><button class="glt-v1-btn" data-new>Report anlegen</button></div><table class="glt-v1-table"><thead><tr><th>Name</th><th>Zeitraum</th><th>Format</th><th>Automatik</th></tr></thead><tbody>${c.reports.definitions.map(r=>`<tr><td>${esc(r.name||r.id)}</td><td>${esc(r.period||"month")}</td><td>${esc((r.formats||["pdf","csv"]).join(", "))}</td><td>${esc(r.schedule||"manuell")}</td></tr>`).join("")||'<tr><td colspan="4">Keine Reports.</td></tr>'}</tbody></table>`);m.querySelector("[data-new]").onclick=async()=>{const name=await ask(editor,gltText("legacy.prompt_report_name"),"Monatsbericht");if(!name)return;const period=await ask(editor,gltText("legacy.prompt_period"),"month")||"month";const schedule=await ask(editor,gltText("legacy.schedule_hint"),"")||"";c.reports.definitions.push({id:`report_${Date.now()}`,name,period,formats:["csv","pdf"],schedule});editor._emit?.();editor._render?.();m.remove();};}
 
   function addRuntimeButtons(card){const bar=card.shadowRoot.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");if(!bar||bar.querySelector("[data-v1-energy]"))return;const b=document.createElement("button");b.className="glt4-pill glt-v1-btn";b.dataset.v1Energy="1";b.textContent=gltText("legacy.button_energy");b.onclick=()=>energyPanel(card);bar.appendChild(b);}
 

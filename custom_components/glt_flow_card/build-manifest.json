@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "3aff45d85e7d85f57ce4c50bb96e5f2d434c933dd79ff8395a157758964d0bc5",
-      "size": 3107210
+      "sha256": "e1280c6dce0aa3843bafd40d221115b22a67b7864cd989459a03634621c8f9cc",
+      "size": 3108836
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "3aff45d85e7d85f57ce4c50bb96e5f2d434c933dd79ff8395a157758964d0bc5",
-      "size": 3107210
+      "sha256": "e1280c6dce0aa3843bafd40d221115b22a67b7864cd989459a03634621c8f9cc",
+      "size": 3108836
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -132,13 +132,13 @@
     },
     {
       "path": "docs/editor/app.js",
-      "sha256": "260c2080cfd84f1ae4f2de848cebd5fc309efeeafdf873872249c5aaad498e80",
-      "size": 33487
+      "sha256": "53021388396fb63edd21cd24dd3714beb18f9549b6d73adbf7276dccea41dd0f",
+      "size": 34753
     }
   ],
   "build": {
     "commit": "0eed52080cd612c42be0c367934fef1746d94f20",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -204,13 +204,13 @@
     },
     {
       "path": "src/generated-bases/editor-app.base.js",
-      "sha256": "03b042315fc6283c76f1d3d064088562720e07ddad9a8a18e814bbc1370fbfe0",
-      "size": 27467
+      "sha256": "925b33766865aec4e6a496ad1ba9430d8f49f7c5976183f9569f14495bfb29d0",
+      "size": 28733
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "b138503a3ed518daa1dfd1afaafb2622b55623acb6d7dce48efa7bf633734026",
-      "size": 290856
+      "sha256": "758cdc5eb0162dad398c3364ae61c770b4323dd1b59c24ebcc6f3d76167f2f07",
+      "size": 292073
     },
     {
       "path": "src/v100/alarm-vocabulary.mjs",
@@ -294,8 +294,8 @@
     },
     {
       "path": "src/v100/index.js",
-      "sha256": "7d1917c0d4b98cb371422400260ab5406dec00447b45e00cbc0f666dca1bab76",
-      "size": 46864
+      "sha256": "b4eec095d5d1e81ecd6674c0e0c5aa96af865590e50b975defe0c3c9b486ae15",
+      "size": 47207
     },
     {
       "path": "src/v100/locale-format.mjs",
@@ -459,8 +459,8 @@
     },
     {
       "path": "src/v100/v1-addons.js",
-      "sha256": "02e09475bf0888933b08e2ae25852777239502a64666c5d33d05dca1becd4381",
-      "size": 9161
+      "sha256": "0044e9956176134044d2fa4740511264b0c063e4677a8ba83ff6898da148b8fa",
+      "size": 10073
     },
     {
       "path": "src/v100/view-resync.mjs",

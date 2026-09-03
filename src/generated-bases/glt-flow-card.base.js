@@ -19,6 +19,29 @@
  * visibly wrong, where a German sentence in an English interface looks
  * deliberate.
  */
+/**
+ * One text prompt, as a real dialog.
+ *
+ * `window.prompt` blocks the whole page, cannot be styled or localized, has no
+ * accessible name of its own, and is simply unavailable in a kiosk browser --
+ * which is where this product is installed. The v1 bundle already builds a
+ * proper modal for the acknowledgement path; this reaches the same one through
+ * the SDK rather than growing a second dialog that would drift from it.
+ *
+ * `owner` is the element whose shadow root hosts the dialog. Resolves to null
+ * when cancelled, so a caller can tell "cancelled" from "entered nothing" --
+ * exactly what `prompt()` returns, so call sites need no new shape.
+ *
+ * Falls back to `prompt` only when the SDK is absent, which is the same
+ * reasoning as `gltText` falling back to the key: a degraded control the user
+ * can still operate beats a dead button.
+ */
+async function gltAsk(owner, label, initial = "") {
+  const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
+  if (sdk?.askText && owner) return sdk.askText(owner, label, initial);
+  return typeof prompt === "function" ? prompt(label, initial) : null;
+}
+
 function gltText(key) {
   const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
   if (!sdk?.text) return key;
@@ -4904,7 +4927,7 @@ function gltText(key) {
       const cards = list.map((p) => `<div class="glt4-card"><b>${esc(p.name || p.id)}</b><small>${esc(p.updated || "")} \xB7 ${(p.versions || []).length} Versionen ${p.id === currentId ? "\xB7 AKTIV" : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-load="${esc(p.id)}">Laden</button><button class="glt4-btn" data-versions="${esc(p.id)}">Versionen</button><button class="glt4-btn glt4-danger" data-delete="${esc(p.id)}">L\xF6schen</button></div></div>`).join("");
       const m = modal(editor, "Projektbibliothek", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Aktuelles Projekt speichern</button><button class="glt4-btn" data-copy>Als neues Projekt speichern</button></div><div class="glt4-grid">${cards || '<div class="glt4-card">Noch keine gespeicherten Projekte.</div>'}</div><p style="font-size:9px;color:var(--mut);margin-top:12px">Mit installierter Companion-Integration werden Projekte ger\xE4te\xFCbergreifend in Home Assistant gespeichert; sonst lokal im Browser.</p>`);
       m.querySelector("[data-save]").onclick = async () => {
-        const name = editor._config.project?.name || prompt(gltText("legacy.prompt_project_name"), editor._config.title || "GLT Projekt") || "GLT Projekt";
+        const name = editor._config.project?.name || await gltAsk(editor, gltText("legacy.prompt_project_name"), editor._config.title || "GLT Projekt") || "GLT Projekt";
         const id = currentId || slug(name) + "-" + Date.now().toString(36);
         editor._config.project = { ...editor._config.project || {}, id, name };
         editor._glt4ProjectId = id;
@@ -4914,7 +4937,7 @@ function gltText(key) {
         editor._render();
       };
       m.querySelector("[data-copy]").onclick = async () => {
-        const name = prompt(gltText("legacy.new_project_name"), `${editor._config.title || "GLT"} Kopie`);
+        const name = await gltAsk(editor, gltText("legacy.new_project_name"), `${editor._config.title || "GLT"} Kopie`);
         if (!name) return;
         const id = slug(name) + "-" + Date.now().toString(36);
         editor._config.project = { id, name };
@@ -4997,7 +5020,7 @@ function gltText(key) {
       m.querySelector("[data-save]").onclick = async () => {
         const obj = editor._obj?.();
         if (!obj) return editorNotice(editor, gltText("legacy.select_something_first"));
-        const name = prompt(gltText("legacy.prompt_template_name"), obj.name || obj.label || obj.id);
+        const name = await gltAsk(editor, gltText("legacy.prompt_template_name"), obj.name || obj.label || obj.id);
         if (!name) return;
         const t = { id: slug(name) + "-" + Date.now().toString(36), name, kind: editor._sel.k, object: clone(obj) };
         await store.saveTemplate(t);
@@ -5041,13 +5064,13 @@ function gltText(key) {
     function showGroups(editor) {
       const groups = editor._config.groups || [];
       const m = modal(editor, "Gruppen & Unteranlagen", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-create>Aus Mehrfachauswahl gruppieren</button></div><div class="glt4-grid">${groups.map((g) => `<div class="glt4-card"><b>${esc(g.name)}</b><small>${(g.members || []).length} Elemente</small><div class="glt4-actions"><button class="glt4-btn" data-select="${g.id}">Markieren</button><button class="glt4-btn" data-template="${g.id}">Als Anlagenvorlage</button><button class="glt4-btn glt4-danger" data-delete="${g.id}">Aufl\xF6sen</button></div></div>`).join("") || '<div class="glt4-card">Noch keine Gruppen. Mehrere Elemente mit Strg/Shift ausw\xE4hlen.</div>'}</div>`);
-      m.querySelector("[data-create]").onclick = () => {
+      m.querySelector("[data-create]").onclick = async () => {
         const members = Array.from(editor._glt4Multi || []).map((key) => {
           const [kind, id] = key.split(":");
           return { kind, id };
         });
         if (members.length < 2) return editorNotice(editor, gltText("legacy.select_two_first"));
-        const name = prompt(gltText("legacy.prompt_group_name"), "Unteranlage");
+        const name = await gltAsk(editor, gltText("legacy.prompt_group_name"), "Unteranlage");
         if (!name) return;
         editor._remember?.();
         editor._config.groups.push({ id: slug(name) + "-" + Date.now().toString(36), name, members });
@@ -5565,8 +5588,8 @@ function gltText(key) {
           this._glt4Panel = this._glt4Panel === b.dataset.g4panel ? null : b.dataset.g4panel;
           this._queueRender();
         });
-        wrap.querySelector("[data-g4report]")?.addEventListener("click", () => {
-          const choice = prompt(gltText("legacy.report_format_hint"), "pdf");
+        wrap.querySelector("[data-g4report]")?.addEventListener("click", async () => {
+          const choice = await gltAsk(card, gltText("legacy.report_format_hint"), "pdf");
           if (choice?.toLowerCase() === "csv") download(`glt-report-${Date.now()}.csv`, reportCsv(this), "text/csv;charset=utf-8");
           else if (choice) printReport(this);
           runtimeStore(this).audit("report.create", { format: choice || "cancel" });
