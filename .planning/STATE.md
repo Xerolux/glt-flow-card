@@ -148,11 +148,13 @@ Three product limitations recorded by earlier phases were also closed:
   committed a 0.4.0 downgrade as a bot, stopped only by a thrown exception on a
   version anchor — a coincidence, not a safety property.
 
-**Still deliberately not done:** a site cannot express four or five alarm
-priority classes. That is a schema change, and the alarm philosophy — configuration
-with conservative defaults, the priority vocabulary being the one deliberate
-exception — was decided with the user on 2026-09-02. Reversing it is a product
-decision, not a close-out task.
+**Closed 2026-09-03, after the user asked for it.** A site can now declare its
+own alarm priority scale — two to six ordered tiers, in site options, resolved
+identically by both runtimes. It did **not** need the schema change the phase
+assumed: the invariant was "one declared vocabulary read by both runtimes", not
+"three members", and Phase 6 conflated the two. `alarm_settings()` had described
+priorities as a site decision since Phase 6; this is that description becoming
+true. Nothing in the repository is now deliberately left undone.
 
 `REQUIREMENTS.md` traceability is current, and says which row is blocked wherever
 a requirement is complete with an exception.
@@ -349,7 +351,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 - [Phase 4]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T4-14 row and the review passes remain.
 - [Phase 5]: No known technical blocker. All 20 plans are implemented; the Docker-dependent T5-16 row, the review passes, and three recorded limitations remain (two diagonals a lane offset cannot separate, five editor naming prompts, and v040 extension parts 05/06 still absent from the shipped artifact).
-- [Phase 6]: No known technical blocker. All 20 plans are implemented and all 14 audited defects are closed, including the live `alarms/list` authorization hole fixed separately in `9f53bcb`. The Docker-dependent T6-21 row, the review passes, and two recorded limitations remain: a site cannot express four or five alarm priority classes (that is a schema change, not a setting), and measured capacity at thousands of alarms is Phase 10's.
+- [Phase 6]: No known technical blocker. All 20 plans are implemented and all 14 audited defects are closed, including the live `alarms/list` authorization hole fixed separately in `9f53bcb`. The Docker-dependent T6-21 row, the review passes, and one recorded limitation remains: measured capacity at thousands of alarms is Phase 10's. The other — four or five alarm priority classes — was closed on 2026-09-03, and needed no schema change.
 - [Phase 3]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T3-14 row and the review passes remain.
 - [Phase 2]: No known technical blocker. The bounded plan check passed on 2026-09-02 (see `02-PLAN-CHECK.md`); execution is complete.
 - [Phase 2]: Shared mutation routes now require a valid bearer at the policy boundary. Plan 02-09 must still add the decisive in-lock recheck; the boundary check alone cannot see authority that changes mid-request.

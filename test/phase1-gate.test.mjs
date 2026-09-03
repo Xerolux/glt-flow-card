@@ -250,16 +250,35 @@ test("release workflow publishes downloaded exact assets without rebuild or mirr
 });
 
 test("mandatory CI gates stage first and verify a clean tracked export", async () => {
+  // The order is read off the *commands*, not off the file. `indexOf` over the
+  // whole source finds a command named in a comment, so a step explaining why
+  // `npm test` needs something would count as running it -- which is how this
+  // assertion first broke, on a comment that was documenting a real fix.
+  //
+  // A test that a comment can satisfy is a test that a comment can also defeat.
+  const commandLines = (workflow) => workflow
+    .split("\n")
+    .map((line) => {
+      const match = /^\s*(?:-\s*)?run:\s*(.*)$/u.exec(line);
+      return match ? match[1] : (/^\s{8,}\S/u.test(line) && !/^\s*#/u.test(line) ? line.trim() : null);
+    })
+    .filter((line) => line !== null);
+
   for (const relativePath of [
     ".github/workflows/validate.yml",
     ".github/workflows/build-v1.yml",
   ]) {
     const workflow = await readFile(path.join(ROOT, relativePath), "utf8");
-    const stageIndex = workflow.indexOf("npm run stage:hacs");
-    const testIndex = workflow.indexOf("npm test");
-    const cleanIndex = workflow.indexOf("node tools/test-clean-checkout.mjs");
-    assert.ok(stageIndex >= 0 && stageIndex < testIndex, relativePath);
-    assert.ok(cleanIndex > testIndex, relativePath);
+    const commands = commandLines(workflow);
+    const at = (needle) => commands.findIndex((line) => line.includes(needle));
+    const stageIndex = at("npm run stage:hacs");
+    const testIndex = at("npm test");
+    const cleanIndex = at("node tools/test-clean-checkout.mjs");
+    assert.ok(stageIndex >= 0, `${relativePath}: never stages`);
+    assert.ok(testIndex >= 0, `${relativePath}: never runs the suite`);
+    assert.ok(cleanIndex >= 0, `${relativePath}: no clean tracked-export gate`);
+    assert.ok(stageIndex < testIndex, `${relativePath}: tests before staging`);
+    assert.ok(cleanIndex > testIndex, `${relativePath}: clean export before the suite`);
   }
 });
 

@@ -16,7 +16,7 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -65,4 +65,29 @@ test("every workflow that can write to the repository says what starts it", asyn
     assert.ok(new RegExp(`\\b${how}\\b`, "u").test(triggerBlock(source)),
       `${file} no longer declares ${how}; re-read what it writes before changing it`);
   }
+});
+
+test("every job that runs the JS suite installs what the parity gates need", async () => {
+  // `npm test` spawns the Companion for the cross-runtime parity gates, which
+  // import Home Assistant. A job that runs the suite without
+  // `requirements-test.txt` does not fail loudly -- it drops the 18 tests that
+  // compare the two runtimes and reports the rest as a pass.
+  //
+  // `validate.yml` was fixed when this was diagnosed there. `build-v1.yml` was
+  // not, and ran red on `main` from 2026-09-01 while `validate` was green on
+  // the same commit. Asking the question of every workflow, rather than of the
+  // two we know about, is the difference between fixing an instance and
+  // closing the class.
+  const names = await readdir(WORKFLOWS);
+  const checked = [];
+  for (const name of names.filter((file) => file.endsWith(".yml"))) {
+    const source = await readFile(path.join(WORKFLOWS, name), "utf8");
+    if (!/^\s*run:\s*npm test\s*$/mu.test(source) && !/\bnpm test\b/u.test(source)) continue;
+    checked.push(name);
+    assert.ok(source.includes("requirements-test.txt"),
+      `${name} runs the JavaScript suite but never installs requirements-test.txt, `
+      + "so its cross-runtime parity gates cannot run at all");
+  }
+  assert.ok(checked.length >= 2,
+    `only ${checked.length} workflow(s) were examined; the scan is not finding them`);
 });

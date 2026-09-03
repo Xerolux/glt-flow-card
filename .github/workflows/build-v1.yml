@@ -39,6 +39,19 @@ jobs:
         with:
           python-version: "3.13"
       - run: npm ci --ignore-scripts
+      - name: Install the declared Python test dependencies
+        # `npm test` spawns the Companion modules for the cross-runtime parity
+        # gates -- schedule, DST, site vocabulary, control rejection, bundle
+        # exchange, diff impact and migration bytes -- and those modules import
+        # Home Assistant. Without this the suite runs, reports 511 of 529, and
+        # the 18 it drops are exactly the ones that compare the two runtimes.
+        #
+        # `validate.yml` gained this step when the same failure was diagnosed
+        # there; this job was left behind, so it has been red on `main` since
+        # 2026-09-01 while `validate` was green on the same commit. A parity
+        # gate that cannot run is worse than one that fails: it looks like a
+        # test suite passing.
+        run: python -m pip install --disable-pip-version-check -r requirements-test.txt
       # Stage first: `verify:release` consumes the stage to prove the packages
       # that will ship are the bytes it just verified. It never creates one.
       - name: Stage local release packages
