@@ -138,8 +138,26 @@ Assistant lane.
 
 **I18N-01 was carried as partial** while 132 user-facing strings remained
 outside the catalog; `tools/verify-i18n-coverage.mjs` named each one and the
-claim registry published the corresponding claim as failed. It reports PASS as
-of 2026-09-03.
+claim registry published the corresponding claim as failed.
+
+It reported PASS on 2026-09-03 — and the close-out review the same day found
+that PASS was wrong. The sweep's test for "does a person read this" was
+linguistic: it needed two whitespace-separated words or an umlaut, so eleven
+single-word German labels (`Projektname`, `Layername`, `Aufgabe` among them)
+were invisible to it. A second, structural sweep now runs beside it and asks
+where a literal *went* rather than what it looks like: anything handed to
+`prompt`, `confirm`, `alert`, `.textContent` or `.innerText` is a finding. Both
+report PASS, and the structural one is mutation-checked against the exact blind
+spot.
+
+**SEC-01 was reviewed on 2026-09-03 and three defects were found.**
+`work_orders/list`, `reports/list` and `evidence/list` returned the rows of
+projects the caller cannot read — the last of these the trusted audit trail.
+All three are fixed, and `test_filtered_route_authority.py` closes the class by
+deriving its route list from the policy contract and asserting rows rather than
+response codes. The requirement stays Complete; the finding is recorded because
+it shipped, and because "enforced for every project-scoped query" was not true
+of three of them until that day.
 
 **A11Y-01's manual half was not performed.** No assistive technology can be
 driven in this environment, so nothing here supports a conformance statement
@@ -154,4 +172,4 @@ regardless of what the automated sweep reports.
 
 ---
 *Requirements defined: 2026-08-31*  
-*Last updated: 2026-08-31 after roadmap creation and exact phase traceability for user roadmap items 1–30*
+*Last updated: 2026-09-03 after the close-out review passes for all ten phases*
