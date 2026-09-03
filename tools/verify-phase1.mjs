@@ -1,6 +1,7 @@
 /* Execute and hash the complete Phase-1 behavioral evidence set. */
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { pythonCommand } from "./python-launcher.mjs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -187,9 +188,14 @@ function hasNonzeroSkip(output) {
   return /(?:skipped|skip)\s+[1-9]\d*\b/i.test(output) || /\b[1-9]\d*\s+skipped\b/i.test(output);
 }
 
+function portableCommand(text) {
+  /* Keep the declared Python 3.13 pin while resolving the launcher per platform. */
+  return text.replaceAll("py -3.13", pythonCommand());
+}
+
 function executeCommand(root, command) {
   const started = Date.now();
-  const result = spawnSync(command.command, {
+  const result = spawnSync(portableCommand(command.command), {
     cwd: root,
     encoding: "utf8",
     maxBuffer: 20 * 1024 * 1024,

@@ -184,6 +184,16 @@ export async function verifyReleaseAcceptance(options = {}) {
   requireCondition(buildManifest.versions?.companion === packageJson.version && companionManifest.version === packageJson.version, "Companion/package version mismatch");
   requireCondition((options.tag ?? `v${packageJson.version}`) === `v${packageJson.version}`, "release tag/version mismatch");
 
+  // The Phase-1 gate stays mandatory: a Phase-2 release that never re-proved
+  // the contract, migration and packaging foundations would be resting on
+  // evidence nobody re-ran.
+  const phase1 = (await readJson(path.join(evidenceRoot, "phase1-evidence.json"), "Phase-1 gate evidence")).value;
+  requireEvidence(phase1, "glt-flow-card-phase1-evidence", "Phase-1 gate evidence");
+  requireCondition(
+    phase1.artifacts?.["custom_components/glt_flow_card/build-manifest.json"]?.sha256 === sha256(buildManifestBytes),
+    "Phase-1 gate evidence was produced against a different build manifest",
+  );
+
   const provenance = (await readJson(path.join(evidenceRoot, "phase01-provenance.json"), "provenance evidence")).value;
   const buildEvidence = (await readJson(path.join(evidenceRoot, "release-build-verification.json"), "release build evidence")).value;
   await verifyProvenance(root, provenance);

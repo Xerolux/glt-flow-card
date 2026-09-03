@@ -34,18 +34,18 @@ created: 2026-09-01
 
 | Requirement | Threat Refs | Secure Behavior | Test Type | Automated Command | Status |
 |-------------|-------------|-----------------|-----------|-------------------|--------|
-| SEC-01 | T2-01, T2-02, T2-03 | Registered routes exactly equal deny-default policy manifest; fixed role matrix and HA ceiling | HA integration matrix | `py -3.13 -m pytest tests/components/glt_flow_card/test_policy.py -q -x` | ⬜ pending |
-| SEC-01 | T2-04 | Unauthorized/missing project list, count, search, audit, cursor, remote, and subscription paths do not enumerate | Multi-user HA + E2E | `py -3.13 -m pytest tests/components/glt_flow_card/test_policy_enumeration.py tests/components/glt_flow_card/test_policy_subscriptions.py -q -x` | ⬜ pending |
-| SEC-01 | T2-05 | Project/import content cannot self-grant; ACL revisions and HA authority caps are server-owned | Store/WS integration | `py -3.13 -m pytest tests/components/glt_flow_card/test_project_access.py -q -x` | ⬜ pending |
-| SEC-01 | T2-06, T2-07 | Configured control ID resolves exact current-head service/target/data; malicious overrides and bounds cause zero calls | Controlled service integration | `py -3.13 -m pytest tests/components/glt_flow_card/test_configured_controls.py -q -x` | ⬜ pending |
-| SEC-01 | T2-08 | Accepted/dispatched/confirmed/timeout/denied/result-unknown evidence is server-authored and correlation-stable | Failure injection | `py -3.13 -m pytest tests/components/glt_flow_card/test_control_evidence.py -q -x` | ⬜ pending |
-| SEC-01 | T2-09 | Trusted audit and untrusted telemetry remain separate, bounded, paginated, redacted, and scope-authorized | Store/WS integration | `py -3.13 -m pytest tests/components/glt_flow_card/test_trusted_evidence.py tests/components/glt_flow_card/test_evidence_pagination.py -q -x` | ⬜ pending |
-| COLLAB-01 | T2-10 | One exclusive project lease, connection/user binding, rotation, renewal, expiry, release, reconnect invalidation | Async multi-connection HA | `py -3.13 -m pytest tests/components/glt_flow_card/test_project_leases.py -q -x` | ⬜ pending |
-| COLLAB-01 | T2-11 | Every shared mutation atomically rechecks role, lease, revision, access revision, digest, and policy under race barriers | Concurrency/failure injection | `py -3.13 -m pytest tests/components/glt_flow_card/test_collaboration.py -q -x` | ⬜ pending |
-| COLLAB-01 | T2-12 | Bounded three-way conflict evidence preserves candidate; non-overlap merge succeeds, overlap/second conflict never loses updates | Python + Node reducers | `py -3.13 -m pytest tests/components/glt_flow_card/test_merge.py -q -x && node --test test/phase2-collaboration.test.mjs` | ⬜ pending |
-| SEC-01 / COLLAB-01 | T2-13 | Authority loss is same-render-cycle read-only with no service, shared storage, token, target, or network fallback | Node + exact-dist E2E | `node --test test/phase2-authority.test.mjs && node tools/run-exact-dist-playwright.mjs --grep=authority` | ⬜ pending |
-| SEC-01 / COLLAB-01 | T2-14 | Two browsers prove roles, leases, conflict/retry/merge, DE/EN, keyboard/focus/live regions, 320px reflow, and secret absence | Exact-dist Playwright | `node tools/run-exact-dist-playwright.mjs --grep=phase-2-ui` | ⬜ pending |
-| SEC-01 / COLLAB-01 | T2-15 | Legacy migration is idempotent and reload/unload clears every subscription/task/cursor/lease/rate bucket | HA lifecycle | `py -3.13 -m pytest tests/components/glt_flow_card/test_phase2_migration.py tests/components/glt_flow_card/test_phase2_lifecycle.py -q -x` | ⬜ pending |
+| SEC-01 | T2-01, T2-02, T2-03 | Registered routes exactly equal deny-default policy manifest; fixed role matrix and HA ceiling | HA integration matrix | `py -3.13 -m pytest tests/components/glt_flow_card/test_policy.py -q -x` | ✅ verified |
+| SEC-01 | T2-04 | Unauthorized/missing project list, count, search, audit, cursor, remote, and subscription paths do not enumerate | Multi-user HA + E2E | `py -3.13 -m pytest tests/components/glt_flow_card/test_policy_enumeration.py tests/components/glt_flow_card/test_policy_subscriptions.py -q -x` | ✅ verified |
+| SEC-01 | T2-05 | Project/import content cannot self-grant; ACL revisions and HA authority caps are server-owned | Store/WS integration | `py -3.13 -m pytest tests/components/glt_flow_card/test_project_access.py -q -x` | ✅ verified |
+| SEC-01 | T2-06, T2-07 | Configured control ID resolves exact current-head service/target/data; malicious overrides and bounds cause zero calls | Controlled service integration | `py -3.13 -m pytest tests/components/glt_flow_card/test_configured_controls.py -q -x` | ✅ verified |
+| SEC-01 | T2-08 | Accepted/dispatched/confirmed/timeout/denied/result-unknown evidence is server-authored and correlation-stable | Failure injection | `py -3.13 -m pytest tests/components/glt_flow_card/test_control_evidence.py -q -x` | ✅ verified |
+| SEC-01 | T2-09 | Trusted audit and untrusted telemetry remain separate, bounded, paginated, redacted, and scope-authorized | Store/WS integration | `py -3.13 -m pytest tests/components/glt_flow_card/test_trusted_evidence.py tests/components/glt_flow_card/test_evidence_pagination.py -q -x` | ✅ verified |
+| COLLAB-01 | T2-10 | One exclusive project lease, connection/user binding, rotation, renewal, expiry, release, reconnect invalidation | Async multi-connection HA | `py -3.13 -m pytest tests/components/glt_flow_card/test_project_leases.py -q -x` | ✅ verified |
+| COLLAB-01 | T2-11 | Every shared mutation atomically rechecks role, lease, revision, access revision, digest, and policy under race barriers | Concurrency/failure injection | `py -3.13 -m pytest tests/components/glt_flow_card/test_collaboration.py -q -x` | ✅ verified |
+| COLLAB-01 | T2-12 | Bounded three-way conflict evidence preserves candidate; non-overlap merge succeeds, overlap/second conflict never loses updates | Python + Node reducers | `py -3.13 -m pytest tests/components/glt_flow_card/test_merge.py -q -x && node --test test/phase2-collaboration.test.mjs` | ✅ verified |
+| SEC-01 / COLLAB-01 | T2-13 | Authority loss is same-render-cycle read-only with no service, shared storage, token, target, or network fallback | Node + exact-dist E2E | `node --test test/phase2-authority.test.mjs && node tools/run-exact-dist-playwright.mjs --grep=authority` | ✅ verified |
+| SEC-01 / COLLAB-01 | T2-14 | Two browsers prove roles, leases, conflict/retry/merge, DE/EN, keyboard/focus/live regions, 320px reflow, and secret absence | Exact-dist Playwright | `node tools/run-exact-dist-playwright.mjs --grep=phase-2-ui` | ✅ verified |
+| SEC-01 / COLLAB-01 | T2-15 | Legacy migration is idempotent and reload/unload clears every subscription/task/cursor/lease/rate bucket | HA lifecycle | `py -3.13 -m pytest tests/components/glt_flow_card/test_phase2_migration.py tests/components/glt_flow_card/test_phase2_lifecycle.py -q -x` | ✅ verified |
 | SEC-01 / COLLAB-01 | T2-16 | Exact generated/HACS artifacts pass minimum/current HA lanes and release gates with zero unintended service attempts | Release/HA artifact | `npm run test:phase2:release` | ⬜ pending |
 
 ## Wave 0 Requirements
@@ -91,4 +91,10 @@ All Phase-2 acceptance behavior is automated. No live Home Assistant, remote sit
 - [x] Exact generated artifacts, not source modules alone, are required at the phase gate.
 - [x] `nyquist_compliant: true` set in frontmatter.
 
-**Approval:** approved 2026-09-01; execution evidence pending
+**Approval:** approved 2026-09-01.
+
+**Execution evidence, 2026-09-02:** every row except T2-16 was run at the
+current head and passed with non-skipped behavioral counts. T2-16 stays pending
+because its owner installs the exact stage on two digest-pinned Home Assistant
+images and needs a Docker engine, which this execution environment does not
+have; it runs in the `ha-artifacts` CI job and in the release workflow.

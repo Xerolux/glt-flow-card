@@ -1,0 +1,1732 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.glt-flow-card.invalid/project/7.schema.json",
+  "title": "GLT Flow Card project, schema 7",
+  "allOf": [
+    {
+      "$ref": "#/$defs/rawProject"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 7
+        },
+        "project": {
+          "$ref": "#/$defs/projectMetadata"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project"
+      ]
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "boundedString": {
+      "type": "string",
+      "maxLength": 262144
+    },
+    "entityReference": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 256,
+      "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
+    },
+    "assetPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,511}$"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "unevaluatedProperties": true
+    },
+    "point": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "field": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "view": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "kind": {
+          "$ref": "#/$defs/id"
+        },
+        "order": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "equipment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "$ref": "#/$defs/id"
+        },
+        "profile": {
+          "$ref": "#/$defs/id"
+        },
+        "asset_id": {
+          "$ref": "#/$defs/id"
+        },
+        "layer": {
+          "$ref": "#/$defs/id"
+        },
+        "state_entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field"
+          },
+          "maxItems": 100000
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/boundedString"
+          },
+          "maxItems": 100000
+        },
+        "bindings": {
+          "type": "object",
+          "propertyNames": {
+            "maxLength": 128
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/entityReference"
+          },
+          "maxProperties": 100000
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "path": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "from_equipment": {
+          "$ref": "#/$defs/id"
+        },
+        "to_equipment": {
+          "$ref": "#/$defs/id"
+        },
+        "from_port": {
+          "$ref": "#/$defs/id"
+        },
+        "to_port": {
+          "$ref": "#/$defs/id"
+        },
+        "layer": {
+          "$ref": "#/$defs/id"
+        },
+        "medium": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point"
+          },
+          "maxItems": 100000
+        },
+        "order": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "datapoint": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "layer": {
+          "$ref": "#/$defs/id"
+        },
+        "positions": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/position"
+          },
+          "maxProperties": 100000
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/semanticUnit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "medium": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/semanticMedium"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/semanticDirection"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "semantic_tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/semanticTag"
+          },
+          "maxItems": 32
+        },
+        "freshness_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "identifiedObject": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "openObject": {
+      "type": "object",
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "profile": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "equipment_type": {
+          "$ref": "#/$defs/id"
+        },
+        "extends": {
+          "$ref": "#/$defs/id"
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "identity": {
+          "$ref": "#/$defs/openObject"
+        },
+        "controls": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "label": {
+                "$ref": "#/$defs/openObject"
+              },
+              "input_schema": {
+                "$ref": "#/$defs/openObject"
+              },
+              "gates": {
+                "$ref": "#/$defs/openObject"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "unevaluatedProperties": false
+          }
+        },
+        "state_signals": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/openObject"
+          }
+        },
+        "alarms": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/alarm"
+          }
+        },
+        "ports": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/openObject"
+          }
+        },
+        "maintenance": {
+          "$ref": "#/$defs/openObject"
+        },
+        "symbols": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/boundedString"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "equipment_type"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "path": {
+          "$ref": "#/$defs/assetPath"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777216
+        }
+      },
+      "required": [
+        "id",
+        "path"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "projectMetadata": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 262144
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "revision"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "rawProject": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "custom:glt-flow-card"
+        },
+        "schema_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        },
+        "project": {
+          "$ref": "#/$defs/projectMetadata"
+        },
+        "title": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "subtitle": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "appearance": {
+          "$ref": "#/$defs/openObject"
+        },
+        "canvas": {
+          "$ref": "#/$defs/openObject"
+        },
+        "replay": {
+          "$ref": "#/$defs/replaySettings"
+        },
+        "trend": {
+          "$ref": "#/$defs/trendSettings"
+        },
+        "security": {
+          "$ref": "#/$defs/openObject"
+        },
+        "permissions": {
+          "$ref": "#/$defs/openObject"
+        },
+        "diagnostics": {
+          "$ref": "#/$defs/openObject"
+        },
+        "semantic_model": {
+          "$ref": "#/$defs/semanticModel"
+        },
+        "energy": {
+          "$ref": "#/$defs/energySettings"
+        },
+        "reports": {
+          "$ref": "#/$defs/reportSettings"
+        },
+        "routing": {
+          "$ref": "#/$defs/openObject"
+        },
+        "historian": {
+          "$ref": "#/$defs/historianSettings"
+        },
+        "simulation": {
+          "$ref": "#/$defs/openObject"
+        },
+        "ui": {
+          "$ref": "#/$defs/openObject"
+        },
+        "extensions": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/id"
+          },
+          "maxProperties": 512,
+          "unevaluatedProperties": true
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/view"
+          },
+          "maxItems": 100000
+        },
+        "equipment": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/equipment"
+          },
+          "maxItems": 100000
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path"
+          },
+          "maxItems": 100000
+        },
+        "datapoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/datapoint"
+          },
+          "maxItems": 100000
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/profile"
+          },
+          "maxItems": 100000
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/asset"
+          },
+          "maxItems": 100000
+        },
+        "kpis": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/openObject"
+          },
+          "maxItems": 100000
+        },
+        "alarms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/alarm"
+          },
+          "maxItems": 100000
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "schedules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/schedule"
+          },
+          "maxItems": 100000
+        },
+        "remote_sites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "plugins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "sites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedObject"
+          },
+          "maxItems": 100000
+        },
+        "contributions": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/contribution"
+          }
+        },
+        "timezone": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "steps"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "slot"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "ramp",
+                        "sequence",
+                        "hold"
+                      ]
+                    },
+                    "slot": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "device_class": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "type": "number"
+                    },
+                    "to": {
+                      "type": "number"
+                    },
+                    "ticks": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 10000
+                    },
+                    "states": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "maintenance_plans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "asset_id",
+              "model"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "asset_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "model": {
+                "enum": [
+                  "interval",
+                  "operating_hours"
+                ]
+              },
+              "period": {
+                "enum": [
+                  "day",
+                  "week",
+                  "month",
+                  "year"
+                ]
+              },
+              "every": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              },
+              "hours": {
+                "type": "number",
+                "minimum": 0
+              },
+              "hours_entity": {
+                "type": "string"
+              },
+              "responsible_user_id": {
+                "type": "string"
+              },
+              "last_completed": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": true
+    },
+    "semanticUnit": {
+      "enum": [
+        "degC",
+        "K",
+        "bar",
+        "Pa",
+        "hPa",
+        "W",
+        "kW",
+        "Wh",
+        "kWh",
+        "h",
+        "s",
+        "percent",
+        "m3ph",
+        "lps",
+        "rpm",
+        "A",
+        "V",
+        "ppm",
+        "lx",
+        "count"
+      ]
+    },
+    "semanticMedium": {
+      "enum": [
+        "heating_flow",
+        "heating_return",
+        "domestic_hot_water",
+        "cooling_flow",
+        "cooling_return",
+        "brine",
+        "ambient",
+        "electrical",
+        "ventilation_supply",
+        "ventilation_extract",
+        "gas",
+        "water",
+        "steam",
+        "condensate",
+        "none"
+      ]
+    },
+    "semanticDirection": {
+      "enum": [
+        "input",
+        "output",
+        "bidirectional"
+      ]
+    },
+    "semanticTag": {
+      "enum": [
+        "measurement",
+        "setpoint",
+        "status",
+        "command",
+        "alarm",
+        "counter",
+        "diagnostic",
+        "maintenance"
+      ]
+    },
+    "semanticLevel": {
+      "enum": [
+        "site",
+        "building",
+        "floor",
+        "system",
+        "subsystem",
+        "equipment",
+        "datapoint"
+      ]
+    },
+    "semanticNode": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "level": {
+          "$ref": "#/$defs/semanticLevel"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/semanticUnit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "medium": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/semanticMedium"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/semanticDirection"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "semantic_tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/semanticTag"
+          },
+          "maxItems": 32
+        },
+        "freshness_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        }
+      },
+      "required": [
+        "id",
+        "level"
+      ],
+      "unevaluatedProperties": true
+    },
+    "semanticModel": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/semanticNode"
+          },
+          "maxItems": 20000
+        }
+      },
+      "unevaluatedProperties": true
+    },
+    "portKind": {
+      "type": "string",
+      "enum": [
+        "process",
+        "signal",
+        "power"
+      ]
+    },
+    "portMultiplicity": {
+      "type": "string",
+      "enum": [
+        "one",
+        "many"
+      ]
+    },
+    "portDirection": {
+      "type": "string",
+      "enum": [
+        "in",
+        "out",
+        "bidirectional"
+      ]
+    },
+    "portSide": {
+      "type": "string",
+      "enum": [
+        "left",
+        "right",
+        "top",
+        "bottom"
+      ]
+    },
+    "port": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/openObject"
+        },
+        "medium": {
+          "$ref": "#/$defs/id"
+        },
+        "direction": {
+          "$ref": "#/$defs/portDirection"
+        },
+        "side": {
+          "$ref": "#/$defs/portSide"
+        },
+        "kind": {
+          "$ref": "#/$defs/portKind"
+        },
+        "multiplicity": {
+          "$ref": "#/$defs/portMultiplicity"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "contributionKind": {
+      "type": "string",
+      "enum": [
+        "symbol",
+        "profile",
+        "template",
+        "descriptor",
+        "translation"
+      ]
+    },
+    "contribution": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "namespace": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "$ref": "#/$defs/contributionKind"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "supports_schema_versions": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          }
+        },
+        "payload": {
+          "$ref": "#/$defs/openObject"
+        }
+      },
+      "required": [
+        "id",
+        "namespace",
+        "kind",
+        "version"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "alarmPriority": {
+      "enum": [
+        "critical",
+        "warning",
+        "info"
+      ]
+    },
+    "alarmOperator": {
+      "enum": [
+        ">",
+        ">=",
+        "<",
+        "<=",
+        "==",
+        "!="
+      ]
+    },
+    "scheduleKind": {
+      "enum": [
+        "instant",
+        "interval"
+      ]
+    },
+    "scheduleBindingKind": {
+      "enum": [
+        "operating_period",
+        "holiday",
+        "exception",
+        "vacation",
+        "special_day"
+      ]
+    },
+    "escalationStageKind": {
+      "enum": [
+        "immediate",
+        "delayed",
+        "repeat"
+      ]
+    },
+    "scheduleTime": {
+      "type": "string",
+      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "alarmCondition": {
+      "type": "object",
+      "properties": {
+        "operator": {
+          "$ref": "#/$defs/alarmOperator"
+        },
+        "value": {
+          "type": "number"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        }
+      },
+      "required": [
+        "operator",
+        "value"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "escalationStage": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/escalationStageKind"
+        },
+        "after_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "service": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "target": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/boundedString"
+          },
+          "maxItems": 64
+        },
+        "priorities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/alarmPriority"
+          },
+          "maxItems": 3
+        },
+        "data": {
+          "$ref": "#/$defs/openObject"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "notificationPolicy": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "message": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "target": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/boundedString"
+          },
+          "maxItems": 64
+        },
+        "data": {
+          "$ref": "#/$defs/openObject"
+        },
+        "escalation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/escalationStage"
+          },
+          "maxItems": 16
+        }
+      },
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "alarm": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/boundedString"
+            },
+            {
+              "$ref": "#/$defs/openObject"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "equipment_id": {
+          "$ref": "#/$defs/id"
+        },
+        "condition": {
+          "$ref": "#/$defs/alarmCondition"
+        },
+        "active_states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/boundedString"
+          },
+          "maxItems": 64
+        },
+        "inactive_states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/boundedString"
+          },
+          "maxItems": 64
+        },
+        "delay_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "hysteresis": {
+          "type": "number",
+          "minimum": 0
+        },
+        "priority": {
+          "$ref": "#/$defs/alarmPriority"
+        },
+        "notification": {
+          "$ref": "#/$defs/notificationPolicy"
+        },
+        "maintenance": {
+          "type": "boolean"
+        },
+        "links": {
+          "$ref": "#/$defs/openObject"
+        },
+        "legacy": {
+          "$ref": "#/$defs/openObject"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "scheduleBinding": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/scheduleBindingKind"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        }
+      },
+      "required": [
+        "kind",
+        "entity_id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "schedule": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "kind": {
+          "$ref": "#/$defs/scheduleKind"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 6
+          },
+          "maxItems": 7
+        },
+        "time": {
+          "$ref": "#/$defs/scheduleTime"
+        },
+        "from": {
+          "$ref": "#/$defs/scheduleTime"
+        },
+        "to": {
+          "$ref": "#/$defs/scheduleTime"
+        },
+        "service": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "data": {
+          "$ref": "#/$defs/openObject"
+        },
+        "binding": {
+          "$ref": "#/$defs/scheduleBinding"
+        },
+        "legacy": {
+          "$ref": "#/$defs/openObject"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "periodName": {
+      "enum": [
+        "day",
+        "week",
+        "month",
+        "year",
+        "custom"
+      ]
+    },
+    "aggregate": {
+      "enum": [
+        "none",
+        "min",
+        "max",
+        "mean",
+        "change",
+        "state"
+      ]
+    },
+    "valueSource": {
+      "enum": [
+        "statistics",
+        "raw",
+        "unavailable"
+      ]
+    },
+    "firstWeekday": {
+      "enum": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun"
+      ]
+    },
+    "meterModel": {
+      "enum": [
+        "rate",
+        "counter"
+      ]
+    },
+    "meterMedium": {
+      "enum": [
+        "electricity",
+        "heat",
+        "cooling",
+        "water",
+        "gas",
+        "pv",
+        "battery"
+      ]
+    },
+    "reportFormat": {
+      "enum": [
+        "csv",
+        "pdf",
+        "screen"
+      ]
+    },
+    "period": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/periodName"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": -120,
+          "maximum": 0
+        },
+        "first_weekday": {
+          "$ref": "#/$defs/firstWeekday"
+        },
+        "start": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "end": {
+          "$ref": "#/$defs/boundedString"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "trendSettings": {
+      "type": "object",
+      "properties": {
+        "aggregate": {
+          "$ref": "#/$defs/aggregate"
+        },
+        "deadband": {
+          "type": "number",
+          "minimum": 0
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 40,
+          "maximum": 4096
+        },
+        "hours": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8784
+        },
+        "legacy": {
+          "$ref": "#/$defs/openObject"
+        },
+        "max_entities": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "max_raw_window_hours": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8784
+        },
+        "max_rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "period": {
+          "$ref": "#/$defs/period"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "historianSettings": {
+      "type": "object",
+      "properties": {
+        "aggregate": {
+          "$ref": "#/$defs/aggregate"
+        },
+        "bucket_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 527040
+        },
+        "deadband": {
+          "type": "number",
+          "minimum": 0
+        },
+        "legacy": {
+          "$ref": "#/$defs/openObject"
+        },
+        "max_points": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3650
+        }
+      },
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "replaySettings": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "hours": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8784
+        },
+        "legacy": {
+          "$ref": "#/$defs/openObject"
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1000
+        }
+      },
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "meter": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "entity": {
+          "$ref": "#/$defs/entityReference"
+        },
+        "model": {
+          "$ref": "#/$defs/meterModel"
+        },
+        "medium": {
+          "$ref": "#/$defs/meterMedium"
+        },
+        "unit": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "price_per_unit": {
+          "type": "number",
+          "minimum": 0
+        },
+        "price_unit": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "co2_factor_g_per_unit": {
+          "type": "number",
+          "minimum": 0
+        },
+        "legacy": {
+          "$ref": "#/$defs/openObject"
+        }
+      },
+      "required": [
+        "id",
+        "model"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "energySettings": {
+      "type": "object",
+      "properties": {
+        "co2_factor_g_per_kwh": {
+          "type": "number",
+          "minimum": 0
+        },
+        "currency": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "legacy": {
+          "$ref": "#/$defs/openObject"
+        },
+        "meters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/meter"
+          },
+          "maxItems": 500
+        },
+        "period": {
+          "$ref": "#/$defs/period"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "reportDefinition": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "period": {
+          "$ref": "#/$defs/period"
+        },
+        "formats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reportFormat"
+          },
+          "maxItems": 3
+        },
+        "content": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/boundedString"
+          },
+          "maxItems": 200
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule"
+        },
+        "legacy": {
+          "$ref": "#/$defs/openObject"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    },
+    "reportSettings": {
+      "type": "object",
+      "properties": {
+        "definitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reportDefinition"
+          },
+          "maxItems": 200
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "legacy": {
+          "$ref": "#/$defs/openObject"
+        },
+        "runs_retained": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        }
+      },
+      "propertyNames": {
+        "maxLength": 128
+      },
+      "unevaluatedProperties": false
+    }
+  },
+  "$comment": "Schema 7 removes `work_orders` (D20: the project document was a second, disagreeing store) and does not declare `simulation.enabled` (D2: an authorization living in operator data). Scenarios and maintenance plans are project data because they describe intent, not permission."
+}

@@ -10,10 +10,18 @@ import { canonicalizeJson } from "../src/v100/project-contract.mjs";
 
 const ROOT = new URL("../", import.meta.url);
 const ROOT_PATH = fileURLToPath(ROOT);
+// Deliberately literal: this list is the expectation, and deriving it from the
+// schema directory would make the test compare the directory to itself. The
+// cross-check below keeps it from silently going stale instead.
 const PROJECT_SCHEMA_PATHS = [
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",
+  "schemas/project/3.schema.json",
+  "schemas/project/4.schema.json",
+  "schemas/project/5.schema.json",
+  "schemas/project/6.schema.json",
+  "schemas/project/7.schema.json",
 ];
 const SCHEMA_PATHS = [
   ...PROJECT_SCHEMA_PATHS,
@@ -22,6 +30,7 @@ const SCHEMA_PATHS = [
 const CONTRACT_PATHS = [
   ...SCHEMA_PATHS,
   "schemas/limits.json",
+  "schemas/vocabularies.json",
   "schemas/diff-policy.json",
 ];
 const SCHEMA_ID_PREFIX = "https://schemas.glt-flow-card.invalid/";
@@ -80,7 +89,7 @@ test("schema metadata uses Draft 2020-12 stable IDs and closes repository refs",
   assert.ok(validators.every((validator) => typeof validator === "function"), "all project schemas compile locally");
 });
 
-test("schemas describe raw v0, v1, and v2 documents before normalization", async () => {
+test("schemas describe raw v0 through v3 documents before normalization", async () => {
   const [validateV0, validateV1, validateV2] = await compiledProjectValidators();
   const legacy = {
     type: "custom:glt-flow-card",
@@ -159,6 +168,16 @@ test("diff policy declares identities, five categories, order, dependencies, and
   assert.ok(policy.dependencies.references.some((entry) => entry.from === "paths" && entry.to === "equipment"));
   assert.deepEqual(policy.impact.severities, ["info", "warning", "critical"]);
   assert.deepEqual(policy.impact.vocabulary, ["none", "visual", "binding", "operational", "referential", "security"]);
+});
+
+test("the expected schema list and the generator agree on which versions exist", async () => {
+  // Half-adding a version -- generator updated, expectation not, or the reverse
+  // -- is the failure mode this catches. It has happened once per phase.
+  const { PROJECT_SCHEMA_SPECS } = await import("../tools/generate-project-validators.mjs");
+  const generated = PROJECT_SCHEMA_SPECS
+    .filter(([name]) => name.startsWith("project"))
+    .map(([, file]) => file);
+  assert.deepEqual([...PROJECT_SCHEMA_PATHS].sort(), [...generated].sort());
 });
 
 test("canonical authored schema paths stay singular alongside generated release copies", async () => {

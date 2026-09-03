@@ -56,6 +56,261 @@ The following images are generated automatically from the **current GitHub Pages
 - drill-down, Historian aggregation, simulation, commissioning diagnostics, energy, maintenance/work orders and reports;
 - remote Home Assistant sites, plugin SDK, project diff, `.gltproject` bundles, server audit/locking and i18n foundation.
 
+### Alarms, notifications and schedules
+
+One backend alarm lifecycle, and every surface renders what it decided. The
+Companion evaluates conditions, hysteresis and delays; the card displays the
+result. A delay is anchored to the first activation, so it suppresses a
+transient rather than a persistent fault that happens to be noisy. Shelving,
+maintenance and acknowledgement are consulted where the decision is made, and a
+suppressed alarm records *which* suppression applied and until when.
+
+Every notification attempt records its service, target, outcome and error. A
+delivery failure never removes, downgrades or hides the alarm: one nobody could
+be told about is more urgent than one they were told about.
+
+**The alarm philosophy is your decision, not ours.** Shelving limits, escalation
+stages, recipients and retention are configuration, and every default ships
+conservative and documented as a site decision. A fresh installation is quiet
+and safe — it annunciates in the UI, records history, and notifies nobody until
+you configure a target.
+
+Schedules resolve to instants using the site's timezone, so the two days a year
+that are strange behave predictably: a 02:30 setback on a spring-forward date
+reports that the time does not exist instead of silently not running, and on a
+fall-back date it runs once by the resolution rather than by luck. The preview
+says both in words.
+
+**What this does not do:** it ships no holiday table — German public holidays
+are per-Bundesland and `binary_sensor.workday` already carries country, province
+and local additions — and it reimplements no calendar. Holidays, exceptions,
+vacations, special days and operating periods bind to Home Assistant's own
+`schedule`, `calendar` and workday capabilities, and a binding says what it
+cannot do before you attempt it.
+
+### Trends, energy and reports
+
+**This product reads Home Assistant's Recorder; it is not a historian.** It
+keeps no time-series database, no retention policy and no compaction of its own.
+The earlier interface implied otherwise — it offered periods up to a year and
+integrated energy in the browser — so an installation that keeps ten days of
+Recorder history got a "monthly report" with no month in it, and said so
+nowhere.
+
+One rule governs the surfaces: **the screen never shows a number without showing
+what it is a number of.** Value, unit, period and coverage travel together or
+none of them appears.
+
+**A gap is a break in the line** — never dashed, lighter or a tooltip, all of
+which are the same line on a monochrome kiosk and in forced colours. The
+Companion's gap list is authoritative rather than the absence of a point, and an
+unparseable timestamp breaks too: joining two readings whose order cannot be
+established would draw a continuity nobody measured. **Coverage is stated even
+at 100 %**, so its absence never comes to mean "we forgot to check", and every
+chart has a keyboard-reachable table where a gap is a marked row carrying its
+interval.
+
+**Periods are calendar periods, resolved server-side in the site's timezone.** A
+spring day is 23 hours, a fall day is 25, and October 2027 is 745 hours. The
+shipped `Math.floor(x / bucketMs)` bucketing — always exactly one bucket long
+and aligned to the UTC epoch, and unable to express a month at all — is now
+*absent from the artifact* rather than merely unused.
+
+**Two meter models, never converted into each other.** A `counter` accumulates,
+so its consumption is a difference across the period boundary; a `rate` is
+instantaneous, so its energy is an integral over the period. Meter resets are
+the Recorder's job, not ours. **Units are checked, not guessed**: an
+incompatible pair is refused with a reason, because a wrong cost figure is worse
+than a missing one, and a total names what it excluded in its own row.
+
+**A report is reproducible.** It records the resolved period, timezone,
+entities, contract, coverage and gaps, and its ids derive from content rather
+than the clock. Schedules are validated when saved and executed by the same
+runner the plant schedules use.
+
+**The grid is never derived from the answer.** A window says which slice is
+meant; the bucket step says what it is measured in, and neither follows from
+the other — October 2027 is 31 daily buckets and 745 hours. Since the Recorder
+omits an empty period entirely, a grid built from the rows that came back would
+report a month missing nine days as a complete 22-day month.
+
+**What this does not do:** browser-side CSV download and print/PDF are removed
+— they wrote the value being rendered at that moment, with no period and no
+coverage. Export now returns the model, and all three renderings derive from it
+rather than from each other's serialisation.
+
+### Simulation, commissioning and assets
+
+**While a simulation is running, this card cannot operate the plant** — enforced
+server-side, not in the browser.
+
+That sentence is here because it used to be false. Simulation mode was a field in
+the project document that **no server route read**: service calls went out
+unchanged while the interface displayed "Simulationsmodus aktiv". An engineer
+rehearsing a sequence on a Saturday was operating the plant, and the product had
+told them otherwise.
+
+Every path through which an effect leaves this integration now asks the same
+decision immediately before the effect. Controls, remote controls and scheduled
+service calls are **refused**; notifications and report delivery are **marked**
+and say the plant was simulated; the audit record is kept. Marking rather than
+blocking is deliberate: silencing alarms would turn a rehearsal into a window in
+which nobody is told about a real fault, which is a safety defect in the other
+direction and a worse one.
+
+**It fails closed.** If the simulation state cannot be read, a plant-moving call
+is refused — and with a *different* reason from an ordinary simulated refusal,
+because "you are rehearsing" and "the Companion cannot tell" call for different
+responses. The session belongs to the Companion rather than to a project
+document, names who started it and when it ends, and expires on its own. An
+over-long request is refused rather than capped.
+
+**A simulated value carries a word and a shape, never a colour**, and the
+provider travels next to the value rather than only in a banner.
+
+**Commissioning is read-only, proven by execution.** A full diagnostic run
+produces an empty effect ledger while having produced findings. It answers from
+Home Assistant's registries, so integration, device and config-entry provenance
+is read rather than guessed from an entity id. Registry membership and
+state-machine membership are two questions with four answers: `present`,
+`registered_not_loaded` (disabled, or the integration failed to start),
+`unregistered` (a template entity — fine, but with no provenance) and `missing`.
+Collapsing them sent an engineer to hunt a typo when an integration had not come
+up.
+
+It no longer invents findings: references are collected from declared locations
+only, where the previous collector treated *any string containing a dot* as an
+entity id and reported version numbers as missing entities. There is no readiness
+percentage — counts per diagnosis, because replacing an invented score with a
+better-computed one would be the same defect with a nicer formula.
+
+**Maintenance records are append-only.** Completing a work order used to erase
+who opened it and when. A correction is a new entry naming what it corrects,
+status is derived from the entries, and reopening requires a reason while handing
+a job back does not. Due dates are computed from a declared plan — calendar
+arithmetic, so six months from 31 January is 31 July — and operating-hour plans
+decline to decide below a coverage threshold rather than under-report running
+hours, because that direction makes an overdue service look current.
+
+**This is not a CMMS**, and the product makes no CMMS, Brick, Haystack or ISO
+conformance claim.
+
+### Multi-site supervision and remote sites
+
+A central supervision screen is worth having because a person stops watching five
+screens. The moment they do, an unnoticed missing site is a plant nobody is
+watching — so the rule of this phase is not what the view can do, but what it
+says when it cannot.
+
+**A partial answer says that it is partial.** Every roll-up names which sites
+answered, which did not and why, and a total carrying no such statement is
+refused rather than displayed. This is wrong in *both* directions: failing the
+whole evaluation because one site is down hides four healthy plants, and
+returning the four and calling it "the portfolio" is the same defect from the
+other side. A silent site contributes **nothing** — it does not contribute zero.
+
+**"Unreachable" is not an entity state.** A failed read used to write
+`unavailable` per entity, which is a real Home Assistant state: an entity
+genuinely unavailable at the remote site and one we could not ask produced the
+same word. Unreachability belongs to the *site*, in four states — `healthy`,
+`slow`, `unreachable` (asked, did not answer) and `circuit_open` (**not asked**,
+because it has been failing repeatedly). The last pair is the one that matters:
+it is the difference between "check the network" and "that plant has been off
+since Tuesday". `slow` is an answer; treating it as absent would discard real
+data.
+
+**One read per site, not per entity.** Two hundred entities against a
+non-answering site, at fifteen seconds each, is fifty minutes inside a websocket
+handler — an availability defect, and the obvious remedies (shorter timeout,
+fewer entities) make the answer *less* complete rather than faster. States are
+fetched in one request per site and filtered in the Companion, under three bounds
+that answer three different questions: concurrency (how many sites are asked at
+once), a per-site timeout (how long one site may take) and — the one usually
+missing — a **total deadline** that belongs to the request and is not divided
+among the sites. A truncated entity list says that it was truncated.
+
+**Where the Companion may connect is site configuration.** Any URL used to be
+accepted, and the Companion then made an *authenticated* request to it and
+returned the answer to the browser. The check now has two halves and neither
+carries alone: a server-side allowlist, and a check of the **resolved address at
+connect time**, because an allowed name can resolve publicly during validation
+and to `127.0.0.1` when connecting. Loopback, link-local, private and
+unique-local ranges are refused, and `169.254.169.254` is refused by name — it
+is the cloud metadata endpoint, and an SSRF that reaches it returns credentials
+for the whole account. A disabled certificate check must be stated explicitly and
+then travels with every figure that site delivers.
+
+**Credentials do not leave the Companion.** No token appears in a response, a log
+line, an export or an error message, and that is *searched for* rather than
+asserted: a sentinel token is sent through every path, error branches included,
+and looked for in everything that comes back. Errors are a closed set of reasons,
+because connection errors carry the host and port they failed to reach —
+returning `str(err)` let a caller enumerate internal names by provoking failures.
+
+**Remote is not a second product.** Every rule of the local path holds one
+network hop further out: the same capabilities, the same project scoping, the
+same four command outcomes, the same audit, the same simulation lock. A site
+belongs to projects, and that binding is server configuration; being authorized
+on project A does not operate site B. The site list is filtered and *then*
+limited, because the other order turns the limit into a counting oracle for rows
+the caller may not see. A timeout is reported as `effect_unknown` and **no retry
+is offered beside an unknown effect** — repairing forward is a new, separately
+authorized command, or the plant gets operated twice.
+
+**What this is not.** No remote engineering, no cross-site alarm correlation, no
+measured capacity numbers (Phase 10 owns the budgets; this phase makes the
+*shape* of the cost boundable and states its limits) and no redesign of
+credential storage.
+
+### Usability and release evidence
+
+Three requirements that look unrelated — localization, accessibility, release
+evidence — are the same defect from three angles: **a claim about the product
+that nothing behind it supports.**
+
+**Two catalogs, and a third locale is a file.** Wording used to live in fourteen
+modules as `{ de, en }` pairs, which made adding French an edit to every module
+that renders anything. It is data now. A missing translation **throws** rather
+than resolving to the English string — nine modules used to fall back silently,
+and a German operator saw an English sentence indistinguishable from a term
+deliberately left in English. A pseudo-locale generated at test time proves the
+refusal is reachable, and plurals are CLDR categories rather than
+`count === 1 ? … : …`, checked against Polish and Arabic.
+
+Formatting resolves from configuration or refuses. It used to fall back to
+`toLocaleString()` — the *viewer's* locale — so one control-room screen could
+carry two date formats with nothing saying which was which.
+
+**Accessibility is asserted, and its limits are stated.** The product shipped
+with zero `aria-label` attributes; a `title` is not an accessible name and a
+`placeholder` disappears when you type. Every focusable element now has a role
+and a name, focus survives colour removal, nothing traps the keyboard, and an
+automated sweep covers every registered surface with no rule disabled.
+
+**That sweep is not a conformance claim.** Automated rules decide a minority of
+WCAG criteria by construction, so "automated checks pass" and "manual pass
+recorded" are separate claims — and the registry has no schema in which they
+combine. The manual half was not performed here: no assistive technology can be
+driven in this environment.
+
+The status palette failed contrast on every light screen — 1.87 to 3.24 against
+white, where AA asks 4.5. Colours designed for a dark ground, used on both. It
+is one palette now, with the measured ratio recorded beside each value.
+
+**Every published claim cites a command and its result.** A claim with no
+evidence fails the build; a claim whose evidence failed is published *as failed*,
+because omitting it would let its absence read as "not applicable". Capacity
+measurements carry the environment they were taken in, and only an environment
+marked representative supports a platform-capacity claim — nothing in the
+harness can set that flag.
+
+**What was not exercised, said here rather than discovered.** Screen-reader
+behaviour, representative capacity, the pinned Home Assistant lanes and
+dependency provenance were not exercised in this environment, and each is
+published as unexercised with its reason. Everything else the sweep and the
+registry check reports passing — including that every user-facing string in the
+shipped artifact comes from a catalog, which was this phase's last open row.
+
 > The **GLT Flow Card Companion** is recommended for secure controls, cross-device projects, alarms, schedules, audit, locks and remote Home Assistant sites. The dashboard card still works standalone.
 
 **[Design Showcase](https://xerolux.github.io/glt-flow-card/showcase.html)** · **[Platform 1.0](https://xerolux.github.io/glt-flow-card/platform.html)** · **[Online Designer](https://xerolux.github.io/glt-flow-card/editor/)**
@@ -106,6 +361,164 @@ required but unavailable. The automated evidence performs no physical plant
 write. The 100/500/2,000-object fixtures prove bounded correctness only; this is
 not a capacity certification, which remains Phase 10 work.
 
+### Shared authority and collaboration
+
+Phase 2 makes the Companion the only authority for shared projects. The browser
+may use a capability snapshot to decide what to *show*; it never uses one to
+decide what is *allowed*. Every shared request is authorized again on the
+server, at the WebSocket boundary, before any handler runs.
+
+**Fixed roles.** A project assignment is exactly one of **Viewer**, **Operator**,
+**Engineer** or **Admin**. The set is closed and lives in the Companion's own
+access list. Project JSON, an imported `.gltproject` bundle, browser storage, a
+URL parameter and a form field never contribute a role or a capability. There
+are no per-user capability checkboxes: capabilities follow from the role.
+
+**Home Assistant administrators.** Being a Home Assistant administrator does not
+grant content authority. It grants exactly one thing: the ability to read and
+repair project membership, so an installation cannot lock itself out. An
+administrator with no project assignment can see who holds what and change it —
+and nothing else: no project content, no controls, no evidence.
+
+**Non-enumeration.** A project you may not see and a project that does not exist
+answer identically. Lists, searches and counts omit what you are not authorized
+to see rather than showing a redacted placeholder, because a placeholder still
+answers "there is something here".
+
+**Leases and revisions.** Editing shared content requires an exclusive
+engineering lease. A lease is ephemeral, bound to the connection that acquired
+it, rotates its bearer on every renewal, and expires on a monotonic clock with
+no grace period; nothing about it is persisted, so a restart cannot resurrect
+one. TTLs are 60 to 900 seconds, default 300. A lease held elsewhere is reported
+anonymously: who is editing is a membership question, not a lease question.
+
+Content revisions and access revisions are separate streams. A membership change
+does not invalidate a save in flight, and a save does not renumber membership.
+Every mutation carries the exact revision it believes it is acting on, and the
+server re-checks the whole authority chain inside its own commit lock.
+
+**Conflicts.** A newer revision blocks a save and preserves your candidate in
+memory. Recovery is refresh, a server-computed merge preview, retry with a fresh
+lease, or an explicit discard. There is no overwrite and no force, and no
+last-writer-wins path anywhere: unsaved work is cleared only by an authoritative
+committed receipt or by you saying so.
+
+**Configured controls.** A control request names a control identifier, the
+revision it is acting on, and the bounded input that control's own schema
+declares. The domain, the service, the target and every immutable field are
+resolved by the server from the verified project head — the browser cannot name
+them, and a request that tries is refused before Home Assistant is asked
+anything. An operator can run a configured control without holding the
+engineering lease: operating a plant and engineering a project are different
+activities. There is exactly one dispatch attempt and no automatic retry.
+
+**Evidence.** Server-authored trusted evidence and browser-authored telemetry
+live in separate stores with separate schemas, bounds, cursors and read paths,
+and are never merged into one timeline or one export. Only a confirmed readback
+is reported as a completed control: "accepted" means the server wrote it down,
+"dispatched" means Home Assistant was asked, and a timeout or an unknown result
+says so and points you at the current state rather than at a retry button. The
+older client-authored audit route is retired; a browser can write telemetry, and
+telemetry is permanently labelled untrusted.
+
+Evidence pages use short-lived server-state cursors. Page size is fixed and no
+total is exposed; a cursor is bound to the connection that created it and dies
+with the runtime generation.
+
+**Local-only projects.** A local-only project is a separate, explicitly labelled
+mode. A shared project never silently becomes a local one, and losing Companion
+authority makes shared editing read-only rather than falling back to a
+privileged local path.
+
+**Remote sites.** Remote listing, remote states and remote control are declared
+here and their authority is the local one: the same capabilities, the same
+project scoping, the same audit. Phase 9 supplies the transport underneath them;
+until a site is configured server-side and passes the destination check, the
+routes still fail closed.
+
+**Upgrading.** The legacy 30–3600 second lock window does not survive the
+upgrade: a stored value is clamped into the 60–900 second lease window rather
+than reset, so a deliberate choice becomes the nearest legal one. A persisted
+legacy lock is dropped rather than turned into a lease — a row in a file has no
+connection to bind to and nobody holding it. Legacy audit rows are kept and
+labelled `legacy_untrusted` rather than deleted, so they can never be read as a
+claim about who did what. A legacy permissions block on the active head may seed
+membership once, conservatively, into fixed roles it already implied and never
+into Admin; an imported candidate can never seed membership at all. Every step
+is idempotent.
+
+**What the evidence does and does not cover.** The Phase-2 checks run on the
+same immutable minimum and current Home Assistant lanes as Phase 1, against the
+exact staged artifact. They perform no physical plant write, contact no remote
+site, handle no credential, and are not a statement about capacity or about
+public Companion availability.
+
+### Semantic model, provenance and equipment state
+
+Phase 3 gives the product one validated equipment model, and schema version 3
+to express it.
+
+**The hierarchy.** Site → building → floor → system → subsystem → equipment →
+datapoint, with exactly one parent per node. A child may sit at its parent's
+level — a subsystem inside a subsystem is ordinary plant — but never above it.
+A dangling parent, a containment cycle of any length, a level inversion, a
+duplicate id, or a tree past its depth or breadth bound is a contract error with
+a stable path, in both runtimes. The semantic path is derived from the parents
+and never stored: a stored path is a second source of truth that starts agreeing
+with its parents and stops without telling anyone.
+
+**Closed vocabularies.** Units, media, directions and semantic tags are declared
+sets; an unknown member is a validation error rather than a passthrough string.
+Units carry their dimension, so kW and kWh are not interchangeable to a naive
+prefix match — binding power to an energy slot yields a number wrong by a unit of
+time that looks entirely plausible.
+
+**Upgrading.** Schema 2 projects migrate to 3 through the same sequential,
+receipted, dry-run-first machinery as earlier versions. Nothing is dropped.
+
+**Provenance.** A datapoint's integration, config entry, device, area and
+communication health are read from Home Assistant's own registries and state
+machine. Nothing is inferred from an entity id or a friendly name: a plant where
+`sensor.knx_return_temperature` is served by Modbus is not unusual. The card
+implements no fieldbus driver and opens no connection of its own. It reports the
+integration that owns an entity; of the protocols this product cares about,
+Modbus and KNX are Home Assistant core integrations, while BACnet and OPC UA are
+served by whatever integration an installation provides, so an unrecognised
+domain is reported as itself rather than dressed up as support the card cannot
+verify. Health resolves in a fixed order — disabled, then unavailable, then
+stale — because an entity switched off deliberately is a different situation
+from one that is merely quiet.
+
+Provenance is a project-scoped read behind the Phase-2 boundary, and it
+describes only entities the project itself references, so it can never become a
+way to search the registry.
+
+**Profiles.** A profile carries an identity, a semantic version, slots, controls,
+state signals, alarms, ports, diagnostics, maintenance metadata and symbols. Two
+instantiations of one version are identical. An upgrade carries every override
+that still applies and reports the ones it cannot, rather than dropping them
+silently. A profile control names a control id, its bounded input schema and its
+gates — never a domain, a service or a target, because that is the
+caller-authored control path Phase 2 removed.
+
+**Mapping.** Candidates are ranked from device membership, the profile slot's
+expectation, area agreement, integration agreement, unit compatibility and —
+last, and never sufficient on its own — name similarity. Every candidate carries
+the reasons that produced its score. Ranking is an assignment: an entity that
+plainly answers another slot is not this slot's answer. An entity whose name
+carries a role the slot does not declare is not a candidate at all, because a
+setpoint is not its measurement. Nothing binds without an explicit acceptance,
+and a manual override is stored as a decision, so a later re-rank cannot
+overrule an engineer who already looked at it.
+
+**Operational state.** Sixteen conditions resolve through a fixed precedence to
+exactly one state. Trust outranks activity: a communication error, an invalid
+value or a stale reading is never reported as running, however recently it said
+so, because the card does not know that it is. `auto` and `remote` qualify the
+state rather than replacing it, so an operator reads "running · remote". Symbol,
+colour, label and drill-down are projections of the one resolved value, so they
+cannot disagree, and every state carries a shape and a word as well as a colour.
+
 ### HACS
 
 1. HACS → three dots → **Custom repositories**.
@@ -116,6 +529,57 @@ not a capacity certification, which remains Phase 10 work.
 
 1. Copy `dist/glt-flow-card.js` to `config/www/glt-flow-card.js`.
 2. Add `/local/glt-flow-card.js` as a **JavaScript module** under Dashboard resources.
+
+### Runtime operations and drill-down
+
+Phase 4 turns the model into something an operator can work in.
+
+**The object panel is composed on the server.** Every profiled object opens the
+same panel — identity, state, values, runtime counters, quality, alarms,
+controls and trend — without a hand-designed popup per equipment type. The
+control list arrives already filtered: a control you may not execute is
+*absent*, not greyed out, because a disabled control still tells you the control
+exists. The panel carries no domain, service or entity target at all, so nothing
+in the browser holds something it could dispatch directly.
+
+**Operating hours and starts** come from profile-declared datapoints, which is
+why they appear without any history query.
+
+**Trends read Home Assistant's Recorder** (Phase 7). The card is **not a
+historian**: it has no time-series database of its own, no retention policy of
+its own, and what the Recorder did not record does not exist for it. Every value
+carries its unit, its period and its **coverage**, so a month in which the
+Recorder held nine days of nothing reads as exactly that rather than as a
+smaller, confident number.
+
+**Four command outcomes, kept apart.** *Accepted* means the server wrote it
+down. *Sent* means Home Assistant was asked. Only *Confirmed* means a read-back
+showed the plant actually moved, and it is the only outcome shown as success.
+*No confirmation*, *Effect unknown* and *Failed after dispatch* point you at the
+current state and the trusted audit rather than at a retry button: repairing
+forward is a new, separately authorized command, and a retry beside "effect
+unknown" invites running it twice on plant that may already have moved.
+
+**Deep links and breadcrumbs.** The address in the URL is the whole view state —
+node, time window and selected alarm — so a link reproduces exactly what you were
+looking at. Every link is re-authorized when it is opened, because a URL gets
+pasted into a chat and opened by somebody else. A link you may not follow and one
+that does not exist give the same answer.
+
+**Counts never leak.** A roll-up covers only projects you are a member of,
+totals included, and a count of zero is shown as no count rather than a "0" —
+otherwise an empty view you are allowed to see would be distinguishable from one
+you are not.
+
+**Staleness is visible, permanently.** The view holds the sequence it expects.
+On a gap, a reconnect or a revocation it says it is not live, keeps showing the
+last values it actually observed with their age, and stops accepting input. It
+never fills a gap by interpolating, and it never needs a page reload to recover.
+
+**The legacy operate path is gone.** The old browser-side permission check —
+which granted control to everyone whenever no permission list was configured —
+and the tap action that called a Home Assistant service directly are both
+retired and proven inert.
 
 ## Drag & Drop Designer
 
@@ -144,8 +608,87 @@ The designer also includes a **live preview** and a **Lovelace YAML drawer with 
 
 ## Extended symbol library
 
-The palette contains more than 50 components and variants across heating, hydraulics, AHU/ventilation, cooling, energy, sensors and generic plant objects, while custom images/SVGs remain optional.
+**456 variants** from **76 base symbols** in **6 styles**, across heating,
+hydraulics, air handling, refrigeration, energy, instrumentation, electrical and
+fire safety.
 
+That number is measured, not claimed. `catalog-evidence.json` is produced by
+actually rendering every variant and digesting the result, and the generator
+refuses to write the file at all if a symbol draws nothing, two base symbols
+produce identical geometry, or two styles carry identical tokens. A test
+requires the number in this README and the number in the evidence to be the same
+number.
+
+A cross product of two axes is a set of distinct variants only if both axes are
+distinct. That check is why three base symbols that drew nothing at all — and
+nine more that shared another symbol's drawing — are now fixed rather than
+counted.
+
+Custom images and SVGs remain optional.
+
+## Typed ports and explained refusals
+
+A port carries a medium, a direction, a side, a kind (`process`, `signal`,
+`power`) and a multiplicity (`one`, `many`). A connection that cannot exist is
+refused with a reason from a closed set — `kind_mismatch`, `medium_mismatch`,
+`direction_conflict`, `multiplicity_exceeded`, `self_connection`,
+`duplicate_connection` — shown in words next to the two ports.
+
+Unlike a permission denial, an engineering refusal is explanatory. A permission
+denial is deliberately opaque because the caller must not learn what exists;
+here the drawing is already open in front of the engineer, and withholding the
+reason protects nothing.
+
+A connection means a pair of equipment *and* port, so a shared profile does not
+make two pumps the same endpoint. Geometry is derived from the resolved port, so
+moving equipment moves the endpoint and never changes which port is meant. An
+endpoint that no longer resolves is reported, never silently reattached.
+
+## Routing
+
+Deterministic: the same diagram routes to the same bytes, with no clock, no
+randomness and no iteration over an unordered collection. A one-pixel move
+rewrites one segment, because interior turns snap to the drawing grid while
+ports keep their exact positions.
+
+No route enters plant. Where none can be found, the pair is refused explicitly —
+`obstructed`, `detour_exceeded`, `scene_too_complex`, `degenerate_endpoints` —
+and a refusal carries no path, so nobody can draw one by accident. Previously a
+blocked pair returned the first candidate: a path *through* the obstacle, handed
+back silently as though it were a route.
+
+Rerouting is local by construction rather than by optimisation: a route is
+computed against the obstacles near it, found transitively, so a distant one was
+never an input. Over forty routes, one move recomputes one. The bounds are
+stated in segments and routes, never in milliseconds.
+
+## Extensions
+
+An extension pack adds symbols, profiles, templates, descriptors and
+translations. It does not add code: a contribution is **data**, interpreted by
+first-party code, and no contributed JavaScript is loaded, evaluated or executed
+in any realm.
+
+Not executing is necessary and not sufficient, so contributed markup is policed
+by an allowlist of elements and attributes rather than a denylist. A denylist is
+a promise to have thought of everything, and the list of things nobody thought
+of is exactly the list that matters.
+
+**What this forecloses**, stated rather than left implicit: any contribution
+whose appearance is *computed* rather than described — a level indicator driven
+by a vendor's own characteristic curve, a widget combining entities under a rule
+the card does not already implement, a renderer that draws differently depending
+on values beyond the declarative expressions the card defines. Every computation
+must be expressible in the vocabulary the card defines. That vocabulary can
+grow; a genuinely new kind of computation needs a first-party release, not a
+third-party pack.
+
+Installation is local and all-or-nothing: the manifest is validated, every
+conflict is checked and every bound enforced before anything is written, so a
+failed install leaves nothing to work out. The validator exists in both
+JavaScript and Python, proven to reach identical verdicts over a shared corpus,
+because a rule that exists only in the browser is a rule the server does not
+enforce.
 
 ## Engineering Workspace 0.4
 
@@ -397,7 +940,9 @@ Open **Trend**, select several configured data points and compare their history 
 - `dist/glt-flow-card.js` – HACS / production card.
 - `examples/` – ready-to-adapt YAML configurations.
 - `docs/` – documentation and screenshots.
-- `test/` – lightweight validation tests.
+- `test/` – the Node and browser suites (521 Node, 92 exact-dist browser at the
+  time of writing; `.planning/claims.json` names the command behind that number,
+  and `tools/claim-registry.mjs` re-runs it rather than trusting this line).
 
 ## Roadmap
 

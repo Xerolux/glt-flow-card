@@ -1,10 +1,37 @@
+
+/**
+ * One catalog string, read off the SDK at call time.
+ *
+ * This file is concatenated before the v1 bundle, or loaded beside it, so it
+ * cannot import the catalog. It reaches the same lookup the rest of the product
+ * uses through `window.GLTFlowCardSDK` — one source for a string, because two
+ * sources is how a screen ends up disagreeing with itself.
+ *
+ * The language comes from Home Assistant rather than `navigator.language`,
+ * which on a shared control-room workstation is whoever installed it. Falling
+ * back to the key rather than to a German sentence: a raw key on screen is
+ * visibly wrong, where a German sentence in an English interface looks
+ * deliberate.
+ */
+function gltText(key) {
+  const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
+  if (!sdk?.text) return key;
+  try {
+    const hass = sdk.currentHass?.() ?? null;
+    const language = hass?.locale?.language;
+    return sdk.text(key, String(language ?? "de").toLowerCase().startsWith("en") ? "en" : "de");
+  } catch (_err) {
+    return key;
+  }
+}
+
       editor._glt4ProjectId = id;
       await store.saveProject({ id, name, config: clone(editor._config) });
       await store.audit("project.save", { id, name });
       m.remove(); editor._render();
     };
     m.querySelector("[data-copy]").onclick = async () => {
-      const name = prompt("Name für das neue Projekt", `${editor._config.title || "GLT"} Kopie`);
+      const name = prompt(gltText("legacy.new_project_name"), `${editor._config.title || "GLT"} Kopie`);
       if (!name) return;
       const id = slug(name) + "-" + Date.now().toString(36);
       editor._config.project = { id, name };
@@ -22,11 +49,12 @@
       await store.audit("project.load", { id: p.id, name: p.name });
       m.remove();
     });
-    m.querySelectorAll("[data-delete]").forEach((b) => b.onclick = async () => {
-      if (!confirm("Projekt wirklich löschen?")) return;
-      await store.deleteProject(b.dataset.delete);
-      await store.audit("project.delete", { id: b.dataset.delete });
-      m.remove(); showProjects(editor);
+    m.querySelectorAll("[data-delete]").forEach((b) => b.onclick = () => {
+      editorConfirm(editor, gltText("legacy.confirm_delete_project"), async () => {
+        await store.deleteProject(b.dataset.delete);
+        await store.audit("project.delete", { id: b.dataset.delete });
+        m.remove(); showProjects(editor);
+      });
     });
     m.querySelectorAll("[data-versions]").forEach((b) => b.onclick = async () => {
       const p = await store.getProject(b.dataset.versions);
@@ -43,7 +71,7 @@
 
   function showYaml(editor, importMode = false) {
     const text = importMode ? "" : yamlConfig(editor._config);
-    const m = modal(editor, importMode ? "YAML importieren" : "Lovelace YAML", `<textarea class="glt4-textarea" data-yaml placeholder="type: custom:glt-flow-card\n...">${esc(text)}</textarea><div class="glt4-actions"><input type="file" accept=".yaml,.yml,text/yaml" data-file style="display:none"><button class="glt4-btn" data-filebtn>Datei öffnen</button><button class="glt4-btn" data-import>Importieren & weiterbearbeiten</button><button class="glt4-btn" data-copy>YAML kopieren</button><button class="glt4-btn" data-download>YAML herunterladen</button></div><div data-error style="margin-top:9px;color:#dc2626;font-size:9px"></div>`);
+    const m = modal(editor, importMode ? "YAML importieren" : gltText("legacy.lovelace_yaml"), `<textarea class="glt4-textarea" data-yaml placeholder="type: custom:glt-flow-card\n...">${esc(text)}</textarea><div class="glt4-actions"><input type="file" accept=".yaml,.yml,text/yaml" data-file style="display:none"><button class="glt4-btn" data-filebtn>Datei öffnen</button><button class="glt4-btn" data-import>Importieren & weiterbearbeiten</button><button class="glt4-btn" data-copy>YAML kopieren</button><button class="glt4-btn" data-download>YAML herunterladen</button></div><div data-error style="margin-top:9px;color:#dc2626;font-size:9px"></div>`);
     const area = m.querySelector("[data-yaml]");
     m.querySelector("[data-filebtn]").onclick = () => m.querySelector("[data-file]").click();
     m.querySelector("[data-file]").onchange = async (e) => { const f = e.target.files?.[0]; if (f) area.value = await f.text(); };
@@ -73,8 +101,8 @@
     const all = [...builtins, ...list];
     const m = modal(editor, "Vorlagen & Bauteil-Templates", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Auswahl als Vorlage speichern</button></div><div class="glt4-grid">${all.map((t) => `<div class="glt4-card"><b>${esc(t.name)}</b><small>${esc(t.kind || "equipment")}${t.updated ? ` · ${esc(t.updated)}` : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-apply="${esc(t.id)}">Einfügen</button>${t.id.startsWith("builtin-") ? "" : `<button class="glt4-btn glt4-danger" data-del="${esc(t.id)}">Löschen</button>`}</div></div>`).join("")}</div>`);
     m.querySelector("[data-save]").onclick = async () => {
-      const obj = editor._obj?.(); if (!obj) return alert("Zuerst ein Bauteil, Datenpunkt, Pfad oder KPI auswählen.");
-      const name = prompt("Vorlagenname", obj.name || obj.label || obj.id); if (!name) return;
+      const obj = editor._obj?.(); if (!obj) return editorNotice(editor, gltText("legacy.select_something_first"));
+      const name = prompt(gltText("legacy.prompt_template_name"), obj.name || obj.label || obj.id); if (!name) return;
       const t = { id: slug(name) + "-" + Date.now().toString(36), name, kind: editor._sel.k, object: clone(obj) };
       await store.saveTemplate(t); await store.audit("template.save", { id:t.id, name }); m.remove(); showTemplates(editor);
     };
@@ -95,6 +123,6 @@
     const m = modal(editor, "Gruppen & Unteranlagen", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-create>Aus Mehrfachauswahl gruppieren</button></div><div class="glt4-grid">${groups.map((g)=>`<div class="glt4-card"><b>${esc(g.name)}</b><small>${(g.members||[]).length} Elemente</small><div class="glt4-actions"><button class="glt4-btn" data-select="${g.id}">Markieren</button><button class="glt4-btn" data-template="${g.id}">Als Anlagenvorlage</button><button class="glt4-btn glt4-danger" data-delete="${g.id}">Auflösen</button></div></div>`).join("") || '<div class="glt4-card">Noch keine Gruppen. Mehrere Elemente mit Strg/Shift auswählen.</div>'}</div>`);
     m.querySelector("[data-create]").onclick = () => {
       const members = Array.from(editor._glt4Multi || []).map((key) => { const [kind,id]=key.split(":"); return {kind,id}; });
-      if (members.length < 2) return alert("Mindestens zwei Elemente per Strg/Shift auswählen.");
-      const name = prompt("Gruppenname", "Unteranlage"); if (!name) return;
+      if (members.length < 2) return editorNotice(editor, gltText("legacy.select_two_first"));
+      const name = prompt(gltText("legacy.prompt_group_name"), "Unteranlage"); if (!name) return;
       editor._remember?.(); editor._config.groups.push({ id: slug(name)+"-"+Date.now().toString(36), name, members }); editor._emit(); editor._render(); m.remove();

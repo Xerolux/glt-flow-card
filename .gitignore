@@ -7,3 +7,7 @@ build/
 .planning/tmp/
 __pycache__/
 *.py[cod]
+.venv/
+
+# Generated documentation site (built by tools/build-site.mjs)
+_site/

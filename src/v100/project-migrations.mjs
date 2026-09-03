@@ -3,8 +3,9 @@ import {
   digestCanonicalJson,
   evaluateProjectContract,
 } from "./project-contract.mjs";
+import { migrateSeverity } from "./alarm-vocabulary.mjs";
 
-export const CURRENT_PROJECT_SCHEMA_VERSION = 2;
+export const CURRENT_PROJECT_SCHEMA_VERSION = 7;
 
 const cloneCanonical = (value) => JSON.parse(digestCanonicalJson(value).canonical);
 
@@ -41,9 +42,432 @@ function stepOneToTwo(source) {
   return cloneCanonical(candidate);
 }
 
+function stepTwoToThree(source) {
+  const candidate = cloneCanonical(source);
+  candidate.schema_version = 3;
+  // Schema 2's `semantic_model` was an unvalidated open object. Schema 3 gives
+  // it a validated shape; anything already there is preserved, and an empty
+  // node list is added only where none existed. Nothing is dropped, because a
+  // migration that discards content an engineer authored is not a migration.
+  const existing = candidate.semantic_model;
+  const model = existing && typeof existing === "object" && !Array.isArray(existing)
+    ? { ...existing }
+    : {};
+  if (!Array.isArray(model.nodes)) model.nodes = [];
+  candidate.semantic_model = model;
+  return cloneCanonical(candidate);
+}
+
+function stepThreeToFour(source) {
+  const candidate = cloneCanonical(source);
+  candidate.schema_version = 4;
+  // Schema 3's profile ports were `openObject` -- entirely unvalidated, so a
+  // typo in `direction` survived every check. Schema 4 gives a port a closed
+  // shape, which means anything already there has to fit it.
+  //
+  // Two rules, both chosen so nothing an engineer authored is lost or invented:
+  // a field the closed shape does not define is dropped rather than failing the
+  // whole migration, because a port carrying an unknown key is a schema-2-era
+  // accident and not content; and `kind` is defaulted only where the medium
+  // makes it unambiguous. Where it does not, the port is left without one and
+  // the compatibility check treats an absent kind as "unknown", which refuses
+  // less than a wrong guess would.
+  const KNOWN = ["id", "label", "medium", "direction", "side", "kind", "multiplicity"];
+  const SIGNAL_MEDIA = ["signal", "control", "status"];
+  const POWER_MEDIA = ["power", "electrical", "mains"];
+  for (const profile of Array.isArray(candidate.profiles) ? candidate.profiles : []) {
+    if (!Array.isArray(profile.ports)) continue;
+    profile.ports = profile.ports.map((port) => {
+      if (!port || typeof port !== "object") return port;
+      const next = {};
+      for (const key of KNOWN) if (port[key] !== undefined) next[key] = port[key];
+      if (next.kind === undefined) {
+        const medium = String(next.medium ?? "");
+        if (SIGNAL_MEDIA.includes(medium)) next.kind = "signal";
+        else if (POWER_MEDIA.includes(medium)) next.kind = "power";
+        else if (medium) next.kind = "process";
+      }
+      return next;
+    });
+  }
+  // Contributions are new and start empty. An absent collection and an empty
+  // one must not differ, or "no packs installed" reads as two different states.
+  if (!Array.isArray(candidate.contributions)) candidate.contributions = [];
+  return cloneCanonical(candidate);
+}
+
+/**
+ * Fields schema 5 declares on an alarm. Anything else is quarantined.
+ *
+ * This list and `schemas/project/5.schema.json` must agree exactly, and
+ * `test/v100-migrations.test.mjs` asserts it against the schema file. They
+ * disagreed once during development -- `state` was declared and not listed --
+ * and the symptom was a Phase-4 roll-up silently counting nothing, because the
+ * migration quarantined a field the schema was happy to keep.
+ */
+const ALARM_FIELDS = [
+  "active_states", "condition", "delay_seconds", "entity", "equipment_id",
+  "hysteresis", "id", "inactive_states", "label", "legacy", "links",
+  "maintenance", "name", "notification", "priority", "state",
+];
+
+/** Fields schema 5 declares on a schedule. */
+const SCHEDULE_FIELDS = [
+  "binding", "data", "days", "enabled", "entity_id", "from", "id", "kind",
+  "legacy", "name", "service", "time", "to",
+];
+
+/** Fields schema 6 declares on a meter. */
+const METER_FIELDS = [
+  "co2_factor_g_per_unit", "entity", "id", "legacy", "medium", "model", "name",
+  "price_per_unit", "price_unit", "unit",
+];
+
+/** Fields schema 6 declares on a report definition. */
+const REPORT_FIELDS = [
+  "content", "formats", "id", "legacy", "name", "period", "schedule", "version",
+];
+
+/** Settings blocks schema 6 closes, with the fields each declares. */
+const SETTINGS_FIELDS = {
+  energy: ["co2_factor_g_per_kwh", "currency", "enabled", "legacy", "meters", "period"],
+  historian: ["aggregate", "bucket_minutes", "deadband", "legacy", "max_points", "retention_days"],
+  replay: ["enabled", "hours", "legacy", "speed"],
+  reports: ["definitions", "enabled", "legacy", "runs_retained"],
+  trend: [
+    "aggregate", "deadband", "enabled", "height", "hours", "legacy",
+    "max_entities", "max_raw_window_hours", "max_rows", "period",
+  ],
+};
+
+/**
+ * Units whose meter model can be read off the unit without guessing.
+ *
+ * A rate is an instantaneous measurement and is integrated over a period; a
+ * counter accumulates and is differenced across one. Getting this wrong is
+ * exactly D14: the shipped code multiplies a cumulative reading by a price and
+ * calls the result a cost.
+ *
+ * Anything not listed is *reported*, not guessed. A meter whose model nobody
+ * declared is refused at validation, which is the whole point of closing the
+ * shape -- a wrong model produces a plausible number, and a plausible number is
+ * what this phase exists to stop.
+ */
+const UNIT_METER_MODELS = new Map([
+  ["kwh", "counter"], ["wh", "counter"], ["mwh", "counter"],
+  ["m³", "counter"], ["m3", "counter"], ["l", "counter"], ["kg", "counter"],
+  ["w", "rate"], ["kw", "rate"], ["mw", "rate"],
+  ["m³/h", "rate"], ["m3/h", "rate"], ["l/min", "rate"], ["l/h", "rate"],
+]);
+
+/** Bucket minutes that name a period exactly. Anything else is reported. */
+const BUCKET_PERIOD_MINUTES = new Map([[1440, "day"], [10080, "week"]]);
+
+const TIME_PATTERN = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+
+/** Exported so a test can compare them against the schema they mirror. */
+export const SCHEMA_MIRRORED_FIELDS = Object.freeze({
+  alarm: Object.freeze([...ALARM_FIELDS]),
+  energySettings: Object.freeze([...SETTINGS_FIELDS.energy]),
+  historianSettings: Object.freeze([...SETTINGS_FIELDS.historian]),
+  meter: Object.freeze([...METER_FIELDS]),
+  replaySettings: Object.freeze([...SETTINGS_FIELDS.replay]),
+  reportDefinition: Object.freeze([...REPORT_FIELDS]),
+  reportSettings: Object.freeze([...SETTINGS_FIELDS.reports]),
+  schedule: Object.freeze([...SCHEDULE_FIELDS]),
+  trendSettings: Object.freeze([...SETTINGS_FIELDS.trend]),
+});
+
+/** Return every alarm collection in a candidate, wherever it lives. */
+function alarmCollections(candidate) {
+  const collections = [];
+  if (Array.isArray(candidate.alarms)) collections.push(candidate.alarms);
+  for (const profile of Array.isArray(candidate.profiles) ? candidate.profiles : []) {
+    if (profile && Array.isArray(profile.alarms)) collections.push(profile.alarms);
+  }
+  return collections;
+}
+
+/** Move one rejected value into `legacy`, recording what it was called. */
+function quarantine(target, key, value, reported) {
+  if (!target.legacy || typeof target.legacy !== "object") target.legacy = {};
+  target.legacy[key] = value;
+  reported.push(key);
+}
+
+function migrateAlarm(alarm, reported) {
+  if (!alarm || typeof alarm !== "object") return;
+  for (const key of Object.keys(alarm)) {
+    if (!ALARM_FIELDS.includes(key)) quarantine(alarm, key, alarm[key], reported);
+  }
+  for (const key of reported) delete alarm[key];
+
+  // The severity vocabulary moves to `priority`, through the same migration
+  // table both runtimes read. `severity` itself is quarantined above, so the
+  // stored word survives in `legacy` and the receipt can name it.
+  const stored = alarm.legacy?.severity ?? alarm.priority;
+  if (stored !== undefined || alarm.priority !== undefined) {
+    alarm.priority = migrateSeverity(stored).priority;
+  }
+
+  // `delay_seconds: "soon"` and `hysteresis: "etwas"` are the two the audit
+  // named. A value that cannot be a number is quarantined rather than coerced:
+  // coercing "soon" to 0 would turn a visible misconfiguration into an alarm
+  // that fires instantly and looks correct.
+  for (const [key, coerce] of [["delay_seconds", Math.trunc], ["hysteresis", Number]]) {
+    if (alarm[key] === undefined) continue;
+    const numeric = typeof alarm[key] === "number" ? alarm[key] : Number(alarm[key]);
+    if (!Number.isFinite(numeric) || numeric < 0) {
+      quarantine(alarm, key, alarm[key], reported);
+      delete alarm[key];
+    } else {
+      alarm[key] = coerce(numeric);
+    }
+  }
+}
+
+function migrateSchedule(schedule, reported) {
+  if (!schedule || typeof schedule !== "object") return;
+  const moved = [];
+  for (const key of Object.keys(schedule)) {
+    if (!SCHEDULE_FIELDS.includes(key)) {
+      quarantine(schedule, key, schedule[key], reported);
+      moved.push(key);
+    }
+  }
+  for (const key of moved) delete schedule[key];
+
+  // Schema 4 declared no `kind`, and every stored schedule is an instant: the
+  // runner compares one `HH:MM` and calls a service. Declaring it is not a
+  // guess, it is writing down what the only implementation does.
+  if (schedule.kind === undefined) schedule.kind = "instant";
+
+  for (const key of ["time", "from", "to"]) {
+    if (schedule[key] === undefined) continue;
+    if (typeof schedule[key] !== "string" || !TIME_PATTERN.test(schedule[key])) {
+      quarantine(schedule, key, schedule[key], reported);
+      delete schedule[key];
+    }
+  }
+  if (Array.isArray(schedule.days)) {
+    const valid = schedule.days.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6);
+    if (valid.length !== schedule.days.length) {
+      quarantine(schedule, "days", schedule.days, reported);
+      schedule.days = valid;
+    }
+  }
+}
+
+function stepFourToFive(source) {
+  const candidate = cloneCanonical(source);
+  candidate.schema_version = 5;
+  // Schema 4 left every field the alarm engine and the schedule runner read
+  // undeclared, so `delay_seconds: "soon"` and `time: "tea"` were both
+  // schema-valid and failed at the moment the effect was supposed to happen.
+  //
+  // The rule here is quarantine, not deletion. A rejected value moves into
+  // `legacy` and is reported: a site's misconfiguration is still its data, and
+  // the receipt is where it learns. That differs deliberately from the 3-to-4
+  // port rule, which dropped unknown keys -- a port carrying an unknown key was
+  // a schema-2-era accident, while `delay_seconds: "soon"` is something a
+  // person typed on purpose.
+  const reported = [];
+  for (const collection of alarmCollections(candidate)) {
+    for (const alarm of collection) migrateAlarm(alarm, reported);
+  }
+  for (const schedule of Array.isArray(candidate.schedules) ? candidate.schedules : []) {
+    migrateSchedule(schedule, reported);
+  }
+  // The site timezone the runner resolves against. Absent means "ask Home
+  // Assistant", which is what the runner does today; declaring it lets a
+  // project pin one and lets the preview show the same answer the runner will.
+  if (candidate.timezone !== undefined && typeof candidate.timezone !== "string") {
+    delete candidate.timezone;
+  }
+  return cloneCanonical(candidate);
+}
+
+/**
+ * Quarantine every key a closed settings block does not declare.
+ *
+ * Same rule as 4->5: a rejected value moves into `legacy` and is reported. A
+ * site's misconfiguration is still its data, and the receipt is where it learns.
+ */
+function migrateSettings(candidate, key, reported) {
+  const block = candidate[key];
+  if (!block || typeof block !== "object" || Array.isArray(block)) return;
+  const declared = SETTINGS_FIELDS[key];
+  const moved = [];
+  for (const field of Object.keys(block)) {
+    if (!declared.includes(field)) {
+      quarantine(block, field, block[field], reported);
+      moved.push(field);
+    }
+  }
+  for (const field of moved) delete block[field];
+}
+
+/** Read a meter's model off its unit, or report that nobody can. */
+function inferMeterModel(meter) {
+  const unit = String(meter.unit ?? "").trim().toLowerCase();
+  return UNIT_METER_MODELS.get(unit) ?? null;
+}
+
+function migrateMeter(meter, reported) {
+  if (!meter || typeof meter !== "object") return;
+  const moved = [];
+  for (const key of Object.keys(meter)) {
+    if (!METER_FIELDS.includes(key)) {
+      quarantine(meter, key, meter[key], reported);
+      moved.push(key);
+    }
+  }
+  for (const key of moved) delete meter[key];
+
+  // `kind` was the schema-5-era name and carried the medium, not the model.
+  if (meter.medium === undefined && typeof meter.legacy?.kind === "string") {
+    meter.medium = meter.legacy.kind;
+  }
+  if (meter.model === undefined) {
+    const inferred = inferMeterModel(meter);
+    if (inferred) {
+      meter.model = inferred;
+    } else {
+      // Reported rather than guessed. Guessing `counter` would make every
+      // power sensor's lifetime reading a cost; guessing `rate` would integrate
+      // a meter that was never a rate. Both produce a plausible number.
+      quarantine(meter, "model", meter.unit ?? null, reported);
+      meter.model = "counter";
+    }
+  }
+  if (meter.price_per_unit !== undefined && typeof meter.price_per_unit !== "number") {
+    quarantine(meter, "price_per_unit", meter.price_per_unit, reported);
+    delete meter.price_per_unit;
+  }
+}
+
+function migrateReportDefinition(definition, reported) {
+  if (!definition || typeof definition !== "object") return;
+  const moved = [];
+  for (const key of Object.keys(definition)) {
+    if (!REPORT_FIELDS.includes(key)) {
+      quarantine(definition, key, definition[key], reported);
+      moved.push(key);
+    }
+  }
+  for (const key of moved) delete definition[key];
+
+  // Schema 5 stored `period` as a bare string and `schedule` as free text from
+  // a `prompt()` that nothing ever parsed. The string becomes a period object
+  // where it names one; the schedule is quarantined rather than reinterpreted,
+  // because 07-15 is what gives it a parser and a runner.
+  if (typeof definition.period === "string") {
+    const name = definition.period;
+    if (PERIOD_NAMES_6.includes(name)) {
+      definition.period = { name };
+    } else {
+      quarantine(definition, "period", name, reported);
+      delete definition.period;
+    }
+  }
+  if (definition.schedule !== undefined && typeof definition.schedule !== "object") {
+    quarantine(definition, "schedule", definition.schedule, reported);
+    delete definition.schedule;
+  }
+  if (definition.version === undefined) definition.version = 1;
+}
+
+/** The period names schema 6 declares. Mirrored from the vocabulary module. */
+const PERIOD_NAMES_6 = ["day", "week", "month", "year", "custom"];
+
+function stepFiveToSix(source) {
+  const candidate = cloneCanonical(source);
+  candidate.schema_version = 6;
+  // Schema 5 left `trend`, `energy`, `historian`, `reports` and `replay` as
+  // open objects, so every field the series code, the energy code and the
+  // report code read was undeclared. `period: "sometimes"` and
+  // `deadband: "a bit"` were both schema-valid and failed inside a computed
+  // figure, which is the worst place for a validation error to surface.
+  const reported = [];
+  for (const key of Object.keys(SETTINGS_FIELDS)) migrateSettings(candidate, key, reported);
+
+  for (const meter of Array.isArray(candidate.energy?.meters) ? candidate.energy.meters : []) {
+    migrateMeter(meter, reported);
+  }
+  for (const definition of Array.isArray(candidate.reports?.definitions)
+    ? candidate.reports.definitions
+    : []) {
+    migrateReportDefinition(definition, reported);
+  }
+
+  // A bucket that names a period becomes one; a bucket that does not is
+  // reported rather than mapped. 43 200 minutes is not a month -- a month is
+  // 720, 743 or 745 hours depending on where the transition falls -- and
+  // pretending otherwise would carry D9 forward under a new name.
+  // `raw` was the shipped name for "every sample, no bucketing". It is renamed
+  // rather than kept, because `raw` already means something else in this phase:
+  // `source: "raw"` says an answer came from raw states rather than from
+  // long-term statistics. One word meaning two things in two adjacent closed
+  // sets is how the four disagreeing alarm vocabularies started.
+  if (candidate.historian?.aggregate === "raw") candidate.historian.aggregate = "none";
+
+  const bucket = candidate.historian?.bucket_minutes;
+  if (Number.isInteger(bucket) && !BUCKET_PERIOD_MINUTES.has(bucket) && bucket >= 40_000) {
+    quarantine(candidate.historian, "bucket_minutes", bucket, reported);
+    delete candidate.historian.bucket_minutes;
+  }
+  return cloneCanonical(candidate);
+}
+
+function stepSixToSeven(source) {
+  const candidate = cloneCanonical(source);
+  candidate.schema_version = 7;
+  const reported = [];
+
+  // `simulation.enabled` was a safety property living in operator data: no
+  // server path read it, and the one gate that existed read `gates.simulation`
+  // from the project document too. Phase 6 established that a safety-relevant
+  // policy is site configuration and never project data, after a notification
+  // service name in a project document was found acting as an authorization.
+  // This is the same shape with plant writes behind it.
+  //
+  // Quarantined rather than deleted, so a site can see what it had. Carrying it
+  // forward as a field anything reads would preserve the defect under a new
+  // schema version.
+  if (candidate.simulation && typeof candidate.simulation === "object") {
+    quarantine(candidate, "simulation", candidate.simulation, reported);
+    delete candidate.simulation;
+  }
+
+  // Work orders move to the Companion's store. Two stores that never reconcile
+  // (D20) meant the table an engineer saw and the one the Companion held were
+  // different lists both claiming to be the work orders.
+  if (Array.isArray(candidate.work_orders) && candidate.work_orders.length > 0) {
+    quarantine(candidate, "work_orders", candidate.work_orders, reported);
+  }
+  delete candidate.work_orders;
+
+  // A per-control simulation gate goes for the same reason: it is the
+  // authorization, not a preference.
+  for (const control of candidate.controls ?? []) {
+    if (!control || typeof control !== "object") continue;
+    if (control.gates && typeof control.gates === "object" && "simulation" in control.gates) {
+      quarantine(control, "gates_simulation", control.gates.simulation, reported);
+      delete control.gates.simulation;
+    }
+  }
+
+  return cloneCanonical(candidate);
+}
+
 export const PROJECT_MIGRATIONS = new Map([
   [0, { from: 0, to: 1, migrate: stepZeroToOne }],
   [1, { from: 1, to: 2, migrate: stepOneToTwo }],
+  [2, { from: 2, to: 3, migrate: stepTwoToThree }],
+  [3, { from: 3, to: 4, migrate: stepThreeToFour }],
+  [4, { from: 4, to: 5, migrate: stepFourToFive }],
+  [5, { from: 5, to: 6, migrate: stepFiveToSix }],
+  [6, { from: 6, to: 7, migrate: stepSixToSeven }],
 ]);
 
 function contractFailure(prefix, evidence) {

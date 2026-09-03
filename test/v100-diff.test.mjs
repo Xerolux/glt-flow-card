@@ -7,6 +7,7 @@ import {
   expandDiffSelection,
 } from "../src/v100/project-diff.mjs";
 import { projectDiff } from "../src/v100/core.mjs";
+import { pythonArgs, resolvePython } from "../tools/python-launcher.mjs";
 
 const project = (overrides = {}) => ({
   type: "custom:glt-flow-card",
@@ -225,8 +226,8 @@ test("security changes receive critical policy impact and Python bytes match", (
     result: computeProjectDiff(request.before, request.after),
   })).join("\n") + "\n";
   const python = spawnSync(
-    "py",
-    ["-3.13", "-m", "custom_components.glt_flow_card.project_diff", "--json-lines"],
+    resolvePython().command,
+    pythonArgs("-m", "custom_components.glt_flow_card.project_diff", "--json-lines"),
     { input: requests.map((request) => JSON.stringify(request)).join("\n") + "\n", encoding: "utf8" },
   );
 

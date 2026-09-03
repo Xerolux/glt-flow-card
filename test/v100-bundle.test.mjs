@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { Uint8ArrayReader, ZipReader } from "@zip.js/zip.js/index-native.js";
+import { pythonArgs, resolvePython } from "../tools/python-launcher.mjs";
+import { CURRENT_PROJECT_SCHEMA_VERSION } from "../src/v100/project-migrations.mjs";
 
 import { makeProjectBundle, readProjectBundle } from "../src/v100/core.mjs";
 import { canonicalizeJson } from "../src/v100/project-contract.mjs";
@@ -282,8 +284,8 @@ test("JavaScript and Python return identical stable rejection decisions", async 
   const requests = archives.map((archive, index) => JSON.stringify({
     id: String(index), raw_base64: Buffer.from(archive).toString("base64"),
   })).join("\n");
-  const result = spawnSync("py", [
-    "-3.13", "-m", "custom_components.glt_flow_card.project_bundle", "--json-lines",
+  const result = spawnSync(resolvePython().command, [
+    ...pythonArgs("-m", "custom_components.glt_flow_card.project_bundle", "--json-lines"),
   ], { input: `${requests}\n`, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   const python = result.stdout.trim().split(/\r?\n/u).map((line) => JSON.parse(line).decision);
@@ -370,7 +372,7 @@ test("core compatibility APIs use safe async bundles with opaque assets", async 
   };
   const archive = await makeProjectBundle(validProject([asset]), [asset]);
   const restored = await readProjectBundle(archive, { includeAssets: true });
-  assert.equal(restored.project.schema_version, 2);
+  assert.equal(restored.project.schema_version, CURRENT_PROJECT_SCHEMA_VERSION);
   assert.deepEqual(restored.assets[0].bytes, asset.bytes);
 });
 
@@ -392,8 +394,8 @@ test("JavaScript and Python accept each other's deterministic opaque bundles", a
     project,
     assets: [{ ...asset, bytes: undefined, bytes_base64: Buffer.from(asset.bytes).toString("base64") }],
   };
-  const python = spawnSync("py", [
-    "-3.13", "-m", "custom_components.glt_flow_card.project_bundle", "--json-lines",
+  const python = spawnSync(resolvePython().command, [
+    ...pythonArgs("-m", "custom_components.glt_flow_card.project_bundle", "--json-lines"),
   ], {
     input: `${[request, writeRequest, { ...writeRequest, id: "write-python-again" }].map((item) => JSON.stringify(item)).join("\n")}\n`,
     encoding: "utf8",

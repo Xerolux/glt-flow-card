@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: paused
-stopped_at: Phase 2 planning complete; final bounded plan check pending
-last_updated: "2026-09-01T18:39:55.907Z"
-last_activity: 2026-09-01 -- Phase 2 context, research, validation, threats, source audit, and 17 plans committed; paused before implementation
+status: in_progress
+stopped_at: all ten phases closed and reviewed; close-out complete, no release authorized
+last_updated: "2026-09-03T07:30:00.000Z"
+last_activity: 2026-09-03 -- close-out: review passes for all ten phases, Phase 1 blocker verified closed at head, three filtered-route authorization leaks fixed and the class guarded, the SSRF destination re-check given a structural guard, the i18n sweep's blind spot found and closed, and every phase given a summary and a summary per plan
 progress:
   total_phases: 10
-  completed_phases: 1
-  total_plans: 30
-  completed_plans: 13
-  percent: 10
+  completed_phases: 10
+  total_plans: 167
+  completed_plans: 167
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,232 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-31)
 
 **Core value:** Operators and engineers can safely understand, operate, engineer, and diagnose a real building plant from one trustworthy Home Assistant interface.
-**Current focus:** Phase 02 — authoritative-policy-controls-collaboration
+**Current focus:** close-out — review passes and the traceability the registry now checks
 
 ## Current Position
 
-Phase: 02 (authoritative-policy-controls-collaboration) — PLANNED, PAUSED
-Plan: 0 of 17 implemented (61 tasks planned)
-Status: Planning complete — final bounded plan check pending; implementation not started
-Last activity: 2026-09-01 -- Phase 2 planning committed as `7d77583`; paused at explicit user request
+Phase: 10 (usability-release-evidence) — CLOSED
+Plan: 15 of 15 implemented (15 plans across 7 waves)
 
-Progress: [█░░░░░░░░░] 10%
+**All ten phases are executed and closed.** The milestone's plans are done; what
+remains is close-out, and one row that is honestly unfinished.
+
+### The row that was carried as unfinished
+
+**T10-03** was marked `not met` — not `verified`, and deliberately not `planned`
+either — while 132 user-facing strings remained outside the catalog. The sweep
+named each one and the claim registry published the corresponding claim **as
+failed**, which is the registry working on its own author.
+
+It was reported finished on 2026-09-03 — and that report was wrong, which the
+review pass the same day found. The sweep asked a **linguistic** question: does
+this string read like prose? `PROSE` needs two whitespace-separated words and
+`GERMAN` needs an umlaut or a stop word, so eleven single-word German labels
+(`Projektname`, `Layername`, `Aufgabe`, `⚡ Energie` and the rest) were invisible
+to it while it printed PASS.
+
+The sweep now asks a **structural** question alongside it: was the literal handed
+to something that shows it? Any bare string passed to `prompt`, `confirm`,
+`alert`, `.textContent` or `.innerText` is a finding whatever it looks like.
+Nine keys were added, the sites rewritten, and two glyph-only buttons that had
+no accessible name at all gained one. `verify-i18n-coverage` reports PASS on
+both sweeps, and the structural one is mutation-checked against the exact blind
+spot.
+
+### Phase 10, in one paragraph
+
+Localization, accessibility and release evidence are the same defect from three
+angles — **a claim about the product that nothing behind it supports.** A locale
+is data now rather than an edit to fourteen modules; a missing translation
+throws instead of showing an English sentence to a German operator; formatting
+refuses instead of falling back to the viewer's locale; every focusable element
+has a role and a name where the product had zero `aria-label` attributes; an
+automated sweep covers every registered surface with no rule disabled; and a
+claim registry fails the build on a claim nothing supports, publishes a failed
+claim as failed, and has no schema in which an automated result and a manual
+pass combine into conformance. `10-SUMMARY.md` carries the detail and the limits.
+
+### The blocked row, in every phase
+
+T10-16, T9-20, T8-25, T7-23, T6-21, T5-16, T4-14, T3-14 and T2-16 all stay
+`planned`. Each is owned by the composed `test:phaseN:release` leaf, whose
+`test:ha-artifacts` leg probes `docker info` for twelve bounded candidates, and
+this environment has no Docker engine. Each carries its exact failure output.
+
+### What is claimed, and by what
+
+`node tools/claim-registry.mjs` runs every claim's command and publishes the
+result: **13 passed, 0 failed, 4 not exercised** at head. The four unexercised
+capabilities are screen-reader behaviour, representative capacity, the pinned
+Home Assistant lanes and dependency provenance — each with its reason, because a
+reader who is not told assumes they were exercised.
+
+### Environment limits, current as of Phase 10
+
+1. The container's Chromium revision differs from the pinned one; since Phase 9
+   `playwright.config.mjs` resolves that itself and prints the substitution, so
+   no gate needs `PLAYWRIGHT_CHROMIUM_EXECUTABLE` set by hand.
+2. All five third-party repository provenance endpoints answer 403;
+   `api.github.com/rate_limit` answers 200, so this is a repository-scope limit
+   rather than a network one. It blocks F-01 and every gate recursing into it,
+   which means **no phase gate from 2 upward has ever completed its recursion in
+   this environment.**
+3. No Docker engine, which blocks the release leaf in every phase.
+4. In CI that leaf fails for a different reason: Home Assistant 2026.9.0 was
+   published while `pytest-homeassistant-custom-component` 0.13.362 still pins
+   `homeassistant==2026.9.0b6`. Not this branch's failure; which release the
+   product certifies against is a product decision, so no resolver change was
+   pushed.
+
+### Close-out, completed 2026-09-03
+
+Every phase now carries a phase summary, a summary per plan, and a review.
+
+**The review passes found four things worth having found**, three of them
+security-relevant:
+
+1. **Three filtered routes returned rows of projects the caller cannot read**
+   (`work_orders/list`, `reports/list`, `evidence/list` — the last of these the
+   trusted audit trail). This is the `alarms/list` leak of `9f53bcb` three more
+   times, because that fix was applied to the instance rather than the class.
+   Fixed, and `test_filtered_route_authority.py` now closes the class by
+   deriving its route list from the policy contract and asserting **rows**
+   rather than response codes.
+2. **The SSRF destination re-check was correct by memory, not by construction.**
+   Both outbound sites called it; nothing made that a property of the product.
+   `test_outbound_destination_guard.py` gives it the same AST guarantee Phase 8
+   built for service dispatch.
+3. **The i18n sweep had a blind spot and T10-03 was closed on its PASS** — see
+   above.
+4. **The authored v040 source did not parse as JavaScript.** `part06` carried a
+   ternary whose `?` reads as optional chaining, so the manual workflow that is
+   supposed to bundle those parts could never have run. The token test proved
+   each module was *mentioned* and never asked node to read the result; it now
+   runs `node --check`.
+
+Six phases came back with no defects: 3, 4, 6, 7, 8, and Phase 1's blocker
+confirmed closed at head (`01-REVIEW-VERIFY.md`).
+
+**Nothing is left open in the repository.** WR-01 — the last recorded review
+warning — was closed the same day, and the estimate that had deferred it was
+wrong: it read as a refactor of eight handlers because their result shapes
+differ, but the shapes are data and there was already one choke point every
+command passes through. `RoutePolicy` now refuses to declare a project-scoped
+filtered route without the empty answer it gives an unauthorized caller, and the
+boundary sends that answer, so the handler is never invoked and cannot forget.
+
+Three product limitations recorded by earlier phases were also closed:
+
+- **The two diagonals** Phase 5 could not separate now route with **zero**
+  spacing violations. `jogCandidates` displaces only the overlapping stretch and
+  keeps both ports fixed; the jog alone was still declined until
+  `countOverlaps` became `overlapCost`, comparing (count, extent), because
+  trading a 200-unit overlap for a 12-unit one scored as a draw.
+- **The nine `prompt()` naming paths** use one real dialog, reached through the
+  SDK by the files that cannot import it.
+- **`apply-v040.yml`** no longer fires on a push to `main`. It would have
+  committed a 0.4.0 downgrade as a bot, stopped only by a thrown exception on a
+  version anchor — a coincidence, not a safety property.
+
+**Still deliberately not done:** a site cannot express four or five alarm
+priority classes. That is a schema change, and the alarm philosophy — configuration
+with conservative defaults, the priority vocabulary being the one deliberate
+exception — was decided with the user on 2026-09-02. Reversing it is a product
+decision, not a close-out task.
+
+`REQUIREMENTS.md` traceability is current, and says which row is blocked wherever
+a requirement is complete with an exception.
+
+**No release is authorized and none was made.**
+Last activity: 2026-09-03 -- close-out complete on `claude/chatgpt-continuation-hi3y86` (PR #3)
+
+Progress: [██████████] 100%
+
+### Phase 10 register
+
+15 of 17 rows verified, each from its own owner command run at head. T10-03 is
+`not met` with 154 strings named; T10-16 is blocked with its exact failure.
+
+### Phase 9 register
+
+19 of 20 rows verified, each from its own owner command run at head; where five
+rows name one command, that command was run five times. T9-20 blocked, recorded
+with its exact failure.
+
+### Phase 7 sentinel state
+
+`node tools/phase7-red-gate.mjs` reports 11 implemented, 0 controlled RED, 0 broken.
+
+### Phase 6 sentinel state
+
+`node tools/phase6-red-gate.mjs` reports 14 implemented, 0 controlled RED, 0 broken.
+
+| Sentinel | Owner plan | State |
+|---|---|---|
+| phase6-vocabulary | 06-02 | implemented |
+| phase6-lifecycle | 06-06 | implemented |
+| phase6-suppression | 06-07 | implemented |
+| phase6-restart | 06-08 | implemented |
+| phase6-index | 06-09 | implemented |
+| phase6-retention | 06-10 | implemented |
+| phase6-notifications | 06-11 | implemented |
+| phase6-escalation | 06-11 | implemented |
+| phase6-schedule-dst | 06-12 | implemented |
+| phase6-schedule-parity | 06-12 | implemented |
+| phase6-schedule-routes | 06-13 | implemented |
+| phase6-schedule-bindings | 06-14 | implemented |
+| phase6-shipped-truth | 06-15 | implemented |
+| phase6-ui | 06-17 | implemented |
+
+### Phase 4 sentinel state
+
+`node tools/phase4-red-gate.mjs` reports 10 implemented, 0 controlled RED, 0 broken.
+
+| Sentinel | Owner plan | State |
+|---|---|---|
+| phase4-panels | 04-05 | implemented |
+| phase4-panel-enumeration | 04-05 | implemented |
+| phase4-view-stream | 04-06 | implemented |
+| phase4-navigation | 04-07 | implemented |
+| phase4-navigation-counts | 04-08 | implemented |
+| phase4-panel-model | 04-10 | implemented |
+| phase4-navigation-reducer | 04-09 | implemented |
+| phase4-command-outcome | 04-11 | implemented |
+| phase4-view-resync | 04-12 | implemented |
+| phase4-ui | 04-13 | implemented |
+
+### Phase 3 sentinel state
+
+`node tools/phase3-red-gate.mjs` reports 7 implemented, 0 controlled RED, 0 broken.
+
+| Sentinel | Owner plan | State |
+|---|---|---|
+| phase3-semantic-model | 03-07 | implemented |
+| phase3-provenance | 03-08 | implemented |
+| phase3-provenance-policy | 03-09 | implemented |
+| phase3-profiles | 03-10 | implemented |
+| phase3-mapping | 03-12 | implemented |
+| phase3-equipment-state | 03-14 | implemented |
+| phase3-ui | 03-15 | implemented |
+
+### Phase 2 sentinel state
+
+`npm run test:phase2:quick` reports 12 implemented, 0 controlled RED, 0 broken.
+
+| Sentinel | Owner plan | State |
+|---|---|---|
+| phase2-policy-matrix | 02-06 | implemented |
+| phase2-access-revocation | 02-07 | implemented |
+| phase2-evidence-pagination | 02-10 | implemented |
+| phase2-leases | 02-08 | implemented |
+| phase2-collaboration-guard | 02-09 | implemented |
+| phase2-merge | 02-09 | implemented |
+| phase2-configured-controls | 02-11 | implemented |
+| phase2-control-evidence | 02-11 | implemented |
+| phase2-migration-lifecycle | 02-14 | implemented |
+| phase2-authority-reducers | 02-12 | implemented |
+| phase2-ui-fixture-seed | 02-12 | implemented |
+| phase2-ui | 02-13 | implemented |
 
 ## Performance Metrics
 
@@ -131,11 +347,16 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Blockers/Concerns
 
-- [Phase 2]: No known technical blocker. The final plan-check run after the T2-16 recursion correction was intentionally interrupted at the user's stop request; run one bounded checker before execution.
+- [Phase 4]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T4-14 row and the review passes remain.
+- [Phase 5]: No known technical blocker. All 20 plans are implemented; the Docker-dependent T5-16 row, the review passes, and three recorded limitations remain (two diagonals a lane offset cannot separate, five editor naming prompts, and v040 extension parts 05/06 still absent from the shipped artifact).
+- [Phase 6]: No known technical blocker. All 20 plans are implemented and all 14 audited defects are closed, including the live `alarms/list` authorization hole fixed separately in `9f53bcb`. The Docker-dependent T6-21 row, the review passes, and two recorded limitations remain: a site cannot express four or five alarm priority classes (that is a schema change, not a setting), and measured capacity at thousands of alarms is Phase 10's.
+- [Phase 3]: No known technical blocker. All 17 plans are implemented; only the Docker-dependent T3-14 row and the review passes remain.
+- [Phase 2]: No known technical blocker. The bounded plan check passed on 2026-09-02 (see `02-PLAN-CHECK.md`); execution is complete.
+- [Phase 2]: Shared mutation routes now require a valid bearer at the policy boundary. Plan 02-09 must still add the decisive in-lock recheck; the boundary check alone cannot see authority that changes mid-request.
 - [Phase 1]: Resolved in planning — lanes are discovered and digest-pinned at execution, and Companion packaging is validated as a local integration-category artifact without unauthorized publication.
 - [Phase 5]: SDK trust, distribution, and compatibility policy must forbid project-bundled privileged execution.
-- [Phase 6]: Deployment alarm philosophy and supported schedule/calendar authoring APIs require decisions.
-- [Phase 7]: Recorder API lanes and energy/report calculation contracts must be pinned.
+- [Phase 6]: RESOLVED. Schedule authoring is `schedule/create|update|delete` (admin-gated), calendar authoring is `calendar.create_event` gated on `CalendarEntityFeature.CREATE_EVENT`, holidays bind to `binary_sensor.workday` with its per-Bundesland `province`. The alarm philosophy is configuration with conservative defaults, decided with the user on 2026-09-02; the priority vocabulary is the one deliberate exception.
+- [Phase 7]: RESOLVED. Home Assistant 2026.2.3 already resolves `day`, `week`, `month` and `year` on local-midnight boundaries in the configured timezone -- measured at 23- and 25-hour days and 743- and 745-hour months for Europe/Berlin -- and `change` is reset-aware over the Recorder's reset-corrected running sum. `year` is reachable only through `recorder/statistic_during_period`'s calendar spec. Three traps recorded with owners: a window starting before a statistic exists reports the whole accumulated total as the first period's consumption; gaps are omitted from results rather than emitted; and `mean_type` CIRCULAR exists. Nothing in the Recorder API bounds a raw query, so the bounds are ours and belong server-side. Planning is complete; execution has not started.
 - [Phase 9]: Remote authentication, SSRF allowlisting, and partial-failure budgets require prototyping.
 - [Phase 10]: Numeric 100/500/2,000-object budgets require representative hardware measurements.
 
@@ -143,8 +364,20 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 No numbered v1.1 requirement is deferred.
 
+Two capabilities are deliberately out of v1.1 and recorded in
+[FUTURE-ROADMAP.md](FUTURE-ROADMAP.md) so the decisions stay visible:
+
+- **F-01 Executable extension contributions.** SDK-01 ships contributions as
+  data; no contributed code executes in any realm. This forecloses
+  third-party computed rendering. Confirmed with the user on 2026-09-02.
+- **F-02 Public distribution of symbol packs.** Local installation only;
+  publication needs an exact target and separate authorization.
+
 ## Session Continuity
 
-Last session: 2026-09-01T18:39:55.907Z
-Stopped at: Phase 2 planning complete; final bounded plan check pending
-Resume file: .planning/phases/02-authoritative-policy-controls-collaboration/.continue-here.md
+Last session: 2026-09-03T07:30:00.000Z
+Stopped at: close-out complete -- all ten phases closed, summarised per plan and
+reviewed; four review findings fixed and each guarded at the class rather than
+the instance
+Resume file: none. What remains needs a Docker engine, verified dependency
+provenance, or a person with assistive technology -- see "Environment limits".

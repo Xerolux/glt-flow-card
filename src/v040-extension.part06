@@ -1,5 +1,32 @@
 
 /* Deep GLT symbol + control layer ------------------------------------------------ */
+
+/**
+ * One catalog string, read off the SDK at call time.
+ *
+ * This file is concatenated before the v1 bundle, or loaded beside it, so it
+ * cannot import the catalog. It reaches the same lookup the rest of the product
+ * uses through `window.GLTFlowCardSDK` — one source for a string, because two
+ * sources is how a screen ends up disagreeing with itself.
+ *
+ * The language comes from Home Assistant rather than `navigator.language`,
+ * which on a shared control-room workstation is whoever installed it. Falling
+ * back to the key rather than to a German sentence: a raw key on screen is
+ * visibly wrong, where a German sentence in an English interface looks
+ * deliberate.
+ */
+function gltText(key) {
+  const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
+  if (!sdk?.text) return key;
+  try {
+    const hass = sdk.currentHass?.() ?? null;
+    const language = hass?.locale?.language;
+    return sdk.text(key, String(language ?? "de").toLowerCase().startsWith("en") ? "en" : "de");
+  } catch (_err) {
+    return key;
+  }
+}
+
 (() => {
   "use strict";
   const Card = customElements.get("glt-flow-card");
@@ -17,7 +44,7 @@
     ["fan_supply","Zuluftventilator","RLT"],["fan_extract","Abluftventilator","RLT"],["damper","Luftklappe","RLT"],["fire_damper","Brandschutzklappe","RLT"],
     ["air_filter","Luftfilter","RLT"],["heating_coil","Heizregister","RLT"],["cooling_coil","Kühlregister","RLT"],["heat_recovery_rotary","Rotationswärmetauscher","RLT"],
     ["heat_recovery_plate","Platten-WRG","RLT"],["humidifier","Befeuchter","RLT"],["silencer","Schalldämpfer","RLT"],
-    ["chiller","Kältemaschine","Kälte"],["compressor","Verdichter","Kälte"],["cooling_tower","Kühlturm","Kälte"],
+    ["chiller","Kältemaschine",gltText("legacy.category_cooling")],["compressor","Verdichter",gltText("legacy.category_cooling")],["cooling_tower","Kühlturm",gltText("legacy.category_cooling")],
     ["pv_array","PV-Feld","Energie"],["inverter","Wechselrichter","Energie"],["battery","Batteriespeicher","Energie"],["grid","Netz","Energie"],["meter","Energiezähler","Energie"],
     ["temp_sensor","Temperaturfühler","Sensorik"],["pressure_sensor","Drucksensor","Sensorik"],["dp_sensor","Differenzdruck","Sensorik"],["flow_sensor","Volumenstrom","Sensorik"],
     ["humidity_sensor","Feuchtefühler","Sensorik"],["co2_sensor","CO₂-Sensor","Sensorik"],["frost_thermostat","Frostschutzthermostat","Sensorik"]
@@ -79,28 +106,29 @@
   `;
 
   function entityId(item){const v=item?.control_entity||item?.entity;return typeof v==="string"?v:v?.entity||"";}
-  function state(card,id){return id&&card?._hass?.states?.[id]||null:null;}
+  function state(card, id) { return id && card ? card._hass?.states?.[id] || null : null; }
   function domain(id){return String(id||"").split(".")[0]||"";}
   function isControllable(card,id){const d=domain(id);return !!(id&&card?._hass&&["switch","light","fan","input_boolean","button","input_button","cover","valve","lock","number","input_number","select","input_select","climate","humidifier","water_heater","automation","script","scene"].includes(d));}
-  function canOperate(card){const p=card?._config?.permissions||{};if(card?._hass?.user?.is_admin)return true;if(!(p.designers?.length||p.operators?.length||p.viewers?.length))return true;const id=card?._hass?.user?.id;return !!id&&(p.designers||[]).includes(id)||(p.operators||[]).includes(id);}
+  // Retired (04-13). This returned true whenever no permission list was
+  // configured at all -- an unconfigured card granted everyone control. It is
+  // the first defect the roadmap names for this phase.
+  function canOperate(){return false;}
   function displayState(card,id){const st=state(card,id);if(!st)return id?"Nicht verfügbar":"Keine Entity";const unit=st.attributes?.unit_of_measurement;return `${st.state}${unit?` ${unit}`:""}`;}
-  function service(card,d,s,data){if(!card?._hass?.callService)return;return card._hass.callService(d,s,data||{});}
-  function confirmControl(card,label){return card?._config?.permissions?.confirm_controls===false||confirm(label||"Bedienaktion ausführen?");}
+  // Retired (04-13): no browser path may reach hass.callService. Phase 2
+  // resolves a control id to a domain, service and target from the verified
+  // head; a browser holding those would be the direct fallback it closed.
+  function service(){return undefined;}
+  // Retired (04-13): window.confirm standing in for authorization, and
+  // skippable by config. Phase 2's glt-flow-card-control-confirm confirms an
+  // already-authorized, server-resolved control instead.
+  function confirmControl(){return false;}
   function audit(card,action,detail){try{card?._glt4Store?.audit?.(action,detail);}catch(_e){}}
 
-  async function command(card,item,cmd,panel){const id=entityId(item),d=domain(id);if(!canOperate(card)){alert("Keine Bedienberechtigung für dieses Anlagenobjekt.");audit(card,"control.blocked",{entity_id:id,command:cmd});return;}if(!confirmControl(card,`${item.name||id}: ${cmd}?`))return;const data={entity_id:id};
-    try{
-      if(cmd==="on")await service(card,d,"turn_on",data);else if(cmd==="off")await service(card,d,"turn_off",data);else if(cmd==="toggle")await service(card,d,"toggle",data);
-      else if(cmd==="press")await service(card,d,"press",data);else if(cmd==="open")await service(card,d,d==="valve"?"open_valve":"open_cover",data);else if(cmd==="close")await service(card,d,d==="valve"?"close_valve":"close_cover",data);else if(cmd==="stop")await service(card,d,d==="valve"?"stop_valve":"stop_cover",data);
-      else if(cmd==="lock")await service(card,d,"lock",data);else if(cmd==="unlock")await service(card,d,"unlock",data);
-      else if(cmd==="set-number")await service(card,d,"set_value",{...data,value:Number(panel.querySelector("[data-number]").value)});
-      else if(cmd==="set-select")await service(card,d,"select_option",{...data,option:panel.querySelector("[data-select]").value});
-      else if(cmd==="set-temp")await service(card,d,"set_temperature",{...data,temperature:Number(panel.querySelector("[data-temp]").value)});
-      else if(cmd==="set-hvac")await service(card,d,"set_hvac_mode",{...data,hvac_mode:panel.querySelector("[data-hvac]").value});
-      else if(cmd==="set-fan")await service(card,"fan","set_percentage",{...data,percentage:Number(panel.querySelector("[data-fan]").value)});
-      audit(card,"control.execute",{entity_id:id,command:cmd});setTimeout(()=>openControl(card,item),250);
-    }catch(err){alert(`Bedienung fehlgeschlagen: ${err?.message||err}`);audit(card,"control.error",{entity_id:id,command:cmd,error:String(err)});}
-  }
+  // Retired (04-13). This ran a browser role check, a window.confirm, and then
+  // dispatched a Home Assistant service directly. Every one of those is an
+  // authority the Companion owns. It stays reachable and inert so the effect
+  // ledger can prove it.
+  async function command(card,item,cmd){audit(card,"control.blocked",{equipment_id:item?.id,command:cmd,reason:"legacy_command_retired"});}
 
   function controls(card,item,id,st){const d=domain(id),a=st?.attributes||{};if(!isControllable(card,id))return `<button class="primary" data-more>Mehr Informationen</button>`;
     if(["switch","light","input_boolean","automation"].includes(d))return '<button class="primary" data-cmd="on">Ein</button><button data-cmd="off">Aus</button><button data-cmd="toggle">Umschalten</button>';
@@ -117,7 +145,7 @@
 
   function openControl(card,item){const root=card.shadowRoot;root.querySelector(".glt-object-dialog")?.remove();const id=entityId(item),st=state(card,id);const active=item.state_entity?card._isActive?.(item.state_entity):id?card._isActive?.(id):item.active!==false;const icon=symbolSvg(item.symbol||item.type,!!active)||"";const fields=(item.fields||[]).slice(0,8).map(f=>{const x=typeof f==="string"?{entity:f}:f;const eid=typeof x.entity==="string"?x.entity:x.entity?.entity||"";return `<div class="glt-object-field"><small>${x.label||x.name||eid}</small><b>${displayState(card,eid)}</b></div>`;}).join("");const wrap=document.createElement("div");wrap.className="glt-object-dialog";wrap.innerHTML=`<div class="glt-object-panel"><div class="glt-object-head"><span class="glt-detail-symbol">${icon}</span><div><b>${item.name||item.id||"Anlagenobjekt"}</b><small>${id||item.type||""}</small></div><button class="glt-object-close" data-close>✕</button></div><div class="glt-object-body"><div class="glt-object-state"><div><span>Aktueller Zustand</span><strong>${displayState(card,id)}</strong></div><span>${canOperate(card)?"Bedienbar":"Nur Lesen"}</span></div>${fields?`<div class="glt-object-fields">${fields}</div>`:""}<div class="glt-object-controls">${controls(card,item,id,st)}</div><div class="glt-object-note">Bedienung erfolgt über Home Assistant Services. Berechtigungen und optionale Sicherheitsabfrage werden berücksichtigt.</div></div></div>`;root.appendChild(wrap);wrap.onclick=e=>{if(e.target===wrap)wrap.remove();};wrap.querySelector("[data-close]").onclick=()=>wrap.remove();wrap.querySelector("[data-more]")?.addEventListener("click",()=>card._openMoreInfo?.(id));wrap.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>command(card,item,b.dataset.cmd,wrap));}
 
-  async function runTap(card,item,tap){const id=entityId(item);const action=typeof tap==="string"?tap:(tap?.action||"control");if(action==="none")return;if(action==="control")return openControl(card,item);if(action==="more-info")return card._openMoreInfo?.(id);if(action==="toggle")return card._tapEntity?.(id);if(action==="call-service"||action==="perform-action"){const spec=tap.service||tap.perform_action||tap.service_action;if(!spec)return;const [d,s]=String(spec).split(".");if(!d||!s)return;if(!canOperate(card))return alert("Keine Bedienberechtigung.");if(!confirmControl(card,`${item.name||id}: ${spec}?`))return;await service(card,d,s,{...(tap.data||tap.service_data||{}),...(tap.target?.entity_id?{entity_id:tap.target.entity_id}:{})});audit(card,"control.service",{equipment_id:item.id,service:spec});return;}if(action==="navigate"&&tap.navigation_path){history.pushState(null,"",tap.navigation_path);window.dispatchEvent(new Event("location-changed"));return;}if(action==="url"&&tap.url_path)window.open(tap.url_path,tap.new_tab===false?"_self":"_blank");}
+  async function runTap(card,item,tap){const id=entityId(item);const action=typeof tap==="string"?tap:(tap?.action||"control");if(action==="none")return;if(action==="control")return openControl(card,item);if(action==="more-info")return card._openMoreInfo?.(id);if(action==="toggle")return card._tapEntity?.(id);if(action==="call-service"||action==="perform-action"){/* Retired (04-13): this split a caller-supplied service string and passed caller-supplied data and target straight to hass.callService. Phase 2 retired the equivalent server route; this was its browser twin. */audit(card,"control.blocked",{equipment_id:item?.id,reason:"legacy_tap_action_retired"});return;}if(action==="navigate"&&tap.navigation_path){history.pushState(null,"",tap.navigation_path);window.dispatchEvent(new Event("location-changed"));return;}if(action==="url"&&tap.url_path)window.open(tap.url_path,tap.new_tab===false?"_self":"_blank");}
 
   const oldMarkup=Card.prototype._equipmentMarkup;
   Card.prototype._equipmentMarkup=function(item){let html=oldMarkup.call(this,item);if(item.image)return html;const active=item.state_entity?this._isActive?.(item.state_entity):item.entity?this._isActive?.(item.entity):item.active!==false;const detailed=symbolSvg(item.symbol||item.type,!!active);if(!detailed)return html;return html.replace(/<ha-icon class="glt-eq-icon"[^>]*><\/ha-icon>/,`<span class="glt-detail-symbol">${detailed}</span>`);};

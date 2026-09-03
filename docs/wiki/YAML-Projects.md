@@ -23,6 +23,22 @@ es gibt keinen lokalen Fallback. Selektives Anwenden verwendet stabile
 Änderungs-IDs. Rollback stellt einen servereigenen, hashgeprüften Snapshot als
 neue Vorwärtsrevision wieder her und verändert die Historie nicht rückwirkend.
 
+## Projektinhalt vergibt keinen Zugriff
+
+Ein `permissions`-Block, eine Rollenangabe oder eine Benutzerliste im
+Projekt-JSON oder in einem importierten `.gltproject`-Bundle verleiht niemandem
+Rechte. Zuweisungen liegen ausschließlich in der Zugriffsliste des Companions
+und werden über die Mitgliedschaftsverwaltung geändert. Beim Upgrade darf ein
+alter `permissions`-Block auf dem *aktiven* Projektstand die Mitgliedschaft
+einmalig und konservativ vorbelegen — nie als Administrator; ein importierter
+Entwurf darf das nie.
+
+Gemeinsames Bearbeiten erfordert ein exklusives, verbindungsgebundenes
+Bearbeitungslease. Inhalts- und Zugriffsrevisionen sind getrennte Ströme. Ein
+Konflikt bewahrt den Entwurf im Speicher und bietet Aktualisieren,
+Zusammenführungsvorschau, erneuten Versuch mit neuem Lease oder ausdrückliches
+Verwerfen — kein Überschreiben.
+
 ## Projektvergleich und Bundles
 
 Der semantische Diff unterscheidet Hinzufügen, Entfernen, Verschieben,
@@ -49,3 +65,9 @@ conflicts, selective apply and rollback are recomputed by the Companion for
 shared projects. Bundles are preflighted against archive and resource limits,
 and custom assets remain opaque bytes. Standalone storage is local only. The
 large correctness fixtures are not a capacity certification.
+
+Project content never grants access: a `permissions` block in project JSON or in
+an imported bundle assigns nothing. Roles live only in the Companion's access
+list. Shared editing requires an exclusive connection-bound lease, content and
+access revisions are separate streams, and a conflict preserves the candidate
+and offers no overwrite.

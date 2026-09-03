@@ -17,33 +17,45 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+// Discovered from the authored schema directory, never imported from the build.
+// This verifier is deliberately independent -- it must not trust the tool it is
+// checking -- but a hand-written version list is how "independent" quietly turns
+// into "out of date".
+const PROJECT_SCHEMA_VERSIONS = (await readdir(path.join(ROOT, "schemas/project")))
+  .filter((name) => /^\d+\.schema\.json$/.test(name))
+  .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10))
+  .map((name) => Number.parseInt(name, 10));
+
 const require = createRequire(import.meta.url);
 const MANIFEST_PATH = "custom_components/glt_flow_card/build-manifest.json";
+const STAGING_MANIFEST_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "../build/release/hacs-staging-manifest.json");
+
+//: Staged paths that are copied verbatim from the repository, and must
+//: therefore be byte-identical to the artifacts this run just verified.
+const SHIPPED_PREFIXES = ["custom_components/glt_flow_card/", "dist/"];
 const OUTPUT_PATHS = [
   MANIFEST_PATH,
   "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
   "custom_components/glt_flow_card/schemas/diff-policy.json",
   "custom_components/glt_flow_card/schemas/limits.json",
-  "custom_components/glt_flow_card/schemas/project/0.schema.json",
-  "custom_components/glt_flow_card/schemas/project/1.schema.json",
-  "custom_components/glt_flow_card/schemas/project/2.schema.json",
+  "custom_components/glt_flow_card/schemas/vocabularies.json",
+  ...PROJECT_SCHEMA_VERSIONS.map((v) => `custom_components/glt_flow_card/schemas/project/${v}.schema.json`),
   "custom_components/glt_flow_card/www/glt-flow-card.js",
   "dist/glt-flow-card.js",
   "dist/schemas/bundle-manifest.schema.json",
   "dist/schemas/diff-policy.json",
   "dist/schemas/limits.json",
-  "dist/schemas/project/0.schema.json",
-  "dist/schemas/project/1.schema.json",
-  "dist/schemas/project/2.schema.json",
+  "dist/schemas/vocabularies.json",
+  ...PROJECT_SCHEMA_VERSIONS.map((v) => `dist/schemas/project/${v}.schema.json`),
   "docs/editor/app.js",
 ];
 const SCHEMAS = [
   ["bundleManifest", "schemas/bundle-manifest.schema.json"],
   ["diffPolicy", "schemas/diff-policy.json"],
   ["limits", "schemas/limits.json"],
-  ["project0", "schemas/project/0.schema.json"],
-  ["project1", "schemas/project/1.schema.json"],
-  ["project2", "schemas/project/2.schema.json"],
+  ["vocabularies", "schemas/vocabularies.json"],
+  ...PROJECT_SCHEMA_VERSIONS.map((v) => [`project${v}`, `schemas/project/${v}.schema.json`]),
 ];
 const DEFAULT_EVIDENCE_PATH = path.join(ROOT, ".planning/tmp/release-build-verification.json");
 
@@ -259,6 +271,44 @@ async function updateArtifactDescriptor(outputRoot, relativePaths) {
   await writeFile(manifestPath, canonicalJson(manifest));
 }
 
+/**
+ * Prove the staged packages are the checked-in bytes, without re-staging.
+ *
+ * The preflight verifies what will actually be shipped. Re-staging here would
+ * only prove the stager is self-consistent; reading the stage the release will
+ * upload proves it matches the artifacts this run just verified.
+ */
+async function verifyStageConsumesCheckedInBytes() {
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(STAGING_MANIFEST_PATH, "utf8"));
+  } catch {
+    throw new Error(
+      "no staged packages found at build/release/hacs-staging-manifest.json. "
+      + "Stage the packages first: this step consumes the stage, it never creates one.",
+    );
+  }
+  if (manifest.format !== "glt-flow-card-hacs-staging-manifest" || manifest.manifest_version !== 1) {
+    throw new Error("staged package manifest format/version disagreement");
+  }
+  let files = 0;
+  for (const [name, entry] of Object.entries(manifest.packages ?? {})) {
+    for (const descriptor of entry.files ?? []) {
+      // Only the shipped artifacts are compared. A package README or hacs.json
+      // is written for the package rather than copied from the repository, so
+      // it has no checked-in counterpart to be stale against.
+      if (!SHIPPED_PREFIXES.some((prefix) => descriptor.path.startsWith(prefix))) continue;
+      const bytes = await readFile(path.join(ROOT, descriptor.path));
+      if (bytes.length !== descriptor.size || sha256(bytes) !== descriptor.sha256) {
+        throw new Error(`staged ${name} package is stale: ${descriptor.path}`);
+      }
+      files += 1;
+    }
+  }
+  if (files === 0) throw new Error("staged packages reference no checked-in file");
+  return { consumed: true, files };
+}
+
 async function main() {
   const { evidencePath } = parseArgs(process.argv.slice(2));
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "glt-release-verify-"));
@@ -326,6 +376,8 @@ async function main() {
 
     const buildManifestBytes = await readFile(path.join(ROOT, MANIFEST_PATH));
     const buildManifest = JSON.parse(buildManifestBytes);
+    const stage = await verifyStageConsumesCheckedInBytes();
+    console.log(`PASS staged package identity (${stage.files} files)`);
     const report = {
       build_manifest_sha256: sha256(buildManifestBytes),
       checked_in_outputs: { passed: true },
@@ -333,6 +385,7 @@ async function main() {
       format: "glt-flow-card-release-build-verification",
       report_version: 1,
       source_commit: buildManifest.build.commit,
+      staged_packages: stage,
       verified: true,
     };
     await mkdir(path.dirname(evidencePath), { recursive: true });

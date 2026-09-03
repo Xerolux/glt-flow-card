@@ -4,14 +4,16 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Mapping
 from copy import deepcopy
+import inspect
 from datetime import datetime, timezone
 import secrets
 import time
+from dataclasses import dataclass
 from typing import Any
 
 from .project_contract import digest_canonical_json, evaluate_project_contract
 from .project_diff import DIFF_POLICY, compute_project_diff, expand_diff_selection
-from .project_migrations import migrate_project_document
+from .project_migrations import CURRENT_PROJECT_SCHEMA_VERSION, migrate_project_document
 from .project_repository import ProjectRepository
 
 
@@ -29,6 +31,37 @@ def _decode_pointer_part(value: str) -> str:
 
 def _clone(value: Any) -> Any:
     return deepcopy(value)
+
+
+@dataclass(frozen=True)
+class MutationGuard:
+    """The authority evidence a shared mutation carries into the lock.
+
+    Every field is re-read and re-compared *inside* the coordinator's critical
+    section, immediately before the PREPARED journal is written. Checking these
+    at the WebSocket boundary is necessary but not sufficient: a role can be
+    revoked, a lease can expire and the head can move between the moment a
+    request is authorized and the moment it commits.
+    """
+
+    project_id: str
+    user_id: str
+    session_id: str
+    purpose: str
+    effective_capability: str
+    access_revision: int
+    lease: str
+    revision: int
+    digest: str | None
+    policy_version: int
+
+
+class MutationDenied(Exception):
+    """The guard refused a mutation at the commit boundary."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
 
 
 class ProjectTransactionCoordinator:
@@ -57,6 +90,26 @@ class ProjectTransactionCoordinator:
         self._previews: dict[str, dict[str, Any]] = {}
         self._preview_insertion_sequence = 0
         self._lock = asyncio.Lock()
+        self._mutation_guard: Callable[[MutationGuard], Any] | None = None
+
+    def set_mutation_guard(
+        self, guard: Callable[[MutationGuard], Any] | None
+    ) -> None:
+        """Install the callback that re-authorizes inside the critical section.
+
+        The coordinator owns the lock, so it is the only place that can prove
+        nothing changed between authorization and commit. The callback returns
+        normally to permit the commit and raises `MutationDenied` to refuse it.
+        """
+        self._mutation_guard = guard
+
+    async def _check_guard(self, evidence: MutationGuard | None) -> None:
+        """Re-authorize immediately before anything durable is written."""
+        if self._mutation_guard is None or evidence is None:
+            return
+        result = self._mutation_guard(evidence)
+        if inspect.isawaitable(result):
+            await result
 
     def _fail(self, stage: str) -> None:
         if self._failure_hook is not None:
@@ -70,9 +123,21 @@ class ProjectTransactionCoordinator:
 
     @staticmethod
     def _empty_project(project_id: str, name: str) -> dict[str, Any]:
+        # The version comes from the migration module rather than a literal: a
+        # synthesized snapshot pinned to a number goes stale on the next schema
+        # bump and starts producing candidates the current contract rejects.
+        #
+        # Deriving the number alone was not enough. Schema 4 added a
+        # `contributions` collection, so a synthesized snapshot and a migrated
+        # one stopped being byte-identical and rollback comparisons failed. The
+        # shape below is guarded by
+        # test_synthesized_empty_project_matches_a_migrated_one, which migrates
+        # this document from an older version and requires the same bytes back.
         return {
             "type": "custom:glt-flow-card",
-            "schema_version": 2,
+            "schema_version": CURRENT_PROJECT_SCHEMA_VERSION,
+            "semantic_model": {"nodes": []},
+            "contributions": [],
             "project": {"id": project_id, "name": name, "revision": 0},
         }
 
@@ -215,6 +280,7 @@ class ProjectTransactionCoordinator:
         preview_id: str,
         expected_revision: int,
         selected_ids: list[str],
+        guard: MutationGuard | None = None,
     ) -> dict[str, Any]:
         """Recompute a preview and commit only selected server operations."""
 
@@ -262,6 +328,7 @@ class ProjectTransactionCoordinator:
                     candidate=selected_candidate,
                     selected_ids=closure["selected"],
                     action="apply",
+                    guard=guard,
                 )
         except Exception:
             self._previews.pop(preview_id, None)
@@ -414,8 +481,9 @@ class ProjectTransactionCoordinator:
         *,
         user_id: str | None,
         project: Mapping[str, Any],
-        expected_revision: int | None,
+        expected_revision: int,
         autosave: bool,
+        lease: MutationGuard | None = None,
     ) -> dict[str, Any]:
         """Route the legacy save shape through preview and authoritative apply."""
 
@@ -427,9 +495,11 @@ class ProjectTransactionCoordinator:
         ).strip()
         if not project_id:
             raise ValueError("project.id is required")
-        active = self.repository.get_head(project_id)
-        active_revision = int(active["revision"]) if active is not None else 0
-        revision = active_revision if expected_revision is None else int(expected_revision)
+        # No optional-revision fallback: a shared save that does not name the
+        # revision it is replacing is a lost update waiting to happen.
+        if expected_revision is None:
+            raise ValueError("expected_revision is required for a shared save")
+        revision = int(expected_revision)
         preview = await self.preview(
             user_id=user_id,
             project_id=project_id,
@@ -442,6 +512,7 @@ class ProjectTransactionCoordinator:
             preview_id=preview["preview_id"],
             expected_revision=revision,
             selected_ids=[operation["id"] for operation in preview["operations"]],
+            guard=lease,
         )
 
     async def rollback(
@@ -452,6 +523,7 @@ class ProjectTransactionCoordinator:
         snapshot_id: str,
         expected_revision: int,
         confirmation: str,
+        guard: MutationGuard | None = None,
     ) -> dict[str, Any]:
         """Create a new forward revision from a verified server snapshot."""
 
@@ -476,6 +548,7 @@ class ProjectTransactionCoordinator:
                 selected_ids=[f"rollback:{snapshot_id}"],
                 action="rollback",
                 source_snapshot_id=snapshot_id,
+                guard=guard,
             )
 
     async def _commit(
@@ -489,6 +562,7 @@ class ProjectTransactionCoordinator:
         selected_ids: list[str],
         action: str,
         source_snapshot_id: str | None = None,
+        guard: MutationGuard | None = None,
     ) -> dict[str, Any]:
         new_revision = expected_revision + 1
         next_config = _clone(candidate)
@@ -509,6 +583,9 @@ class ProjectTransactionCoordinator:
             allocation_attempts += 1
         if self.repository.get_journal(transaction_id) is not None:
             raise RuntimeError("unable to allocate unique transaction id")
+        # The last check before anything durable exists. Everything above this
+        # line is computation; everything below it is a write.
+        await self._check_guard(guard)
         now = _utc()
         current_head = await self.repository.read_head(project_id)
         if current_head is not None:

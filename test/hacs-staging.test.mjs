@@ -19,22 +19,76 @@ const COMPONENT_ROOT = "custom_components/glt_flow_card";
 const COMPONENT_FILES = [
   "__init__.py",
   "build-manifest.json",
+  "catalog.py",
   "config_flow.py",
+  "configured_controls.py",
+  "equipment_profiles.py",
+  "energy_model.py",
+  "energy_units.py",
   "const.py",
   "diagnostics.py",
   "manifest.json",
+  "policy.py",
+  "policy_sessions.py",
+  "ports.py",
+  "project_access.py",
   "project_bundle.py",
   "project_contract.py",
   "project_diff.py",
+  "project_leases.py",
+  "project_merge.py",
   "project_migrations.py",
   "project_repository.py",
   "project_transactions.py",
+  "navigation.py",
+  "alarm_vocabulary.py",
+  "alarm_engine.py",
+  "measured_value.py",
+  "notifications.py",
+  "period_vocabulary.py",
+  "history_bounds.py",
+  "history_routes.py",
+  "content_id.py",
+  "attachments.py",
+  "commissioning.py",
+  "maintenance_plans.py",
+  "work_orders.py",
+  "dispatch_vocabulary.py",
+  "dispatch_gate.py",
+  "scenarios.py",
+  "simulation_session.py",
+  "period_resolution.py",
+  "schedule_time.py",
+  "schedule_bindings.py",
+  "series_coverage.py",
+  "panels.py",
+  "recorder_query.py",
+  "remote_fanout.py",
+  "site_destinations.py",
+  "site_health.py",
+  "site_rollup.py",
+  "site_subscriptions.py",
+  "site_vocabulary.py",
+  "report_runs.py",
+  "report_schedule.py",
+  "provenance.py",
+  "sdk_manifest.py",
+  "sdk_registry.py",
+  "semantic_model.py",
+  "view_stream.py",
+  "trusted_evidence.py",
   "schemas/bundle-manifest.schema.json",
   "schemas/diff-policy.json",
   "schemas/limits.json",
+  "schemas/vocabularies.json",
   "schemas/project/0.schema.json",
   "schemas/project/1.schema.json",
   "schemas/project/2.schema.json",
+  "schemas/project/3.schema.json",
+  "schemas/project/4.schema.json",
+  "schemas/project/5.schema.json",
+  "schemas/project/6.schema.json",
+  "schemas/project/7.schema.json",
   "strings.json",
   "translations/de.json",
   "translations/en.json",
@@ -347,5 +401,76 @@ test("category layout version hash and archive mutations are rejected", async ()
     const result = runValidator(mutationRoot);
     assert.notEqual(result.status, 0, `${mutation.name} unexpectedly passed`);
     assert.match(`${result.stdout}\n${result.stderr}`, new RegExp(mutation.expected), mutation.name);
+  }
+});
+
+test("every generated Companion schema is packaged for HACS", async () => {
+  // The Python module guard below did not cover schemas, and that gap shipped:
+  // schema 3 and the vocabulary file reached the repository and the build but
+  // not the HACS stage, so `project_contract.py` raised FileNotFoundError at
+  // import inside the Home Assistant lanes - after every local gate had passed,
+  // because the stager and the validator shared the same incomplete list.
+  const schemaRoot = path.join(ROOT, "custom_components/glt_flow_card/schemas");
+  const authored = [];
+  const walk = async (directory, prefix) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) await walk(path.join(directory, entry.name), relative);
+      else if (entry.name.endsWith(".json")) authored.push(`schemas/${relative}`);
+    }
+  };
+  await walk(schemaRoot, "");
+  assert.ok(authored.length >= 6, "the component ships no schemas, which cannot be right");
+
+  // Checked against the staged output rather than against the stager's source
+  // text. The original version grepped both tools for a literal path, which
+  // worked only while the lists were literal -- deriving them from the schema
+  // directory made the guard blind to exactly the files it exists to protect.
+  // Asserting on the stage is also the stronger claim: the file is packaged,
+  // not merely mentioned.
+  // The stage the `before` hook already produced, read from disk.
+  const stagedSchemaRoot = path.join(
+    firstRoot, "hacs-integration/custom_components/glt_flow_card/schemas",
+  );
+  const stagedIntegration = new Set();
+  const walkStaged = async (directory, prefix) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) await walkStaged(path.join(directory, entry.name), relative);
+      else if (entry.name.endsWith(".json")) stagedIntegration.add(`schemas/${relative}`);
+    }
+  };
+  await walkStaged(stagedSchemaRoot, "");
+  for (const schemaPath of authored.sort()) {
+    assert.ok(
+      stagedIntegration.has(schemaPath),
+      `${schemaPath} is not in the HACS integration stage`,
+    );
+  }
+});
+
+test("every authored Companion Python module is packaged for HACS", async () => {
+  // A module that exists in the repository but not in the package is a silent
+  // shipping bug: the integration imports it and dies at load time inside a
+  // real Home Assistant, long after every local gate has passed. Deriving the
+  // expectation from the directory means adding a module cannot forget this.
+  const componentRoot = path.join(ROOT, "custom_components/glt_flow_card");
+  const authored = (await readdir(componentRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".py"))
+    .map((entry) => entry.name)
+    .sort();
+
+  const stagerSource = await readFile(path.join(ROOT, "tools/stage-hacs-packages.mjs"), "utf8");
+  const validatorSource = await readFile(path.join(ROOT, "tools/validate-hacs-staging.mjs"), "utf8");
+
+  for (const moduleName of authored) {
+    assert.ok(
+      stagerSource.includes(`"${moduleName}"`),
+      `${moduleName} is not staged by tools/stage-hacs-packages.mjs`,
+    );
+    assert.ok(
+      validatorSource.includes(`"${moduleName}"`),
+      `${moduleName} is not expected by tools/validate-hacs-staging.mjs`,
+    );
   }
 });

@@ -5,6 +5,56 @@
  * MIT License - Copyright (c) 2026 Xerolux
  */
 
+/**
+ * One catalog string, read off the SDK at call time.
+ *
+ * This file is concatenated before the v1 bundle, or loaded beside it, so it
+ * cannot import the catalog. It reaches the same lookup the rest of the product
+ * uses through `window.GLTFlowCardSDK` — one source for a string, because two
+ * sources is how a screen ends up disagreeing with itself.
+ *
+ * The language comes from Home Assistant rather than `navigator.language`,
+ * which on a shared control-room workstation is whoever installed it. Falling
+ * back to the key rather than to a German sentence: a raw key on screen is
+ * visibly wrong, where a German sentence in an English interface looks
+ * deliberate.
+ */
+/**
+ * One text prompt, as a real dialog.
+ *
+ * `window.prompt` blocks the whole page, cannot be styled or localized, has no
+ * accessible name of its own, and is simply unavailable in a kiosk browser --
+ * which is where this product is installed. The v1 bundle already builds a
+ * proper modal for the acknowledgement path; this reaches the same one through
+ * the SDK rather than growing a second dialog that would drift from it.
+ *
+ * `owner` is the element whose shadow root hosts the dialog. Resolves to null
+ * when cancelled, so a caller can tell "cancelled" from "entered nothing" --
+ * exactly what `prompt()` returns, so call sites need no new shape.
+ *
+ * Falls back to `prompt` only when the SDK is absent, which is the same
+ * reasoning as `gltText` falling back to the key: a degraded control the user
+ * can still operate beats a dead button.
+ */
+async function gltAsk(owner, label, initial = "") {
+  const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
+  if (sdk?.askText && owner) return sdk.askText(owner, label, initial);
+  return typeof prompt === "function" ? prompt(label, initial) : null;
+}
+
+function gltText(key) {
+  const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
+  if (!sdk?.text) return key;
+  try {
+    const hass = sdk.currentHass?.() ?? null;
+    const language = hass?.locale?.language;
+    return sdk.text(key, String(language ?? "de").toLowerCase().startsWith("en") ? "en" : "de");
+  } catch (_err) {
+    return key;
+  }
+}
+
+
 (() => {
   "use strict";
 
@@ -50,84 +100,119 @@
     image: "mdi:image-outline"
   };
 
+  /**
+   * One catalog string, read off the SDK at call time.
+   *
+   * This file is concatenated before the v1 bundle and cannot import, so the
+   * catalog is reached the same way the shared formatters are. Falling back to
+   * the key rather than to a German sentence: a raw key on screen is visibly
+   * wrong, where a German sentence in an English interface looks deliberate —
+   * which is the whole defect the catalog lookup removed.
+   */
+  function catalogText(key, language) {
+    const sdk = window.GLTFlowCardSDK;
+    if (!sdk?.text) return key;
+    try {
+      return sdk.text(key, language || sdk.defaultLanguage || "de");
+    } catch (_err) {
+      return key;
+    }
+  }
+
+  /** The language the card renders in, from Home Assistant rather than the browser. */
+  function cardLanguage(hass) {
+    const language = hass?.locale?.language;
+    return typeof language === "string" && language.toLowerCase().startsWith("en") ? "en" : "de";
+  }
+
+  /** One symbol's label, in the card's language. */
+  function symbolLabel(symbol, language) {
+    return symbol?.labelKey ? catalogText(symbol.labelKey, language) : (symbol?.id ?? "");
+  }
+
+  /** One medium's label, in the card's language. */
+  function mediumLabel(medium, language) {
+    return medium?.labelKey ? catalogText(medium.labelKey, language) : "";
+  }
+
   const SYMBOL_LIBRARY = [
-    { id:"heat_pump_neo", label:"Wärmepumpe · Neo", category:"Heizung", type:"heat_pump", icon:"mdi:heat-pump" },
-    { id:"heat_pump_compact", label:"Wärmepumpe · Kompakt", category:"Heizung", type:"heat_pump", icon:"mdi:heat-pump-outline" },
-    { id:"buffer_vertical", label:"Pufferspeicher · Vertikal", category:"Heizung", type:"tank", icon:"mdi:storage-tank" },
-    { id:"buffer_layered", label:"Schichtspeicher", category:"Heizung", type:"tank", icon:"mdi:storage-tank-outline" },
-    { id:"dhw_tank", label:"Warmwasserspeicher", category:"Heizung", type:"tank", icon:"mdi:water-boiler" },
-    { id:"boiler", label:"Heizkessel", category:"Heizung", type:"boiler", icon:"mdi:fire-circle" },
-    { id:"immersion_heater", label:"Heizstab", category:"Heizung", type:"generic", icon:"mdi:heating-coil" },
-    { id:"radiator", label:"Heizkörper", category:"Heizung", type:"room", icon:"mdi:radiator" },
-    { id:"underfloor", label:"Fußbodenheizung", category:"Heizung", type:"room", icon:"mdi:heating-coil" },
-    { id:"heating_circuit", label:"Heizkreis", category:"Heizung", type:"room", icon:"mdi:home-thermometer-outline" },
-    { id:"fancoil", label:"Gebläsekonvektor", category:"Heizung", type:"fan", icon:"mdi:hvac" },
-    { id:"source_ground", label:"Erdsonde / Quelle", category:"Heizung", type:"generic", icon:"mdi:sprout-outline" },
+    { id:"heat_pump_neo", labelKey:"legacy.symbol_heat_pump_neo", category:"Heizung", type:"heat_pump", icon:"mdi:heat-pump" },
+    { id:"heat_pump_compact", labelKey:"legacy.symbol_heat_pump_compact", category:"Heizung", type:"heat_pump", icon:"mdi:heat-pump-outline" },
+    { id:"buffer_vertical", labelKey:"legacy.symbol_buffer_vertical", category:"Heizung", type:"tank", icon:"mdi:storage-tank" },
+    { id:"buffer_layered", labelKey:"legacy.symbol_buffer_layered", category:"Heizung", type:"tank", icon:"mdi:storage-tank-outline" },
+    { id:"dhw_tank", labelKey:"legacy.symbol_dhw_tank", category:"Heizung", type:"tank", icon:"mdi:water-boiler" },
+    { id:"boiler", labelKey:"legacy.symbol_boiler", category:"Heizung", type:"boiler", icon:"mdi:fire-circle" },
+    { id:"immersion_heater", labelKey:"legacy.symbol_immersion_heater", category:"Heizung", type:"generic", icon:"mdi:heating-coil" },
+    { id:"radiator", labelKey:"legacy.symbol_radiator", category:"Heizung", type:"room", icon:"mdi:radiator" },
+    { id:"underfloor", labelKey:"legacy.symbol_underfloor", category:"Heizung", type:"room", icon:"mdi:heating-coil" },
+    { id:"heating_circuit", labelKey:"legacy.symbol_heating_circuit", category:"Heizung", type:"room", icon:"mdi:home-thermometer-outline" },
+    { id:"fancoil", labelKey:"legacy.symbol_fancoil", category:"Heizung", type:"fan", icon:"mdi:hvac" },
+    { id:"source_ground", labelKey:"legacy.symbol_source_ground", category:"Heizung", type:"generic", icon:"mdi:sprout-outline" },
 
-    { id:"pump_inline", label:"Pumpe · Inline", category:"Hydraulik", type:"pump", icon:"mdi:pump" },
-    { id:"pump_circulation", label:"Umwälzpumpe", category:"Hydraulik", type:"pump", icon:"mdi:pump" },
-    { id:"pump_dhw", label:"Zirkulationspumpe", category:"Hydraulik", type:"pump", icon:"mdi:water-pump" },
-    { id:"valve_2way", label:"2-Wege-Ventil", category:"Hydraulik", type:"valve", icon:"mdi:valve" },
-    { id:"valve_3way", label:"3-Wege-Ventil", category:"Hydraulik", type:"valve", icon:"mdi:valve-open" },
-    { id:"mixing_valve", label:"Mischventil", category:"Hydraulik", type:"valve", icon:"mdi:valve-closed" },
-    { id:"check_valve", label:"Rückschlagventil", category:"Hydraulik", type:"valve", icon:"mdi:arrow-decision-outline" },
-    { id:"balancing_valve", label:"Strangregulierventil", category:"Hydraulik", type:"valve", icon:"mdi:tune-variant" },
-    { id:"heat_exchanger_plate", label:"Plattenwärmetauscher", category:"Hydraulik", type:"heat_exchanger", icon:"mdi:heat-wave" },
-    { id:"hydraulic_separator", label:"Hydraulische Weiche", category:"Hydraulik", type:"heat_exchanger", icon:"mdi:swap-vertical-bold" },
-    { id:"manifold", label:"Verteiler / Sammler", category:"Hydraulik", type:"generic", icon:"mdi:pipe-valve" },
-    { id:"expansion_vessel", label:"Ausdehnungsgefäß", category:"Hydraulik", type:"tank", icon:"mdi:circle-half-full" },
-    { id:"filter_water", label:"Schmutzfänger", category:"Hydraulik", type:"generic", icon:"mdi:filter-outline" },
+    { id:"pump_inline", labelKey:"legacy.symbol_pump_inline", category:"Hydraulik", type:"pump", icon:"mdi:pump" },
+    { id:"pump_circulation", labelKey:"legacy.symbol_pump_circulation", category:"Hydraulik", type:"pump", icon:"mdi:pump" },
+    { id:"pump_dhw", labelKey:"legacy.symbol_pump_dhw", category:"Hydraulik", type:"pump", icon:"mdi:water-pump" },
+    { id:"valve_2way", labelKey:"legacy.symbol_valve_2way", category:"Hydraulik", type:"valve", icon:"mdi:valve" },
+    { id:"valve_3way", labelKey:"legacy.symbol_valve_3way", category:"Hydraulik", type:"valve", icon:"mdi:valve-open" },
+    { id:"mixing_valve", labelKey:"legacy.symbol_mixing_valve", category:"Hydraulik", type:"valve", icon:"mdi:valve-closed" },
+    { id:"check_valve", labelKey:"legacy.symbol_check_valve", category:"Hydraulik", type:"valve", icon:"mdi:arrow-decision-outline" },
+    { id:"balancing_valve", labelKey:"legacy.symbol_balancing_valve", category:"Hydraulik", type:"valve", icon:"mdi:tune-variant" },
+    { id:"heat_exchanger_plate", labelKey:"legacy.symbol_heat_exchanger_plate", category:"Hydraulik", type:"heat_exchanger", icon:"mdi:heat-wave" },
+    { id:"hydraulic_separator", labelKey:"legacy.symbol_hydraulic_separator", category:"Hydraulik", type:"heat_exchanger", icon:"mdi:swap-vertical-bold" },
+    { id:"manifold", labelKey:"legacy.symbol_manifold", category:"Hydraulik", type:"generic", icon:"mdi:pipe-valve" },
+    { id:"expansion_vessel", labelKey:"legacy.symbol_expansion_vessel", category:"Hydraulik", type:"tank", icon:"mdi:circle-half-full" },
+    { id:"filter_water", labelKey:"legacy.symbol_filter_water", category:"Hydraulik", type:"generic", icon:"mdi:filter-outline" },
 
-    { id:"ahu", label:"RLT-Zentrale", category:"RLT / Lüftung", type:"ahu", icon:"mdi:air-filter" },
-    { id:"fan_supply", label:"Zuluftventilator", category:"RLT / Lüftung", type:"fan", icon:"mdi:fan" },
-    { id:"fan_extract", label:"Abluftventilator", category:"RLT / Lüftung", type:"fan", icon:"mdi:fan-chevron-down" },
-    { id:"damper", label:"Luftklappe", category:"RLT / Lüftung", type:"valve", icon:"mdi:blinds-horizontal" },
-    { id:"air_filter", label:"Luftfilter", category:"RLT / Lüftung", type:"generic", icon:"mdi:air-filter" },
-    { id:"heating_coil", label:"Heizregister", category:"RLT / Lüftung", type:"heat_exchanger", icon:"mdi:radiator" },
-    { id:"cooling_coil", label:"Kühlregister", category:"RLT / Lüftung", type:"heat_exchanger", icon:"mdi:snowflake" },
-    { id:"humidifier", label:"Befeuchter", category:"RLT / Lüftung", type:"generic", icon:"mdi:air-humidifier" },
-    { id:"room_air", label:"Raum / Zone", category:"RLT / Lüftung", type:"room", icon:"mdi:home-thermometer" },
+    { id:"ahu", labelKey:"legacy.symbol_ahu", category:gltText("legacy.category_air"), type:"ahu", icon:"mdi:air-filter" },
+    { id:"fan_supply", labelKey:"legacy.symbol_fan_supply", category:gltText("legacy.category_air"), type:"fan", icon:"mdi:fan" },
+    { id:"fan_extract", labelKey:"legacy.symbol_fan_extract", category:gltText("legacy.category_air"), type:"fan", icon:"mdi:fan-chevron-down" },
+    { id:"damper", labelKey:"legacy.symbol_damper", category:gltText("legacy.category_air"), type:"valve", icon:"mdi:blinds-horizontal" },
+    { id:"air_filter", labelKey:"legacy.symbol_air_filter", category:gltText("legacy.category_air"), type:"generic", icon:"mdi:air-filter" },
+    { id:"heating_coil", labelKey:"legacy.symbol_heating_coil", category:gltText("legacy.category_air"), type:"heat_exchanger", icon:"mdi:radiator" },
+    { id:"cooling_coil", labelKey:"legacy.symbol_cooling_coil", category:gltText("legacy.category_air"), type:"heat_exchanger", icon:"mdi:snowflake" },
+    { id:"humidifier", labelKey:"legacy.symbol_humidifier", category:gltText("legacy.category_air"), type:"generic", icon:"mdi:air-humidifier" },
+    { id:"room_air", labelKey:"legacy.symbol_room_air", category:gltText("legacy.category_air"), type:"room", icon:"mdi:home-thermometer" },
 
-    { id:"chiller", label:"Kältemaschine", category:"Kälte", type:"heat_pump", icon:"mdi:snowflake-thermometer" },
-    { id:"cooling_tower", label:"Kühlturm", category:"Kälte", type:"generic", icon:"mdi:coolant-temperature" },
-    { id:"cooling_buffer", label:"Kältepuffer", category:"Kälte", type:"tank", icon:"mdi:storage-tank" },
-    { id:"fancoil_cooling", label:"Fan-Coil", category:"Kälte", type:"fan", icon:"mdi:hvac" },
+    { id:"chiller", labelKey:"legacy.symbol_chiller", category:gltText("legacy.category_cooling"), type:"heat_pump", icon:"mdi:snowflake-thermometer" },
+    { id:"cooling_tower", labelKey:"legacy.symbol_cooling_tower", category:gltText("legacy.category_cooling"), type:"generic", icon:"mdi:coolant-temperature" },
+    { id:"cooling_buffer", labelKey:"legacy.symbol_cooling_buffer", category:gltText("legacy.category_cooling"), type:"tank", icon:"mdi:storage-tank" },
+    { id:"fancoil_cooling", labelKey:"legacy.symbol_fancoil_cooling", category:gltText("legacy.category_cooling"), type:"fan", icon:"mdi:hvac" },
 
-    { id:"pv_array", label:"PV-Anlage", category:"Energie", type:"pv", icon:"mdi:solar-power-variant" },
-    { id:"solar_thermal", label:"Solarthermie", category:"Energie", type:"solar", icon:"mdi:solar-panel-large" },
-    { id:"battery", label:"Batteriespeicher", category:"Energie", type:"generic", icon:"mdi:battery-charging-high" },
-    { id:"grid", label:"Stromnetz", category:"Energie", type:"grid", icon:"mdi:transmission-tower" },
-    { id:"meter", label:"Energiezähler", category:"Energie", type:"meter", icon:"mdi:meter-electric-outline" },
-    { id:"wallbox", label:"Wallbox", category:"Energie", type:"generic", icon:"mdi:ev-station" },
+    { id:"pv_array", labelKey:"legacy.symbol_pv_array", category:"Energie", type:"pv", icon:"mdi:solar-power-variant" },
+    { id:"solar_thermal", labelKey:"legacy.symbol_solar_thermal", category:"Energie", type:"solar", icon:"mdi:solar-panel-large" },
+    { id:"battery", labelKey:"legacy.symbol_battery", category:"Energie", type:"generic", icon:"mdi:battery-charging-high" },
+    { id:"grid", labelKey:"legacy.symbol_grid", category:"Energie", type:"grid", icon:"mdi:transmission-tower" },
+    { id:"meter", labelKey:"legacy.symbol_meter", category:"Energie", type:"meter", icon:"mdi:meter-electric-outline" },
+    { id:"wallbox", labelKey:"legacy.symbol_wallbox", category:"Energie", type:"generic", icon:"mdi:ev-station" },
 
-    { id:"temp_sensor", label:"Temperaturfühler", category:"Sensorik", type:"meter", icon:"mdi:thermometer" },
-    { id:"pressure_sensor", label:"Drucksensor", category:"Sensorik", type:"meter", icon:"mdi:gauge" },
-    { id:"flow_sensor", label:"Volumenstrom", category:"Sensorik", type:"meter", icon:"mdi:waves-arrow-right" },
-    { id:"humidity_sensor", label:"Feuchtefühler", category:"Sensorik", type:"meter", icon:"mdi:water-percent" },
-    { id:"co2_sensor", label:"CO₂-Sensor", category:"Sensorik", type:"meter", icon:"mdi:molecule-co2" },
-    { id:"room_sensor", label:"Raumsensor", category:"Sensorik", type:"room", icon:"mdi:home-thermometer-outline" },
+    { id:"temp_sensor", labelKey:"legacy.symbol_temp_sensor", category:"Sensorik", type:"meter", icon:"mdi:thermometer" },
+    { id:"pressure_sensor", labelKey:"legacy.symbol_pressure_sensor", category:"Sensorik", type:"meter", icon:"mdi:gauge" },
+    { id:"flow_sensor", labelKey:"legacy.symbol_flow_sensor", category:"Sensorik", type:"meter", icon:"mdi:waves-arrow-right" },
+    { id:"humidity_sensor", labelKey:"legacy.symbol_humidity_sensor", category:"Sensorik", type:"meter", icon:"mdi:water-percent" },
+    { id:"co2_sensor", labelKey:"legacy.symbol_co2_sensor", category:"Sensorik", type:"meter", icon:"mdi:molecule-co2" },
+    { id:"room_sensor", labelKey:"legacy.symbol_room_sensor", category:"Sensorik", type:"room", icon:"mdi:home-thermometer-outline" },
 
-    { id:"generic_machine", label:"Allgemeine Anlage", category:"Allgemein", type:"generic", icon:"mdi:cube-outline" },
-    { id:"custom_image", label:"Eigenes Symbol / Bild", category:"Allgemein", type:"image", icon:"mdi:image-outline" }
+    { id:"generic_machine", labelKey:"legacy.symbol_generic_machine", category:"Allgemein", type:"generic", icon:"mdi:cube-outline" },
+    { id:"custom_image", labelKey:"legacy.symbol_custom_image", category:"Allgemein", type:"image", icon:"mdi:image-outline" }
   ];
   function symbolById(id,type){
     return SYMBOL_LIBRARY.find(item=>item.id===id) || SYMBOL_LIBRARY.find(item=>item.type===type) || { id:type||"generic_machine", label:type||"Anlage", type:type||"generic", icon:EQUIPMENT_ICONS[type]||EQUIPMENT_ICONS.generic, category:"Allgemein" };
   }
 
   const MEDIUMS = {
-    heating_supply: { color: "#ef4444", label: "Vorlauf" },
-    heating_return: { color: "#3b82f6", label: "Rücklauf" },
-    cooling_supply: { color: "#06b6d4", label: "Kaltwasser" },
-    cooling_return: { color: "#8b5cf6", label: "Kühl-Rücklauf" },
-    dhw: { color: "#f97316", label: "Warmwasser" },
-    cold_water: { color: "#0ea5e9", label: "Kaltwasser" },
-    source: { color: "#22c55e", label: "Quelle" },
-    air_supply: { color: "#ec4899", label: "Zuluft" },
-    air_extract: { color: "#f59e0b", label: "Abluft" },
-    air_outdoor: { color: "#84cc16", label: "Außenluft" },
-    air_exhaust: { color: "#64748b", label: "Fortluft" },
-    electrical: { color: "#eab308", label: "Elektrisch" },
-    neutral: { color: "#64748b", label: "Medium" }
+    heating_supply: { color: "#ef4444", labelKey: "legacy.medium_heating_supply" },
+    heating_return: { color: "#3b82f6", labelKey: "legacy.medium_heating_return" },
+    cooling_supply: { color: "#06b6d4", labelKey: "legacy.medium_cooling_supply" },
+    cooling_return: { color: "#8b5cf6", labelKey: "legacy.medium_cooling_return" },
+    dhw: { color: "#f97316", labelKey: "legacy.medium_dhw" },
+    cold_water: { color: "#0ea5e9", labelKey: "legacy.medium_cold_water" },
+    source: { color: "#22c55e", labelKey: "legacy.medium_source" },
+    air_supply: { color: "#ec4899", labelKey: "legacy.medium_air_supply" },
+    air_extract: { color: "#f59e0b", labelKey: "legacy.medium_air_extract" },
+    air_outdoor: { color: "#84cc16", labelKey: "legacy.medium_air_outdoor" },
+    air_exhaust: { color: "#64748b", labelKey: "legacy.medium_air_exhaust" },
+    electrical: { color: "#eab308", labelKey: "legacy.medium_electrical" },
+    neutral: { color: "#64748b", labelKey: "legacy.medium_neutral" }
   };
 
   const TREND_COLORS = [
@@ -159,14 +244,33 @@
     return Number.isFinite(parsed) ? parsed : null;
   }
 
-  function formatDateTime(value, locale = "de-DE") {
-    try {
-      return new Intl.DateTimeFormat(locale, {
-        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"
-      }).format(new Date(value));
-    } catch (_err) {
-      return new Date(value).toLocaleString();
-    }
+  /**
+   * What a formatter shows when it cannot format.
+   *
+   * The previous version fell back to `new Date(value).toLocaleString()` — the
+   * *viewer's* locale — so one screen could carry two date formats and nothing
+   * said which was which. `03/09` and `09/03` are the same instant written two
+   * ways. A refusal is legible; a silently reformatted timestamp is not.
+   */
+  const UNREADABLE_TEXT = "—";
+
+  /**
+   * The shared formatters, read off the SDK at call time.
+   *
+   * This file is concatenated before the v1 bundle and is a plain IIFE, so it
+   * cannot import. Reading at call time is late enough, and sharing one
+   * formatter is the whole point: two formatters is how the two date formats
+   * appeared in the first place.
+   */
+  function sharedFormat() {
+    return window.GLTFlowCardSDK ?? null;
+  }
+
+  function formatDateTime(value, locale) {
+    const sdk = sharedFormat();
+    if (!sdk?.formatDateTime) return UNREADABLE_TEXT;
+    const formatted = sdk.formatDateTime(value, locale);
+    return formatted === sdk.UNREADABLE ? UNREADABLE_TEXT : formatted;
   }
 
   function normalizeConfig(raw) {
@@ -280,6 +384,10 @@
     }
 
     set hass(hass) {
+      // Published so the surfaces that cannot reach a card instance — the
+      // concatenated legacy layers — can resolve a language rather than
+      // guessing one from the browser.
+      if (typeof window !== "undefined") window.__gltCurrentHass = hass;
       this._hass = hass;
       this._queueRender();
     }
@@ -316,8 +424,17 @@
       });
     }
 
+    /**
+     * The locale to format in — from Home Assistant, never from the browser.
+     *
+     * `navigator.language` is what the *reader's* machine is set to, which on a
+     * shared control-room workstation is whoever installed it. Mixing it with
+     * the configured language is how one screen ends up carrying two formats,
+     * and the hardcoded `"de-DE"` was a locale the installation never chose.
+     * Returning nothing makes the formatters refuse, which is visible.
+     */
     _locale() {
-      return this._hass?.locale?.language || navigator.language || "de-DE";
+      return this._hass?.locale?.language || null;
     }
 
     _currentView() {
@@ -400,7 +517,10 @@
       const unit = field.unit !== undefined ? field.unit : this._unit(field);
       if (number !== null) {
         const decimals = field.decimals ?? (Math.abs(number) < 100 ? 1 : 0);
-        return `${number.toLocaleString(this._locale(), { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}${unit ? ` ${unit}` : ""}`;
+        const sdk = sharedFormat();
+        if (!sdk?.formatMeasurement) return UNREADABLE_TEXT;
+        const formatted = sdk.formatMeasurement(number, unit, this._locale(), { decimals });
+        return formatted === sdk.UNREADABLE ? UNREADABLE_TEXT : formatted;
       }
       return String(raw);
     }
@@ -438,46 +558,22 @@
       return Array.from(ids);
     }
 
+    /**
+     * Retired reachable and inert by plan 07-17.
+     *
+     * It reached the Recorder straight from the browser with
+     * `hass.callApi("GET", "history/period/...")`, so the project policy never
+     * saw a history request and no export was audited (D5). It set
+     * `_historyRange` even when nothing came back, presenting an empty map as a
+     * populated window (D1), and requested `minimal_response`, which omits
+     * attributes from every intermediate row (D2).
+     *
+     * History goes through the Companion's `history/*` routes now: declared in
+     * both policy tables, bounded, enumeration-filtered and audited. After this
+     * the browser issues no Recorder request of its own.
+     */
     async _ensureHistory() {
-      if (this._historyLoading || !this._hass?.callApi) return;
-      const ids = this._entityIds();
-      if (!ids.length) return;
-      const now = new Date();
-      const hours = Math.max(this._config.replay.hours || 168, this._config.trend.hours || 168);
-      const start = new Date(now.getTime() - hours * 3600000);
-      if (this._historyRange && this._historyRange.start <= start.getTime() && this._historyRange.end >= now.getTime() - 60000) return;
-
-      this._historyLoading = true;
-      this._historyError = null;
-      this._queueRender();
-      try {
-        const chunks = [];
-        for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
-        const all = [];
-        for (const chunk of chunks) {
-          const path = `history/period/${encodeURIComponent(start.toISOString())}` +
-            `?filter_entity_id=${encodeURIComponent(chunk.join(","))}` +
-            `&end_time=${encodeURIComponent(now.toISOString())}&minimal_response`;
-          const response = await this._hass.callApi("GET", path);
-          if (Array.isArray(response)) all.push(...response);
-        }
-        this._history.clear();
-        all.forEach((series) => {
-          if (!Array.isArray(series) || !series.length) return;
-          const entityId = series[0].entity_id;
-          if (!entityId) return;
-          const sorted = series.slice().sort((a, b) =>
-            new Date(a.last_updated || a.last_changed) - new Date(b.last_updated || b.last_changed));
-          this._history.set(entityId, sorted);
-        });
-        this._historyRange = { start: start.getTime(), end: now.getTime() };
-        if (!this._replayTime) this._replayTime = now;
-      } catch (error) {
-        this._historyError = error?.message || String(error);
-      } finally {
-        this._historyLoading = false;
-        this._queueRender();
-      }
+      return undefined;
     }
 
     _openMoreInfo(entityId) {
@@ -733,7 +829,7 @@
       const online = status.online ? this._isActive(status.online) : true;
       return `<div class="glt-status-block">
         <span class="glt-status-pill ${online ? "ok" : "bad"}"><i></i>${online ? "Online" : "Offline"}</span>
-        ${status.alarm ? `<span class="glt-status-pill ${alarms ? "bad" : "ok"}"><i></i>${alarms ? "Störung" : "Keine Störung"}</span>` : ""}
+        ${status.alarm ? `<span class="glt-status-pill ${alarms ? "bad" : "ok"}"><i></i>${alarms ? gltText("legacy.fault") : gltText("legacy.no_fault")}</span>` : ""}
       </div>`;
     }
 
@@ -864,7 +960,7 @@
           <header class="glt-header">
             <div class="glt-heading">
               <div class="glt-logo"><ha-icon icon="mdi:chart-sankey-variant"></ha-icon></div>
-              <div><h2>${esc(this._config.title)}</h2><span>${esc(this._config.subtitle || "Gebäudeleittechnik · Live-Anlagenbild")}</span></div>
+              <div><h2>${esc(this._config.title)}</h2><span>${esc(this._config.subtitle || gltText("legacy.subtitle"))}</span></div>
             </div>
             ${this._statusMarkup()}
           </header>
@@ -874,7 +970,7 @@
             <div class="glt-tool-actions">
               ${this._config.appearance?.show_switch !== false ? `<div class="glt-style-switch"><button type="button" data-style="neo2030" class="${(this._styleMode || this._config.appearance?.mode || "neo2030") === "neo2030" ? "active" : ""}">Neo 2030</button><button type="button" data-style="clean" class="${(this._styleMode || this._config.appearance?.mode) === "clean" ? "active" : ""}">Clean</button><button type="button" data-style="classic_scada" class="${(this._styleMode || this._config.appearance?.mode) === "classic_scada" ? "active" : ""}">Classic SCADA</button></div>` : ""}
               ${this._config.trend.enabled ? `<button type="button" class="glt-tool-btn ${this._trendOpen ? "active" : ""}" data-action="trend"><ha-icon icon="mdi:chart-line"></ha-icon>Trend</button>` : ""}
-              ${this._config.zoom.controls ? `<button type="button" class="glt-icon-btn" data-action="zoom-out" title="Verkleinern"><ha-icon icon="mdi:magnify-minus-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="fit" title="Ansicht einpassen"><ha-icon icon="mdi:fit-to-screen-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="zoom-in" title="Vergrößern"><ha-icon icon="mdi:magnify-plus-outline"></ha-icon></button>` : ""}
+              ${this._config.zoom.controls ? `<button type="button" class="glt-icon-btn" data-action="zoom-out" title="Verkleinern"><ha-icon icon="mdi:magnify-minus-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="fit" title=gltText("legacy.fit_view")><ha-icon icon="mdi:fit-to-screen-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="zoom-in" title=gltText("legacy.zoom_in")><ha-icon icon="mdi:magnify-plus-outline"></ha-icon></button>` : ""}
             </div>
           </div>
           <div class="glt-viewport" style="height:${this._config.canvas.viewport_height}px" data-kind="${esc(view.kind || "schematic")}"></div>
@@ -1280,9 +1376,9 @@
     _sv(v){let g=Math.max(10,(+this._config.canvas.grid_size||40)/2);return this._snap?Math.round(v/g)*g:Math.round(v)}
     _val(f){f=entityField(f);let s=f?.entity&&this._hass?.states?.[f.entity];if(!s)return"–";let r=f.attribute?s.attributes?.[f.attribute]:s.state,n=numeric(r),u=f.unit??s.attributes?.unit_of_measurement??"";return n!==null?`${n.toFixed(f.decimals??(Math.abs(n)<100?1:0))}${u?` ${u}`:""}`:String(r??"–")}
     _pos(o){return o.positions?.[this._viewId]||o}
-    _items(){let e=SYMBOL_LIBRARY.map(s=>({g:s.category,k:'equipment',t:s.type,s:s.id,n:s.label,i:s.icon}));e.push({g:'Daten & KPI',k:'datapoint',t:'temperature',n:'Temperatur',i:'mdi:thermometer'},{g:'Daten & KPI',k:'datapoint',t:'pressure',n:'Druck',i:'mdi:gauge'},{g:'Daten & KPI',k:'datapoint',t:'flow',n:'Volumenstrom',i:'mdi:waves-arrow-right'},{g:'Daten & KPI',k:'datapoint',t:'value',n:'Datenpunkt',i:'mdi:chart-timeline-variant'},{g:'Daten & KPI',k:'kpi',t:'kpi',n:'KPI / Kennzahl',i:'mdi:view-dashboard-outline'});Object.entries(MEDIUMS).forEach(([t,m])=>e.push({g:'Leitungen',k:'path',t,n:m.label,i:'mdi:vector-polyline',c:m.color}));let q=this._search.toLowerCase();return e.filter(x=>!q||`${x.n} ${x.t} ${x.s||''} ${x.g}`.toLowerCase().includes(q))}
+    _items(){let lang=cardLanguage(this._hass);let e=SYMBOL_LIBRARY.map(s=>({g:s.category,k:'equipment',t:s.type,s:s.id,n:symbolLabel(s,lang),i:s.icon}));e.push({g:'Daten & KPI',k:'datapoint',t:'temperature',n:'Temperatur',i:'mdi:thermometer'},{g:'Daten & KPI',k:'datapoint',t:'pressure',n:'Druck',i:'mdi:gauge'},{g:'Daten & KPI',k:'datapoint',t:'flow',n:'Volumenstrom',i:'mdi:waves-arrow-right'},{g:'Daten & KPI',k:'datapoint',t:'value',n:'Datenpunkt',i:'mdi:chart-timeline-variant'},{g:'Daten & KPI',k:'kpi',t:'kpi',n:'KPI / Kennzahl',i:'mdi:view-dashboard-outline'});Object.entries(MEDIUMS).forEach(([t,m])=>e.push({g:'Leitungen',k:'path',t,n:mediumLabel(m,lang),i:'mdi:vector-polyline',c:m.color}));let q=this._search.toLowerCase();return e.filter(x=>!q||`${x.n} ${x.t} ${x.s||''} ${x.g}`.toLowerCase().includes(q))}
     _palette(){let groups=[...new Set(this._items().map(x=>x.g))];return groups.map(g=>{let a=this._items().filter(x=>x.g===g);return a.length?`<div class="grp">${esc(g)}</div><div class="pg">${a.map(x=>`<div class="pi" draggable="true" data-pk="${x.k}" data-pt="${x.t}" data-ps="${x.s||''}" style="${x.c?`--e:${x.c}`:''}"><span><ha-icon icon="${x.i}"></ha-icon></span><span>${esc(x.n)}</span></div>`).join('')}</div>`:''}).join('')}
-    _node(o){let p=this._pos(o),sel=this._sel?.k==='equipment'&&this._sel.id===o.id,w=p.width||o.width||230,h=p.height||o.height||130,sd=symbolById(o.symbol,o.type),icon=o.image?`<img src="${esc(o.image)}">`:`<ha-icon icon="${esc(o.icon||sd.icon||EQUIPMENT_ICONS[o.type]||EQUIPMENT_ICONS.generic)}"></ha-icon>`,rows=(o.fields||[]).slice(0,2).map(f=>`<div class="row"><span>${esc(f.label||'Wert')}</span><b data-live="${esc(entityField(f.entity||f)?.entity||'')}">${esc(this._val(f.entity||f))}</b></div>`).join('');return`<div class="node ${sel?'sel':''}" data-k="equipment" data-id="${esc(o.id)}" style="left:${p.x||0}px;top:${p.y||0}px;width:${w}px;height:${h}px"><div class="nh"><span class="ic">${icon}</span><span class="nt"><b>${esc(o.name||sd.label||o.id)}</b><small>${esc(o.subtitle||sd.label||o.type||'Bauteil')}</small></span></div>${rows?`<div class="rows">${rows}</div>`:''}${sel?'<span class="rs" data-rs></span>':''}</div>`}
+    _node(o){let p=this._pos(o),sel=this._sel?.k==='equipment'&&this._sel.id===o.id,w=p.width||o.width||230,h=p.height||o.height||130,sd=symbolById(o.symbol,o.type),icon=o.image?`<img src="${esc(o.image)}">`:`<ha-icon icon="${esc(o.icon||sd.icon||EQUIPMENT_ICONS[o.type]||EQUIPMENT_ICONS.generic)}"></ha-icon>`,rows=(o.fields||[]).slice(0,2).map(f=>`<div class="row"><span>${esc(f.label||'Wert')}</span><b data-live="${esc(entityField(f.entity||f)?.entity||'')}">${esc(this._val(f.entity||f))}</b></div>`).join('');return`<div class="node ${sel?'sel':''}" data-k="equipment" data-id="${esc(o.id)}" style="left:${p.x||0}px;top:${p.y||0}px;width:${w}px;height:${h}px"><div class="nh"><span class="ic">${icon}</span><span class="nt"><b>${esc(o.name||symbolLabel(sd,cardLanguage(this._hass))||o.id)}</b><small>${esc(o.subtitle||symbolLabel(sd,cardLanguage(this._hass))||o.type||'Bauteil')}</small></span></div>${rows?`<div class="rows">${rows}</div>`:''}${sel?'<span class="rs" data-rs></span>':''}</div>`}
     _dp(o){let p=o.positions?.[this._viewId]||o,sel=this._sel?.k==='datapoint'&&this._sel.id===o.id,f=o.entity||o,ic=o.kind==='temperature'?'mdi:thermometer':o.kind==='pressure'?'mdi:gauge':o.kind==='flow'?'mdi:waves-arrow-right':'mdi:chart-timeline-variant';return`<div class="dp ${sel?'sel':''}" data-k="datapoint" data-id="${esc(o.id)}" style="left:${p.x||0}px;top:${p.y||0}px"><span class="ic"><ha-icon icon="${ic}"></ha-icon></span><span><small>${esc(o.label||'Datenpunkt')}</small><b data-live="${esc(entityField(f)?.entity||'')}">${esc(this._val(f))}</b></span></div>`}
     _paths(){return`<svg class="paths" viewBox="0 0 ${this._config.canvas.width} ${this._config.canvas.height}">${this._config.paths.map(o=>{let p=Array.isArray(o.points)?o.points:o.points?.[this._viewId]||[];if(p.length<2)return'';let d=p.map((x,i)=>`${i?'L':'M'} ${x[0]} ${x[1]}`).join(' '),m=MEDIUMS[o.medium]||MEDIUMS.neutral,sel=this._sel?.k==='path'&&this._sel.id===o.id,w=+o.width||8;return`<path class="phalo" d="${d}" stroke-width="${w+5}"></path><path class="path" data-k="path" data-id="${o.id}" d="${d}" stroke="${o.color||m.color}" stroke-width="${w}"></path>${sel?p.map((x,i)=>`<circle class="handle" data-hi="${i}" data-id="${o.id}" cx="${x[0]}" cy="${x[1]}" r="8"></circle>`).join(''):''}`}).join('')}</svg>`}
     _canvas(){if(this._preview)return`<div class="preview"><glt-flow-card data-preview></glt-flow-card></div>`;let v=this._view(),w=+this._config.canvas.width||1600,h=+this._config.canvas.height||900,b=v.background?`background-image:url(&quot;${esc(v.background)}&quot;);background-size:${esc(v.background_fit||'cover')};background-repeat:no-repeat;background-position:center;`:'';return`<div class="cw" style="width:${w*this._zoom}px;height:${h*this._zoom}px"><div class="canvas ${this._grid?'':'nogrid'}" data-can style="width:${w}px;height:${h}px;transform:scale(${this._zoom});background-size:${this._config.canvas.grid_size}px ${this._config.canvas.grid_size}px;${b}">${this._paths()}${(v.kind==='image'&&!v.show_equipment?[]:this._config.equipment).map(o=>this._node(o)).join('')}${this._config.datapoints.map(o=>this._dp(o)).join('')}</div></div>`}
@@ -1290,17 +1386,17 @@
     _s(l,v,p,a){return`<div class="f"><label>${esc(l)}</label><select data-e="${p}">${a.map(x=>`<option value="${x[0]}" ${x[0]===v?'selected':''}>${esc(x[1])}</option>`).join('')}</select></div>`}
     _ef(l,v,p,domains=[]){return`<div class="f"><label>${esc(l)}</label><ha-entity-picker data-ep data-e="${p}" data-v="${esc(v||'')}" data-domains="${esc(domains.join(','))}"></ha-entity-picker></div>`}
     _equipmentDomains(o){let t=o?.type||'';if(['fan','ahu'].includes(t))return['fan','switch','binary_sensor','sensor'];if(['room','heating_circuit','radiator','underfloor','fancoil'].includes(t))return['climate','sensor','switch','binary_sensor'];if(['valve','damper'].includes(t))return['valve','cover','switch','binary_sensor','sensor'];if(['pump'].includes(t))return['switch','binary_sensor','sensor','number'];return['switch','binary_sensor','sensor','climate','water_heater','fan','valve','number']}
-    _insp(){let v=this._view(),o=this._obj(),m=this._config.appearance?.mode||'neo2030',base=`<div class="sec"><div class="st">Ansicht <span class="chip">${esc(v.kind||'schematic')}</span></div>${this._f('Name',v.name,'@v.name')}${this._s('Typ',v.kind||'schematic','@v.kind',[['schematic','Anlagenschema'],['image','Anlagenbild']])}${this._f('Hintergrundbild (optional)',v.background||'','@v.background')}</div><div class="sec"><div class="st">Optik <span class="chip">${esc(m)}</span></div>${this._s('Design',m,'@c.appearance.mode',[['neo2030','Neo 2030'],['clean','Clean / Modern Light'],['classic_scada','Classic SCADA']])}</div>`;if(!o)return base+`<div class="sec"><div class="st">Karte <span class="chip">Global</span></div>${this._f('Titel',this._config.title,'@c.title')}<div class="g2">${this._f('Breite',this._config.canvas.width,'@a.width','number')}${this._f('Höhe',this._config.canvas.height,'@a.height','number')}</div></div><div class="help">Bauteile, Leitungen und Datenpunkte links auf die Zeichenfläche ziehen. Entitäten werden direkt aus Home Assistant über den nativen Entity-Picker ausgewählt.</div>`;let p=this._pos(o),body='';if(this._sel.k==='equipment'){o.fields=o.fields||[];while(o.fields.length<2)o.fields.push({label:'',entity:''});body=this._f('Name',o.name,'name')+this._s('Symbol',o.symbol||symbolById(null,o.type).id,'symbol',SYMBOL_LIBRARY.map(x=>[x.id,`${x.category} · ${x.label}`]))+this._s('Typ',o.type,'type',[...new Set(SYMBOL_LIBRARY.map(x=>x.type))].map(x=>[x,x.replaceAll('_',' ')]))+this._ef('Haupt-Entität',entityField(o.entity)?.entity||o.entity||'','entity',this._equipmentDomains(o))+this._ef('Status-Entität',entityField(o.state_entity)?.entity||o.state_entity||'','state_entity',['binary_sensor','switch','sensor'])+this._f('Eigenes Bild / SVG (optional)',o.image||'','image')+`<div class="g2">${this._f('X',p.x,'x','number')}${this._f('Y',p.y,'y','number')}${this._f('Breite',p.width||o.width,'width','number')}${this._f('Höhe',p.height||o.height,'height','number')}</div>`+this._f('Wert 1 Label',o.fields[0].label,'fields.0.label')+this._ef('Wert 1 Entität',entityField(o.fields[0].entity)?.entity||o.fields[0].entity||'','fields.0.entity',['sensor','number','climate','water_heater'])+this._f('Wert 2 Label',o.fields[1].label,'fields.1.label')+this._ef('Wert 2 Entität',entityField(o.fields[1].entity)?.entity||o.fields[1].entity||'','fields.1.entity',['sensor','number','climate','water_heater'])}else if(this._sel.k==='datapoint')body=this._f('Label',o.label,'label')+this._ef('Entität',entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number','climate','water_heater'])+`<div class="g2">${this._f('X in Ansicht',p.x,'x','number')}${this._f('Y in Ansicht',p.y,'y','number')}</div><div class="help">Der Datenpunkt kann im Schema und im Anlagenfoto separat positioniert werden.</div>`;else if(this._sel.k==='path')body=this._s('Medium',o.medium||'neutral','medium',Object.entries(MEDIUMS).map(([k,x])=>[k,x.label]))+this._ef('Aktiv / Fluss',entityField(o.flow)?.entity||o.flow||'','flow',['binary_sensor','switch','fan','sensor','number','valve'])+this._ef('Temperatur / Wert',entityField(o.temperature)?.entity||o.temperature||'','temperature',['sensor','number','climate'])+`<div class="g2">${this._f('Breite',o.width||8,'width','number')}${this._f('Geschwindigkeit',o.speed||1.3,'speed','number')}</div><div class="acts"><button class="act" data-act="addpoint">Punkt hinzufügen</button></div>`;else body=this._f('KPI Name',o.name,'name')+this._ef('Entität',entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number']);return base+`<div class="sec"><div class="st">${this._sel.k} <span class="chip">${o.id}</span></div>${body}</div><div class="acts"><button class="act" data-act="dup">Duplizieren</button><button class="act" data-act="del">Löschen</button></div>`}
-    _render(){if(!this.shadowRoot)return;let v=this._view(),mode=this._config.appearance?.mode||'neo2030',entityCount=Object.keys(this._hass?.states||{}).length;this.shadowRoot.innerHTML=`<style>${EDITOR_STYLES}</style><div class="de"><div class="dt"><div class="brand"><i><ha-icon icon="mdi:vector-square-edit"></ha-icon></i><span><b>GLT Flow Card Designer</b><small>Neo 2030 · Drag & Drop · ${esc(v?.name||'Anlage')}</small></span></div><div class="tools"><div class="seg"><button data-style="neo2030" class="${mode==='neo2030'?'on':''}">Neo 2030</button><button data-style="clean" class="${mode==='clean'?'on':''}">Clean</button><button data-style="classic_scada" class="${mode==='classic_scada'?'on':''}">Classic SCADA</button></div><button class="tb" data-act="undo" ${this._undoS.length?'':'disabled'}>↶ Undo</button><button class="tb" data-act="redo" ${this._redoS.length?'':'disabled'}>↷ Redo</button><button class="tb ${this._snap?'on':''}" data-act="snap">Snap</button><button class="tb ${this._grid?'on':''}" data-act="grid">Raster</button><button class="tb ${this._preview?'on':''}" data-act="preview">Vorschau</button><button class="tb ${this._yamlOpen?'on':''}" data-act="yaml">YAML</button></div></div><div class="work"><aside class="left"><div class="ph">Bausteine <span class="chip">${SYMBOL_LIBRARY.length}+ Symbole</span></div><div class="search"><input data-search placeholder="Bauteil oder Symbol suchen…" value="${esc(this._search)}"></div><div class="pal">${this._palette()}</div></aside><main class="center"><div class="vb"><div class="views">${this._config.views.map(x=>`<button class="tab ${x.id===this._viewId?'on':''}" data-view="${x.id}">${esc(x.name||x.id)}</button>`).join('')}<button class="mini" data-act="addview">＋</button></div><div class="tools"><span class="entity-stat">${entityCount?`${entityCount} HA-Entities verfügbar`:'HA-Entities werden geladen'}</span><button class="mini" data-act="zout">−</button><button class="mini" data-act="fit">Fit</button><button class="mini" data-act="zin">＋</button></div></div><div class="stage" data-stage>${this._canvas()}</div></main><aside class="right"><div class="ph">Eigenschaften <span class="chip">${this._sel?this._sel.k:'Ansicht'}</span></div><div class="insp">${this._insp()}</div></aside></div>${this._yamlOpen?`<div class="drawer"><div class="drawer-head"><b>Lovelace YAML</b><div class="tools"><span class="notice">Direkt in eine manuelle Dashboard-Karte kopierbar</span><button class="act" data-act="copyyaml">${this._copied?'Kopiert ✓':'YAML kopieren'}</button></div></div><pre class="yaml">${esc(configToYaml(this._config))}</pre></div>`:''}<div class="bottom"><span>Änderungen werden direkt in die Kartenkonfiguration übernommen · Entity-Auswahl aus Home Assistant</span><span>${Math.round(this._zoom*100)} %</span></div></div>`;this._bind();requestAnimationFrame(()=>{this._wireEntityPickers();this._live();this._wirePreview()})}
+    _insp(){let v=this._view(),o=this._obj(),m=this._config.appearance?.mode||'neo2030',base=`<div class="sec"><div class="st">Ansicht <span class="chip">${esc(v.kind||'schematic')}</span></div>${this._f('Name',v.name,'@v.name')}${this._s('Typ',v.kind||'schematic','@v.kind',[['schematic','Anlagenschema'],['image','Anlagenbild']])}${this._f('Hintergrundbild (optional)',v.background||'','@v.background')}</div><div class="sec"><div class="st">Optik <span class="chip">${esc(m)}</span></div>${this._s('Design',m,'@c.appearance.mode',[['neo2030',gltText("symbols.style_neo2030")],['clean',gltText("legacy.style_clean_light")],['classic_scada',gltText("symbols.style_classic_scada")]])}</div>`;if(!o)return base+`<div class="sec"><div class="st">Karte <span class="chip">Global</span></div>${this._f('Titel',this._config.title,'@c.title')}<div class="g2">${this._f('Breite',this._config.canvas.width,'@a.width','number')}${this._f(gltText("legacy.height"),this._config.canvas.height,'@a.height','number')}</div></div><div class="help">Bauteile, Leitungen und Datenpunkte links auf die Zeichenfläche ziehen. Entitäten werden direkt aus Home Assistant über den nativen Entity-Picker ausgewählt.</div>`;let p=this._pos(o),body='';if(this._sel.k==='equipment'){o.fields=o.fields||[];while(o.fields.length<2)o.fields.push({label:'',entity:''});body=this._f('Name',o.name,'name')+this._s('Symbol',o.symbol||symbolById(null,o.type).id,'symbol',SYMBOL_LIBRARY.map(x=>[x.id,`${x.category} · ${symbolLabel(x,cardLanguage(this._hass))}`]))+this._s('Typ',o.type,'type',[...new Set(SYMBOL_LIBRARY.map(x=>x.type))].map(x=>[x,x.replaceAll('_',' ')]))+this._ef(gltText("legacy.main_entity"),entityField(o.entity)?.entity||o.entity||'','entity',this._equipmentDomains(o))+this._ef(gltText("legacy.state_entity"),entityField(o.state_entity)?.entity||o.state_entity||'','state_entity',['binary_sensor','switch','sensor'])+this._f(gltText("legacy.custom_image_optional"),o.image||'','image')+`<div class="g2">${this._f('X',p.x,'x','number')}${this._f('Y',p.y,'y','number')}${this._f('Breite',p.width||o.width,'width','number')}${this._f(gltText("legacy.height"),p.height||o.height,'height','number')}</div>`+this._f(gltText("legacy.value1_label"),o.fields[0].label,'fields.0.label')+this._ef(gltText("legacy.value1_entity"),entityField(o.fields[0].entity)?.entity||o.fields[0].entity||'','fields.0.entity',['sensor','number','climate','water_heater'])+this._f(gltText("legacy.value2_label"),o.fields[1].label,'fields.1.label')+this._ef(gltText("legacy.value2_entity"),entityField(o.fields[1].entity)?.entity||o.fields[1].entity||'','fields.1.entity',['sensor','number','climate','water_heater'])}else if(this._sel.k==='datapoint')body=this._f('Label',o.label,'label')+this._ef(gltText("legacy.entity"),entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number','climate','water_heater'])+`<div class="g2">${this._f(gltText("legacy.x_in_view"),p.x,'x','number')}${this._f(gltText("legacy.y_in_view"),p.y,'y','number')}</div><div class="help">Der Datenpunkt kann im Schema und im Anlagenfoto separat positioniert werden.</div>`;else if(this._sel.k==='path')body=this._s('Medium',o.medium||'neutral','medium',Object.entries(MEDIUMS).map(([k,x])=>[k,mediumLabel(x,cardLanguage(this._hass))]))+this._ef('Aktiv / Fluss',entityField(o.flow)?.entity||o.flow||'','flow',['binary_sensor','switch','fan','sensor','number','valve'])+this._ef('Temperatur / Wert',entityField(o.temperature)?.entity||o.temperature||'','temperature',['sensor','number','climate'])+`<div class="g2">${this._f('Breite',o.width||8,'width','number')}${this._f('Geschwindigkeit',o.speed||1.3,'speed','number')}</div><div class="acts"><button class="act" data-act="addpoint">Punkt hinzufügen</button></div>`;else body=this._f('KPI Name',o.name,'name')+this._ef(gltText("legacy.entity"),entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number']);return base+`<div class="sec"><div class="st">${this._sel.k} <span class="chip">${o.id}</span></div>${body}</div><div class="acts"><button class="act" data-act="dup">Duplizieren</button><button class="act" data-act="del">Löschen</button></div>`}
+    _render(){if(!this.shadowRoot)return;let v=this._view(),mode=this._config.appearance?.mode||'neo2030',entityCount=Object.keys(this._hass?.states||{}).length;this.shadowRoot.innerHTML=`<style>${EDITOR_STYLES}</style><div class="de"><div class="dt"><div class="brand"><i><ha-icon icon="mdi:vector-square-edit"></ha-icon></i><span><b>GLT Flow Card Designer</b><small>Neo 2030 · Drag & Drop · ${esc(v?.name||'Anlage')}</small></span></div><div class="tools"><div class="seg"><button data-style="neo2030" class="${mode==='neo2030'?'on':''}">Neo 2030</button><button data-style="clean" class="${mode==='clean'?'on':''}">Clean</button><button data-style="classic_scada" class="${mode==='classic_scada'?'on':''}">Classic SCADA</button></div><button class="tb" data-act="undo" ${this._undoS.length?'':'disabled'}>↶ Undo</button><button class="tb" data-act="redo" ${this._redoS.length?'':'disabled'}>↷ Redo</button><button class="tb ${this._snap?'on':''}" data-act="snap">Snap</button><button class="tb ${this._grid?'on':''}" data-act="grid">Raster</button><button class="tb ${this._preview?'on':''}" data-act="preview">Vorschau</button><button class="tb ${this._yamlOpen?'on':''}" data-act="yaml">YAML</button></div></div><div class="work"><aside class="left"><div class="ph">Bausteine <span class="chip">${SYMBOL_LIBRARY.length}+ Symbole</span></div><div class="search"><input data-search placeholder=gltText("legacy.search_component") value="${esc(this._search)}"></div><div class="pal">${this._palette()}</div></aside><main class="center"><div class="vb"><div class="views">${this._config.views.map(x=>`<button class="tab ${x.id===this._viewId?'on':''}" data-view="${x.id}">${esc(x.name||x.id)}</button>`).join('')}<button class="mini" data-act="addview">＋</button></div><div class="tools"><span class="entity-stat">${entityCount?`${entityCount} HA-Entities verfügbar`:gltText("legacy.loading_entities")}</span><button class="mini" data-act="zout">−</button><button class="mini" data-act="fit">Fit</button><button class="mini" data-act="zin">＋</button></div></div><div class="stage" data-stage>${this._canvas()}</div></main><aside class="right"><div class="ph">Eigenschaften <span class="chip">${this._sel?this._sel.k:'Ansicht'}</span></div><div class="insp">${this._insp()}</div></aside></div>${this._yamlOpen?`<div class="drawer"><div class="drawer-head"><b>Lovelace YAML</b><div class="tools"><span class="notice">Direkt in eine manuelle Dashboard-Karte kopierbar</span><button class="act" data-act="copyyaml">${this._copied?'Kopiert ✓':'YAML kopieren'}</button></div></div><pre class="yaml">${esc(configToYaml(this._config))}</pre></div>`:''}<div class="bottom"><span>Änderungen werden direkt in die Kartenkonfiguration übernommen · Entity-Auswahl aus Home Assistant</span><span>${Math.round(this._zoom*100)} %</span></div></div>`;this._bind();requestAnimationFrame(()=>{this._wireEntityPickers();this._live();this._wirePreview()})}
     _wirePreview(){let p=this.shadowRoot?.querySelector('[data-preview]');if(p){p.hass=this._hass;p.setConfig?.(deepClone(this._config))}}
     _wireEntityPickers(){this.shadowRoot?.querySelectorAll('[data-ep]').forEach(p=>{p.hass=this._hass;p.value=p.dataset.v||'';p.allowCustomEntity=true;let d=(p.dataset.domains||'').split(',').filter(Boolean);if(d.length)p.includeDomains=d;if(!p.dataset.bound){p.dataset.bound='1';p.addEventListener('value-changed',e=>{let value=e.detail?.value??'';this._entityEdit(p.dataset.e,value)})}})}
     _entityEdit(path,value){this._remember();if(path.startsWith('@'))return;let o=this._obj();if(!o)return;this._set(o,path,value);this._emit();this._render()}
     _bind(){let r=this.shadowRoot,st=r.querySelector('[data-stage]'),c=r.querySelector('[data-can]');r.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>this._act(b.dataset.act));r.querySelectorAll('[data-style]').forEach(b=>b.onclick=()=>{this._remember();this._config.appearance={...(this._config.appearance||{}),mode:b.dataset.style};this._emit();this._render()});r.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{this._viewId=b.dataset.view;this._sel=null;this._render()});let search=r.querySelector('[data-search]');if(search)search.oninput=e=>{this._search=e.target.value;this._render()};r.querySelectorAll('[data-e]').forEach(i=>i.onchange=()=>this._edit(i));r.querySelectorAll('[data-pk]').forEach(i=>i.ondragstart=e=>e.dataTransfer.setData('text/glt',JSON.stringify({k:i.dataset.pk,t:i.dataset.pt,s:i.dataset.ps||''})));if(c&&!this._preview){st.ondragover=e=>{e.preventDefault();st.classList.add('over')};st.ondragleave=()=>st.classList.remove('over');st.ondrop=e=>this._drop(e,c);r.querySelectorAll('[data-k="equipment"],[data-k="datapoint"]').forEach(n=>{n.onpointerdown=e=>{if(e.target.closest('[data-rs]'))return;e.stopPropagation();this._start(e,n.dataset.k,n.dataset.id,'move')};n.onclick=e=>{e.stopPropagation();this._sel={k:n.dataset.k,id:n.dataset.id};this._render()}});r.querySelectorAll('[data-rs]').forEach(h=>h.onpointerdown=e=>{e.stopPropagation();let n=h.closest('[data-k]');this._start(e,'equipment',n.dataset.id,'resize')});r.querySelectorAll('[data-k="path"]').forEach(p=>p.onclick=e=>{e.stopPropagation();this._sel={k:'path',id:p.dataset.id};this._render()});r.querySelectorAll('[data-hi]').forEach(h=>h.onpointerdown=e=>{e.stopPropagation();this._start(e,'path',h.dataset.id,'point',+h.dataset.hi)})}}
     _act(a){if(a==='undo')return this._undo();if(a==='redo')return this._redo();if(a==='snap'){this._snap=!this._snap;return this._render()}if(a==='grid'){this._grid=!this._grid;this._config.canvas.grid=this._grid;this._emit();return this._render()}if(a==='preview'){this._preview=!this._preview;return this._render()}if(a==='yaml'){this._yamlOpen=!this._yamlOpen;this._copied=false;return this._render()}if(a==='copyyaml'){navigator.clipboard?.writeText(configToYaml(this._config));this._copied=true;return this._render()}if(a==='zin'){this._zoom=clamp(this._zoom*1.15,.25,2);return this._render()}if(a==='zout'){this._zoom=clamp(this._zoom/1.15,.25,2);return this._render()}if(a==='fit'){let s=this.shadowRoot.querySelector('[data-stage]');if(!s)return;this._zoom=clamp(Math.min((s.clientWidth-40)/this._config.canvas.width,(s.clientHeight-40)/this._config.canvas.height),.25,1.4);return this._render()}if(a==='addview'){this._remember();let n=1,id=`view_${n}`,ids=new Set(this._config.views.map(v=>v.id));while(ids.has(id))id=`view_${++n}`;this._config.views.push({id,name:'Anlagenbild',kind:'image',background:''});this._viewId=id;this._emit();return this._render()}if(a==='del')return this._del();if(a==='dup')return this._dup();if(a==='addpoint'){let o=this._obj(),p=Array.isArray(o?.points)?o.points:null;if(p?.length){this._remember();let z=p.at(-1);p.push([this._sv(z[0]+120),z[1]]);this._emit();this._render()}}}
-    _drop(e,c){e.preventDefault();let d;try{d=JSON.parse(e.dataTransfer.getData('text/glt'))}catch{return}let q=c.getBoundingClientRect(),x=this._sv((e.clientX-q.left)/this._zoom),y=this._sv((e.clientY-q.top)/this._zoom);this._remember();if(d.k==='equipment'){let sd=symbolById(d.s,d.t),id=this._id(sd.type||d.t),small=['pump','fan','valve','damper','meter','sensor'].includes(sd.type);this._config.equipment.push({id,type:sd.type||d.t,symbol:sd.id,name:sd.label||d.t.replaceAll('_',' '),x:x-(small?70:110),y:y-50,width:small?140:220,height:small?100:135,fields:[]});this._sel={k:'equipment',id}}else if(d.k==='datapoint'){let id=this._id('dp');this._config.datapoints.push({id,kind:d.t,label:d.t==='temperature'?'Temperatur':d.t==='pressure'?'Druck':d.t==='flow'?'Volumenstrom':'Datenpunkt',entity:'',positions:{[this._viewId]:{x,y}}});this._sel={k:'datapoint',id}}else if(d.k==='path'){let id=this._id('path');this._config.paths.push({id,medium:d.t,width:8,points:[[x-150,y],[x,y],[x+150,y]]});this._sel={k:'path',id}}else{let id=this._id('kpi');this._config.kpis.push({id,name:'KPI',entity:''});this._sel={k:'kpi',id}}this._emit();this._render()}
+    _drop(e,c){e.preventDefault();let d;try{d=JSON.parse(e.dataTransfer.getData('text/glt'))}catch{return}let q=c.getBoundingClientRect(),x=this._sv((e.clientX-q.left)/this._zoom),y=this._sv((e.clientY-q.top)/this._zoom);this._remember();if(d.k==='equipment'){let sd=symbolById(d.s,d.t),id=this._id(sd.type||d.t),small=['pump','fan','valve','damper','meter','sensor'].includes(sd.type);this._config.equipment.push({id,type:sd.type||d.t,symbol:sd.id,name:symbolLabel(sd,cardLanguage(this._hass))||d.t.replaceAll('_',' '),x:x-(small?70:110),y:y-50,width:small?140:220,height:small?100:135,fields:[]});this._sel={k:'equipment',id}}else if(d.k==='datapoint'){let id=this._id('dp');this._config.datapoints.push({id,kind:d.t,label:d.t==='temperature'?'Temperatur':d.t==='pressure'?'Druck':d.t==='flow'?'Volumenstrom':'Datenpunkt',entity:'',positions:{[this._viewId]:{x,y}}});this._sel={k:'datapoint',id}}else if(d.k==='path'){let id=this._id('path');this._config.paths.push({id,medium:d.t,width:8,points:[[x-150,y],[x,y],[x+150,y]]});this._sel={k:'path',id}}else{let id=this._id('kpi');this._config.kpis.push({id,name:'KPI',entity:''});this._sel={k:'kpi',id}}this._emit();this._render()}
     _start(e,k,id,m,hi=null){let o=(k==='equipment'?this._config.equipment:k==='datapoint'?this._config.datapoints:this._config.paths).find(x=>x.id===id);if(!o)return;this._remember();this._sel={k,id};let p=k==='datapoint'?(o.positions?.[this._viewId]||{x:o.x||0,y:o.y||0}):o,pts=k==='path'?o.points:null;this._drag={k,id,m,hi,sx:e.clientX,sy:e.clientY,x:+p.x||0,y:+p.y||0,w:+(p.width||o.width||220),h:+(p.height||o.height||130),pt:hi!==null&&pts?[...pts[hi]]:null};let mv=v=>this._move(v),up=()=>{window.removeEventListener('pointermove',mv);this._drag=null;this._emit();this._render()};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up,{once:true})}
     _move(e){let d=this._drag;if(!d)return;let dx=(e.clientX-d.sx)/this._zoom,dy=(e.clientY-d.sy)/this._zoom;if(d.k==='equipment'){let o=this._config.equipment.find(x=>x.id===d.id);if(d.m==='move'){o.x=this._sv(d.x+dx);o.y=this._sv(d.y+dy)}else{o.width=Math.max(90,this._sv(d.w+dx));o.height=Math.max(70,this._sv(d.h+dy))}}else if(d.k==='datapoint'){let o=this._config.datapoints.find(x=>x.id===d.id);o.positions=o.positions||{};o.positions[this._viewId]={x:this._sv(d.x+dx),y:this._sv(d.y+dy)}}else{let o=this._config.paths.find(x=>x.id===d.id);if(o?.points?.[d.hi])o.points[d.hi]=[this._sv(d.pt[0]+dx),this._sv(d.pt[1]+dy)]}this._render()}
-    _edit(i){let p=i.dataset.e,v=i.type==='number'?+i.value:i.value;this._remember();if(p.startsWith('@v.'))this._set(this._view(),p.slice(3),v);else if(p.startsWith('@c.'))this._set(this._config,p.slice(3),v);else if(p.startsWith('@a.'))this._set(this._config.canvas,p.slice(3),v);else{let o=this._obj();if(!o)return;if(this._sel.k==='datapoint'&&['x','y'].includes(p)){o.positions=o.positions||{};o.positions[this._viewId]=o.positions[this._viewId]||{x:0,y:0};o.positions[this._viewId][p]=v}else{this._set(o,p,v);if(p==='symbol'){let sd=symbolById(v,o.type);o.type=sd.type||o.type;o.name=o.name||sd.label}}}this._emit();this._render()}
+    _edit(i){let p=i.dataset.e,v=i.type==='number'?+i.value:i.value;this._remember();if(p.startsWith('@v.'))this._set(this._view(),p.slice(3),v);else if(p.startsWith('@c.'))this._set(this._config,p.slice(3),v);else if(p.startsWith('@a.'))this._set(this._config.canvas,p.slice(3),v);else{let o=this._obj();if(!o)return;if(this._sel.k==='datapoint'&&['x','y'].includes(p)){o.positions=o.positions||{};o.positions[this._viewId]=o.positions[this._viewId]||{x:0,y:0};o.positions[this._viewId][p]=v}else{this._set(o,p,v);if(p==='symbol'){let sd=symbolById(v,o.type);o.type=sd.type||o.type;o.name=o.name||symbolLabel(sd,cardLanguage(this._hass))}}}this._emit();this._render()}
     _set(o,p,v){let a=p.split('.'),c=o;for(let i=0;i<a.length-1;i++){if(c[a[i]]==null)c[a[i]]=/^\d+$/.test(a[i+1])?[]:{};c=c[a[i]]}c[a.at(-1)]=v}
     _del(){if(!this._sel)return;this._remember();let k={equipment:'equipment',datapoint:'datapoints',path:'paths',kpi:'kpis'}[this._sel.k];this._config[k]=this._config[k].filter(x=>x.id!==this._sel.id);this._sel=null;this._emit();this._render()}
     _dup(){let o=this._obj();if(!o)return;this._remember();let n=deepClone(o),k=this._sel.k;n.id=this._id(k);if(k==='equipment'){n.x=(n.x||0)+40;n.y=(n.y||0)+40;this._config.equipment.push(n)}else if(k==='datapoint'){Object.values(n.positions||{}).forEach(p=>{p.x+=40;p.y+=40});this._config.datapoints.push(n)}else if(k==='path'){n.points=n.points.map(p=>[p[0]+40,p[1]+40]);this._config.paths.push(n)}else this._config.kpis.push(n);this._sel={k,id:n.id};this._emit();this._render()}
@@ -4608,13 +4704,29 @@
     function canDesign(config, hass) {
       return roleFor(config, hass) === "designer";
     }
+    /* Retired in Phase 6, reachable and inert.
+     *
+     * This was a string-membership test with no operator, no threshold, no
+     * hysteresis and no delay, so it disagreed with the Companion for every
+     * alarm that has a condition -- a flow temperature of 55 against a limit of
+     * 80 read as active, because "55" was not in its inactive list. It was one
+     * of four derivations of "is this alarm active" in the product, and they
+     * disagreed with each other.
+     *
+     * The Companion evaluates now, and every surface renders what it evaluated.
+     * The entry point stays so a test can prove the replacement rather than
+     * prove the absence of something nothing checks -- the same retirement
+     * Phase 5 gave the midpoint router.
+     *
+     * It reads the state the Companion published and derives nothing. Absent
+     * state answers "not active", because a card that has not yet been told is
+     * a card that does not know.
+     */
     function activeAlarm(card, alarm) {
-      const st = card._stateAt?.(field(alarm.entity)?.entity);
-      if (!st) return false;
-      const raw = String(st.state ?? "").toLowerCase();
-      const inactive = alarm.inactive_states || ["off", "0", "ok", "normal", "none", "idle", "clear", "unavailable", "unknown"];
-      if (Array.isArray(alarm.active_states) && alarm.active_states.length) return alarm.active_states.map(String).map((x) => x.toLowerCase()).includes(raw);
-      return !inactive.map(String).map((x) => x.toLowerCase()).includes(raw);
+      const published = card._alarmState;
+      if (!published) return false;
+      const row = published[String(alarm.id)];
+      return Boolean(row && row.active);
     }
     function equipmentPos(config, id, viewId) {
       const item = config.equipment.find((x) => x.id === id);
@@ -4622,26 +4734,110 @@
       const p = item.positions?.[viewId] || item;
       return { x: +p.x || 0, y: +p.y || 0, width: +(p.width || item.width || 220), height: +(p.height || item.height || 130) };
     }
+    /**
+     * Route one connection with the Phase-5 router.
+     *
+     * What this replaces was the elbow through the midpoint: out to half the
+     * horizontal distance, across, and in. It ignored every obstacle in the
+     * room, which is why the Phase-5 corpus was built to defeat it.
+     *
+     * When the router is not published, this refuses and leaves the existing
+     * points alone. Falling back to the old shape would put a pipe through a
+     * chiller in exactly the situation nobody is watching.
+     */
     function autoRoute(config, path, viewId) {
       if (!path?.from_equipment || !path?.to_equipment || path.auto_route === false) return path?.points;
+      const routing = globalThis.GLT_FLOW_CARD_ROUTING;
+      if (!routing) return path.points;
       const a = equipmentPos(config, path.from_equipment, viewId);
       const b = equipmentPos(config, path.to_equipment, viewId);
       if (!a || !b) return path.points;
-      const leftToRight = a.x + a.width / 2 <= b.x + b.width / 2;
-      const sx = leftToRight ? a.x + a.width : a.x;
-      const ex = leftToRight ? b.x : b.x + b.width;
-      const sy = a.y + a.height / 2;
-      const ey = b.y + b.height / 2;
-      const mx = Math.round((sx + ex) / 2);
-      return [[Math.round(sx), Math.round(sy)], [mx, Math.round(sy)], [mx, Math.round(ey)], [Math.round(ex), Math.round(ey)]];
+      const clearance = Number(config.routing?.clearance) || routing.DEFAULT_CLEARANCE;
+      const obstacles = [];
+      for (const item of config.equipment || []) {
+        if (item.id === path.from_equipment || item.id === path.to_equipment) continue;
+        const box = equipmentPos(config, item.id, viewId);
+        if (box) obstacles.push({ id: item.id, x: box.x, y: box.y, width: box.width, height: box.height });
+      }
+      const facing = (from, to) => (from.x + from.width / 2 <= to.x + to.width / 2 ? "right" : "left");
+      const routed = routing.routePath({
+        source: { x: a.x, y: a.y, width: a.width, height: a.height, side: facing(a, b) },
+        target: { x: b.x, y: b.y, width: b.width, height: b.height, side: facing(b, a) },
+        obstacles,
+        options: { clearance },
+      });
+      // An explicit refusal keeps the drawing as it was and records why, rather
+      // than drawing a route the router just said does not exist.
+      if (!routed.routable) {
+        path.route_refused = routed.reason;
+        return path.points;
+      }
+      delete path.route_refused;
+      return routed.points.map(([x, y]) => [Math.round(x), Math.round(y)]);
     }
+
+    /** Per-config geometry from the last sweep, so the next one can be local. */
+    const ROUTE_GEOMETRY = new WeakMap();
+
+    /**
+     * Recompute the routes a change reached, and no others.
+     *
+     * This walked every path in the view on every emit. On a diagram of any
+     * size that is the freeze the roadmap names, and it ran on every keystroke
+     * that touched the config.
+     *
+     * A route is recomputed when one of its own endpoints moved, or when a
+     * piece of equipment that moved lies inside its corridor -- the same
+     * relevance the Phase-5 router uses, so the cheap answer is the answer a
+     * full sweep would have given.
+     */
     function reroute(config, viewId) {
-      if (config.routing?.automatic === false) return;
+      if (config.routing?.automatic === false) return [];
+      const routing = globalThis.GLT_FLOW_CARD_ROUTING;
+      const clearance = Number(config.routing?.clearance) || (routing?.DEFAULT_CLEARANCE ?? 20);
+      const key = String(viewId ?? "");
+      const held = ROUTE_GEOMETRY.get(config) || {};
+      const previous = held[key];
+      const current = {};
+      for (const item of config.equipment || []) {
+        const box = equipmentPos(config, item.id, viewId);
+        if (box) current[item.id] = box;
+      }
+      const moved = [];
+      for (const [id, box] of Object.entries(current)) {
+        const before = previous?.[id];
+        if (!before || before.x !== box.x || before.y !== box.y
+          || before.width !== box.width || before.height !== box.height) moved.push(box);
+      }
+      const recomputed = [];
       for (const path of config.paths || []) {
         if (!path.from_equipment || !path.to_equipment || path.auto_route === false) continue;
+        const drawn = Array.isArray(path.points) && path.points.length > 0;
+        if (previous && drawn && !reaches(path, moved, clearance)) continue;
         const points = autoRoute(config, path, viewId);
-        if (points) path.points = points;
+        if (points) {
+          path.points = points;
+          recomputed.push(path.id);
+        }
       }
+      held[key] = current;
+      ROUTE_GEOMETRY.set(config, held);
+      return recomputed;
+    }
+
+    /** Whether any moved box lies in this route's corridor. */
+    function reaches(path, moved, clearance) {
+      if (moved.length === 0) return false;
+      const xs = path.points.map((point) => point[0]);
+      const ys = path.points.map((point) => point[1]);
+      const corridor = {
+        left: Math.min(...xs) - clearance, right: Math.max(...xs) + clearance,
+        top: Math.min(...ys) - clearance, bottom: Math.max(...ys) + clearance,
+      };
+      return moved.some((box) => (
+        corridor.left < box.x + box.width + clearance && box.x - clearance < corridor.right
+        && corridor.top < box.y + box.height + clearance && box.y - clearance < corridor.bottom
+      ));
     }
     function editorStore(editor) {
       editor._glt4Store = editor._glt4Store || new ProjectStore(editor._hass || editor._glt4Hass);
@@ -4653,7 +4849,7 @@
     .glt4-btn{height:31px;border:1px solid var(--b);background:var(--bg);border-radius:8px;padding:0 9px;color:var(--mut);font-size:9px;font-weight:750;cursor:pointer}
     .glt4-btn:hover,.glt4-btn.on{color:var(--e);border-color:color-mix(in srgb,var(--e) 55%,var(--b));background:var(--eb)}
     .glt4-spacer{flex:1}.glt4-readonly{padding:7px 10px;background:#f59e0b18;color:#b45309;font-size:9px;font-weight:700;border-bottom:1px solid #f59e0b44}
-    .glt4-modal{position:fixed;inset:0;z-index:10000;background:#020617b8;display:grid;place-items:center;padding:22px}.glt4-dialog{width:min(920px,96vw);max-height:90vh;overflow:auto;border:1px solid var(--b);border-radius:16px;background:var(--bg);color:var(--tx);box-shadow:0 24px 70px #02061788}
+    .glt4-notice{margin-top:10px;padding:10px 12px;border:1px solid currentColor;border-radius:10px;min-height:44px;display:flex;align-items:center;gap:8px}.glt4-modal{position:fixed;inset:0;z-index:10000;background:#020617b8;display:grid;place-items:center;padding:22px}.glt4-dialog{width:min(920px,96vw);max-height:90vh;overflow:auto;border:1px solid var(--b);border-radius:16px;background:var(--bg);color:var(--tx);box-shadow:0 24px 70px #02061788}
     .glt4-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--b);background:var(--bg)}.glt4-head b{font-size:13px}.glt4-body{padding:14px}.glt4-close{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--mut);cursor:pointer}
     .glt4-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}.glt4-card{padding:11px;border:1px solid var(--b);border-radius:12px;background:color-mix(in srgb,var(--bg) 97%,#64748b 3%)}.glt4-card b{display:block;font-size:11px}.glt4-card small{display:block;margin-top:3px;color:var(--mut);font-size:8px}.glt4-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
     .glt4-input,.glt4-select,.glt4-textarea{width:100%;border:1px solid var(--b);border-radius:9px;background:var(--bg);color:var(--tx);padding:8px;font-size:10px}.glt4-textarea{min-height:360px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;line-height:1.45;resize:vertical}
@@ -4664,6 +4860,50 @@
     .glt4-entity-row{display:grid;grid-template-columns:1fr 130px 90px 32px;gap:6px;align-items:center;margin-bottom:7px}.glt4-entity-row ha-entity-picker{min-width:0}
     @media(max-width:800px){.glt4-entity-row{grid-template-columns:1fr}.glt4-dialog{width:98vw}}
   `;
+    /**
+     * Confirm a destructive editor step through the Phase-2 element.
+     *
+     * `window.confirm` is a browser-owned authority prompt: the kiosk's key
+     * handling cannot reach it, no stylesheet can make it legible in forced
+     * colours, and the effect ledger that proves this card asks for nothing it
+     * should not cannot observe it. Phase 4 deliberately left these for Phase 5;
+     * this is the replacement, and it is the same element every control
+     * confirmation already uses, so the safe choice takes focus in one place.
+     */
+    function editorConfirm(editor, message, onConfirm) {
+      const root = editor.shadowRoot;
+      root.querySelector("glt-flow-card-control-confirm")?.remove();
+      const node = document.createElement("glt-flow-card-control-confirm");
+      node.dataset.editorConfirm = "1";
+      node.copy = (key) => (key === "controlConfirmHeading" ? message : key);
+      root.appendChild(node);
+      node.props = {
+        control: { phase: "confirm", controlId: "editor", preview: { label: message, summary: message } },
+        onConfirm: () => { node.remove(); onConfirm(); },
+        onCancel: () => node.remove(),
+      };
+    }
+
+    /**
+     * Say why nothing happened, inside the editor.
+     *
+     * `alert` has the same problems as `confirm` and one more: it is modal, so a
+     * refusal that could have been a sentence next to the button becomes a
+     * blocking interruption the operator has to dismiss before they can look at
+     * what they got wrong.
+     */
+    function editorNotice(editor, message) {
+      const root = editor.shadowRoot;
+      root.querySelector("[data-editor-notice]")?.remove();
+      const strip = document.createElement("div");
+      strip.dataset.editorNotice = "1";
+      strip.setAttribute("role", "status");
+      strip.setAttribute("aria-live", "polite");
+      strip.className = "glt4-notice";
+      strip.textContent = message;
+      (root.querySelector(".glt4-body") || root).appendChild(strip);
+    }
+
     function modal(editor, title, html) {
       editor.shadowRoot.querySelector(".glt4-modal")?.remove();
       const shell = document.createElement("div");
@@ -4687,7 +4927,7 @@
       const cards = list.map((p) => `<div class="glt4-card"><b>${esc(p.name || p.id)}</b><small>${esc(p.updated || "")} \xB7 ${(p.versions || []).length} Versionen ${p.id === currentId ? "\xB7 AKTIV" : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-load="${esc(p.id)}">Laden</button><button class="glt4-btn" data-versions="${esc(p.id)}">Versionen</button><button class="glt4-btn glt4-danger" data-delete="${esc(p.id)}">L\xF6schen</button></div></div>`).join("");
       const m = modal(editor, "Projektbibliothek", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Aktuelles Projekt speichern</button><button class="glt4-btn" data-copy>Als neues Projekt speichern</button></div><div class="glt4-grid">${cards || '<div class="glt4-card">Noch keine gespeicherten Projekte.</div>'}</div><p style="font-size:9px;color:var(--mut);margin-top:12px">Mit installierter Companion-Integration werden Projekte ger\xE4te\xFCbergreifend in Home Assistant gespeichert; sonst lokal im Browser.</p>`);
       m.querySelector("[data-save]").onclick = async () => {
-        const name = editor._config.project?.name || prompt("Projektname", editor._config.title || "GLT Projekt") || "GLT Projekt";
+        const name = editor._config.project?.name || await gltAsk(editor, gltText("legacy.prompt_project_name"), editor._config.title || "GLT Projekt") || "GLT Projekt";
         const id = currentId || slug(name) + "-" + Date.now().toString(36);
         editor._config.project = { ...editor._config.project || {}, id, name };
         editor._glt4ProjectId = id;
@@ -4697,7 +4937,7 @@
         editor._render();
       };
       m.querySelector("[data-copy]").onclick = async () => {
-        const name = prompt("Name f\xFCr das neue Projekt", `${editor._config.title || "GLT"} Kopie`);
+        const name = await gltAsk(editor, gltText("legacy.new_project_name"), `${editor._config.title || "GLT"} Kopie`);
         if (!name) return;
         const id = slug(name) + "-" + Date.now().toString(36);
         editor._config.project = { id, name };
@@ -4716,12 +4956,13 @@
         await store.audit("project.load", { id: p.id, name: p.name });
         m.remove();
       });
-      m.querySelectorAll("[data-delete]").forEach((b) => b.onclick = async () => {
-        if (!confirm("Projekt wirklich l\xF6schen?")) return;
-        await store.deleteProject(b.dataset.delete);
-        await store.audit("project.delete", { id: b.dataset.delete });
-        m.remove();
-        showProjects(editor);
+      m.querySelectorAll("[data-delete]").forEach((b) => b.onclick = () => {
+        editorConfirm(editor, gltText("legacy.confirm_delete_project"), async () => {
+          await store.deleteProject(b.dataset.delete);
+          await store.audit("project.delete", { id: b.dataset.delete });
+          m.remove();
+          showProjects(editor);
+        });
       });
       m.querySelectorAll("[data-versions]").forEach((b) => b.onclick = async () => {
         const p = await store.getProject(b.dataset.versions);
@@ -4739,7 +4980,7 @@
     }
     function showYaml(editor, importMode = false) {
       const text = importMode ? "" : yamlConfig(editor._config);
-      const m = modal(editor, importMode ? "YAML importieren" : "Lovelace YAML", `<textarea class="glt4-textarea" data-yaml placeholder="type: custom:glt-flow-card
+      const m = modal(editor, importMode ? "YAML importieren" : gltText("legacy.lovelace_yaml"), `<textarea class="glt4-textarea" data-yaml placeholder="type: custom:glt-flow-card
 ...">${esc(text)}</textarea><div class="glt4-actions"><input type="file" accept=".yaml,.yml,text/yaml" data-file style="display:none"><button class="glt4-btn" data-filebtn>Datei \xF6ffnen</button><button class="glt4-btn" data-import>Importieren & weiterbearbeiten</button><button class="glt4-btn" data-copy>YAML kopieren</button><button class="glt4-btn" data-download>YAML herunterladen</button></div><div data-error style="margin-top:9px;color:#dc2626;font-size:9px"></div>`);
       const area = m.querySelector("[data-yaml]");
       m.querySelector("[data-filebtn]").onclick = () => m.querySelector("[data-file]").click();
@@ -4769,17 +5010,17 @@
       const store = editorStore(editor);
       const list = await store.listTemplates();
       const builtins = [
-        { id: "builtin-hp-buffer", name: "W\xE4rmepumpe + Puffer", kind: "equipment", object: { type: "heat_pump", symbol: "heat_pump_neo", name: "W\xE4rmepumpe", width: 240, height: 150, fields: [] } },
+        { id: "builtin-hp-buffer", name: "W\xE4rmepumpe + Puffer", kind: "equipment", object: { type: "heat_pump", symbol: "heat_pump_neo", name: gltText("symbols.profile_heat_pump"), width: 240, height: 150, fields: [] } },
         { id: "builtin-ahu", name: "RLT-Zentrale", kind: "equipment", object: { type: "ahu", symbol: "ahu", name: "RLT-Zentrale", width: 300, height: 170, fields: [] } },
-        { id: "builtin-pump", name: "Umw\xE4lzpumpe", kind: "equipment", object: { type: "pump", symbol: "pump_circulation", name: "Pumpe", width: 140, height: 95, fields: [] } },
-        { id: "builtin-dp", name: "Temperatur-Datenpunkt", kind: "datapoint", object: { kind: "temperature", label: "Temperatur", entity: "" } }
+        { id: "builtin-pump", name: gltText("legacy.symbol_pump_circulation"), kind: "equipment", object: { type: "pump", symbol: "pump_circulation", name: "Pumpe", width: 140, height: 95, fields: [] } },
+        { id: "builtin-dp", name: "Temperatur-Datenpunkt", kind: "datapoint", object: { kind: "temperature", labelKey: "legacy.medium_object", entity: "" } }
       ];
       const all = [...builtins, ...list];
       const m = modal(editor, "Vorlagen & Bauteil-Templates", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Auswahl als Vorlage speichern</button></div><div class="glt4-grid">${all.map((t) => `<div class="glt4-card"><b>${esc(t.name)}</b><small>${esc(t.kind || "equipment")}${t.updated ? ` \xB7 ${esc(t.updated)}` : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-apply="${esc(t.id)}">Einf\xFCgen</button>${t.id.startsWith("builtin-") ? "" : `<button class="glt4-btn glt4-danger" data-del="${esc(t.id)}">L\xF6schen</button>`}</div></div>`).join("")}</div>`);
       m.querySelector("[data-save]").onclick = async () => {
         const obj = editor._obj?.();
-        if (!obj) return alert("Zuerst ein Bauteil, Datenpunkt, Pfad oder KPI ausw\xE4hlen.");
-        const name = prompt("Vorlagenname", obj.name || obj.label || obj.id);
+        if (!obj) return editorNotice(editor, gltText("legacy.select_something_first"));
+        const name = await gltAsk(editor, gltText("legacy.prompt_template_name"), obj.name || obj.label || obj.id);
         if (!name) return;
         const t = { id: slug(name) + "-" + Date.now().toString(36), name, kind: editor._sel.k, object: clone(obj) };
         await store.saveTemplate(t);
@@ -4823,13 +5064,13 @@
     function showGroups(editor) {
       const groups = editor._config.groups || [];
       const m = modal(editor, "Gruppen & Unteranlagen", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-create>Aus Mehrfachauswahl gruppieren</button></div><div class="glt4-grid">${groups.map((g) => `<div class="glt4-card"><b>${esc(g.name)}</b><small>${(g.members || []).length} Elemente</small><div class="glt4-actions"><button class="glt4-btn" data-select="${g.id}">Markieren</button><button class="glt4-btn" data-template="${g.id}">Als Anlagenvorlage</button><button class="glt4-btn glt4-danger" data-delete="${g.id}">Aufl\xF6sen</button></div></div>`).join("") || '<div class="glt4-card">Noch keine Gruppen. Mehrere Elemente mit Strg/Shift ausw\xE4hlen.</div>'}</div>`);
-      m.querySelector("[data-create]").onclick = () => {
+      m.querySelector("[data-create]").onclick = async () => {
         const members = Array.from(editor._glt4Multi || []).map((key) => {
           const [kind, id] = key.split(":");
           return { kind, id };
         });
-        if (members.length < 2) return alert("Mindestens zwei Elemente per Strg/Shift ausw\xE4hlen.");
-        const name = prompt("Gruppenname", "Unteranlage");
+        if (members.length < 2) return editorNotice(editor, gltText("legacy.select_two_first"));
+        const name = await gltAsk(editor, gltText("legacy.prompt_group_name"), "Unteranlage");
         if (!name) return;
         editor._remember?.();
         editor._config.groups.push({ id: slug(name) + "-" + Date.now().toString(36), name, members });
@@ -4859,7 +5100,7 @@
           return { kind: r.kind, object: clone(arr.find((x) => x.id === r.id)) };
         }).filter((x) => x.object);
         await editorStore(editor).saveTemplate({ id: `group-${g.id}-${Date.now().toString(36)}`, name: g.name, kind: "group", objects });
-        alert("Unteranlage als Vorlage gespeichert.");
+        editorNotice(editor, gltText("legacy.subplant_saved"));
       });
     }
     function showAutoRoute(editor) {
@@ -4868,8 +5109,8 @@
       const selectedEq = multi.filter((x) => x[0] === "equipment").map((x) => x[1]);
       const a0 = selectedEq[0] || eq[0]?.id || "", b0 = selectedEq[1] || eq[1]?.id || "";
       const options = eq.map((e) => `<option value="${esc(e.id)}">${esc(e.name || e.id)}</option>`).join("");
-      const mediumOpts = [["heating_supply", "Vorlauf"], ["heating_return", "R\xFCcklauf"], ["cooling_supply", "K\xE4lte VL"], ["cooling_return", "K\xE4lte RL"], ["air_supply", "Zuluft"], ["air_extract", "Abluft"], ["electrical", "Elektrisch"], ["neutral", "Neutral"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
-      const m = modal(editor, "Automatisch verbinden", `<div class="glt4-grid"><label>Von<select class="glt4-select" data-from>${options}</select></label><label>Nach<select class="glt4-select" data-to>${options}</select></label><label>Medium<select class="glt4-select" data-medium>${mediumOpts}</select></label></div><div class="glt4-actions"><button class="glt4-btn" data-create>Orthogonale Verbindung erstellen</button></div><p style="font-size:9px;color:var(--mut)">Auto-Routen bleiben an den Bauteilen verankert und werden beim Verschieben neu berechnet.</p>`);
+      const mediumOpts = [["heating_supply", "Vorlauf"], ["heating_return", gltText("legacy.medium_heating_return")], ["cooling_supply", gltText("symbols.slot_supply_temp")], ["cooling_return", gltText("symbols.slot_return_temp")], ["air_supply", "Zuluft"], ["air_extract", "Abluft"], ["electrical", "Elektrisch"], ["neutral", "Neutral"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+      const m = modal(editor, gltText("legacy.auto_connect"), `<div class="glt4-grid"><label>Von<select class="glt4-select" data-from>${options}</select></label><label>Nach<select class="glt4-select" data-to>${options}</select></label><label>Medium<select class="glt4-select" data-medium>${mediumOpts}</select></label></div><div class="glt4-actions"><button class="glt4-btn" data-create>Orthogonale Verbindung erstellen</button></div><p style="font-size:9px;color:var(--mut)">Auto-Routen bleiben an den Bauteilen verankert und werden beim Verschieben neu berechnet.</p>`);
       m.querySelector("[data-from]").value = a0;
       m.querySelector("[data-to]").value = b0;
       m.querySelector("[data-create]").onclick = () => {
@@ -5154,19 +5395,17 @@
       const site = this._glt4Site || "all";
       return site === "all" || !item.site || item.site === site;
     };
-    const originalTap = Card.prototype._tapEntity;
+    // Retired (04-13, applied to the shipped bytes in 05-14). The original
+    // override was two browser-invented authorizations in a row: a role check
+    // the browser had no business making, and a window.confirm standing in for
+    // one. Both are gone, and with them the call through to the base tap, which
+    // reached hass.callService directly. The surviving operate path is the
+    // server-composed panel, whose controls the Companion has already
+    // authorized. This stays reachable, and inert, so the effect ledger can
+    // prove no tap action produces a service call.
     Card.prototype._tapEntity = function(entityId) {
-      if (!canOperate(this._config, this._hass)) {
-        alert("F\xFCr Bedienungen ist mindestens die Rolle Operator erforderlich.");
-        this._glt4Store?.audit("control.blocked", { entity_id: entityId });
-        return;
-      }
-      if (this._config.permissions?.confirm_controls !== false && !confirm(`Entit\xE4t bedienen?
-${entityId}`)) return;
-      const result = originalTap.call(this, entityId);
-      this._glt4Store = this._glt4Store || new ProjectStore(this._hass);
-      this._glt4Store.audit("control.execute", { entity_id: entityId });
-      return result;
+      this._glt4Store?.audit("control.blocked", { entity_id: entityId, reason: "legacy_tap_retired" });
+      return undefined;
     };
     function runtimeStore(card) {
       card._glt4Store = card._glt4Store || new ProjectStore(card._hass);
@@ -5185,7 +5424,7 @@ ${entityId}`)) return;
         const dueDate = a.due_date && a.due_date <= today;
         const dueHours = Number.isFinite(hours) && a.service_interval_hours && hours >= (a.last_service_hours || 0) + a.service_interval_hours;
         const due = dueDate || dueHours;
-        return `<div class="glt4-runtime-card ${due ? "warning" : ""}"><b>${due ? "\u26A0 " : "\u2713 "}${esc(a.name || a.id)}</b><small>${hours != null ? `${hours.toFixed(0)} h \xB7 ` : ""}${a.due_date ? `F\xE4llig ${esc(a.due_date)}` : "Kein Datum"}${a.notes ? ` \xB7 ${esc(a.notes)}` : ""}</small>${(a.documents || []).length ? `<div class="glt4-runtime-actions">${a.documents.map((d) => `<button data-url="${esc(d.url)}">${esc(d.name || "Dokument")}</button>`).join("")}</div>` : ""}</div>`;
+        return `<div class="glt4-runtime-card ${due ? "warning" : ""}"><b>${due ? "\u26A0 " : "\u2713 "}${esc(a.name || a.id)}</b><small>${hours != null ? `${hours.toFixed(0)} h \xB7 ` : ""}${a.due_date ? `F\xE4llig ${esc(a.due_date)}` : gltText("legacy.no_date")}${a.notes ? ` \xB7 ${esc(a.notes)}` : ""}</small>${(a.documents || []).length ? `<div class="glt4-runtime-actions">${a.documents.map((d) => `<button data-url="${esc(d.url)}">${esc(d.name || "Dokument")}</button>`).join("")}</div>` : ""}</div>`;
       }).join("") || '<div class="glt4-runtime-card">Keine Assets konfiguriert.</div>'}</div></section>`;
     }
     function siteStrip(card) {
@@ -5272,32 +5511,49 @@ ${entityId}`)) return;
       const stats = selectedTrendStats(card);
       return `<div class="glt4-trendplus"><div class="glt4-statgrid">${stats.map((s) => `<div class="glt4-stat" style="border-left:3px solid ${s.color}"><b>${esc(s.entry.point.label || field(s.entry.point.entity)?.entity || "Wert")}</b>Min ${s.min.toFixed(2)} \xB7 \xD8 ${s.avg.toFixed(2)} \xB7 Max ${s.max.toFixed(2)} ${esc(s.unit)}${s.energy != null ? ` \xB7 ${s.energy.toFixed(2)} kWh` : ""}${s.delta != null ? ` \xB7 24h ${s.delta >= 0 ? "+" : ""}${s.delta.toFixed(1)} %` : ""}</div>`).join("")}</div>${multiAxisSvg(card, stats)}<div style="margin-top:7px;color:var(--secondary-text-color);font-size:9px">Eigene Y-Achse je Einheit \xB7 Leistung wird zeitlich zu Energie integriert \xB7 24-h-Vergleich gegen den vorherigen Zeitraum</div></div>`;
     }
+    /**
+     * Retired reachable and inert by plan 07-17.
+     *
+     * It joined series by nearest neighbour with `Math.abs` and no maximum
+     * distance, so a sample from four hours away was written into this
+     * minute's row with no marker (D22). The file stated values that were
+     * never measured at the times it attributed them to.
+     *
+     * `report-renderings.exportSeries` fills a cell only from a sample inside
+     * that interval, and leaves an explicit blank otherwise.
+     */
     function trendCsv(card) {
-      const selected = card._selectedTrendPoints?.() || [];
-      const entities = selected.map((e) => ({ label: e.point.label || field(e.point.entity)?.entity, series: card._seriesFor?.(e.point) || [] }));
-      const timestamps = Array.from(new Set(entities.flatMap((e) => e.series.map((v) => v.x)))).sort((a, b) => a - b);
-      const header = ["timestamp", ...entities.map((e) => e.label)].map(csvCell).join(";");
-      const rows = timestamps.map((ts) => [new Date(ts).toISOString(), ...entities.map((e) => {
-        const v = e.series.reduce((best, x) => Math.abs(x.x - ts) < Math.abs((best?.x ?? Infinity) - ts) ? x : best, null);
-        return v?.y ?? "";
-      })].map(csvCell).join(";"));
-      download(`glt-trend-${Date.now()}.csv`, [header, ...rows].join("\n"), "text/csv;charset=utf-8");
+      void card;
+      return "";
     }
+    /**
+     * Retired reachable and inert by plan 07-17.
+     *
+     * It wrote `card._display?.(...)` -- the value being rendered right now --
+     * for each KPI, alarm and asset. The designer offered day, week, month and
+     * year and nothing read `period`, so a "Monatsbericht" contained one
+     * instant and said so nowhere (D19).
+     *
+     * `report_runs.execute` resolves the period and records every input.
+     */
     function reportCsv(card) {
-      const rows = [["Bereich", "Name", "Wert", "Status"]];
-      for (const k of card._config.kpis || []) rows.push(["KPI", k.name || k.label || "KPI", card._display?.(k.entity || k) || "", ""]);
-      for (const a of card._config.alarms || []) rows.push(["Alarm", a.name || field(a.entity)?.entity || "Alarm", card._display?.(a.entity) || "", activeAlarm(card, a) ? "aktiv" : "ok"]);
-      for (const a of card._config.assets || []) rows.push(["Asset", a.name || a.id, card._display?.(a.entity_hours) || "", a.due_date || ""]);
-      return rows.map((r) => r.map(csvCell).join(";")).join("\n");
+      void card;
+      return "";
     }
+    /**
+     * Retired reachable and inert by plan 07-17.
+     *
+     * It rebuilt its table by splitting `reportCsv`'s output on newlines and
+     * semicolons and stripping quotes with a regex, so any value containing a
+     * semicolon became extra columns and any value containing a newline became
+     * extra rows (D21). It also opened a window and wrote markup into it.
+     *
+     * `report-renderings.print` renders from the model. Deriving one rendering
+     * from another's serialisation was the defect, not the symptom.
+     */
     function printReport(card) {
-      const csv = reportCsv(card);
-      const html = `<!doctype html><meta charset="utf-8"><title>GLT Report</title><style>body{font:14px system-ui;margin:30px;color:#111}h1{margin:0 0 6px}small{color:#666}table{border-collapse:collapse;width:100%;margin-top:20px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f4f6f8}</style><h1>${esc(card._config.title || "GLT Report")}</h1><small>${(/* @__PURE__ */ new Date()).toLocaleString()}</small><table><thead><tr><th>Bereich</th><th>Name</th><th>Wert</th><th>Status</th></tr></thead><tbody>${csv.split("\n").slice(1).map((line) => `<tr>${line.split(";").map((c) => `<td>${esc(c.replace(/^"|"$/g, ""))}</td>`).join("")}</tr>`).join("")}</tbody></table><script>window.print()<\/script>`;
-      const w = window.open("", "_blank");
-      if (w) {
-        w.document.write(html);
-        w.document.close();
-      }
+      void card;
+      return undefined;
     }
     async function auditRuntime(card) {
       const events = await runtimeStore(card).listAudit(150);
@@ -5332,8 +5588,8 @@ ${entityId}`)) return;
           this._glt4Panel = this._glt4Panel === b.dataset.g4panel ? null : b.dataset.g4panel;
           this._queueRender();
         });
-        wrap.querySelector("[data-g4report]")?.addEventListener("click", () => {
-          const choice = prompt("Report: 'csv' f\xFCr CSV oder 'pdf' f\xFCr Druck/PDF", "pdf");
+        wrap.querySelector("[data-g4report]")?.addEventListener("click", async () => {
+          const choice = await gltAsk(card, gltText("legacy.report_format_hint"), "pdf");
           if (choice?.toLowerCase() === "csv") download(`glt-report-${Date.now()}.csv`, reportCsv(this), "text/csv;charset=utf-8");
           else if (choice) printReport(this);
           runtimeStore(this).audit("report.create", { format: choice || "cancel" });
@@ -5360,12 +5616,16 @@ ${entityId}`)) return;
         const h = document.createElement("div");
         h.innerHTML = alarmsMarkup(this);
         replay?.after(h.firstElementChild);
-        root.querySelectorAll("[data-ack]").forEach((b) => b.onclick = async () => {
-          const a = this._config.alarms.find((x) => x.id === b.dataset.ack);
-          if (!a?.ack?.service) return;
-          const [domain, service] = a.ack.service.split(".");
-          await this._hass.callService(domain, service, a.ack.data || {});
-          await runtimeStore(this).audit("alarm.ack", { alarm_id: a.id, entity_id: field(a.entity)?.entity });
+        /* Retired in Phase 6, reachable and inert.
+         *
+         * Acknowledgement called a Home Assistant service directly from the
+         * browser and never reached the Companion, so the acknowledgement the
+         * operator made was invisible to the engine that owns the alarm's
+         * state. The authoritative path is `glt_flow_card/alarms/ack`, and the
+         * v100 layer's alarm surface is where it lives.
+         */
+        root.querySelectorAll("[data-ack]").forEach((b) => b.onclick = () => {
+          editorNotice(this, gltText("legacy.ack_via_alarm_list"));
         });
       }
       if (this._glt4Panel === "assets") {

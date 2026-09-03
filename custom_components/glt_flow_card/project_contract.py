@@ -20,14 +20,22 @@ _SCHEMA_PATHS = (
     _ROOT / "schemas" / "project" / "0.schema.json",
     _ROOT / "schemas" / "project" / "1.schema.json",
     _ROOT / "schemas" / "project" / "2.schema.json",
+    _ROOT / "schemas" / "project" / "3.schema.json",
+    _ROOT / "schemas" / "project" / "4.schema.json",
+    _ROOT / "schemas" / "project" / "5.schema.json",
+    _ROOT / "schemas" / "project" / "6.schema.json",
+    _ROOT / "schemas" / "project" / "7.schema.json",
     _ROOT / "schemas" / "bundle-manifest.schema.json",
 )
 _LIMITS = json.loads((_ROOT / "schemas" / "limits.json").read_text(encoding="utf-8"))
+# Every path but the last is a project schema version, in ascending order; the
+# last is the bundle manifest. Deriving the split keeps adding a schema version
+# from silently shifting an index nobody remembered to update.
 _PROJECT_SCHEMAS = tuple(
-    json.loads(path.read_text(encoding="utf-8")) for path in _SCHEMA_PATHS[:3]
+    json.loads(path.read_text(encoding="utf-8")) for path in _SCHEMA_PATHS[:-1]
 )
 _ALL_SCHEMAS = _PROJECT_SCHEMAS + (
-    json.loads(_SCHEMA_PATHS[3].read_text(encoding="utf-8")),
+    json.loads(_SCHEMA_PATHS[-1].read_text(encoding="utf-8")),
 )
 _REGISTRY = Registry()
 for _schema in _ALL_SCHEMAS:

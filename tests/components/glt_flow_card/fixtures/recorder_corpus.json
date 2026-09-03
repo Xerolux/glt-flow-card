@@ -1,0 +1,299 @@
+{
+  "cases": [
+    {
+      "class": "complete",
+      "contract": "statistics",
+      "expect": {
+        "coverage": 1.0,
+        "gaps": 0,
+        "value": 79.0
+      },
+      "expected_buckets": 7,
+      "expected_instants": [
+        "2027-06-01T00:00:00+02:00",
+        "2027-06-02T00:00:00+02:00",
+        "2027-06-03T00:00:00+02:00",
+        "2027-06-04T00:00:00+02:00",
+        "2027-06-05T00:00:00+02:00",
+        "2027-06-06T00:00:00+02:00",
+        "2027-06-07T00:00:00+02:00"
+      ],
+      "name": "complete",
+      "period": "day",
+      "returned": [
+        {
+          "change": 12.5,
+          "start": "2027-06-01T00:00:00+02:00",
+          "sum": 1012.5
+        },
+        {
+          "change": 11.0,
+          "start": "2027-06-02T00:00:00+02:00",
+          "sum": 1023.5
+        },
+        {
+          "change": 13.25,
+          "start": "2027-06-03T00:00:00+02:00",
+          "sum": 1036.75
+        },
+        {
+          "change": 12.0,
+          "start": "2027-06-04T00:00:00+02:00",
+          "sum": 1048.75
+        },
+        {
+          "change": 9.75,
+          "start": "2027-06-05T00:00:00+02:00",
+          "sum": 1058.5
+        },
+        {
+          "change": 8.5,
+          "start": "2027-06-06T00:00:00+02:00",
+          "sum": 1067.0
+        },
+        {
+          "change": 12.0,
+          "start": "2027-06-07T00:00:00+02:00",
+          "sum": 1079.0
+        }
+      ],
+      "why": "The control. A corpus of only failures cannot tell a correct implementation from one that refuses everything."
+    },
+    {
+      "class": "missing",
+      "contract": "statistics",
+      "expect": {
+        "coverage": 0.0,
+        "gaps": 7,
+        "value": null
+      },
+      "expected_buckets": 7,
+      "expected_instants": [
+        "2027-06-01T00:00:00+02:00",
+        "2027-06-02T00:00:00+02:00",
+        "2027-06-03T00:00:00+02:00",
+        "2027-06-04T00:00:00+02:00",
+        "2027-06-05T00:00:00+02:00",
+        "2027-06-06T00:00:00+02:00",
+        "2027-06-07T00:00:00+02:00"
+      ],
+      "name": "missing",
+      "period": "day",
+      "returned": [],
+      "why": "The Recorder omits empty periods rather than emitting them, so an empty list is the only signal. Today this sets a full range over an empty map and draws a plot inside an axis that claims data."
+    },
+    {
+      "class": "partial",
+      "contract": "statistics",
+      "expect": {
+        "coverage": 0.5714,
+        "gap_intervals": [
+          [
+            "2027-06-03T00:00:00+02:00",
+            "2027-06-06T00:00:00+02:00"
+          ]
+        ],
+        "gaps": 1
+      },
+      "expected_buckets": 7,
+      "expected_instants": [
+        "2027-06-01T00:00:00+02:00",
+        "2027-06-02T00:00:00+02:00",
+        "2027-06-03T00:00:00+02:00",
+        "2027-06-04T00:00:00+02:00",
+        "2027-06-05T00:00:00+02:00",
+        "2027-06-06T00:00:00+02:00",
+        "2027-06-07T00:00:00+02:00"
+      ],
+      "name": "partial",
+      "period": "day",
+      "returned": [
+        {
+          "change": 12.5,
+          "start": "2027-06-01T00:00:00+02:00",
+          "sum": 1012.5
+        },
+        {
+          "change": 11.0,
+          "start": "2027-06-02T00:00:00+02:00",
+          "sum": 1023.5
+        },
+        {
+          "change": 8.5,
+          "start": "2027-06-06T00:00:00+02:00",
+          "sum": 1067.0
+        },
+        {
+          "change": 12.0,
+          "start": "2027-06-07T00:00:00+02:00",
+          "sum": 1079.0
+        }
+      ],
+      "why": "Three consecutive days absent. The line must break; the sum must not silently omit them and present a smaller confident number."
+    },
+    {
+      "class": "stale",
+      "contract": "raw",
+      "expect": {
+        "coverage": 0.0,
+        "gaps": 1,
+        "value": null
+      },
+      "expected_buckets": 1,
+      "expected_instants": [
+        "2027-06-01T00:00:00+02:00"
+      ],
+      "name": "stale",
+      "period": "custom",
+      "returned": [
+        {
+          "last_updated": "2027-05-02T09:00:00+02:00",
+          "state": "21.5"
+        }
+      ],
+      "why": "One sample, a month before the window. A nearest-neighbour join would report it as this week's value; it is evidence about May.",
+      "window": [
+        "2027-06-01T00:00:00+02:00",
+        "2027-06-08T00:00:00+02:00"
+      ]
+    },
+    {
+      "class": "incompatible",
+      "contract": "statistics",
+      "declared_unit": "kWh",
+      "expect": {
+        "reason": "incompatible_unit",
+        "refused": true
+      },
+      "expected_buckets": 1,
+      "expected_instants": [
+        "2027-10-01T00:00:00+02:00"
+      ],
+      "name": "incompatible",
+      "period": "month",
+      "returned": [
+        {
+          "change": 148231.0,
+          "start": "2027-10-01T00:00:00+02:00",
+          "sum": 148231.0
+        }
+      ],
+      "unit_of_measurement": "Wh",
+      "why": "The entity reports Wh while the meter declares kWh. That is a disagreement about what the meter is, not a conversion question, and it is refused: converting would paper over a misconfiguration the site should fix. A declared unit against a price unit of the same group is a different question and converts through a declared factor."
+    },
+    {
+      "class": "recorder_failure",
+      "contract": "statistics",
+      "error": "recorder is not running",
+      "expect": {
+        "coverage": 0.0,
+        "gaps": 7,
+        "source": "unavailable",
+        "value": null
+      },
+      "expected_buckets": 7,
+      "expected_instants": [
+        "2027-06-01T00:00:00+02:00",
+        "2027-06-02T00:00:00+02:00",
+        "2027-06-03T00:00:00+02:00",
+        "2027-06-04T00:00:00+02:00",
+        "2027-06-05T00:00:00+02:00",
+        "2027-06-06T00:00:00+02:00",
+        "2027-06-07T00:00:00+02:00"
+      ],
+      "name": "recorder-failure",
+      "period": "day",
+      "why": "The failure must reach the surface as `source: unavailable`. A test that feeds this and asserts the series is empty has confirmed the defect rather than caught it."
+    },
+    {
+      "class": "trap",
+      "contract": "statistics",
+      "expect": {
+        "coverage": 0.3333,
+        "out_of_coverage": [
+          "2027-01",
+          "2027-02"
+        ],
+        "value": null
+      },
+      "expected_buckets": 3,
+      "expected_instants": [
+        "2027-01-01T00:00:00+01:00",
+        "2027-02-01T00:00:00+01:00",
+        "2027-03-01T00:00:00+01:00"
+      ],
+      "name": "trap-window-precedes-statistic",
+      "period": "month",
+      "returned": [
+        {
+          "change": 148231.0,
+          "start": "2027-03-01T00:00:00+01:00",
+          "sum": 148231.0
+        }
+      ],
+      "statistic_first_row": "2027-03-01T00:00:00+01:00",
+      "why": "statistics.py:1947 defaults the previous sum to zero, so the first bucket's change is the entire accumulated total. It is a plausible large number, not an error, and it is the whole shape of this phase.",
+      "window": [
+        "2027-01-01T00:00:00+01:00",
+        "2027-04-01T00:00:00+02:00"
+      ]
+    },
+    {
+      "class": "trap",
+      "contract": "statistics",
+      "expect": {
+        "coverage": 0.5,
+        "gaps": 1
+      },
+      "expected_buckets": 2,
+      "expected_instants": [
+        "2027-06-01T00:00:00+02:00",
+        "2027-06-02T00:00:00+02:00"
+      ],
+      "name": "trap-null-sum",
+      "period": "day",
+      "returned": [
+        {
+          "change": null,
+          "start": "2027-06-01T00:00:00+02:00",
+          "sum": null
+        },
+        {
+          "change": 11.0,
+          "start": "2027-06-02T00:00:00+02:00",
+          "sum": 1023.5
+        }
+      ],
+      "why": "A null sum yields a null change, which is a legitimate answer from the API. It must survive to the surface as no data, not be coerced to zero on the way."
+    },
+    {
+      "class": "trap",
+      "contract": "statistics",
+      "expect": {
+        "arithmetic_mean": 180.0,
+        "circular_mean": 0.0
+      },
+      "expected_buckets": 1,
+      "expected_instants": [
+        "2027-06-01T00:00:00+02:00"
+      ],
+      "mean_type": 2,
+      "name": "trap-circular-mean",
+      "period": "day",
+      "returned": [
+        {
+          "mean": null,
+          "samples": [
+            350.0,
+            10.0
+          ],
+          "start": "2027-06-01T00:00:00+02:00"
+        }
+      ],
+      "why": "StatisticMeanType.CIRCULAR. The arithmetic mean of 350 and 10 degrees is exactly the opposite of the truth, and nothing downstream would flag 180."
+    }
+  ],
+  "format": "glt-flow-card-phase7-recorder-corpus",
+  "note": "Authored, not generated. Each case names the defect it exists to catch; see 07-VALIDATION.md criterion 4. `expected_instants` is what the resolved period asks for -- the live path gets it from period_resolution, and coverage is computed where that expectation is known because nothing downstream can reconstruct it.",
+  "version": 1
+}

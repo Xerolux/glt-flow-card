@@ -1,6 +1,6 @@
 /* Deterministic Phase-1 contract corpus generator; generated bodies stay disposable. */
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { load as loadYaml } from "js-yaml";
@@ -10,7 +10,12 @@ const ROOT = new URL("../", import.meta.url);
 const LIMITS_URL = new URL("schemas/limits.json", ROOT);
 const DIFF_POLICY_URL = new URL("schemas/diff-policy.json", ROOT);
 const EXAMPLE_URL = new URL("examples/idm-neo2030.yaml", ROOT);
-const SCHEMA_URLS = [0, 1, 2].map((version) => new URL(`schemas/project/${version}.schema.json`, ROOT));
+// Derived from the schema directory. A literal version list here silently
+// stopped covering whatever version was added last.
+const SCHEMA_URLS = (await readdir(new URL("schemas/project/", ROOT)))
+  .filter((name) => /^\d+\.schema\.json$/.test(name))
+  .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10))
+  .map((name) => new URL(`schemas/project/${name}`, ROOT));
 const BUNDLE_SCHEMA_URL = new URL("schemas/bundle-manifest.schema.json", ROOT);
 
 const STABLE_ERROR_CODES = [
@@ -78,6 +83,15 @@ function baseV2(overrides = {}) {
     datapoints: [],
     assets: [],
     profiles: [],
+    ...overrides,
+  };
+}
+
+function baseV3(overrides = {}) {
+  return {
+    ...baseV2(),
+    schema_version: 3,
+    semantic_model: { nodes: [] },
     ...overrides,
   };
 }
@@ -248,7 +262,54 @@ export async function generateContractFixtures({ outputDir }) {
     id: "malformed-future-version",
     class: "malformed",
     expected: expected("reject", "version", "/schema_version", "contract.schema_version"),
-  }, { ...baseV2(), schema_version: 3 });
+  // One past the highest version that exists, derived so this fixture cannot
+  // quietly become "the current version" the next time a schema is added --
+  // which is exactly what happened when 4 shipped.
+  }, { ...baseV3(), schema_version: SCHEMA_URLS.length });
+  await addJson({
+    id: "valid-semantic-hierarchy",
+    class: "valid",
+    expected: expected("accept", "schema", "/"),
+  }, baseV3({
+    semantic_model: {
+      nodes: [
+        { id: "site-a", level: "site", parent: null, name: "Site A" },
+        { id: "sys-heat", level: "system", parent: "site-a", name: "Heating" },
+        { id: "eq-hp", level: "equipment", parent: "sys-heat", name: "Heat pump" },
+        { id: "dp-flow", level: "datapoint", parent: "eq-hp", name: "Flow",
+          unit: "degC", medium: "heating_flow", direction: "input",
+          semantic_tags: ["measurement"] },
+      ],
+    },
+  }));
+  await addJson({
+    id: "malformed-semantic-unknown-unit",
+    class: "malformed",
+    expected: expected("reject", "schema", "/semantic_model/nodes/0/unit", "contract.type"),
+  }, baseV3({
+    semantic_model: {
+      nodes: [{ id: "dp-x", level: "datapoint", parent: null, name: "X", unit: "furlongs" }],
+    },
+  }));
+  await addJson({
+    id: "malformed-semantic-unknown-level",
+    class: "malformed",
+    expected: expected("reject", "schema", "/semantic_model/nodes/0/level", "contract.type"),
+  }, baseV3({
+    semantic_model: { nodes: [{ id: "n-x", level: "galaxy", parent: null, name: "X" }] },
+  }));
+  await addJson({
+    id: "malformed-profile-names-an-effect",
+    class: "malformed",
+    expected: expected("reject", "schema", "/profiles/0/controls/0", "contract.type"),
+  }, baseV3({
+    profiles: [{
+      id: "p-1", equipment_type: "pump", version: "1.0.0",
+      // A profile control that names a service is the caller-authored control
+      // path Phase 2 removed; the contract must refuse it.
+      controls: [{ id: "start", domain: "switch", service: "turn_on" }],
+    }],
+  }));
   await addJson({
     id: "raw-trap-missing-type",
     class: "raw_normalization_trap",

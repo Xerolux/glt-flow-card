@@ -1,5 +1,9 @@
 /* GLT Flow Card Platform 1.0 pure engineering core */
-import { COMPONENT_PROFILES, SYMBOL_VARIANTS, profileForEquipment, portsForEquipment } from "./catalog.mjs";
+
+import { text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
+import { COMPONENT_PROFILES, SYMBOL_VARIANTS, VISUAL_STYLES, profileForEquipment, portsForEquipment, renderVariant } from "./catalog.mjs";
 import { computeProjectDiff } from "./project-diff.mjs";
 import { createProjectBundle, readProjectBundleArchive } from "./project-bundle.mjs";
 import { migrateProjectDocument } from "./project-migrations.mjs";
@@ -7,20 +11,20 @@ import { migrateProjectDocument } from "./project-migrations.mjs";
 export const SCHEMA_VERSION = 1;
 export const OPERATIONAL_STATES = {
   comm_error: { label: "Kommunikationsfehler", severity: 100, className: "comm-error" },
-  fault: { label: "Störung", severity: 95, className: "fault" },
-  command_failed: { label: "Befehl fehlgeschlagen", severity: 92, className: "command-failed" },
+  fault: { label: catalogText("legacy.fault", "de"), severity: 95, className: "fault" },
+  command_failed: { label: catalogText("legacy.command_failed", "de"), severity: 92, className: "command-failed" },
   interlock: { label: "Interlock", severity: 88, className: "interlock" },
   locked: { label: "Gesperrt", severity: 84, className: "locked" },
   maintenance: { label: "Wartung", severity: 78, className: "maintenance" },
   warning: { label: "Warnung", severity: 70, className: "warning" },
   local: { label: "Lokal", severity: 60, className: "local" },
   manual: { label: "Hand", severity: 58, className: "manual" },
-  command_pending: { label: "Befehl läuft", severity: 50, className: "command-pending" },
-  stale: { label: "Wert veraltet", severity: 45, className: "stale" },
-  invalid: { label: "Wert ungültig", severity: 44, className: "invalid" },
+  command_pending: { label: catalogText("legacy.command_running", "de"), severity: 50, className: "command-pending" },
+  stale: { label: catalogText("legacy.value_stale", "de"), severity: 45, className: "stale" },
+  invalid: { label: catalogText("legacy.value_invalid", "de"), severity: 44, className: "invalid" },
   auto: { label: "Auto", severity: 20, className: "auto" },
   remote: { label: "Fern", severity: 18, className: "remote" },
-  running: { label: "Läuft", severity: 15, className: "running" },
+  running: { label: catalogText("legacy.running", "de"), severity: 15, className: "running" },
   standby: { label: "Standby", severity: 8, className: "standby" },
   off: { label: "Aus", severity: 5, className: "off" },
   unknown: { label: "Unbekannt", severity: 40, className: "unknown" },
@@ -58,7 +62,7 @@ export function ensureV1(raw = {}) {
   c.sites = arr(c.sites);
   c.assets = arr(c.assets);
   c.routing = { automatic: true, orthogonal: true, padding: 28, obstacle_avoidance: true, ...(c.routing || {}) };
-  c.historian = { aggregate: "raw", deadband: 0, max_points: 4000, ...(c.historian || {}) };
+  c.historian = { aggregate: "none", deadband: 0, max_points: 4000, ...(c.historian || {}) };
   c.simulation = { enabled: false, states: {}, ...(c.simulation || {}) };
   c.ui = { kiosk: false, widescreen: false, minimap: true, locale: "de", ...(c.ui || {}) };
   return c;
@@ -299,7 +303,7 @@ export function diagnoseConfig(config, hassStates = {}, now = Date.now()) {
   const issues = [];
   for (const id of refs) {
     const st = hassStates[id];
-    if (!st) { issues.push({ entity_id: id, severity: "error", code: "missing", message: "Entity fehlt" }); continue; }
+    if (!st) { issues.push({ entity_id: id, severity: "error", code: "missing", message: catalogText("legacy.entity_missing", "de") }); continue; }
     const raw = lower(st.state);
     if (["unavailable", "unknown"].includes(raw)) issues.push({ entity_id: id, severity: "warning", code: raw, message: `Entity ist ${raw}` });
     const t = Date.parse(st.last_updated || st.last_changed || "");
@@ -309,34 +313,56 @@ export function diagnoseConfig(config, hassStates = {}, now = Date.now()) {
   return { referenced: [...refs], issues, unused, score: refs.size ? Math.max(0, 100 - issues.length / refs.size * 100) : 100 };
 }
 
+/**
+ * Retired reachable and inert by plan 07-17.
+ *
+ * It bucketed on `Math.floor(x / bucketMs) * bucketMs`, aligned to the UTC
+ * epoch, so for Europe/Berlin every "daily" bucket started at 01:00 or 02:00
+ * local and a transition day was the wrong length (D9). It could not express a
+ * month at all, while the report designer offered months and years. Its final
+ * ternary fell through to the mean, so `aggregate: "p95"` computed an average
+ * and reported no error (D12).
+ *
+ * The Companion resolves periods now and Home Assistant computes the buckets.
+ * The entry point stays and does nothing, so a test can prove the replacement
+ * rather than prove the absence of something nothing checks.
+ */
 export function aggregateSeries(points, options = {}) {
-  const agg = options.aggregate || "raw", deadband = Number(options.deadband || 0), bucketMs = Number(options.bucket_ms || 0);
-  let src = arr(points).filter((p) => Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y))).map((p) => ({ x: Number(p.x), y: Number(p.y) })).sort((a,b)=>a.x-b.x);
-  if (deadband > 0 && src.length) {
-    const out = [src[0]]; for (const p of src.slice(1)) if (Math.abs(p.y - out.at(-1).y) >= deadband) out.push(p); src = out;
-  }
-  if (agg === "raw" || !bucketMs) return src;
-  const buckets = new Map();
-  for (const p of src) { const k = Math.floor(p.x / bucketMs) * bucketMs; const a = buckets.get(k) || []; a.push(p.y); buckets.set(k, a); }
-  return [...buckets.entries()].map(([x, ys]) => ({ x, y: agg === "min" ? Math.min(...ys) : agg === "max" ? Math.max(...ys) : agg === "sum" ? ys.reduce((a,b)=>a+b,0) : ys.reduce((a,b)=>a+b,0)/ys.length }));
+  void options;
+  return Array.isArray(points) ? points : [];
 }
 
+/**
+ * Retired reachable and inert by plan 07-17.
+ *
+ * It trapezoid-integrated consecutive samples with no notion of a gap, so two
+ * samples six hours apart contributed six hours at their average as though the
+ * plant had run that way throughout (D18). Its `unit` argument recognised only
+ * MW, kW and an implicit W, so every other unit was integrated as watts.
+ *
+ * `energy_model.integrate_rate` excludes gaps and reports the excluded span.
+ */
 export function integrateEnergy(points, unit = "W") {
-  const s = arr(points).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)).sort((a,b)=>a.x-b.x); if (s.length < 2) return 0;
-  const factor = unit === "MW" ? 1e6 : unit === "kW" ? 1000 : 1; let wh = 0;
-  for (let i=1;i<s.length;i++) wh += ((s[i-1].y+s[i].y)/2*factor) * ((s[i].x-s[i-1].x)/3600000);
-  return wh/1000;
+  void points;
+  void unit;
+  return null;
 }
 
+/**
+ * Retired reachable and inert by plan 07-17.
+ *
+ * It multiplied a *cumulative meter reading* by a price and called the result a
+ * cost (D14). It never checked a unit (D15), silently skipped an unavailable
+ * meter so a month with half the meters offline reported a smaller confident
+ * number (D16), and produced CO2 only for electricity (D17).
+ *
+ * `energy_model.period_total` and `energy_units.site_total` replace it, with
+ * coverage and stated exclusions.
+ */
 export function energySummary(config, hassStates = {}) {
-  const c = ensureV1(config), result = [];
-  for (const m of c.energy.meters || []) {
-    const st = hassStates[m.entity]; const value = Number.parseFloat(st?.state); if (!Number.isFinite(value)) continue;
-    const cost = m.price_per_unit != null ? value * Number(m.price_per_unit) : null;
-    const co2 = m.kind === "electricity" && c.energy.co2_factor_g_per_kwh ? value * c.energy.co2_factor_g_per_kwh / 1000 : null;
-    result.push({ ...m, value, unit: st?.attributes?.unit_of_measurement || m.unit || "", cost, co2_kg: co2 });
-  }
-  return result;
+  void config;
+  void hassStates;
+  return [];
 }
 
 function legacyProjectDiff(a, b, path = "") {
@@ -391,6 +417,28 @@ export async function readProjectBundle(input, { includeAssets = false, onExtrac
 
 export { BundleError, bundleDecision, createProjectBundle, readProjectBundleArchive } from "./project-bundle.mjs";
 
+/**
+ * The catalog's size, counted by rendering.
+ *
+ * This used to measure array lengths, which proves the array's length: a
+ * catalog whose rows draw nothing reports the same number, and so does one
+ * whose rows all draw the same picture. Both were true here. Counting what
+ * actually rendered is the only version of this number a buyer can be shown,
+ * and `catalog-evidence.json` records the digests behind it.
+ */
 export function symbolCatalogStats() {
-  return { base_symbols: new Set(SYMBOL_VARIANTS.map((x)=>x.base_symbol)).size, variants: SYMBOL_VARIANTS.length, profiles: COMPONENT_PROFILES.length };
+  const bases = new Set();
+  let variants = 0;
+  for (const variant of SYMBOL_VARIANTS) {
+    if (renderVariant(variant.base_symbol, variant.style).includes("</title><")) {
+      bases.add(variant.base_symbol);
+      variants += 1;
+    }
+  }
+  return {
+    base_symbols: bases.size,
+    variants,
+    styles: VISUAL_STYLES.length,
+    profiles: COMPONENT_PROFILES.length,
+  };
 }

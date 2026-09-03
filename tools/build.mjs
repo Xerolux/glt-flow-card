@@ -29,29 +29,32 @@ const CARD_MARKER = "/*! GLT Flow Card v1 generated extension */";
 const EDITOR_MARKER = "/*! GLT Online Designer v1 Engineering extensions */";
 const EDITOR_END_MARKER = "/*! END GLT Online Designer v1 Engineering extensions */";
 const MANIFEST_PATH = "custom_components/glt_flow_card/build-manifest.json";
+// Project schema versions are derived from PROJECT_SCHEMA_SPECS rather than
+// listed again here. Adding a version used to mean editing six hand-maintained
+// lists, and Phase 3 lost a CI round to exactly that class of omission.
+const PROJECT_SCHEMA_FILES = PROJECT_SCHEMA_SPECS
+  .filter(([name]) => name.startsWith("project"))
+  .map(([, file]) => file);
 const SCHEMA_COPIES = [
   ["schemas/bundle-manifest.schema.json", "dist/schemas/bundle-manifest.schema.json"],
   ["schemas/diff-policy.json", "dist/schemas/diff-policy.json"],
   ["schemas/limits.json", "dist/schemas/limits.json"],
-  ["schemas/project/0.schema.json", "dist/schemas/project/0.schema.json"],
-  ["schemas/project/1.schema.json", "dist/schemas/project/1.schema.json"],
-  ["schemas/project/2.schema.json", "dist/schemas/project/2.schema.json"],
+  ["schemas/vocabularies.json", "dist/schemas/vocabularies.json"],
+  ...PROJECT_SCHEMA_FILES.map((file) => [file, `dist/${file}`]),
 ];
 const ARTIFACT_PATHS = [
   "custom_components/glt_flow_card/schemas/bundle-manifest.schema.json",
   "custom_components/glt_flow_card/schemas/diff-policy.json",
   "custom_components/glt_flow_card/schemas/limits.json",
-  "custom_components/glt_flow_card/schemas/project/0.schema.json",
-  "custom_components/glt_flow_card/schemas/project/1.schema.json",
-  "custom_components/glt_flow_card/schemas/project/2.schema.json",
+  "custom_components/glt_flow_card/schemas/vocabularies.json",
+  ...PROJECT_SCHEMA_FILES.map((file) => `custom_components/glt_flow_card/${file}`),
   "custom_components/glt_flow_card/www/glt-flow-card.js",
   "dist/glt-flow-card.js",
   "dist/schemas/bundle-manifest.schema.json",
   "dist/schemas/diff-policy.json",
   "dist/schemas/limits.json",
-  "dist/schemas/project/0.schema.json",
-  "dist/schemas/project/1.schema.json",
-  "dist/schemas/project/2.schema.json",
+  "dist/schemas/vocabularies.json",
+  ...PROJECT_SCHEMA_FILES.map((file) => `dist/${file}`),
   "docs/editor/app.js",
 ];
 
@@ -128,6 +131,24 @@ function git(args) {
 }
 
 function buildIdentity(sourcePaths) {
+  /*
+   * The manifest records the latest commit that touched a canonical source, so
+   * a rebuild anywhere reproduces the same bytes. A shallow clone cannot answer
+   * that question: git attributes every file to the single commit it has, so
+   * `git log` silently returns the head SHA instead. Fabricating provenance is
+   * worse than failing, because the wrong value only surfaces later as an
+   * artifact-equality failure somewhere else.
+   */
+  const shallow = git(["rev-parse", "--is-shallow-repository"]) === "true";
+  const reachable = Number(git(["rev-list", "--count", "HEAD"]) || "0");
+  if (shallow && reachable <= 1) {
+    throw new Error(
+      "build identity requires git history: this checkout has a single reachable "
+      + "commit, so git attributes every source file to it and the recorded commit "
+      + "would be the head SHA rather than the last commit that touched a canonical "
+      + "source. Check out with fetch-depth: 0.",
+    );
+  }
   const commit = git(["log", "-1", "--format=%H", "--", ...sourcePaths]) || "WORKTREE";
   const dirty = Boolean(git(["status", "--porcelain=v1", "--untracked-files=all", "--", ...sourcePaths]));
   return { commit, dirty };
@@ -303,6 +324,7 @@ async function main() {
         ...PROJECT_SCHEMA_SPECS,
         ["diffPolicy", "schemas/diff-policy.json"],
         ["limits", "schemas/limits.json"],
+        ["vocabularies", "schemas/vocabularies.json"],
       ].map(async ([name, sourcePath]) => [
         name,
         sha256(await readFile(path.join(ROOT, sourcePath))),
@@ -328,7 +350,11 @@ async function main() {
         card: cardVersion,
         companion: companionManifest.version,
         package: packageJson.version,
-        project_schema: [0, 1, 2],
+        // Derived from the compiled schema list rather than typed out, so a new
+        // schema version cannot be added without the manifest saying so.
+        project_schema: PROJECT_SCHEMA_SPECS
+          .filter(([name]) => /^project\d+$/.test(name))
+          .map(([name]) => Number(name.slice("project".length))),
       },
     };
     await writeStage(stageRoot, MANIFEST_PATH, canonicalJson(manifest));

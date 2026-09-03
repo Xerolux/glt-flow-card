@@ -28,6 +28,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # tools/build.mjs derives the manifest's source commit from git history.
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -36,12 +39,14 @@ jobs:
         with:
           python-version: "3.13"
       - run: npm ci --ignore-scripts
-      - name: Verify deterministic authored and generated release outputs
-        run: npm run verify:release
+      # Stage first: `verify:release` consumes the stage to prove the packages
+      # that will ship are the bytes it just verified. It never creates one.
       - name: Stage local release packages
         run: |
           npm run stage:hacs
           node tools/validate-hacs-staging.mjs
+      - name: Verify deterministic authored and generated release outputs
+        run: npm run verify:release
       - name: JavaScript tests
         run: npm test
       - name: Clean tracked-export gate

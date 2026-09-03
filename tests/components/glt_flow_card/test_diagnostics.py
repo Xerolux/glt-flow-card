@@ -11,6 +11,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.glt_flow_card.diagnostics import (
     async_get_config_entry_diagnostics,
 )
+from custom_components.glt_flow_card.project_migrations import (
+    CURRENT_PROJECT_SCHEMA_VERSION,
+)
 
 pytestmark = [
     pytest.mark.enable_socket,
@@ -85,7 +88,7 @@ async def test_diagnostics_use_explicit_metadata_allowlist(
     assert result["integration"] == {
         "domain": "glt_flow_card",
         "version": "1.0.0",
-        "project_schema_version": 2,
+        "project_schema_version": CURRENT_PROJECT_SCHEMA_VERSION,
         "loaded": True,
     }
     assert result["options"] == {
@@ -101,7 +104,12 @@ async def test_diagnostics_use_explicit_metadata_allowlist(
         "legacy_audit_events": 1,
         "locks": 0,
         "alarm_tasks": 0,
-        "listeners": 2,
+        # One, not two. Phase 6 replaced the bare `state_changed` bus listener
+        # with an entity-filtered subscription that follows the alarm index,
+        # and this fixture configures no alarmed entities -- so the schedule
+        # tick is the only listener. Previously the integration listened to
+        # every state change in the instance even with zero alarms configured.
+        "listeners": 1,
         "remote_sites": 1,
     }
     assert result["digests"] == {

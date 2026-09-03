@@ -1,0 +1,6 @@
+{
+  "format": "glt-flow-card-claim-registry",
+  "version": 1,
+  "why": "A registry with nothing in it, so the refusal can be asserted. Two empty tables satisfy every equality a completeness check can make; an empty registry is not the same as having nothing to prove.",
+  "claims": []
+}

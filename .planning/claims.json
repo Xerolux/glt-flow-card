@@ -1,0 +1,127 @@
+{
+  "format": "glt-flow-card-claim-registry",
+  "version": 1,
+  "product": "glt-flow-card",
+  "why": "Every sentence this project publishes about what it can do, bound to the command that supports it. A claim with no evidence fails the build; a claim whose evidence failed is published as failed. The two accessibility claims stay separate on purpose — there is no field in which an automated result and a manual pass combine into conformance.",
+  "claims": [
+    {
+      "id": "catalog-complete",
+      "claim": "Both language catalogs declare the same keys, with no blank value and no key missing from either.",
+      "kind": "command",
+      "command": "node --test test/catalog-completeness.test.mjs",
+      "covers": "I18N-01, for the strings that go through the catalog — not for the strings that do not yet, which claim `i18n-coverage` reports on."
+    },
+    {
+      "id": "missing-translation-visible",
+      "claim": "A missing translation fails rather than rendering the English string or the raw key.",
+      "kind": "command",
+      "command": "node --test test/pseudo-locale.test.mjs",
+      "covers": "I18N-01. Proven by a pseudo-locale generated from the catalogs at test time."
+    },
+    {
+      "id": "i18n-coverage",
+      "claim": "Every user-facing string in the shipped artifact comes from a catalog.",
+      "kind": "command",
+      "command": "node tools/verify-i18n-coverage.mjs",
+      "covers": "I18N-01. Met at head, by two sweeps. The linguistic one asks whether a string reads like prose; the close-out review found its blind spot -- a single German word with no umlaut -- so a structural one now also flags any bare literal handed to prompt, confirm, alert, .textContent or .innerText, whatever it looks like. Each allowlist entry carries a reason."
+    },
+    {
+      "id": "locale-formatting",
+      "claim": "Date, number and unit formatting resolves from configuration or refuses, and plural selection is data.",
+      "kind": "command",
+      "command": "node --test test/locale-formatting.test.mjs",
+      "covers": "I18N-01. Proven against Polish (four plural forms) and Arabic (six), not only the German/English pair."
+    },
+    {
+      "id": "wording-parity",
+      "claim": "The Companion and the browser carry the same wording, compared as canonical bytes.",
+      "kind": "command",
+      "command": "node --test test/catalog-parity.test.mjs",
+      "covers": "I18N-01, for the namespaces both runtimes own. The existing vocabulary gates compare codes, not sentences."
+    },
+    {
+      "id": "a11y-structure",
+      "claim": "Every focusable element in the shipped artifact has a role and an accessible name, focus stays visible with colour removed, and nothing traps the keyboard.",
+      "kind": "command",
+      "command": "node tools/run-exact-dist-playwright.mjs --grep=phase-10-a11y",
+      "covers": "A11Y-01, for the properties a machine can decide. It does not cover whether a name is meaningful or whether focus order matches reading order for a person."
+    },
+    {
+      "id": "a11y-automated-sweep",
+      "claim": "An automated rule engine reports no violations over every registered surface, with no rule disabled.",
+      "kind": "command",
+      "command": "node tools/run-exact-dist-playwright.mjs --grep=phase-10-axe",
+      "covers": "A11Y-01, partially. Automated rules decide a minority of the success criteria by construction; a clean run is consistent with an unusable product. The manual half is claim `a11y-manual-pass`."
+    },
+    {
+      "id": "a11y-manual-pass",
+      "claim": "A person exercised the runtime and designer workflows with assistive technology.",
+      "kind": "not-exercised",
+      "why": "No assistive technology can be driven in this environment. A test asserting that something would be announced correctly is asserting a belief, and none was written.",
+      "covers": "A11Y-01's manual half. Until this is performed, no conformance statement is supportable regardless of what the automated sweep reports."
+    },
+    {
+      "id": "capacity-bounded",
+      "claim": "The 100-, 500- and 2,000-object scenarios build what they declare and complete within recorded budgets.",
+      "kind": "command",
+      "command": "node --test test/capacity-budgets.test.mjs",
+      "covers": "TEST-01's scenario half. It shows the scenarios are bounded and run; it is not a statement about how many objects the platform supports."
+    },
+    {
+      "id": "capacity-representative",
+      "claim": "The capacity budgets were measured on representative browser and Home Assistant hardware.",
+      "kind": "not-exercised",
+      "why": "This is a shared cloud container with no declared CPU allocation. Every measurement carries that fingerprint, and the budget file records that it supports \"scenario-is-bounded\" rather than \"platform-capacity\".",
+      "covers": "TEST-01's capacity claim. Running the harness with GLT_CAPACITY_HOST set on named hardware is what would satisfy it."
+    },
+    {
+      "id": "node-suite",
+      "claim": "The Node regression suite passes against the built artifact.",
+      "kind": "command",
+      "command": "npm test",
+      "covers": "TEST-01's pure-core half."
+    },
+    {
+      "id": "companion-suite",
+      "claim": "The Companion integration suite passes.",
+      "kind": "command",
+      "command": "npm run test:python",
+      "covers": "TEST-01's Python half. It runs against the vendored Home Assistant, not a live instance."
+    },
+    {
+      "id": "browser-suite",
+      "claim": "The browser suites pass against the exact shipped artifact, with the effect ledger clean.",
+      "kind": "command",
+      "command": "node tools/run-exact-dist-playwright.mjs",
+      "covers": "TEST-01's browser half. Every test runs against dist bytes proven identical to the Companion copy."
+    },
+    {
+      "id": "artifact-integrity",
+      "claim": "Authored source, generated card, Companion copy and staged package agree byte for byte.",
+      "kind": "command",
+      "command": "npm run verify:release",
+      "covers": "TEST-01's artifact half, including per-member and per-ZIP checksums."
+    },
+    {
+      "id": "docs-deterministic",
+      "claim": "Every documentation source is present and non-empty, and the site builds byte-identically twice.",
+      "kind": "command",
+      "command": "node tools/verify-docs-site.mjs",
+      "covers": "The documentation the wiki job copies verbatim, where an empty source silently deletes a page."
+    },
+    {
+      "id": "ha-lane-install",
+      "claim": "The exact staged artifact installs and loads on the pinned minimum and current Home Assistant lanes.",
+      "kind": "not-exercised",
+      "why": "The lane runner probes `docker info` across twelve bounded candidates and this container has no Docker engine. Eight phase registers carry the same row with its exact failure output.",
+      "covers": "TEST-01's compatibility half. Nothing in this repository currently demonstrates the artifact installing on either lane."
+    },
+    {
+      "id": "dependency-provenance",
+      "claim": "Every declared dependency's provenance is verified against its source repository.",
+      "kind": "not-exercised",
+      "why": "All five third-party repository endpoints answer 403 with \"GitHub access to this repository is not enabled for this session\"; api.github.com/rate_limit answers 200, so this is a repository-scope limit rather than a network one. Attaching five third-party repositories with credentials to satisfy a provenance check would be a disproportionate permission change.",
+      "covers": "TEST-01's supply-chain half. It blocks the Phase-1 gate and every gate recursing into it."
+    }
+  ]
+}

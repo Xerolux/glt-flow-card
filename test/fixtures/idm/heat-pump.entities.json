@@ -1,0 +1,22 @@
+{
+  "note": "A realistic candidate corpus. `trap` marks entities that name similarity alone would rank first and that stronger evidence must beat.",
+  "device": { "id": "device-idm-1", "integration": "modbus", "manufacturer": "iDM", "model": "Navigator 2.0", "area": "Heizraum" },
+  "entities": [
+    { "entity_id": "sensor.idm_flow_temperature", "integration": "modbus", "device": "device-idm-1", "area": "Heizraum", "unit": "degC", "device_class": "temperature", "expected_slot": "flow_temperature" },
+    { "entity_id": "sensor.idm_return_temperature", "integration": "modbus", "device": "device-idm-1", "area": "Heizraum", "unit": "degC", "device_class": "temperature", "expected_slot": "return_temperature" },
+    { "entity_id": "sensor.weather_station_outdoor_temperature", "integration": "knx", "device": null, "area": "Aussen", "unit": "degC", "device_class": "temperature", "expected_slot": "outdoor_temperature" },
+    { "entity_id": "sensor.idm_dhw_temperature", "integration": "modbus", "device": "device-idm-1", "area": "Heizraum", "unit": "degC", "device_class": "temperature", "expected_slot": "dhw_temperature" },
+    { "entity_id": "binary_sensor.idm_compressor", "integration": "modbus", "device": "device-idm-1", "area": "Heizraum", "unit": null, "device_class": "running", "expected_slot": "compressor_state" },
+    { "entity_id": "sensor.idm_electrical_power", "integration": "modbus", "device": "device-idm-1", "area": "Heizraum", "unit": "W", "device_class": "power", "expected_slot": "electrical_power" },
+    { "entity_id": "sensor.idm_thermal_energy", "integration": "modbus", "device": "device-idm-1", "area": "Heizraum", "unit": "kWh", "device_class": "energy", "expected_slot": "thermal_energy" },
+
+    { "trap": "name", "entity_id": "sensor.idm_flow_temperature_setpoint", "integration": "modbus", "device": "device-idm-1", "area": "Heizraum", "unit": "degC", "device_class": "temperature", "expected_slot": null,
+      "why": "Its name is a superstring of the flow temperature slot, so pure name similarity ranks it first. It is a setpoint, not a measurement." },
+    { "trap": "name", "entity_id": "sensor.old_boiler_flow_temperature", "integration": "knx", "device": null, "area": "Keller", "unit": "degC", "device_class": "temperature", "expected_slot": null,
+      "why": "Name matches the slot almost exactly but the entity belongs to a different device, area and integration." },
+    { "trap": "unit", "entity_id": "sensor.idm_source_pressure", "integration": "modbus", "device": "device-idm-1", "area": "Heizraum", "unit": "bar", "device_class": "pressure", "expected_slot": null,
+      "why": "Same device and area, but no slot declares pressure." },
+    { "trap": "dimension", "entity_id": "sensor.idm_thermal_power", "integration": "modbus", "device": "device-idm-1", "area": "Heizraum", "unit": "kW", "device_class": "power", "expected_slot": null,
+      "why": "kW and kWh are different dimensions; a naive unit prefix match would bind it to thermal_energy." }
+  ]
+}

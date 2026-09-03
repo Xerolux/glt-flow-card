@@ -9,10 +9,16 @@ import standaloneCode from "ajv/dist/standalone/index.js";
 const ROOT = new URL("../", import.meta.url);
 const OUTPUT_URL = new URL("src/v100/generated/project-validators.mjs", ROOT);
 const LIMITS_URL = new URL("schemas/limits.json", ROOT);
+const VOCABULARIES_URL = new URL("schemas/vocabularies.json", ROOT);
 export const PROJECT_SCHEMA_SPECS = [
   ["project0", "schemas/project/0.schema.json"],
   ["project1", "schemas/project/1.schema.json"],
   ["project2", "schemas/project/2.schema.json"],
+  ["project3", "schemas/project/3.schema.json"],
+  ["project4", "schemas/project/4.schema.json"],
+  ["project5", "schemas/project/5.schema.json"],
+  ["project6", "schemas/project/6.schema.json"],
+  ["project7", "schemas/project/7.schema.json"],
   ["bundleManifest", "schemas/bundle-manifest.schema.json"],
 ];
 
@@ -27,6 +33,8 @@ export async function generateProjectValidatorSource() {
   }));
   const limitsBytes = await readFile(LIMITS_URL);
   const limits = JSON.parse(limitsBytes);
+  const vocabulariesBytes = await readFile(VOCABULARIES_URL);
+  const vocabularies = JSON.parse(vocabulariesBytes);
   const ajv = new Ajv2020({
     allErrors: true,
     strict: true,
@@ -51,7 +59,12 @@ export async function generateProjectValidatorSource() {
     validators,
     `export const schemaFingerprints = Object.freeze(${JSON.stringify(fingerprints)});`,
     `export const limitsFingerprint = "${sha256(limitsBytes)}";`,
+    `export const vocabulariesFingerprint = "${sha256(vocabulariesBytes)}";`,
     `export const contractLimits = Object.freeze(${JSON.stringify(limits)});`,
+    // The vocabulary data lives beside the schema rather than inside it: a
+    // foreign keyword in a JSON Schema is something every consumer has to be
+    // taught about. A drift test asserts the schema enums equal these keys.
+    `export const contractVocabularies = Object.freeze(${JSON.stringify(vocabularies)});`,
     "",
   ].join("\n");
 }

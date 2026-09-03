@@ -1,0 +1,43 @@
+{
+  "id": "idm-navigator-2-0",
+  "version": "1.2.0",
+  "equipment_type": "heat_pump",
+  "identity": {
+    "manufacturer": "iDM",
+    "series": "Navigator 2.0",
+    "label": { "en": "iDM heat pump", "de": "iDM Wärmepumpe" }
+  },
+  "slots": [
+    { "id": "flow_temperature", "medium": "heating_flow", "direction": "input", "unit": "degC", "device_class": "temperature", "required": true },
+    { "id": "return_temperature", "medium": "heating_return", "direction": "input", "unit": "degC", "device_class": "temperature", "required": true },
+    { "id": "outdoor_temperature", "medium": "ambient", "direction": "input", "unit": "degC", "device_class": "temperature", "required": false },
+    { "id": "dhw_temperature", "medium": "domestic_hot_water", "direction": "input", "unit": "degC", "device_class": "temperature", "required": false },
+    { "id": "compressor_state", "medium": "electrical", "direction": "input", "unit": null, "device_class": "running", "required": true },
+    { "id": "electrical_power", "medium": "electrical", "direction": "input", "unit": "W", "device_class": "power", "required": false },
+    { "id": "thermal_energy", "medium": "heating_flow", "direction": "input", "unit": "kWh", "device_class": "energy", "required": false }
+  ],
+  "controls": [
+    { "id": "set_heating_mode", "label": { "en": "Set heating mode", "de": "Heizmodus setzen" }, "input_schema": { "properties": { "mode": { "enum": ["off", "heating", "cooling", "auto"] } } }, "gates": { "maintenance": false, "simulation": false } },
+    { "id": "set_dhw_setpoint", "label": { "en": "Set hot water setpoint", "de": "Warmwasser-Sollwert setzen" }, "input_schema": { "properties": { "setpoint": { "type": "number", "minimum": 30, "maximum": 60 } } }, "gates": { "maintenance": false, "simulation": false } }
+  ],
+  "state_signals": [
+    { "id": "running", "from": "compressor_state", "when": "on" },
+    { "id": "off", "from": "compressor_state", "when": "off" },
+    { "id": "fault", "from": "fault_code", "when": "nonzero" }
+  ],
+  "alarms": [
+    { "id": "high_flow_temperature", "severity": "warning", "from": "flow_temperature", "above": 65 },
+    { "id": "compressor_fault", "severity": "fault", "from": "fault_code", "when": "nonzero" }
+  ],
+  "ports": [
+    { "id": "heating_flow_out", "medium": "heating_flow", "direction": "output" },
+    { "id": "heating_return_in", "medium": "heating_return", "direction": "input" },
+    { "id": "source_in", "medium": "brine", "direction": "input" }
+  ],
+  "diagnostics": [
+    { "id": "compressor_hours", "unit": "h" },
+    { "id": "compressor_starts", "unit": null }
+  ],
+  "maintenance": { "interval_hours": 8760, "last_service": null, "notes": { "en": "Annual service", "de": "Jährliche Wartung" } },
+  "symbols": ["heat-pump", "heat-pump-compact"]
+}

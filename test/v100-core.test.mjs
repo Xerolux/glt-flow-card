@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { SYMBOL_VARIANTS, COMPONENT_PROFILES } from "../src/v100/catalog.mjs";
+import { CURRENT_PROJECT_SCHEMA_VERSION } from "../src/v100/project-migrations.mjs";
 import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, diagnoseConfig, aggregateSeries, projectDiff, makeProjectBundle, readProjectBundle } from "../src/v100/core.mjs";
 
 test("Platform 1.0 exposes a professional symbol/profile catalog", () => {
@@ -46,12 +47,30 @@ test("diagnostics handles 2000 engineered objects", () => {
   assert.ok(result.referenced.length >= 2000);
 });
 
-test("historian aggregation and deadband work", () => {
+test("the browser aggregator is retired reachable and inert", () => {
+  // Rewritten by plan 07-17, which retired it. This test used to assert that a
+  // deadband dropped a point and that a 2000 ms bucket produced two averages.
+  //
+  // Both behaviours were wrong in a way the assertions could not see. The
+  // bucketing was `Math.floor(x / bucketMs) * bucketMs`, aligned to the UTC
+  // epoch, so a "daily" bucket in Europe/Berlin started at 01:00 or 02:00 local
+  // and a transition day was the wrong length -- and a test with x values of 0,
+  // 1000, 2000 and 3000 never touches a timezone, so it passed throughout.
+  //
+  // Deleting the test with the function would have left nothing saying the
+  // entry point must stay. Deleting the function would have left nothing to
+  // assert about. So both stay, and this says what it now does: nothing.
   const pts = [{x:0,y:1},{x:1000,y:1.01},{x:2000,y:2},{x:3000,y:3}];
-  const reduced = aggregateSeries(pts,{deadband:.1});
-  assert.equal(reduced.length, 3);
-  const avg = aggregateSeries(pts,{aggregate:"average",bucket_ms:2000});
-  assert.equal(avg.length, 2);
+  assert.deepEqual(aggregateSeries(pts,{deadband:.1}), pts, "the deadband still thins the series");
+  assert.deepEqual(
+    aggregateSeries(pts,{aggregate:"average",bucket_ms:2000}),
+    pts,
+    "the aggregator still buckets, on epoch-aligned boundaries",
+  );
+  // Where the behaviour went: the Companion resolves the period on local
+  // calendar boundaries and Home Assistant computes the buckets. Proven by
+  // test_period_resolution.py against a corpus generated from the vendored
+  // implementation, and by test/period-parity.test.mjs byte for byte.
 });
 
 test("project diff identifies nested changes", () => {
@@ -65,6 +84,6 @@ test(".gltproject bundle migrates and round trips through the safe async API", a
   const bundle = await makeProjectBundle(cfg);
   assert.ok(bundle.length > 100);
   const restored = await readProjectBundle(bundle);
-  assert.equal(restored.schema_version, 2);
+  assert.equal(restored.schema_version, CURRENT_PROJECT_SCHEMA_VERSION);
   assert.equal(restored.equipment[0].id, "p1");
 });

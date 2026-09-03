@@ -9,15 +9,15 @@ Milestone v1.1 hardens the existing Platform 1.0 surface as ten dependency-order
 **Phase Numbering:** Integer phases are planned milestone work; decimal phases are reserved for urgent insertions.
 
 - [x] **Phase 1: Trusted Contract & Release Foundation** - Make project data, Companion lifecycle, migrations, and shipped artifacts safe and reproducible. (completed 2026-09-01)
-- [ ] **Phase 2: Authoritative Policy, Controls & Collaboration** - Enforce server-owned permissions, exact control targets, trustworthy audit, and conflict-safe shared editing.
-- [ ] **Phase 3: Semantic Equipment & Provenance** - Establish stable semantics, profiles, mapping, provenance, and deterministic operational state.
-- [ ] **Phase 4: Runtime Operations & Drill-Down** - Deliver profile-driven plant operation with confirmed commands and permission-safe contextual navigation.
-- [ ] **Phase 5: CAD Engineering & Extension Platform** - Deliver the verified catalog, typed connectivity, deterministic routing, transactional CAD, and declarative SDK.
-- [ ] **Phase 6: Alarms, Notifications & Schedules** - Make time-sensitive operational workflows authoritative, restart-safe, observable, and timezone-correct.
-- [ ] **Phase 7: Trends, Energy & Reproducible Reports** - Turn Recorder data into honest trends, unit-safe energy views, and matching period reports.
-- [ ] **Phase 8: Safe Simulation, Commissioning & Assets** - Support pre-commissioning scenarios, read-only diagnostics, and bounded maintenance workflows without plant-write risk.
-- [ ] **Phase 9: Failure-Isolated Multi-Site Supervision** - Supervise authorized remote Home Assistant sites without credential exposure, policy bypass, or global failure.
-- [ ] **Phase 10: Product-Wide Usability & Release Evidence** - Close localization, accessibility, capacity, compatibility, and exact-artifact release evidence across all workflows.
+- [x] **Phase 2: Authoritative Policy, Controls & Collaboration** - Enforce server-owned permissions, exact control targets, trustworthy audit, and conflict-safe shared editing.
+- [x] **Phase 3: Semantic Equipment & Provenance** - Establish stable semantics, profiles, mapping, provenance, and deterministic operational state.
+- [x] **Phase 4: Runtime Operations & Drill-Down** - Deliver profile-driven plant operation with confirmed commands and permission-safe contextual navigation.
+- [x] **Phase 5: CAD Engineering & Extension Platform** - Deliver the verified catalog, typed connectivity, deterministic routing, transactional CAD, and declarative SDK.
+- [x] **Phase 6: Alarms, Notifications & Schedules** - Make time-sensitive operational workflows authoritative, restart-safe, observable, and timezone-correct.
+- [x] **Phase 7: Trends, Energy & Reproducible Reports** - Turn Recorder data into honest trends, unit-safe energy views, and matching period reports.
+- [x] **Phase 8: Safe Simulation, Commissioning & Assets** - Support pre-commissioning scenarios, read-only diagnostics, and bounded maintenance workflows without plant-write risk.
+- [x] **Phase 9: Failure-Isolated Multi-Site Supervision** - Supervise authorized remote Home Assistant sites without credential exposure, policy bypass, or global failure.
+- [x] **Phase 10: Product-Wide Usability & Release Evidence** - Close localization, accessibility, capacity, compatibility, and exact-artifact release evidence across all workflows.
 
 ## Phase Details
 
@@ -105,7 +105,26 @@ Plans:
   5. Representative live, stale, invalid, unavailable, pending, failed, manual/local, interlocked, maintenance, warning/fault, running/standby/off fixtures produce one severity-ranked state whose symbol, quality, freshness, German/English accessible label, and drill-down evidence agree.
 
 **Known defects closed**: Browser/domain rule divergence, unstable or weakly validated semantic identities, name-inferred provenance, silent unsafe auto-binding, and unproven operational-state token claims.
-**Plans**: TBD
+**Plans**: 17 plans across 11 dependency-ordered waves
+
+Plans:
+- [ ] 03-01-PLAN.md — Stand up registry fixtures, iDM corpus, sentinel keys and command scripts.
+- [ ] 03-02-PLAN.md — Specify the hierarchy, cycle and vocabulary RED contracts.
+- [ ] 03-03-PLAN.md — Specify provenance, communication health and their authorization RED contracts.
+- [ ] 03-04-PLAN.md — Specify profile, mapping, state and exact-dist UI RED contracts.
+- [ ] 03-05-PLAN.md — Introduce schema 3 and the sequential 2-3 migration.
+- [ ] 03-06-PLAN.md — Implement containment, cycle rejection, bounds and closed vocabularies.
+- [ ] 03-07-PLAN.md — Integrate the new collections into diff, closure and bundles.
+- [ ] 03-08-PLAN.md — Implement registry-derived provenance, health and its authorized route.
+- [ ] 03-09-PLAN.md — Bind the provenance cache to the runtime generation.
+- [ ] 03-10-PLAN.md — Implement versioned profiles and override-preserving upgrades.
+- [ ] 03-11-PLAN.md — Expose profile instantiation and upgrade as guarded mutations.
+- [ ] 03-12-PLAN.md — Implement explained, dual-runtime mapping ranking.
+- [ ] 03-13-PLAN.md — Expose ranking, acceptance and undo without automatic binding.
+- [ ] 03-14-PLAN.md — Implement the deterministic operational-state precedence.
+- [ ] 03-15-PLAN.md — Build the semantic, provenance, mapping and state surfaces.
+- [ ] 03-16-PLAN.md — Document the Phase-3 contract in English and German.
+- [ ] 03-17-PLAN.md — Package the new modules and close the Phase-3 gate.
 **UI hint**: yes
 
 ### Phase 4: Runtime Operations & Drill-Down
@@ -123,7 +142,26 @@ Plans:
   5. The exact generated card completes the runtime workflow by keyboard and assistive labels in German and English at mobile, tablet, widescreen, and secure kiosk/leitstand layouts with visible focus, non-color state cues, and no direct-service security fallback.
 
 **Known defects closed**: Browser-invented permissions/state, optimistic service success, direct privileged fallbacks, unauthorized aggregate leakage, and prototype-load behavior that token tests never execute.
-**Plans**: TBD
+**Plans**: 17 plans across 13 dependency-ordered waves
+
+Plans:
+- [ ] 04-01-PLAN.md — Stand up the Phase-4 sentinels, operations corpus and effect ledger.
+- [ ] 04-02-PLAN.md — Specify the panel composition, enumeration and view-stream RED contracts.
+- [ ] 04-03-PLAN.md — Specify the address resolution and aggregate-count RED contracts.
+- [ ] 04-04-PLAN.md — Specify the panel, navigation, outcome, resync and exact-dist UI RED contracts.
+- [ ] 04-05-PLAN.md — Compose the profile-driven object panel on the server.
+- [ ] 04-06-PLAN.md — Implement the sequenced, bounded view stream.
+- [ ] 04-07-PLAN.md — Implement bounded, re-authorized address resolution.
+- [ ] 04-08-PLAN.md — Compute aggregate counts over the authorized scope only.
+- [ ] 04-09-PLAN.md — Make the address the whole navigation state.
+- [ ] 04-10-PLAN.md — Render the server-composed panel without adding browser authority.
+- [ ] 04-11-PLAN.md — Present the nine control states as separated operator outcomes.
+- [ ] 04-12-PLAN.md — Detect sequence gaps honestly and resync without stale-as-live.
+- [ ] 04-13-PLAN.md — Ship the operations surfaces and retire the legacy operate path.
+- [ ] 04-14-PLAN.md — Close the Phase-4 lifecycle and packaging obligations.
+- [ ] 04-15-PLAN.md — Close the exact-dist accessibility and localization matrix.
+- [ ] 04-16-PLAN.md — Document the Phase-4 contract in English and German.
+- [ ] 04-17-PLAN.md — Build the Phase-4 gate and close the phase honestly.
 **UI hint**: yes
 
 ### Phase 5: CAD Engineering & Extension Platform
@@ -141,8 +179,30 @@ Plans:
   5. Separately installed namespaced SDK contributions for symbols, profiles/templates, renderers/widgets/panels, and translations pass manifest/version/conflict/compatibility checks, survive schema-safe exchange, and cannot introduce arbitrary privileged project-script execution.
 
 **Known defects closed**: Unproven catalog-count claims, unstable/detached routes, synchronous full reroutes, pointer-only editing gaps, executable bundle/plugin risk, and fragile prototype registration without behavioral compatibility tests.
-**Research flag**: Define trusted SDK installation, review, distribution, and compatibility policy; same-realm JavaScript is not treated as a sandbox.
-**Plans**: TBD
+**Research flag**: Define trusted SDK installation, review, distribution, and compatibility policy; same-realm JavaScript is not treated as a sandbox. **Answered 2026-09-02:** contributions are data; no contributed code executes in any realm (05-RESEARCH section 5). The executable alternative and public pack distribution are deferred and recorded in [FUTURE-ROADMAP.md](FUTURE-ROADMAP.md) as F-01 and F-02.
+**Plans**: 20 plans across 8 dependency-ordered waves
+
+Plans:
+- [x] 05-01-PLAN.md — Stand up the Phase-5 gate, CAD corpus and extended effect ledger.
+- [x] 05-02-PLAN.md — Specify the catalog evidence and typed-port RED contracts.
+- [x] 05-03-PLAN.md — Specify the routing, designer and SDK RED contracts.
+- [x] 05-04-PLAN.md — Introduce schema 4 and the sequential 3-4 migration.
+- [x] 05-05-PLAN.md — Generate catalog evidence and fill the fire/electrical domain.
+- [x] 05-06-PLAN.md — Prove state and contrast legibility, and ship the symbol browser.
+- [x] 05-07-PLAN.md — Implement typed ports and explained compatibility refusal.
+- [x] 05-08-PLAN.md — Make endpoint identity survive edits, bundles and migration.
+- [x] 05-09-PLAN.md — Establish routing determinism as the precondition for the rest.
+- [x] 05-10-PLAN.md — Implement obstacle-aware geometry, junctions, crossings and spacing.
+- [x] 05-11-PLAN.md — Make rerouting incremental and retire the eight-line router.
+- [x] 05-12-PLAN.md — Model editing as commands with proven inverses.
+- [x] 05-13-PLAN.md — Implement id-remapping cross-project copy and paste.
+- [x] 05-14-PLAN.md — Ship the designer surfaces and retire the legacy editor dialogs.
+- [x] 05-15-PLAN.md — Close the non-pointer editing workflow as one keyboard scenario.
+- [x] 05-16-PLAN.md — Define the data-only contribution format and prove nothing executes.
+- [x] 05-17-PLAN.md — Make extension installation atomic, namespaced and version-checked.
+- [x] 05-18-PLAN.md — Close the Phase-5 lifecycle and packaging obligations.
+- [x] 05-19-PLAN.md — Document the Phase-5 contract in English and German.
+- [x] 05-20-PLAN.md — Build the Phase-5 gate and close the phase honestly.
 **UI hint**: yes
 
 ### Phase 6: Alarms, Notifications & Schedules
@@ -160,8 +220,28 @@ Plans:
   5. Python HA and exact-card browser tests exercise transitions, denial, malformed input, restart, notifier failure, schedule failure, German/English text, keyboard/focus announcements, and generated-artifact equality rather than checking for lifecycle keywords.
 
 **Known defects closed**: Shelving that does not suppress processing/notifications, loop-closure delay tasks using the wrong delay, full alarm scans on every state change, split browser/backend lifecycle truth, duplicate restart notifications, and swallowed schedule/notification failures.
-**Research flag**: Confirm supported HA schedule/calendar authoring APIs and the deployment alarm philosophy, priorities, shelving/escalation limits, recipients, and retention.
-**Plans**: TBD
+**Research flag**: RESOLVED 2026-09-02 — see `06-RESEARCH.md`. HA 2026.2.3 supports schedule authoring over `schedule/create|update|delete` (admin-gated), calendar authoring via `calendar.create_event` gated on `CalendarEntityFeature.CREATE_EVENT`, and per-Bundesland holidays via `binary_sensor.workday`. The alarm philosophy is configuration with conservative defaults, decided with the user; the priority vocabulary is the one deliberate exception.
+Plans:
+- [x] 06-01-PLAN.md — Stand up the Phase-6 gate, the notification-aware effect ledger and the alarm corpus.
+- [x] 06-02-PLAN.md — Close the alarm vocabulary and migrate the four that disagree.
+- [x] 06-03-PLAN.md — Introduce schema 5 and the sequential 4-5 migration.
+- [x] 06-04-PLAN.md — Specify the lifecycle, suppression, restart, index and retention RED contracts.
+- [x] 06-05-PLAN.md — Specify the notification, escalation, schedule, DST and shipped-truth RED contracts.
+- [x] 06-06-PLAN.md — Build the lifecycle engine with per-alarm and anchored delays.
+- [x] 06-07-PLAN.md — Make suppression real, consulted where the decision is made.
+- [x] 06-08-PLAN.md — Make the lifecycle restart-safe and re-arm pending delays.
+- [x] 06-09-PLAN.md — Index the alarm scan and prove the index cannot go stale.
+- [x] 06-10-PLAN.md — Bound retention and reconcile alarm state against the project.
+- [x] 06-11-PLAN.md — Make notification and escalation recorded, allowlisted and failure-visible.
+- [x] 06-12-PLAN.md — Resolve schedules to instants and prove both runtimes agree across DST.
+- [x] 06-13-PLAN.md — Give schedules routes, authorization, enumeration filtering and audit.
+- [x] 06-14-PLAN.md — Bind schedules to supported Home Assistant capabilities.
+- [x] 06-15-PLAN.md — Retire the second, third and fourth alarm evaluators.
+- [x] 06-16-PLAN.md — Ship the alarm surface: list, detail, acknowledgement and shelving.
+- [x] 06-17-PLAN.md — Ship the schedule surface and the DST preview.
+- [x] 06-18-PLAN.md — Ship the alarm philosophy as configuration with conservative defaults.
+- [x] 06-19-PLAN.md — Document the Phase-6 contract in English and German.
+- [x] 06-20-PLAN.md — Build out the Phase-6 gate and close the phase honestly.
 **UI hint**: yes
 
 ### Phase 7: Trends, Energy & Reproducible Reports
@@ -179,8 +259,28 @@ Plans:
   5. Supported HA-lane integration tests and exact-artifact browser tests cover bounded queries/exports, date/time/DST, German/English formatting, keyboard-accessible chart alternatives, print layout, schedule/restart failure, and representative history volumes.
 
 **Known defects closed**: KPI-snapshot-only reports, omission of alarm and maintenance content, in-memory utility behavior presented as a historian, missing-as-zero analytics, unbounded exports, and Recorder API behavior untested against Home Assistant.
-**Research flag**: Pin Recorder history/statistics contracts across supported HA lanes and define valid energy/report calculations, periods, and output limits.
-**Plans**: TBD
+**Research flag**: RESOLVED 2026-09-02 — see `07-RESEARCH.md`. HA 2026.2.3 already resolves `day`, `week`, `month` and `year` on local-midnight boundaries in the configured timezone (measured: 23- and 25-hour days, 743- and 745-hour months for Europe/Berlin), `change` is reset-aware over the Recorder's reset-corrected running sum, and `year` is reachable only through `recorder/statistic_during_period`'s calendar spec. Three traps recorded with owners: a window starting before a statistic exists reports the whole accumulated total as the first period's consumption; gaps are omitted from results rather than emitted; and `mean_type` CIRCULAR exists. Nothing in the Recorder API bounds a raw query, so bounds are ours and belong server-side.
+Plans:
+- [x] 07-01-PLAN.md — Stand up the Phase-7 gate, the query-dimension effect ledger and the Recorder fixture corpus.
+- [x] 07-02-PLAN.md — Close the measured-value shape and the period vocabulary in both runtimes.
+- [x] 07-03-PLAN.md — Introduce schema 6 and the sequential 5-6 migration.
+- [x] 07-04-PLAN.md — Specify the history route, bounds, coverage and replay RED contracts.
+- [x] 07-05-PLAN.md — Specify the period, energy, report and rendering RED contracts.
+- [x] 07-06-PLAN.md — Resolve named periods on local-calendar boundaries.
+- [x] 07-07-PLAN.md — Prove both runtimes resolve periods identically.
+- [x] 07-08-PLAN.md — Give history its own routes, authorization, filtering and audit.
+- [x] 07-09-PLAN.md — Bound every query dimension and refuse past the bound.
+- [x] 07-10-PLAN.md — Carry coverage and gaps with every series.
+- [x] 07-11-PLAN.md — Make replay read the record, not the present.
+- [x] 07-12-PLAN.md — Difference counters and integrate rates over resolved periods.
+- [x] 07-13-PLAN.md — Validate units and state exclusions before arithmetic.
+- [x] 07-14-PLAN.md — Record what a report run was computed from.
+- [x] 07-15-PLAN.md — Execute report schedules through the Phase-6 runner.
+- [x] 07-16-PLAN.md — Derive screen, CSV and print from one model.
+- [x] 07-17-PLAN.md — Retire the six browser evaluators reachable and inert.
+- [x] 07-18-PLAN.md — Ship the trend and report surfaces.
+- [x] 07-19-PLAN.md — Prove every retired value is reached, not merely reachable.
+- [x] 07-20-PLAN.md — Build out the Phase-7 gate and close the phase honestly.
 **UI hint**: yes
 
 ### Phase 8: Safe Simulation, Commissioning & Assets
@@ -198,8 +298,25 @@ Plans:
   5. Deterministic backend/browser tests prove virtual-time replay, all service denials, diagnostic accuracy, due/reset math, invalid transitions, oversized/unsafe attachment rejection, German/English accessible workflows, and exact generated-card behavior.
 
 **Known defects closed**: Simulation/commissioning write reachability risk, non-repeatable diagnostic claims, weak work-order input bounds, uncontrolled attachment/storage growth, and maintenance calculations without executable evidence.
-**Plans**: TBD
+**Plans**: 16
 **UI hint**: yes
+
+- [x] 08-01-PLAN.md — Stand up the Phase-8 gate, the dispatch effect ledger and the scenario and registry corpora.
+- [x] 08-02-PLAN.md — Close the dispatch, diagnosis and transition vocabularies, and introduce schema 7.
+- [x] 08-03-PLAN.md — Derive record identity from content, in one helper both runtimes use.
+- [x] 08-04-PLAN.md — Make a scenario a pure function of definition and tick, validated against the profile.
+- [x] 08-05-PLAN.md — Give the simulation session an owner, a bounded TTL and an end.
+- [x] 08-06-PLAN.md — Consult one dispatch decision at the point of dispatch, and fail closed.
+- [x] 08-07-PLAN.md — Enumerate every dispatch path and prove none escapes the gate.
+- [x] 08-08-PLAN.md — Mark notifications during a rehearsal rather than silencing them.
+- [x] 08-09-PLAN.md — Move the commissioning diagnostic to the Companion and stop it inventing findings.
+- [x] 08-10-PLAN.md — Check services, units, device classes and duplicates, and bound the suggestions.
+- [x] 08-11-PLAN.md — Prove commissioning writes nothing, and replace the invented score with counts.
+- [x] 08-12-PLAN.md — Make work orders append-only with a closed transition table.
+- [x] 08-13-PLAN.md — Bound attachments, completion history and the work-order store.
+- [x] 08-14-PLAN.md — Ship the simulation, commissioning and asset surfaces.
+- [x] 08-15-PLAN.md — Compute due and next-due from interval and operating-hour plans.
+- [x] 08-16-PLAN.md — Document the contract and close the Phase-8 register from commands.
 
 ### Phase 9: Failure-Isolated Multi-Site Supervision
 
@@ -217,8 +334,22 @@ Plans:
 
 **Known defects closed**: Sequential remote-state reads with per-entity timeouts, under-validated remote targets/services, missing remote success/failure audit, broad remote metadata/proxy exposure, and lack of failure-isolated partial roll-ups.
 **Research flag**: Prototype remote authentication lifecycle, SSRF allowlist policy, bounded subscriptions, reconnect, per-entity permissions, and representative partial-failure budgets.
-**Plans**: TBD
+**Research flag**: RESOLVED 2026-09-02 — see `09-RESEARCH.md`. `/api/states` returns every state in one request while the shipped code asks per entity; `subscribe_entities` takes an entity list where `subscribe_events` with `state_changed` delivers every change on the remote instance; an allowlist alone does not survive DNS rebinding so the resolved address must be checked at connection time; and `POST /api/services` returns the states it changed, which is the readback Phase 4's `confirmed` outcome needs and the shipped code discards.
+**Plans**: 12
 **UI hint**: yes
+
+- [ ] 09-01-PLAN.md — Stand up the Phase-9 gate, the socket ledger and the site corpus.
+- [ ] 09-02-PLAN.md — Close the site health, failure and outcome vocabularies in both runtimes.
+- [ ] 09-03-PLAN.md — Make destinations a server-owned allowlist checked at connection time.
+- [ ] 09-04-PLAN.md — Give a site a health state and a circuit breaker that says it is open.
+- [ ] 09-05-PLAN.md — Read one request per site, bounded, with a total deadline the request owns.
+- [ ] 09-06-PLAN.md — Report failures from a closed set, and prove no credential leaves.
+- [ ] 09-07-PLAN.md — Enforce the same capability and project scoping on every remote route.
+- [ ] 09-08-PLAN.md — Give remote controls the four outcomes and the audit local ones have.
+- [ ] 09-09-PLAN.md — Make a partial roll-up state its own completeness.
+- [ ] 09-10-PLAN.md — Bound subscriptions per site and in total, and name their entities.
+- [ ] 09-11-PLAN.md — Ship the site health, roll-up and remote-value surfaces.
+- [ ] 09-12-PLAN.md — Document the contract and close the Phase-9 register from commands.
 
 ### Phase 10: Product-Wide Usability & Release Evidence
 
@@ -236,8 +367,25 @@ Plans:
 
 **Known defects closed**: Hardcoded/incomplete locale behavior, CSS-only or token-only accessibility claims, a 2,000-object diagnostics micro-test presented as platform capacity, absence of real Python/browser/security tests, unproven HA compatibility, and release copies that can drift from reviewed source.
 **Research flag**: Derive numeric capacity budgets from representative hardware and finalize the evidence/claim publication format before release.
-**Plans**: TBD
+**Research flag**: RESOLVED 2026-09-02 — see `10-RESEARCH.md`. Automated rule engines decide only a minority of WCAG success criteria by construction, so an automated pass and a recorded manual pass stay separate claims that the registry has no schema for merging; a capacity number measured in an environment not marked representative supports "the scenario is bounded and runs" and never "the platform handles N objects"; and a pseudo-locale generated from the catalogs at test time enumerates hardcoded strings rather than counting them, where a checked-in one drifts from what it tests.
+**Plans**: 15
 **UI hint**: yes
+
+- [ ] 10-01-PLAN.md — Stand up the Phase-10 gate and the measured-nothing ledger.
+- [ ] 10-02-PLAN.md — One catalog per language, with completeness as a computation.
+- [ ] 10-03-PLAN.md — Generate a pseudo-locale that makes a missing key visible.
+- [ ] 10-04-PLAN.md — Move the legacy base's hundred hardcoded strings into the catalog.
+- [ ] 10-05-PLAN.md — Format from configuration or refuse, and make plurals data.
+- [ ] 10-06-PLAN.md — Compare the two runtimes' wording as canonical bytes.
+- [ ] 10-07-PLAN.md — Give every interactive element a real role and an accessible name.
+- [ ] 10-08-PLAN.md — Assert names, roles, focus and reflow in the exact artifact.
+- [ ] 10-09-PLAN.md — Sweep every shipped surface automatically, and fail on an unswept one.
+- [ ] 10-10-PLAN.md — Build a capacity harness whose numbers carry their environment.
+- [ ] 10-11-PLAN.md — Build the claim registry that refuses a claim with no evidence.
+- [ ] 10-12-PLAN.md — Publish what was never exercised here, with reasons.
+- [ ] 10-13-PLAN.md — Record budgets, and bound what a measurement may claim.
+- [ ] 10-14-PLAN.md — Document accessibility, localization and release evidence.
+- [ ] 10-15-PLAN.md — Close the register from commands, and fix the traceability debt.
 
 ## Requirement Coverage
 
@@ -262,18 +410,33 @@ Every v1.1 requirement has exactly one primary owner. Cross-cutting gates in lat
 
 **Execution Order:** Phases execute in numeric order from 1 through 10.
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Trusted Contract & Release Foundation | 13/13 | Complete   | 2026-09-01 |
-| 2. Authoritative Policy, Controls & Collaboration | 0/17 | Planned; paused before implementation | - |
-| 3. Semantic Equipment & Provenance | 0/TBD | Not started | - |
-| 4. Runtime Operations & Drill-Down | 0/TBD | Not started | - |
-| 5. CAD Engineering & Extension Platform | 0/TBD | Not started | - |
-| 6. Alarms, Notifications & Schedules | 0/TBD | Not started | - |
-| 7. Trends, Energy & Reproducible Reports | 0/TBD | Not started | - |
-| 8. Safe Simulation, Commissioning & Assets | 0/TBD | Not started | - |
-| 9. Failure-Isolated Multi-Site Supervision | 0/TBD | Not started | - |
-| 10. Product-Wide Usability & Release Evidence | 0/TBD | Not started | - |
+| Phase | Plans Complete | Threats verified | Status | Completed |
+|-------|----------------|------------------|--------|-----------|
+| 1. Trusted Contract & Release Foundation | 13/13 | 10/10 rows, F-01 blocked | Complete | 2026-09-01 |
+| 2. Authoritative Policy, Controls & Collaboration | 17/17 | 15/16 (T2-16 blocked) | Complete | 2026-09-01 |
+| 3. Semantic Equipment & Provenance | 17/17 | 13/14 (T3-14 blocked) | Complete | 2026-09-01 |
+| 4. Runtime Operations & Drill-Down | 17/17 | 13/14 (T4-14 blocked) | Complete | 2026-09-02 |
+| 5. CAD Engineering & Extension Platform | 20/20 | 15/16 (T5-16 blocked) | Complete | 2026-09-02 |
+| 6. Alarms, Notifications & Schedules | 20/20 | 20/21 (T6-21 blocked) | Complete | 2026-09-02 |
+| 7. Trends, Energy & Reproducible Reports | 20/20 | 22/23 (T7-23 blocked) | Complete | 2026-09-02 |
+| 8. Safe Simulation, Commissioning & Assets | 16/16 | 24/25 (T8-25 blocked) | Complete | 2026-09-02 |
+| 9. Failure-Isolated Multi-Site Supervision | 12/12 | 19/20 (T9-20 blocked) | Complete | 2026-09-02 |
+| 10. Product-Wide Usability & Release Evidence | 15/15 | 16/17 (T10-16 blocked) | Complete | 2026-09-03 |
+
+**Every blocked row is the same row.** Each phase's `test:phaseN:release` leaf
+runs `test:ha-artifacts`, which probes `docker info` across twelve bounded lane
+candidates; this environment has no Docker engine. Each is recorded with its
+exact failure output in its own register, and none is marked from its parts
+passing separately.
+
+Phases 3 and 4 have no per-plan summaries; their registers and phase summaries
+carry the evidence. That gap is tracked in the close-out work rather than
+papered over here.
+
+**Every row in the milestone is now either verified or blocked by the
+environment.** T10-03 was carried as `not met` — a status this project had not
+needed before — while 132 strings remained outside the catalog; it was finished
+on 2026-09-03. The nine blocked rows are all the same composed release leaf.
 
 ---
 *Roadmap created: 2026-08-31 for milestone v1.1 Production-Ready GLT Platform*

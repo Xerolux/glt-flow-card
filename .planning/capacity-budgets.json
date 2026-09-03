@@ -1,0 +1,36 @@
+{
+  "format": "glt-flow-card-capacity-budgets",
+  "version": 1,
+  "why": "Generous where they were measured in an unrepresentative environment, and marked as such. A tight budget derived from a machine with no declared CPU allocation is a flaky test wearing a budget’s clothes.",
+  "measured_in": {
+    "cpu_count": 4,
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "memory_bytes": 16856092672,
+    "node_version": "v22.22.2",
+    "platform": "linux-x64",
+    "representative": false,
+    "representative_host": null
+  },
+  "measured_environment_id": "c0336af31a515294",
+  "supports": "scenario-is-bounded",
+  "budgets_ms": {
+    "render@100": 2,
+    "render@500": 3.9,
+    "render@2000": 6.8,
+    "updates@100": 2,
+    "updates@500": 2,
+    "updates@2000": 3,
+    "routing@100": 2,
+    "routing@500": 2,
+    "routing@2000": 5.1,
+    "editing@100": 2,
+    "editing@500": 2.1,
+    "editing@2000": 10.2,
+    "persistence@100": 2,
+    "persistence@500": 2.1,
+    "persistence@2000": 7.4,
+    "remote-partial@100": 2,
+    "remote-partial@500": 2,
+    "remote-partial@2000": 2
+  }
+}

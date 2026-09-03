@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { generateContractFixtures } from "./generate-contract-fixtures.mjs";
+import { pythonArgs, resolvePython } from "./python-launcher.mjs";
 
 const ROOT = new URL("../", import.meta.url);
 const ROOT_PATH = fileURLToPath(ROOT);
@@ -92,7 +93,7 @@ async function main() {
     })));
     const input = `${requests.map((request) => JSON.stringify(request)).join("\n")}\n`;
     const javascript = run(process.execPath, ["--input-type=module", "--eval", JS_RUNNER], input, "JavaScript");
-    const python = run("py", ["-3.13", PYTHON_ADAPTER, "--json-lines"], input, "Python");
+    const python = run(resolvePython().command, pythonArgs(PYTHON_ADAPTER, "--json-lines"), input, "Python");
     assert.equal(python.output, javascript.output, "runtime JSON-lines bytes differ");
     compareRuntimeEvidence(javascript.records, python.records);
     verifyManifestExpectations(manifest, javascript.records);

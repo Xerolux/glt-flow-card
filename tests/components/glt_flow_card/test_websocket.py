@@ -1,4 +1,11 @@
-"""Project transaction WebSocket boundary tests."""
+"""Project transaction WebSocket boundary tests.
+
+Phase 2 moved every shared mutation behind the policy boundary, so these tests
+now assert the fail-closed contract rather than the pre-Phase-2 one: a write
+with no lease evidence is refused before it reaches the transaction
+coordinator, and denial codes are the stable non-enumerating set. Plan 02-09
+restores the full guarded preview/apply/rollback flow once leases exist.
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -14,93 +21,178 @@ pytestmark = [
     pytest.mark.allow_hosts(["127.0.0.1", "localhost"]),
 ]
 
+#: Routes that mutate shared project state. None of them may succeed without a
+#: connection-bound lease, and none of them may leave a trace when refused.
+FORGED_LEASE = "forged-bearer-that-was-never-issued"
+
+MUTATION_REQUESTS: tuple[tuple[str, dict[str, Any]], ...] = (
+    (
+        "glt_flow_card/projects/preview",
+        {
+            "lease_token": FORGED_LEASE,"project_id": "plant-a", "expected_revision": 0, "candidate": {}},
+    ),
+    (
+        "glt_flow_card/projects/apply",
+        {
+            "lease_token": FORGED_LEASE,
+            "project_id": "plant-a",
+            "preview_id": "any",
+            "expected_revision": 0,
+            "selected_ids": [],
+        },
+    ),
+    (
+        "glt_flow_card/projects/rollback",
+        {
+            "lease_token": FORGED_LEASE,
+            "project_id": "plant-a",
+            "snapshot_id": "sha256:" + "0" * 64,
+            "expected_revision": 0,
+            "confirmation": "ROLLBACK plant-a",
+        },
+    ),
+    ("glt_flow_card/projects/delete", {"project_id": "plant-a", "lease_token": FORGED_LEASE}),
+)
+
 
 async def command(client: Any, payload: dict[str, Any]) -> dict[str, Any]:
     await client.send_json_auto_id(payload)
     return await client.receive_json()
 
 
-async def test_websocket_preview_apply_rollback_and_authorization(
+async def test_shared_mutations_are_refused_without_lease_evidence(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
-    hass_ws_client,
-    hass_read_only_access_token: str,
+    phase2_users,
 ) -> None:
+    """A capable engineer still cannot write with a forged bearer, and nothing changes."""
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
-    admin = await hass_ws_client(hass)
 
-    candidate = project()
-    preview = await command(admin, {
-        "type": "glt_flow_card/projects/preview",
-        "project_id": "plant-a",
-        "expected_revision": 0,
-        "candidate": candidate,
-    })
-    assert preview["success"] is True
-    assert preview["result"]["base_revision"] == 0
-    selected_ids = [operation["id"] for operation in preview["result"]["operations"]]
+    engineer = phase2_users.principal("engineer")
+    access = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id].access
+    await access.async_assign(project_id="plant-a", user_id=engineer.user_id, role="admin")
 
-    applied = await command(admin, {
-        "type": "glt_flow_card/projects/apply",
-        "project_id": "plant-a",
-        "preview_id": preview["result"]["preview_id"],
-        "expected_revision": 0,
-        "selected_ids": selected_ids,
-    })
-    assert applied["success"] is True
-    assert applied["result"]["revision"] == 1
-    assert applied["result"]["snapshot_id"].startswith("sha256:")
+    manager = hass.data["glt_flow_card"]["manager"]
+    before = manager.project_repository.list_heads()
+    connection = await phase2_users.async_connect("engineer")
 
-    forged = await command(admin, {
-        "type": "glt_flow_card/projects/rollback",
-        "project_id": "plant-a",
-        "snapshot_id": "sha256:" + "0" * 64,
-        "expected_revision": 1,
-        "confirmation": "ROLLBACK plant-a",
-    })
-    assert forged["success"] is False
-    assert forged["error"]["code"] == "invalid_snapshot"
+    for route, payload in MUTATION_REQUESTS:
+        response = await connection.command({"type": route, **payload})
+        assert response["success"] is False, route
+        assert response["error"]["code"] == "lease_expired", route
 
-    read_only = await hass_ws_client(hass, hass_read_only_access_token)
-    denied = await command(read_only, {
-        "type": "glt_flow_card/projects/preview",
-        "project_id": "plant-a",
-        "expected_revision": 1,
-        "candidate": {
-            **applied["result"]["config"],
-            "project": {**applied["result"]["config"]["project"], "revision": 1},
-        },
-    })
-    assert denied["success"] is False
-    assert denied["error"]["code"] == "forbidden"
-
-    await admin.close()
-    await read_only.close()
+    assert manager.project_repository.list_heads() == before
+    await phase2_users.async_close()
 
 
-async def test_compatibility_save_uses_transaction_coordinator(
+async def test_compatibility_save_is_refused_without_lease_evidence(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
-    hass_ws_client,
+    phase2_users,
 ) -> None:
+    """The legacy save route is guarded exactly like every other mutation."""
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
-    client = await hass_ws_client(hass)
 
-    saved = await command(client, {
+    engineer = phase2_users.principal("engineer")
+    access = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id].access
+    await access.async_assign(project_id="plant-a", user_id=engineer.user_id, role="engineer")
+    client = await phase2_users.async_connect("engineer")
+
+    saved = await client.command({
         "type": "glt_flow_card/projects/save",
         "project": {"id": "plant-a", "config": project()},
         "expected_revision": 0,
         "autosave": False,
+        "lease_token": FORGED_LEASE,
     })
-    assert saved["success"] is True
-    assert saved["result"]["revision"] == 1
-    assert saved["result"]["snapshot_id"].startswith("sha256:")
+    assert saved["success"] is False
+    assert saved["error"]["code"] == "lease_expired"
 
     manager = hass.data["glt_flow_card"]["manager"]
-    assert manager.project_repository.get_head("plant-a") == saved["result"]
-    assert manager.data["projects"]["plant-a"] == saved["result"]
+    assert manager.project_repository.get_head("plant-a") is None
     assert manager.project_transactions is not None
-    await client.close()
+    await phase2_users.async_close()
 
+
+async def test_reads_are_authorized_and_do_not_enumerate(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    hass_ws_client,
+    phase2_users,
+) -> None:
+    """An assigned reader sees a project; everyone else cannot tell it exists."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    viewer = phase2_users.principal("viewer")
+    manager = hass.data["glt_flow_card"]["manager"]
+    await manager.save_project(
+        {"id": "plant-a", "config": project()},
+        autosave=False,
+        user_id=viewer.user_id,
+        expected_revision=0,
+    )
+
+    access = hass.data["glt_flow_card"]["runtimes"][config_entry.entry_id].access
+    await access.async_assign(project_id="plant-a", user_id=viewer.user_id, role="viewer")
+
+    assigned = await phase2_users.async_connect("viewer")
+    listed = await assigned.command({"type": "glt_flow_card/projects/list"})
+    assert listed["success"] is True
+    assert [entry["id"] for entry in listed["result"]] == ["plant-a"]
+
+    unassigned = await phase2_users.async_connect("unassigned")
+    hidden = await unassigned.command({"type": "glt_flow_card/projects/list"})
+    assert hidden["success"] is True
+    assert hidden["result"] == []
+
+    denied = await unassigned.command({
+        "type": "glt_flow_card/projects/get",
+        "project_id": "plant-a",
+    })
+    missing = await unassigned.command({
+        "type": "glt_flow_card/projects/get",
+        "project_id": "no-such-plant",
+    })
+    assert denied["success"] is False
+    assert denied["error"]["code"] == "not_found_or_denied"
+    assert denied["error"] == missing["error"]
+
+    await phase2_users.async_close()
+
+
+async def test_retired_and_deferred_routes_fail_closed(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    hass_ws_client,
+) -> None:
+    """Legacy locks and caller-selected control are inert.
+
+    The remote routes used to be in this list. Phase 9 implements them, so they
+    are no longer `feature_unavailable` — they now enforce capability and project
+    scoping, and `test_remote_authority.py` asserts that. Leaving them here would
+    have made the test pass by asserting a route stays broken.
+    """
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    client = await hass_ws_client(hass)
+
+    for payload in (
+        {"type": "glt_flow_card/projects/lock", "project_id": "plant-a"},
+        {"type": "glt_flow_card/projects/unlock", "project_id": "plant-a"},
+        {
+            "type": "glt_flow_card/control/execute",
+            "project_id": "plant-a",
+            "entity_id": "switch.pump",
+            "domain": "switch",
+            "service": "turn_on",
+        },
+        {"type": "glt_flow_card/audit/add", "event": {"action": "forged"}},
+    ):
+        response = await command(client, payload)
+        assert response["success"] is False, payload["type"]
+        assert response["error"]["code"] == "feature_unavailable", payload["type"]
+
+    await client.close()

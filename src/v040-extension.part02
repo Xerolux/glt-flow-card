@@ -7,8 +7,15 @@
     return "viewer";
   }
 
-  function canOperate(config, hass) { return ["operator", "designer"].includes(roleFor(config, hass)); }
-  function canDesign(config, hass) { return roleFor(config, hass) === "designer"; }
+  // Retired (04-13), the way Phase 2 retired glt_flow_card/control/execute: the
+  // path stays reachable so a test can prove it produces zero effects, rather
+  // than being deleted somewhere nothing checks it again.
+  //
+  // These were browser-invented permissions. They read card config and
+  // hass.user, and "designer" is not even a role Phase 2 kept. Authority is the
+  // Companion's; the browser asks the server what it may do and renders that.
+  function canOperate() { return false; }
+  function canDesign() { return false; }
 
   function activeAlarm(card, alarm) {
     const st = card._stateAt?.(field(alarm.entity)?.entity);
@@ -26,27 +33,110 @@
     return { x: +p.x || 0, y: +p.y || 0, width: +(p.width || item.width || 220), height: +(p.height || item.height || 130) };
   }
 
+  /**
+   * Route one connection with the Phase-5 router.
+   *
+   * What this replaces was the elbow through the midpoint: out to half the
+   * horizontal distance, across, and in. It ignored every obstacle in the
+   * room, which is why the Phase-5 corpus was built to defeat it.
+   *
+   * When the router is not published, this refuses and leaves the existing
+   * points alone. Falling back to the old shape would put a pipe through a
+   * chiller in exactly the situation nobody is watching.
+   */
   function autoRoute(config, path, viewId) {
     if (!path?.from_equipment || !path?.to_equipment || path.auto_route === false) return path?.points;
+    const routing = globalThis.GLT_FLOW_CARD_ROUTING;
+    if (!routing) return path.points;
     const a = equipmentPos(config, path.from_equipment, viewId);
     const b = equipmentPos(config, path.to_equipment, viewId);
     if (!a || !b) return path.points;
-    const leftToRight = a.x + a.width / 2 <= b.x + b.width / 2;
-    const sx = leftToRight ? a.x + a.width : a.x;
-    const ex = leftToRight ? b.x : b.x + b.width;
-    const sy = a.y + a.height / 2;
-    const ey = b.y + b.height / 2;
-    const mx = Math.round((sx + ex) / 2);
-    return [[Math.round(sx), Math.round(sy)], [mx, Math.round(sy)], [mx, Math.round(ey)], [Math.round(ex), Math.round(ey)]];
+    const clearance = Number(config.routing?.clearance) || routing.DEFAULT_CLEARANCE;
+    const obstacles = [];
+    for (const item of config.equipment || []) {
+      if (item.id === path.from_equipment || item.id === path.to_equipment) continue;
+      const box = equipmentPos(config, item.id, viewId);
+      if (box) obstacles.push({ id: item.id, x: box.x, y: box.y, width: box.width, height: box.height });
+    }
+    const facing = (from, to) => (from.x + from.width / 2 <= to.x + to.width / 2 ? "right" : "left");
+    const routed = routing.routePath({
+      source: { x: a.x, y: a.y, width: a.width, height: a.height, side: facing(a, b) },
+      target: { x: b.x, y: b.y, width: b.width, height: b.height, side: facing(b, a) },
+      obstacles,
+      options: { clearance },
+    });
+    // An explicit refusal keeps the drawing as it was and records why, rather
+    // than drawing a route the router just said does not exist.
+    if (!routed.routable) {
+      path.route_refused = routed.reason;
+      return path.points;
+    }
+    delete path.route_refused;
+    return routed.points.map(([x, y]) => [Math.round(x), Math.round(y)]);
   }
 
+  /** Per-config geometry from the last sweep, so the next one can be local. */
+  const ROUTE_GEOMETRY = new WeakMap();
+
+  /**
+   * Recompute the routes a change reached, and no others.
+   *
+   * This walked every path in the view on every emit. On a diagram of any
+   * size that is the freeze the roadmap names, and it ran on every keystroke
+   * that touched the config.
+   *
+   * A route is recomputed when one of its own endpoints moved, or when a
+   * piece of equipment that moved lies inside its corridor -- the same
+   * relevance the Phase-5 router uses, so the cheap answer is the answer a
+   * full sweep would have given.
+   */
   function reroute(config, viewId) {
-    if (config.routing?.automatic === false) return;
+    if (config.routing?.automatic === false) return [];
+    const routing = globalThis.GLT_FLOW_CARD_ROUTING;
+    const clearance = Number(config.routing?.clearance) || (routing?.DEFAULT_CLEARANCE ?? 20);
+    const key = String(viewId ?? "");
+    const held = ROUTE_GEOMETRY.get(config) || {};
+    const previous = held[key];
+    const current = {};
+    for (const item of config.equipment || []) {
+      const box = equipmentPos(config, item.id, viewId);
+      if (box) current[item.id] = box;
+    }
+    const moved = [];
+    for (const [id, box] of Object.entries(current)) {
+      const before = previous?.[id];
+      if (!before || before.x !== box.x || before.y !== box.y
+        || before.width !== box.width || before.height !== box.height) moved.push(box);
+    }
+    const recomputed = [];
     for (const path of config.paths || []) {
       if (!path.from_equipment || !path.to_equipment || path.auto_route === false) continue;
+      const drawn = Array.isArray(path.points) && path.points.length > 0;
+      if (previous && drawn && !reaches(path, moved, clearance)) continue;
       const points = autoRoute(config, path, viewId);
-      if (points) path.points = points;
+      if (points) {
+        path.points = points;
+        recomputed.push(path.id);
+      }
     }
+    held[key] = current;
+    ROUTE_GEOMETRY.set(config, held);
+    return recomputed;
+  }
+
+  /** Whether any moved box lies in this route's corridor. */
+  function reaches(path, moved, clearance) {
+    if (moved.length === 0) return false;
+    const xs = path.points.map((point) => point[0]);
+    const ys = path.points.map((point) => point[1]);
+    const corridor = {
+      left: Math.min(...xs) - clearance, right: Math.max(...xs) + clearance,
+      top: Math.min(...ys) - clearance, bottom: Math.max(...ys) + clearance,
+    };
+    return moved.some((box) => (
+      corridor.left < box.x + box.width + clearance && box.x - clearance < corridor.right
+      && corridor.top < box.y + box.height + clearance && box.y - clearance < corridor.bottom
+    ));
   }
 
   function editorStore(editor) {
@@ -72,6 +162,50 @@
     @media(max-width:800px){.glt4-entity-row{grid-template-columns:1fr}.glt4-dialog{width:98vw}}
   `;
 
+  /**
+   * Confirm a destructive editor step through the Phase-2 element.
+   *
+   * `window.confirm` is a browser-owned authority prompt: the kiosk's key
+   * handling cannot reach it, no stylesheet can make it legible in forced
+   * colours, and the effect ledger that proves this card asks for nothing it
+   * should not cannot observe it. Phase 4 deliberately left these for Phase 5;
+   * this is the replacement, and it is the same element every control
+   * confirmation already uses, so the safe choice takes focus in one place.
+   */
+  function editorConfirm(editor, message, onConfirm) {
+    const root = editor.shadowRoot;
+    root.querySelector("glt-flow-card-control-confirm")?.remove();
+    const node = document.createElement("glt-flow-card-control-confirm");
+    node.dataset.editorConfirm = "1";
+    node.copy = (key) => (key === "controlConfirmHeading" ? message : key);
+    root.appendChild(node);
+    node.props = {
+      control: { phase: "confirm", controlId: "editor", preview: { label: message, summary: message } },
+      onConfirm: () => { node.remove(); onConfirm(); },
+      onCancel: () => node.remove(),
+    };
+  }
+
+  /**
+   * Say why nothing happened, inside the editor.
+   *
+   * `alert` has the same problems as `confirm` and one more: it is modal, so a
+   * refusal that could have been a sentence next to the button becomes a
+   * blocking interruption the operator has to dismiss before they can look at
+   * what they got wrong.
+   */
+  function editorNotice(editor, message) {
+    const root = editor.shadowRoot;
+    root.querySelector("[data-editor-notice]")?.remove();
+    const strip = document.createElement("div");
+    strip.dataset.editorNotice = "1";
+    strip.setAttribute("role", "status");
+    strip.setAttribute("aria-live", "polite");
+    strip.className = "glt4-notice";
+    strip.textContent = message;
+    (root.querySelector(".glt4-body") || root).appendChild(strip);
+  }
+
   function modal(editor, title, html) {
     editor.shadowRoot.querySelector(".glt4-modal")?.remove();
     const shell = document.createElement("div");
@@ -95,6 +229,6 @@
     const cards = list.map((p) => `<div class="glt4-card"><b>${esc(p.name || p.id)}</b><small>${esc(p.updated || "")} · ${(p.versions || []).length} Versionen ${p.id === currentId ? "· AKTIV" : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-load="${esc(p.id)}">Laden</button><button class="glt4-btn" data-versions="${esc(p.id)}">Versionen</button><button class="glt4-btn glt4-danger" data-delete="${esc(p.id)}">Löschen</button></div></div>`).join("");
     const m = modal(editor, "Projektbibliothek", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Aktuelles Projekt speichern</button><button class="glt4-btn" data-copy>Als neues Projekt speichern</button></div><div class="glt4-grid">${cards || '<div class="glt4-card">Noch keine gespeicherten Projekte.</div>'}</div><p style="font-size:9px;color:var(--mut);margin-top:12px">Mit installierter Companion-Integration werden Projekte geräteübergreifend in Home Assistant gespeichert; sonst lokal im Browser.</p>`);
     m.querySelector("[data-save]").onclick = async () => {
-      const name = editor._config.project?.name || prompt("Projektname", editor._config.title || "GLT Projekt") || "GLT Projekt";
+      const name = editor._config.project?.name || prompt(gltText("legacy.prompt_project_name"), editor._config.title || "GLT Projekt") || "GLT Projekt";
       const id = currentId || slug(name) + "-" + Date.now().toString(36);
       editor._config.project = { ...(editor._config.project || {}), id, name };

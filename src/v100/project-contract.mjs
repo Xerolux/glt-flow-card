@@ -1,12 +1,17 @@
 /* Raw-first, runtime-neutral project validation and canonical evidence. */
-import {
-  contractLimits,
-  project0,
-  project1,
-  project2,
-} from "./generated/project-validators.mjs";
+import * as generated from "./generated/project-validators.mjs";
 
-const PROJECT_VALIDATORS = [project0, project1, project2];
+const { contractLimits } = generated;
+
+// Derived from the generated module rather than listed by hand. The Python side
+// already derives its schema list; this was the last place where adding a
+// project schema version meant remembering to edit an array, and forgetting
+// would have shown up as "migration target N contract is invalid" -- an error
+// that points at the migration rather than at the list that was not updated.
+const PROJECT_VALIDATORS = Object.keys(generated)
+  .filter((name) => /^project\d+$/.test(name))
+  .sort((a, b) => Number(a.slice(7)) - Number(b.slice(7)))
+  .map((name) => generated[name]);
 const ID_COLLECTIONS = [
   "alarms",
   "assets",

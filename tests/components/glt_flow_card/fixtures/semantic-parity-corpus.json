@@ -1,0 +1,143 @@
+{
+  "generator": "tools/generate-semantic-parity-corpus.mjs",
+  "bounds": {
+    "max_depth": 32,
+    "max_nodes": 20000,
+    "max_children": 2048
+  },
+  "parameters": {
+    "over_depth_nodes": 64,
+    "over_breadth_nodes": 2056
+  },
+  "shapes": [
+    {
+      "shape": "valid",
+      "model_digest": "b3ab1629a421d571ccae7fb155b9070c52ce8fc2c8464ac65f20bca60a812f0c",
+      "node_count": 7,
+      "codes": []
+    },
+    {
+      "shape": "self_cycle",
+      "model_digest": "d3bf29389ea5951b56aa670d2ac5346eac40c2ba76f50545380dc3892e26a783",
+      "node_count": 7,
+      "codes": [
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle"
+      ]
+    },
+    {
+      "shape": "two_node_cycle",
+      "model_digest": "62f3f52055a0499556ef32023a2441ad71f8bdf90af7ead439b7858628e78403",
+      "node_count": 7,
+      "codes": [
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_level_inverted"
+      ]
+    },
+    {
+      "shape": "long_cycle",
+      "model_digest": "51b225f2530633a3be0216c76f98f00eab057d7a009c7759294133b917b7194a",
+      "node_count": 7,
+      "codes": [
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_level_inverted"
+      ]
+    },
+    {
+      "shape": "dangling_parent",
+      "model_digest": "943cee7ba0ecdb0d5921e205194911a86ed941519385dacacfc344deb98ea1fc",
+      "node_count": 7,
+      "codes": [
+        "semantic_parent_missing"
+      ]
+    },
+    {
+      "shape": "inverted_level",
+      "model_digest": "1c48c1972f8226b7c5f8c450ad095f074cb603aef78726ff3f5b08e94658509f",
+      "node_count": 7,
+      "codes": [
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_cycle",
+        "semantic_level_inverted"
+      ]
+    },
+    {
+      "shape": "multiple_parents",
+      "model_digest": "2a1bcccbf18c07137b390e5b9c522507bdf022ac81120f8751ddbcc2c8430db6",
+      "node_count": 8,
+      "codes": [
+        "semantic_node_duplicate_id"
+      ]
+    },
+    {
+      "shape": "over_depth",
+      "model_digest": "c57cb151cedc537d36271002c08b0d847aa422bde1143a0daa3d083d9666dd51",
+      "node_count": 71,
+      "codes": [
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded",
+        "semantic_depth_exceeded"
+      ]
+    },
+    {
+      "shape": "over_breadth",
+      "model_digest": "8ba8a0b70e9eb77f2a7f6ff33c3386b769b07dfb758242cb68340109af521b0f",
+      "node_count": 2063,
+      "codes": [
+        "semantic_children_exceeded"
+      ]
+    }
+  ]
+}

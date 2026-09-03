@@ -13,26 +13,82 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_OUTPUT_ROOT = path.join(ROOT, "build/release");
 const COMPONENT_ROOT = "custom_components/glt_flow_card";
+
+// Discovered from the authored schema directory, never imported from the
+// stager. Independent verification must not trust the staging implementation or
+// its metadata -- but it also must not carry a hand-written list that silently
+// stops covering a version somebody added.
+const PROJECT_SCHEMA_FILES = (await readdir(path.join(ROOT, "schemas/project")))
+  .filter((name) => /^\d+\.schema\.json$/.test(name))
+  .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10))
+  .map((name) => `schemas/project/${name}`);
 const BUILD_MANIFEST_PATH = `${COMPONENT_ROOT}/build-manifest.json`;
 const COMPONENT_FILES = [
   "__init__.py",
   "build-manifest.json",
+  "catalog.py",
   "config_flow.py",
+  "configured_controls.py",
+  "equipment_profiles.py",
+  "energy_model.py",
+  "energy_units.py",
   "const.py",
   "diagnostics.py",
   "manifest.json",
+  "policy.py",
+  "policy_sessions.py",
+  "ports.py",
+  "project_access.py",
   "project_bundle.py",
   "project_contract.py",
   "project_diff.py",
+  "project_leases.py",
+  "project_merge.py",
   "project_migrations.py",
   "project_repository.py",
   "project_transactions.py",
+  "navigation.py",
+  "alarm_vocabulary.py",
+  "alarm_engine.py",
+  "measured_value.py",
+  "notifications.py",
+  "period_vocabulary.py",
+  "history_bounds.py",
+  "history_routes.py",
+  "content_id.py",
+  "attachments.py",
+  "commissioning.py",
+  "maintenance_plans.py",
+  "work_orders.py",
+  "dispatch_vocabulary.py",
+  "dispatch_gate.py",
+  "scenarios.py",
+  "simulation_session.py",
+  "period_resolution.py",
+  "schedule_time.py",
+  "schedule_bindings.py",
+  "series_coverage.py",
+  "panels.py",
+  "recorder_query.py",
+  "remote_fanout.py",
+  "site_destinations.py",
+  "site_health.py",
+  "site_rollup.py",
+  "site_subscriptions.py",
+  "site_vocabulary.py",
+  "report_runs.py",
+  "report_schedule.py",
+  "provenance.py",
+  "sdk_manifest.py",
+  "sdk_registry.py",
+  "semantic_model.py",
+  "view_stream.py",
+  "trusted_evidence.py",
   "schemas/bundle-manifest.schema.json",
   "schemas/diff-policy.json",
   "schemas/limits.json",
-  "schemas/project/0.schema.json",
-  "schemas/project/1.schema.json",
-  "schemas/project/2.schema.json",
+  "schemas/vocabularies.json",
+  ...PROJECT_SCHEMA_FILES,
   "strings.json",
   "translations/de.json",
   "translations/en.json",
@@ -49,9 +105,8 @@ const BUILD_ARTIFACT_PATHS = new Map([
   ["schemas/bundle-manifest.schema.json", `${COMPONENT_ROOT}/schemas/bundle-manifest.schema.json`],
   ["schemas/diff-policy.json", `${COMPONENT_ROOT}/schemas/diff-policy.json`],
   ["schemas/limits.json", `${COMPONENT_ROOT}/schemas/limits.json`],
-  ["schemas/project/0.schema.json", `${COMPONENT_ROOT}/schemas/project/0.schema.json`],
-  ["schemas/project/1.schema.json", `${COMPONENT_ROOT}/schemas/project/1.schema.json`],
-  ["schemas/project/2.schema.json", `${COMPONENT_ROOT}/schemas/project/2.schema.json`],
+  ["schemas/vocabularies.json", `${COMPONENT_ROOT}/schemas/vocabularies.json`],
+  ...PROJECT_SCHEMA_FILES.map((file) => [file, `${COMPONENT_ROOT}/${file}`]),
 ]);
 const FIXED_ZIP_TIME = new Date("1980-01-01T00:00:00.000Z").getTime();
 
