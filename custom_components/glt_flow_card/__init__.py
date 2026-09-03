@@ -1634,6 +1634,20 @@ async def ws_evidence_list(hass, connection, msg):
     """
     decision = msg[DECISION_KEY]
     runtime = _runtime_for(hass)
+    # Declared `enumeration="filter"`, so the guard admits an unauthorized
+    # caller by design and the filtering is the handler's job. It was not being
+    # done: the cursor's row source filtered by *project*, and the project came
+    # from the decision, so an unassigned caller who named a project id received
+    # its trusted evidence -- who operated which entity, and with what result.
+    # The `alarms/list` leak of `9f53bcb` again, on the audit trail this time.
+    if not runtime.policy.visible_projects(
+        connection, [decision.project_id], "evidence.read"
+    ):
+        connection.send_result(
+            msg["id"],
+            {"rows": [], "cursor": None, "has_more": False, "provenance": "trusted"},
+        )
+        return
     session_id = str(decision.actor.session_id or decision.actor.connection_id)
     scope = {
         "user_id": decision.actor.user_id,
@@ -2970,12 +2984,37 @@ async def ws_alarms_shelve(hass, connection, msg):
         connection.send_error(msg["id"], "invalid_input", code)
 
 
-@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/work_orders/list", vol.Optional("project_id"): str})
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/work_orders/list",
+    # Optional with a default, so the generic policy prober reaches a decision
+    # rather than a schema rejection, as `schedules/list` and `history/series`
+    # already do.
+    vol.Optional("project_id", default=""): str,
+})
 @websocket_api.async_response
 async def ws_work_orders_list(hass, connection, msg):
-    pid = msg.get("project_id")
-    data = [deepcopy(x) for x in _manager(hass).data["work_orders"].values() if not pid or x.get("project_id") == pid]
-    connection.send_result(msg["id"], data)
+    """Return the work orders of the project this names, if the caller may read it.
+
+    Declared `enumeration="filter"`, so the guard deliberately does not deny --
+    refusing would itself tell an unauthorized caller that rows exist -- and the
+    filtering is the handler's job. This handler did none: it read
+    `msg["project_id"]` and returned every matching row, so any authenticated
+    Home Assistant user who named a project id received its work orders. It is
+    the `alarms/list` leak of `9f53bcb`, in a route the fix did not reach.
+
+    The project now comes from the decision rather than from the message, and
+    the caller's own `work_order.read` decides.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    project_id = decision.project_id
+    if not runtime.policy.visible_projects(connection, [project_id], "work_order.read"):
+        connection.send_result(msg["id"], [])
+        return
+    connection.send_result(msg["id"], [
+        deepcopy(row) for row in _manager(hass).data["work_orders"].values()
+        if row.get("project_id") == project_id
+    ])
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/work_orders/save", vol.Required("project_id"): str, vol.Required("work_order"): dict})
@@ -2999,11 +3038,29 @@ async def ws_reports_run(hass, connection, msg):
         connection.send_error(msg["id"], "capability_denied", "capability_denied")
 
 
-@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/reports/list", vol.Optional("project_id"): str})
+@websocket_api.websocket_command({
+    vol.Required("type"): "glt_flow_card/reports/list",
+    vol.Optional("project_id", default=""): str,
+})
 @websocket_api.async_response
 async def ws_reports_list(hass, connection, msg):
-    pid = msg.get("project_id")
-    connection.send_result(msg["id"], [deepcopy(x) for x in _manager(hass).data["report_history"] if not pid or x.get("project_id") == pid])
+    """Return the report history of the project this names, if the caller may read it.
+
+    The same leak as `work_orders/list` above, and for the same reason: a
+    filtered route whose handler never filtered. A report row carries what the
+    report found, so this returned the contents of a plant the caller cannot
+    open.
+    """
+    decision = msg[DECISION_KEY]
+    runtime = _runtime_for(hass)
+    project_id = decision.project_id
+    if not runtime.policy.visible_projects(connection, [project_id], "report.read"):
+        connection.send_result(msg["id"], [])
+        return
+    connection.send_result(msg["id"], [
+        deepcopy(row) for row in _manager(hass).data["report_history"]
+        if row.get("project_id") == project_id
+    ])
 
 
 @websocket_api.websocket_command({
@@ -3503,7 +3560,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             authorize=may_read_project, generation=generation
         ),
         cursors=EvidenceCursorRegistry(
-            rows_for=lambda scope: evidence.rows({scope.project_id}),
+            # Authorized at the source as well as at the handler. A cursor is
+            # bound to a scope and redeemed later, possibly after the role that
+            # issued it was revoked; deciding here means a page can never carry
+            # a row the holder may not read *now*, whatever the handler did when
+            # the cursor was minted.
+            rows_for=lambda scope: (
+                evidence.rows({scope.project_id})
+                if "evidence.read" in capabilities_for(
+                    access.get(scope.project_id).role_of(scope.user_id),
+                    is_ha_admin=False,
+                )
+                else []
+            ),
             generation=generation,
         ),
         evidence=evidence,
