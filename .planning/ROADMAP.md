@@ -421,7 +421,7 @@ Every v1.1 requirement has exactly one primary owner. Cross-cutting gates in lat
 | 7. Trends, Energy & Reproducible Reports | 20/20 | 22/23 (T7-23 blocked) | Complete | 2026-09-02 |
 | 8. Safe Simulation, Commissioning & Assets | 16/16 | 24/25 (T8-25 blocked) | Complete | 2026-09-02 |
 | 9. Failure-Isolated Multi-Site Supervision | 12/12 | 19/20 (T9-20 blocked) | Complete | 2026-09-02 |
-| 10. Product-Wide Usability & Release Evidence | 15/15 | 15/17 (T10-03 not met, T10-16 blocked) | Complete | 2026-09-02 |
+| 10. Product-Wide Usability & Release Evidence | 15/15 | 16/17 (T10-16 blocked) | Complete | 2026-09-03 |
 
 **Every blocked row is the same row.** Each phase's `test:phaseN:release` leaf
 runs `test:ha-artifacts`, which probes `docker info` across twelve bounded lane
@@ -433,11 +433,10 @@ Phases 3 and 4 have no per-plan summaries; their registers and phase summaries
 carry the evidence. That gap is tracked in the close-out work rather than
 papered over here.
 
-**T10-03 is the one row in the milestone marked `not met`** rather than verified
-or planned. 132 user-facing strings in the shipped artifact still do not come
-from a catalog, the sweep names each one, and the claim registry publishes the
-corresponding claim as failed. `planned` would have read as work not started;
-this work started and did not finish.
+**Every row in the milestone is now either verified or blocked by the
+environment.** T10-03 was carried as `not met` — a status this project had not
+needed before — while 132 strings remained outside the catalog; it was finished
+on 2026-09-03. The nine blocked rows are all the same composed release leaf.
 
 ---
 *Roadmap created: 2026-08-31 for milestone v1.1 Production-Ready GLT Platform*

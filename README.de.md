@@ -330,12 +330,13 @@ Fehlen als „trifft nicht zu" lesbar machen. Kapazitätsmessungen tragen ihre
 Umgebung, und nur eine als repräsentativ markierte stützt eine Kapazitätsaussage;
 nichts im Werkzeug kann dieses Kennzeichen setzen.
 
-**Was nicht fertig ist, steht hier statt entdeckt zu werden.** 132 Zeichenketten
-in den erzeugten Basisdateien der Alt-Karte und im Einstiegsmodul kommen noch
-nicht aus dem Katalog; der Prüflauf nennt jede einzelne. Screenreader-Verhalten,
-repräsentative Kapazität, die festgelegten Home-Assistant-Stände und die
-Herkunftsprüfung der Abhängigkeiten wurden hier nicht ausgeführt und stehen
-jeweils mit Grund als nicht ausgeführt im Register.
+**Was hier nicht ausgeführt wurde, steht hier statt entdeckt zu werden.**
+Screenreader-Verhalten, repräsentative Kapazität, die festgelegten
+Home-Assistant-Stände und die Herkunftsprüfung der Abhängigkeiten wurden in
+dieser Umgebung nicht ausgeführt und stehen jeweils mit Grund als nicht
+ausgeführt im Register. Alles Übrige meldet der Prüflauf als bestanden — auch,
+dass jede sichtbare Zeichenkette im ausgelieferten Artefakt aus dem Katalog
+kommt, was die letzte offene Zeile dieser Phase war.
 
 > Für sichere Bedienungen, geräteübergreifende Projekte, Alarme, Zeitprogramme, Audit, Locks und Remote-Home-Assistant wird der **GLT Flow Card Companion** empfohlen. Die reine Dashboard-Card bleibt weiterhin ohne Backend nutzbar.
 

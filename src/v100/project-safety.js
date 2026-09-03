@@ -1127,7 +1127,7 @@ function renderMigration(editor, state, content) {
   content.append(element("h3", "", copyFor(editor, "tabs")[2]));
   renderCollaboration(editor, state, content);
   const workflow = element("ol", "glt-safe-stepper");
-  workflow.setAttribute("aria-label", "Migration workflow");
+  workflow.setAttribute("aria-label", copyFor(editor, "migrationWorkflow"));
   for (const [index, label] of copyFor(editor, "workflow").entries()) {
     workflow.append(element("li", state.preview || index === 0 ? "complete" : "", `${index + 1}. ${label}`));
   }

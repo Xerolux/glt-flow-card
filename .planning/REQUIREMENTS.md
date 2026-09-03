@@ -120,7 +120,7 @@ Filled during roadmap creation. Every requirement must map to exactly one primar
 | DIFF-01 | Phase 1 | Complete |
 | COLLAB-01 | Phase 2 | Complete (T2-16 blocked: no Docker engine) |
 | HACS-01 | Phase 1 | Complete |
-| I18N-01 | Phase 10 | Partial — see 10-THREATS.md; T10-03 not met |
+| I18N-01 | Phase 10 | Complete |
 | A11Y-01 | Phase 10 | Complete (automated half only; manual not performed) |
 | TEST-01 | Phase 10 | Complete (T10-16 blocked: no Docker engine) |
 
@@ -136,11 +136,10 @@ across twelve bounded candidates; this environment has no Docker engine. Nothing
 in this repository demonstrates the artifact installing on either pinned Home
 Assistant lane.
 
-**I18N-01 is the one requirement that is not complete.** 132 user-facing strings
-in the shipped artifact still do not come from a catalog — the legacy card's two
-generated bases and the entry module. `tools/verify-i18n-coverage.mjs` names
-each one, and the claim registry publishes the corresponding claim as failed
-rather than omitting it.
+**I18N-01 was carried as partial** while 132 user-facing strings remained
+outside the catalog; `tools/verify-i18n-coverage.mjs` named each one and the
+claim registry published the corresponding claim as failed. It reports PASS as
+of 2026-09-03.
 
 **A11Y-01's manual half was not performed.** No assistive technology can be
 driven in this environment, so nothing here supports a conformance statement

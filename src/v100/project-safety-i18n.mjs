@@ -93,6 +93,7 @@ const KEYS = Object.freeze({
   "contractUnknown": "safety.contract_unknown",
   "controlConfirmBody": "safety.control_confirm_body",
   "finding": "safety.finding",
+  "migrationWorkflow": "safety.migration_workflow",
   "controlConfirmHeading": "safety.control_confirm_heading",
   "controlCorrelation": "safety.control_correlation",
   "controlEffect": "safety.control_effect",

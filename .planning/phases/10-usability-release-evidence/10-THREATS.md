@@ -36,7 +36,7 @@ plant target or notification recipient. Capacity scenarios run against fixtures.
 |---|---|---|---|---|---|
 | T10-01 | Integrity | Wording lives in fourteen modules across two runtimes, so "complete German and English catalogs" cannot be checked for completeness. One enumerable catalog per runtime, and completeness is a computation rather than a claim. | 10-02 | `node --test test/catalog-completeness.test.mjs` | ✅ verified |
 | T10-02 | Integrity | A missing translation renders the English string or the raw key, indistinguishable from a deliberate choice. A missing key fails at load, and the pseudo-locale run proves the failure is reachable. | 10-03 | `node --test test/pseudo-locale.test.mjs` | ✅ verified |
-| T10-03 | Integrity | Roughly one hundred hardcoded German strings in `glt-flow-card.base.js` mean a third locale is a code edit. The sweep enumerates every string that does not go through a catalog and fails with the list. | 10-04 | `node tools/verify-i18n-coverage.mjs` | ❌ not met |
+| T10-03 | Integrity | Roughly one hundred hardcoded German strings in `glt-flow-card.base.js` mean a third locale is a code edit. The sweep enumerates every string that does not go through a catalog and fails with the list. | 10-04 | `node tools/verify-i18n-coverage.mjs` | ✅ verified |
 | T10-04 | Integrity | `formatDateTime` falls back to the viewer's locale on error, so one screen shows two date formats and neither says which. Formatting resolves from configuration or refuses; it never silently changes locale. | 10-05 | `node --test test/locale-formatting.test.mjs` | ✅ verified |
 | T10-05 | Integrity | Plurals are inline conditionals, correct for two languages and a code edit for every other. Plural selection is data, and a locale with more than two forms is expressible without code. | 10-05 | `node --test test/locale-formatting.test.mjs` | ✅ verified |
 | T10-06 | Integrity | The Companion and the browser hold separate wording and only their *codes* are compared, so the two runtimes drift in what they say while agreeing on what they mean. Wording parity is compared as canonical bytes. | 10-06 | `node --test test/catalog-parity.test.mjs` | ✅ verified |
@@ -78,7 +78,7 @@ command was run four times.
 |---|---|---|
 | `test/catalog-completeness.test.mjs` | T10-01 | 8 passed |
 | `test/pseudo-locale.test.mjs` | T10-02 | 7 passed |
-| `tools/verify-i18n-coverage.mjs` | T10-03 | **FAIL, 132 strings named** |
+| `tools/verify-i18n-coverage.mjs` | T10-03 | PASS |
 | `test/locale-formatting.test.mjs` | T10-04, T10-05 | 8 passed (×2) |
 | `test/catalog-parity.test.mjs` | T10-06 | 4 passed |
 | `--grep=phase-10-a11y` | T10-07, T10-08 | 8 passed (×2) |
@@ -88,21 +88,32 @@ command was run four times.
 | `npm run verify:release` | T10-15 | passed |
 | `npm run test:phase10:release` | T10-16 | **blocked** |
 
-### T10-03 is `not met`, not `planned`
+### T10-03 was `not met`, and is now met
 
-This is the phase's own discipline applied to itself. The row is not marked
-verified, and it is not quietly left `planned` either — `planned` reads as work
-not started, and this work started and did not finish.
+It was marked `not met` rather than `planned` while 132 strings remained —
+`planned` reads as work not started, and that work had started. It is now
+verified: `verify-i18n-coverage` reports **PASS**, and every user-facing string
+in the shipped artifact comes from a catalog.
 
-132 user-facing strings in the shipped artifact still do not come from a
-catalog: the two generated bases of the legacy card and the entry module. The
-sweep names each one, and the claim registry publishes the corresponding claim
-**as failed** rather than omitting it.
+768 keys across both languages. The last hundred and thirty came from four
+places the earlier passes had not reached:
 
-What was completed: 683 catalog keys across eight surface modules, four
-vocabulary modules, the whole symbol catalog and the legacy card's separate
-symbol library — including the English half of 208 labels that existed nowhere
-in the product before.
+- **The validation table rendered raw JSON.** `issue.message ||
+  JSON.stringify(issue.params)` — and an issue never carries a `message`, so the
+  fallback always won and an engineer read `{"property":"entity_id"}`. Fourteen
+  catalogued sentences now, one per `contract.*` code.
+- **ajv's own 58 diagnostics** are excluded because the fix above makes them
+  provably unrendered, not because they were inconvenient.
+- **The legacy layers** — the card base, the editor base, five v0.4 extension
+  parts, the entry module and the add-on layer — reach the catalog through the
+  SDK at call time, since they are concatenated before the v1 bundle and cannot
+  import.
+- **The last inline `de:{…} en:{…}` table** in `index.js`.
+
+Ten strings are allowlisted, each with what it actually is rather than "not UI":
+a font name in a CSS stack, two category grouping keys, three console
+diagnostics, the card-picker registry description Home Assistant takes as one
+static string before any locale is known, and the product's own name.
 
 ### T10-16 stays `planned`, with its exact failure
 

@@ -85,15 +85,19 @@ einig waren in dem, was sie *meinen*. Der Wortlaut wird jetzt als kanonische
 Bytes verglichen — Bytes, nicht Werte, weil zwei frühere Paritätsversuche in
 diesem Projekt in jedem Wert übereinstimmten und in jedem Byte nicht.
 
-## Was noch fehlt
+## Der Prüflauf
 
-**Das ist die eine Aussage dieser Phase, die das Produkt nicht erfüllt, und sie
-steht als *fehlgeschlagen* im Nachweisregister statt zu fehlen.**
+`node tools/verify-i18n-coverage.mjs` liest das **ausgelieferte Artefakt** und
+nennt jede Zeichenkette, die nicht aus dem Katalog kommt — **mit Liste, nicht
+mit Anzahl**, damit die Zahl nicht unbemerkt wieder wächst und jede Zeile eine
+Aufgabe ist.
 
-132 Zeichenketten kommen noch nicht aus dem Katalog: die beiden erzeugten
-Basisdateien der Alt-Karte, das Einstiegsmodul und einige Diagnosetexte. Der Prüflauf nennt jede
-einzelne — mit Liste, nicht mit Anzahl, damit die Zahl nicht unbemerkt wieder
-wächst und jede Zeile eine Aufgabe ist.
+Er meldet zurzeit *bestanden*. Zehn Zeichenketten stehen auf einer Ausnahmeliste,
+jede mit dem, was sie **tatsächlich ist** — ein Schriftname in einem CSS-Stapel,
+zwei Gruppierungsschlüssel, drei Konsolenmeldungen, die Beschreibung, die Home
+Assistant für die Kartenauswahl als eine feste Zeichenkette entgegennimmt, bevor
+eine Sprache bekannt ist, und der Produktname selbst. „Kein UI" ist keine
+Begründung.
 
 **Keine RTL-Sprache wird ausgeliefert.** Geprüft ist die *Bereitschaft*: Das
 Layout setzt keine Leserichtung voraus. Eine RTL-Sprache ist danach Daten, die

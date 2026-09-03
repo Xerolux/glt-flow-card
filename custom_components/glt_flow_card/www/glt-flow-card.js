@@ -1363,7 +1363,7 @@ function gltText(key) {
     _s(l,v,p,a){return`<div class="f"><label>${esc(l)}</label><select data-e="${p}">${a.map(x=>`<option value="${x[0]}" ${x[0]===v?'selected':''}>${esc(x[1])}</option>`).join('')}</select></div>`}
     _ef(l,v,p,domains=[]){return`<div class="f"><label>${esc(l)}</label><ha-entity-picker data-ep data-e="${p}" data-v="${esc(v||'')}" data-domains="${esc(domains.join(','))}"></ha-entity-picker></div>`}
     _equipmentDomains(o){let t=o?.type||'';if(['fan','ahu'].includes(t))return['fan','switch','binary_sensor','sensor'];if(['room','heating_circuit','radiator','underfloor','fancoil'].includes(t))return['climate','sensor','switch','binary_sensor'];if(['valve','damper'].includes(t))return['valve','cover','switch','binary_sensor','sensor'];if(['pump'].includes(t))return['switch','binary_sensor','sensor','number'];return['switch','binary_sensor','sensor','climate','water_heater','fan','valve','number']}
-    _insp(){let v=this._view(),o=this._obj(),m=this._config.appearance?.mode||'neo2030',base=`<div class="sec"><div class="st">Ansicht <span class="chip">${esc(v.kind||'schematic')}</span></div>${this._f('Name',v.name,'@v.name')}${this._s('Typ',v.kind||'schematic','@v.kind',[['schematic','Anlagenschema'],['image','Anlagenbild']])}${this._f('Hintergrundbild (optional)',v.background||'','@v.background')}</div><div class="sec"><div class="st">Optik <span class="chip">${esc(m)}</span></div>${this._s('Design',m,'@c.appearance.mode',[['neo2030','Neo 2030'],['clean',gltText("legacy.style_clean_light")],['classic_scada','Classic SCADA']])}</div>`;if(!o)return base+`<div class="sec"><div class="st">Karte <span class="chip">Global</span></div>${this._f('Titel',this._config.title,'@c.title')}<div class="g2">${this._f('Breite',this._config.canvas.width,'@a.width','number')}${this._f(gltText("legacy.height"),this._config.canvas.height,'@a.height','number')}</div></div><div class="help">Bauteile, Leitungen und Datenpunkte links auf die Zeichenfläche ziehen. Entitäten werden direkt aus Home Assistant über den nativen Entity-Picker ausgewählt.</div>`;let p=this._pos(o),body='';if(this._sel.k==='equipment'){o.fields=o.fields||[];while(o.fields.length<2)o.fields.push({label:'',entity:''});body=this._f('Name',o.name,'name')+this._s('Symbol',o.symbol||symbolById(null,o.type).id,'symbol',SYMBOL_LIBRARY.map(x=>[x.id,`${x.category} · ${symbolLabel(x,cardLanguage(this._hass))}`]))+this._s('Typ',o.type,'type',[...new Set(SYMBOL_LIBRARY.map(x=>x.type))].map(x=>[x,x.replaceAll('_',' ')]))+this._ef(gltText("legacy.main_entity"),entityField(o.entity)?.entity||o.entity||'','entity',this._equipmentDomains(o))+this._ef(gltText("legacy.state_entity"),entityField(o.state_entity)?.entity||o.state_entity||'','state_entity',['binary_sensor','switch','sensor'])+this._f(gltText("legacy.custom_image_optional"),o.image||'','image')+`<div class="g2">${this._f('X',p.x,'x','number')}${this._f('Y',p.y,'y','number')}${this._f('Breite',p.width||o.width,'width','number')}${this._f(gltText("legacy.height"),p.height||o.height,'height','number')}</div>`+this._f(gltText("legacy.value1_label"),o.fields[0].label,'fields.0.label')+this._ef(gltText("legacy.value1_entity"),entityField(o.fields[0].entity)?.entity||o.fields[0].entity||'','fields.0.entity',['sensor','number','climate','water_heater'])+this._f(gltText("legacy.value2_label"),o.fields[1].label,'fields.1.label')+this._ef(gltText("legacy.value2_entity"),entityField(o.fields[1].entity)?.entity||o.fields[1].entity||'','fields.1.entity',['sensor','number','climate','water_heater'])}else if(this._sel.k==='datapoint')body=this._f('Label',o.label,'label')+this._ef(gltText("legacy.entity"),entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number','climate','water_heater'])+`<div class="g2">${this._f(gltText("legacy.x_in_view"),p.x,'x','number')}${this._f(gltText("legacy.y_in_view"),p.y,'y','number')}</div><div class="help">Der Datenpunkt kann im Schema und im Anlagenfoto separat positioniert werden.</div>`;else if(this._sel.k==='path')body=this._s('Medium',o.medium||'neutral','medium',Object.entries(MEDIUMS).map(([k,x])=>[k,mediumLabel(x,cardLanguage(this._hass))]))+this._ef('Aktiv / Fluss',entityField(o.flow)?.entity||o.flow||'','flow',['binary_sensor','switch','fan','sensor','number','valve'])+this._ef('Temperatur / Wert',entityField(o.temperature)?.entity||o.temperature||'','temperature',['sensor','number','climate'])+`<div class="g2">${this._f('Breite',o.width||8,'width','number')}${this._f('Geschwindigkeit',o.speed||1.3,'speed','number')}</div><div class="acts"><button class="act" data-act="addpoint">Punkt hinzufügen</button></div>`;else body=this._f('KPI Name',o.name,'name')+this._ef(gltText("legacy.entity"),entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number']);return base+`<div class="sec"><div class="st">${this._sel.k} <span class="chip">${o.id}</span></div>${body}</div><div class="acts"><button class="act" data-act="dup">Duplizieren</button><button class="act" data-act="del">Löschen</button></div>`}
+    _insp(){let v=this._view(),o=this._obj(),m=this._config.appearance?.mode||'neo2030',base=`<div class="sec"><div class="st">Ansicht <span class="chip">${esc(v.kind||'schematic')}</span></div>${this._f('Name',v.name,'@v.name')}${this._s('Typ',v.kind||'schematic','@v.kind',[['schematic','Anlagenschema'],['image','Anlagenbild']])}${this._f('Hintergrundbild (optional)',v.background||'','@v.background')}</div><div class="sec"><div class="st">Optik <span class="chip">${esc(m)}</span></div>${this._s('Design',m,'@c.appearance.mode',[['neo2030',gltText("symbols.style_neo2030")],['clean',gltText("legacy.style_clean_light")],['classic_scada',gltText("symbols.style_classic_scada")]])}</div>`;if(!o)return base+`<div class="sec"><div class="st">Karte <span class="chip">Global</span></div>${this._f('Titel',this._config.title,'@c.title')}<div class="g2">${this._f('Breite',this._config.canvas.width,'@a.width','number')}${this._f(gltText("legacy.height"),this._config.canvas.height,'@a.height','number')}</div></div><div class="help">Bauteile, Leitungen und Datenpunkte links auf die Zeichenfläche ziehen. Entitäten werden direkt aus Home Assistant über den nativen Entity-Picker ausgewählt.</div>`;let p=this._pos(o),body='';if(this._sel.k==='equipment'){o.fields=o.fields||[];while(o.fields.length<2)o.fields.push({label:'',entity:''});body=this._f('Name',o.name,'name')+this._s('Symbol',o.symbol||symbolById(null,o.type).id,'symbol',SYMBOL_LIBRARY.map(x=>[x.id,`${x.category} · ${symbolLabel(x,cardLanguage(this._hass))}`]))+this._s('Typ',o.type,'type',[...new Set(SYMBOL_LIBRARY.map(x=>x.type))].map(x=>[x,x.replaceAll('_',' ')]))+this._ef(gltText("legacy.main_entity"),entityField(o.entity)?.entity||o.entity||'','entity',this._equipmentDomains(o))+this._ef(gltText("legacy.state_entity"),entityField(o.state_entity)?.entity||o.state_entity||'','state_entity',['binary_sensor','switch','sensor'])+this._f(gltText("legacy.custom_image_optional"),o.image||'','image')+`<div class="g2">${this._f('X',p.x,'x','number')}${this._f('Y',p.y,'y','number')}${this._f('Breite',p.width||o.width,'width','number')}${this._f(gltText("legacy.height"),p.height||o.height,'height','number')}</div>`+this._f(gltText("legacy.value1_label"),o.fields[0].label,'fields.0.label')+this._ef(gltText("legacy.value1_entity"),entityField(o.fields[0].entity)?.entity||o.fields[0].entity||'','fields.0.entity',['sensor','number','climate','water_heater'])+this._f(gltText("legacy.value2_label"),o.fields[1].label,'fields.1.label')+this._ef(gltText("legacy.value2_entity"),entityField(o.fields[1].entity)?.entity||o.fields[1].entity||'','fields.1.entity',['sensor','number','climate','water_heater'])}else if(this._sel.k==='datapoint')body=this._f('Label',o.label,'label')+this._ef(gltText("legacy.entity"),entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number','climate','water_heater'])+`<div class="g2">${this._f(gltText("legacy.x_in_view"),p.x,'x','number')}${this._f(gltText("legacy.y_in_view"),p.y,'y','number')}</div><div class="help">Der Datenpunkt kann im Schema und im Anlagenfoto separat positioniert werden.</div>`;else if(this._sel.k==='path')body=this._s('Medium',o.medium||'neutral','medium',Object.entries(MEDIUMS).map(([k,x])=>[k,mediumLabel(x,cardLanguage(this._hass))]))+this._ef('Aktiv / Fluss',entityField(o.flow)?.entity||o.flow||'','flow',['binary_sensor','switch','fan','sensor','number','valve'])+this._ef('Temperatur / Wert',entityField(o.temperature)?.entity||o.temperature||'','temperature',['sensor','number','climate'])+`<div class="g2">${this._f('Breite',o.width||8,'width','number')}${this._f('Geschwindigkeit',o.speed||1.3,'speed','number')}</div><div class="acts"><button class="act" data-act="addpoint">Punkt hinzufügen</button></div>`;else body=this._f('KPI Name',o.name,'name')+this._ef(gltText("legacy.entity"),entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number']);return base+`<div class="sec"><div class="st">${this._sel.k} <span class="chip">${o.id}</span></div>${body}</div><div class="acts"><button class="act" data-act="dup">Duplizieren</button><button class="act" data-act="del">Löschen</button></div>`}
     _render(){if(!this.shadowRoot)return;let v=this._view(),mode=this._config.appearance?.mode||'neo2030',entityCount=Object.keys(this._hass?.states||{}).length;this.shadowRoot.innerHTML=`<style>${EDITOR_STYLES}</style><div class="de"><div class="dt"><div class="brand"><i><ha-icon icon="mdi:vector-square-edit"></ha-icon></i><span><b>GLT Flow Card Designer</b><small>Neo 2030 · Drag & Drop · ${esc(v?.name||'Anlage')}</small></span></div><div class="tools"><div class="seg"><button data-style="neo2030" class="${mode==='neo2030'?'on':''}">Neo 2030</button><button data-style="clean" class="${mode==='clean'?'on':''}">Clean</button><button data-style="classic_scada" class="${mode==='classic_scada'?'on':''}">Classic SCADA</button></div><button class="tb" data-act="undo" ${this._undoS.length?'':'disabled'}>↶ Undo</button><button class="tb" data-act="redo" ${this._redoS.length?'':'disabled'}>↷ Redo</button><button class="tb ${this._snap?'on':''}" data-act="snap">Snap</button><button class="tb ${this._grid?'on':''}" data-act="grid">Raster</button><button class="tb ${this._preview?'on':''}" data-act="preview">Vorschau</button><button class="tb ${this._yamlOpen?'on':''}" data-act="yaml">YAML</button></div></div><div class="work"><aside class="left"><div class="ph">Bausteine <span class="chip">${SYMBOL_LIBRARY.length}+ Symbole</span></div><div class="search"><input data-search placeholder=gltText("legacy.search_component") value="${esc(this._search)}"></div><div class="pal">${this._palette()}</div></aside><main class="center"><div class="vb"><div class="views">${this._config.views.map(x=>`<button class="tab ${x.id===this._viewId?'on':''}" data-view="${x.id}">${esc(x.name||x.id)}</button>`).join('')}<button class="mini" data-act="addview">＋</button></div><div class="tools"><span class="entity-stat">${entityCount?`${entityCount} HA-Entities verfügbar`:gltText("legacy.loading_entities")}</span><button class="mini" data-act="zout">−</button><button class="mini" data-act="fit">Fit</button><button class="mini" data-act="zin">＋</button></div></div><div class="stage" data-stage>${this._canvas()}</div></main><aside class="right"><div class="ph">Eigenschaften <span class="chip">${this._sel?this._sel.k:'Ansicht'}</span></div><div class="insp">${this._insp()}</div></aside></div>${this._yamlOpen?`<div class="drawer"><div class="drawer-head"><b>Lovelace YAML</b><div class="tools"><span class="notice">Direkt in eine manuelle Dashboard-Karte kopierbar</span><button class="act" data-act="copyyaml">${this._copied?'Kopiert ✓':'YAML kopieren'}</button></div></div><pre class="yaml">${esc(configToYaml(this._config))}</pre></div>`:''}<div class="bottom"><span>Änderungen werden direkt in die Kartenkonfiguration übernommen · Entity-Auswahl aus Home Assistant</span><span>${Math.round(this._zoom*100)} %</span></div></div>`;this._bind();requestAnimationFrame(()=>{this._wireEntityPickers();this._live();this._wirePreview()})}
     _wirePreview(){let p=this.shadowRoot?.querySelector('[data-preview]');if(p){p.hass=this._hass;p.setConfig?.(deepClone(this._config))}}
     _wireEntityPickers(){this.shadowRoot?.querySelectorAll('[data-ep]').forEach(p=>{p.hass=this._hass;p.value=p.dataset.v||'';p.allowCustomEntity=true;let d=(p.dataset.domains||'').split(',').filter(Boolean);if(d.length)p.includeDomains=d;if(!p.dataset.bound){p.dataset.bound='1';p.addEventListener('value-changed',e=>{let value=e.detail?.value??'';this._entityEdit(p.dataset.e,value)})}})}
@@ -4914,7 +4914,7 @@ function gltText(key) {
         editor._render();
       };
       m.querySelector("[data-copy]").onclick = async () => {
-        const name = prompt("Name f\xFCr das neue Projekt", `${editor._config.title || "GLT"} Kopie`);
+        const name = prompt(gltText("legacy.new_project_name"), `${editor._config.title || "GLT"} Kopie`);
         if (!name) return;
         const id = slug(name) + "-" + Date.now().toString(36);
         editor._config.project = { id, name };
@@ -4934,7 +4934,7 @@ function gltText(key) {
         m.remove();
       });
       m.querySelectorAll("[data-delete]").forEach((b) => b.onclick = () => {
-        editorConfirm(editor, "Projekt wirklich l\xF6schen?", async () => {
+        editorConfirm(editor, gltText("legacy.confirm_delete_project"), async () => {
           await store.deleteProject(b.dataset.delete);
           await store.audit("project.delete", { id: b.dataset.delete });
           m.remove();
@@ -4987,16 +4987,16 @@ function gltText(key) {
       const store = editorStore(editor);
       const list = await store.listTemplates();
       const builtins = [
-        { id: "builtin-hp-buffer", name: "W\xE4rmepumpe + Puffer", kind: "equipment", object: { type: "heat_pump", symbol: "heat_pump_neo", name: "W\xE4rmepumpe", width: 240, height: 150, fields: [] } },
+        { id: "builtin-hp-buffer", name: "W\xE4rmepumpe + Puffer", kind: "equipment", object: { type: "heat_pump", symbol: "heat_pump_neo", name: gltText("symbols.profile_heat_pump"), width: 240, height: 150, fields: [] } },
         { id: "builtin-ahu", name: "RLT-Zentrale", kind: "equipment", object: { type: "ahu", symbol: "ahu", name: "RLT-Zentrale", width: 300, height: 170, fields: [] } },
-        { id: "builtin-pump", name: "Umw\xE4lzpumpe", kind: "equipment", object: { type: "pump", symbol: "pump_circulation", name: "Pumpe", width: 140, height: 95, fields: [] } },
+        { id: "builtin-pump", name: gltText("legacy.symbol_pump_circulation"), kind: "equipment", object: { type: "pump", symbol: "pump_circulation", name: "Pumpe", width: 140, height: 95, fields: [] } },
         { id: "builtin-dp", name: "Temperatur-Datenpunkt", kind: "datapoint", object: { kind: "temperature", labelKey: "legacy.medium_object", entity: "" } }
       ];
       const all = [...builtins, ...list];
       const m = modal(editor, "Vorlagen & Bauteil-Templates", `<div class="glt4-actions" style="margin:0 0 12px"><button class="glt4-btn" data-save>Auswahl als Vorlage speichern</button></div><div class="glt4-grid">${all.map((t) => `<div class="glt4-card"><b>${esc(t.name)}</b><small>${esc(t.kind || "equipment")}${t.updated ? ` \xB7 ${esc(t.updated)}` : ""}</small><div class="glt4-actions"><button class="glt4-btn" data-apply="${esc(t.id)}">Einf\xFCgen</button>${t.id.startsWith("builtin-") ? "" : `<button class="glt4-btn glt4-danger" data-del="${esc(t.id)}">L\xF6schen</button>`}</div></div>`).join("")}</div>`);
       m.querySelector("[data-save]").onclick = async () => {
         const obj = editor._obj?.();
-        if (!obj) return editorNotice(editor, "Zuerst ein Bauteil, Datenpunkt, Pfad oder KPI ausw\xE4hlen.");
+        if (!obj) return editorNotice(editor, gltText("legacy.select_something_first"));
         const name = prompt("Vorlagenname", obj.name || obj.label || obj.id);
         if (!name) return;
         const t = { id: slug(name) + "-" + Date.now().toString(36), name, kind: editor._sel.k, object: clone(obj) };
@@ -5046,7 +5046,7 @@ function gltText(key) {
           const [kind, id] = key.split(":");
           return { kind, id };
         });
-        if (members.length < 2) return editorNotice(editor, "Mindestens zwei Elemente per Strg/Shift ausw\xE4hlen.");
+        if (members.length < 2) return editorNotice(editor, gltText("legacy.select_two_first"));
         const name = prompt("Gruppenname", "Unteranlage");
         if (!name) return;
         editor._remember?.();
@@ -5086,7 +5086,7 @@ function gltText(key) {
       const selectedEq = multi.filter((x) => x[0] === "equipment").map((x) => x[1]);
       const a0 = selectedEq[0] || eq[0]?.id || "", b0 = selectedEq[1] || eq[1]?.id || "";
       const options = eq.map((e) => `<option value="${esc(e.id)}">${esc(e.name || e.id)}</option>`).join("");
-      const mediumOpts = [["heating_supply", "Vorlauf"], ["heating_return", "R\xFCcklauf"], ["cooling_supply", "K\xE4lte VL"], ["cooling_return", "K\xE4lte RL"], ["air_supply", "Zuluft"], ["air_extract", "Abluft"], ["electrical", "Elektrisch"], ["neutral", "Neutral"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+      const mediumOpts = [["heating_supply", "Vorlauf"], ["heating_return", gltText("legacy.medium_heating_return")], ["cooling_supply", gltText("symbols.slot_supply_temp")], ["cooling_return", gltText("symbols.slot_return_temp")], ["air_supply", "Zuluft"], ["air_extract", "Abluft"], ["electrical", "Elektrisch"], ["neutral", "Neutral"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
       const m = modal(editor, gltText("legacy.auto_connect"), `<div class="glt4-grid"><label>Von<select class="glt4-select" data-from>${options}</select></label><label>Nach<select class="glt4-select" data-to>${options}</select></label><label>Medium<select class="glt4-select" data-medium>${mediumOpts}</select></label></div><div class="glt4-actions"><button class="glt4-btn" data-create>Orthogonale Verbindung erstellen</button></div><p style="font-size:9px;color:var(--mut)">Auto-Routen bleiben an den Bauteilen verankert und werden beim Verschieben neu berechnet.</p>`);
       m.querySelector("[data-from]").value = a0;
       m.querySelector("[data-to]").value = b0;
@@ -5566,7 +5566,7 @@ function gltText(key) {
           this._queueRender();
         });
         wrap.querySelector("[data-g4report]")?.addEventListener("click", () => {
-          const choice = prompt("Report: 'csv' f\xFCr CSV oder 'pdf' f\xFCr Druck/PDF", "pdf");
+          const choice = prompt(gltText("legacy.report_format_hint"), "pdf");
           if (choice?.toLowerCase() === "csv") download(`glt-report-${Date.now()}.csv`, reportCsv(this), "text/csv;charset=utf-8");
           else if (choice) printReport(this);
           runtimeStore(this).audit("report.create", { format: choice || "cancel" });
@@ -5602,7 +5602,7 @@ function gltText(key) {
          * v100 layer's alarm surface is where it lives.
          */
         root.querySelectorAll("[data-ack]").forEach((b) => b.onclick = () => {
-          editorNotice(this, "Quittieren erfolgt \u00fcber die Alarmliste.");
+          editorNotice(this, gltText("legacy.ack_via_alarm_list"));
         });
       }
       if (this._glt4Panel === "assets") {
@@ -5964,6 +5964,8 @@ function gltText(key) {
     "equipment.standby": "Bereitschaft",
     "equipment.unknown": "Unbekannt",
     "equipment.warning": "Warnung",
+    "legacy.ack_via_alarm_list": "Quittieren erfolgt über die Alarmliste.",
+    "legacy.alarm_state_unavailable": "Alarmzustand derzeit nicht abrufbar.",
     "legacy.auto_connect": "Automatisch verbinden",
     "legacy.auto_mapping": "Auto mapping",
     "legacy.category_air": "RLT / Lüftung",
@@ -5998,9 +6000,24 @@ function gltText(key) {
     "legacy.medium_source": "Quelle",
     "legacy.meter": "Zähler",
     "legacy.migration_workflow": "Migration workflow",
+    "legacy.nav_alarms": "Alarme",
+    "legacy.nav_automap": "Auto-Mapping",
+    "legacy.nav_cad": "CAD",
+    "legacy.nav_diagnostics": "Diagnose",
+    "legacy.nav_energy": "Energie",
+    "legacy.nav_maintenance": "Wartung",
+    "legacy.nav_operations": "Betrieb",
+    "legacy.nav_project": "Projekt v1",
+    "legacy.nav_schedule": "Zeitprogramme",
+    "legacy.nav_semantics": "Semantik",
+    "legacy.nav_simulation": "Simulation",
+    "legacy.nav_symbols": "Symbole 300+",
+    "legacy.nav_trends": "Trends",
     "legacy.new_project_name": "Name für das neue Projekt",
     "legacy.no_date": "Kein Datum",
+    "legacy.no_energy_meters": "Keine Energiezähler konfiguriert.",
     "legacy.no_fault": "Keine Störung",
+    "legacy.no_work_orders": "Keine Arbeitsaufträge.",
     "legacy.open_detail": "Detailansicht öffnen",
     "legacy.paste_compare_json": "Vergleichskonfiguration als JSON einfügen",
     "legacy.perform_maintenance": "Wartung durchführen",
@@ -6018,6 +6035,7 @@ function gltText(key) {
     "legacy.style_clean_light": "Clean / Modern Light",
     "legacy.subplant_saved": "Unteranlage als Vorlage gespeichert.",
     "legacy.subtitle": "Gebäudeleittechnik · Live-Anlagenbild",
+    "legacy.suppress_minutes": "Für wie viele Minuten unterdrücken?",
     "legacy.symbol_ahu": "RLT-Zentrale",
     "legacy.symbol_air_filter": "Luftfilter",
     "legacy.symbol_balancing_valve": "Strangregulierventil",
@@ -6274,6 +6292,7 @@ function gltText(key) {
     "safety.merge_states_idle": "Keine Zusammenführungsvorschau angefordert.",
     "safety.merge_states_ready": "Zusammenführungsvorschau bereit. Wählen Sie die zu behaltenden Änderungen.",
     "safety.merge_states_requested": "Zusammenführungsvorschau wird angefordert",
+    "safety.migration_workflow": "Migrationsablauf",
     "safety.mode_local": "Nur lokales Projekt",
     "safety.mode_shared": "Gemeinsames Projekt",
     "safety.my_access": "Mein Zugriff",
@@ -6718,6 +6737,8 @@ function gltText(key) {
     "equipment.standby": "Standby",
     "equipment.unknown": "Unknown",
     "equipment.warning": "Warning",
+    "legacy.ack_via_alarm_list": "Acknowledgement happens through the alarm list.",
+    "legacy.alarm_state_unavailable": "Alarm state is currently unavailable.",
     "legacy.auto_connect": "Connect automatically",
     "legacy.auto_mapping": "Auto mapping",
     "legacy.category_air": "Air handling / ventilation",
@@ -6752,9 +6773,24 @@ function gltText(key) {
     "legacy.medium_source": "Source",
     "legacy.meter": "Meter",
     "legacy.migration_workflow": "Migration workflow",
+    "legacy.nav_alarms": "Alarms",
+    "legacy.nav_automap": "Auto mapping",
+    "legacy.nav_cad": "CAD",
+    "legacy.nav_diagnostics": "Diagnostics",
+    "legacy.nav_energy": "Energy",
+    "legacy.nav_maintenance": "Maintenance",
+    "legacy.nav_operations": "Operations",
+    "legacy.nav_project": "Project v1",
+    "legacy.nav_schedule": "Schedules",
+    "legacy.nav_semantics": "Semantics",
+    "legacy.nav_simulation": "Simulation",
+    "legacy.nav_symbols": "Symbols 300+",
+    "legacy.nav_trends": "Trends",
     "legacy.new_project_name": "Name for the new project",
     "legacy.no_date": "No date",
+    "legacy.no_energy_meters": "No energy meters configured.",
     "legacy.no_fault": "No fault",
+    "legacy.no_work_orders": "No work orders.",
     "legacy.open_detail": "Open detail view",
     "legacy.paste_compare_json": "Paste the comparison configuration as JSON",
     "legacy.perform_maintenance": "Perform maintenance",
@@ -6772,6 +6808,7 @@ function gltText(key) {
     "legacy.style_clean_light": "Clean / Modern Light",
     "legacy.subplant_saved": "Sub-plant saved as a template.",
     "legacy.subtitle": "Building management · live plant view",
+    "legacy.suppress_minutes": "Suppress for how many minutes?",
     "legacy.symbol_ahu": "Air handling unit",
     "legacy.symbol_air_filter": "Air filter",
     "legacy.symbol_balancing_valve": "Balancing valve",
@@ -7028,6 +7065,7 @@ function gltText(key) {
     "safety.merge_states_idle": "No merge preview requested.",
     "safety.merge_states_ready": "Merge preview ready. Select the changes to keep.",
     "safety.merge_states_requested": "Requesting merge preview",
+    "safety.migration_workflow": "Migration workflow",
     "safety.mode_local": "Local-only project",
     "safety.mode_shared": "Shared project",
     "safety.my_access": "My access",
@@ -61923,11 +61961,26 @@ function gltText(key) {
       return "viewer";
     };
     const canOperate = (c, h) => ["operator", "designer"].includes(currentRole(c, h));
-    const LANG = {
-      de: { operations: "Betrieb", alarms: "Alarme", trends: "Trends", schedule: "Zeitprogramme", semantics: "Semantik", automap: "Auto-Mapping", cad: "CAD", diagnostics: "Diagnose", simulation: "Simulation", energy: "Energie", maintenance: "Wartung", project: "Projekt v1", symbols: "Symbole 300+" },
-      en: { operations: "Operations", alarms: "Alarms", trends: "Trends", schedule: "Schedules", semantics: "Semantics", automap: gltText("legacy.auto_mapping"), cad: "CAD", diagnostics: "Diagnostics", simulation: "Simulation", energy: "Energy", maintenance: "Maintenance", project: "Project v1", symbols: "Symbols 300+" }
+    const NAV_KEYS = Object.freeze({
+      alarms: "legacy.nav_alarms",
+      automap: "legacy.nav_automap",
+      cad: "legacy.nav_cad",
+      diagnostics: "legacy.nav_diagnostics",
+      energy: "legacy.nav_energy",
+      maintenance: "legacy.nav_maintenance",
+      operations: "legacy.nav_operations",
+      project: "legacy.nav_project",
+      schedule: "legacy.nav_schedule",
+      semantics: "legacy.nav_semantics",
+      simulation: "legacy.nav_simulation",
+      symbols: "legacy.nav_symbols",
+      trends: "legacy.nav_trends"
+    });
+    const t = (config2, key) => {
+      const catalogKey = NAV_KEYS[key];
+      if (!catalogKey) return key;
+      return text(catalogKey, config2?.ui?.locale === "en" ? "en" : "de");
     };
-    const t = (config2, key) => (LANG[config2?.ui?.locale] || LANG.de)[key] || key;
     const sdk = window.GLTFlowCardSDK || { symbols: /* @__PURE__ */ new Map(), profiles: /* @__PURE__ */ new Map(), panels: /* @__PURE__ */ new Map(), migrations: [], languages: /* @__PURE__ */ new Map() };
     sdk.registerSymbol = (s) => sdk.symbols.set(s.id, s);
     sdk.registerProfile = (p) => sdk.profiles.set(p.id, p);
@@ -61936,7 +61989,7 @@ function gltText(key) {
     sdk.registerLanguage = (id, d) => sdk.languages.set(id, d);
     for (const s of SYMBOL_VARIANTS) sdk.registerSymbol(s);
     for (const p of COMPONENT_PROFILES) sdk.registerProfile(p);
-    for (const [id, d] of Object.entries(LANG)) sdk.registerLanguage(id, d);
+    for (const id of ["de", "en"]) sdk.registerLanguage(id, Object.fromEntries(Object.entries(NAV_KEYS).map(([name, key]) => [name, text(key, id)])));
     sdk.text = text;
     sdk.defaultLanguage = "de";
     sdk.currentHass = () => window.__gltCurrentHass ?? null;
@@ -62119,7 +62172,7 @@ function gltText(key) {
       const cfg = ensureV1(card2._config);
       const loaded = await loadAlarms(card2);
       const rows = cfg.alarms.map((a) => alarmRow(cfg, a, loaded.byId[String(a.id)]));
-      const m = modal(card2, t(cfg, "alarms"), `<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div>${loaded.unavailable ? '<p data-unavailable style="font-size:9px;color:var(--mut)">Alarmzustand derzeit nicht abrufbar.</p>' : ""}<table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorität</th><th>Meldung</th><th>Unterdrückung</th><th>Zustellung</th><th>Aktion</th></tr></thead><tbody>${rows.join("") || '<tr><td colspan="6">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`);
+      const m = modal(card2, t(cfg, "alarms"), `<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div>${loaded.unavailable ? '<p data-unavailable style="font-size:9px;color:var(--mut)">${gltText("legacy.alarm_state_unavailable")}</p>' : ""}<table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorität</th><th>Meldung</th><th>Unterdrückung</th><th>Zustellung</th><th>Aktion</th></tr></thead><tbody>${rows.join("") || '<tr><td colspan="6">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`);
       m.querySelector("[data-refresh]").onclick = () => {
         m.remove();
         alarmsPanel(card2);
@@ -62137,7 +62190,7 @@ function gltText(key) {
         alarmsPanel(card2);
       });
       m.querySelectorAll("[data-shelve]").forEach((b) => b.onclick = async () => {
-        const answer = await askText(card2, "Für wie viele Minuten unterdrücken?", "60");
+        const answer = await askText(card2, gltText("legacy.suppress_minutes"), "60");
         if (answer === null) return;
         const minutes = Number(answer) || 60;
         try {
@@ -62405,7 +62458,7 @@ function gltText(key) {
       };
     }
     function showMaintenance(editor) {
-      const cfg = editor._config, m = editorModal(editor, t(cfg, "maintenance"), `<div class="glt-v1-actions"><button class="glt-v1-btn" data-new>Arbeitsauftrag</button></div><table class="glt-v1-table"><thead><tr><th>Status</th><th>Asset</th><th>Aufgabe</th><th>Fällig</th><th>Techniker</th></tr></thead><tbody>${cfg.work_orders.map((w) => `<tr><td>${esc(w.status || "open")}</td><td>${esc(w.asset_id || "")}</td><td>${esc(w.title || "")}</td><td>${esc(w.due || "")}</td><td>${esc(w.assignee || "")}</td></tr>`).join("") || '<tr><td colspan="5">Keine Arbeitsaufträge.</td></tr>'}</tbody></table>`);
+      const cfg = editor._config, m = editorModal(editor, t(cfg, "maintenance"), `<div class="glt-v1-actions"><button class="glt-v1-btn" data-new>Arbeitsauftrag</button></div><table class="glt-v1-table"><thead><tr><th>Status</th><th>Asset</th><th>Aufgabe</th><th>Fällig</th><th>Techniker</th></tr></thead><tbody>${cfg.work_orders.map((w) => `<tr><td>${esc(w.status || "open")}</td><td>${esc(w.asset_id || "")}</td><td>${esc(w.title || "")}</td><td>${esc(w.due || "")}</td><td>${esc(w.assignee || "")}</td></tr>`).join("") || '<tr><td colspan="5">${gltText("legacy.no_work_orders")}</td></tr>'}</tbody></table>`);
       m.querySelector("[data-new]").onclick = () => {
         const title = prompt("Aufgabe", gltText("legacy.perform_maintenance"));
         if (!title) return;
@@ -63629,6 +63682,7 @@ ${declare("dark")}
     "contractUnknown": "safety.contract_unknown",
     "controlConfirmBody": "safety.control_confirm_body",
     "finding": "safety.finding",
+    "migrationWorkflow": "safety.migration_workflow",
     "controlConfirmHeading": "safety.control_confirm_heading",
     "controlCorrelation": "safety.control_correlation",
     "controlEffect": "safety.control_effect",
@@ -64736,7 +64790,7 @@ ${declare("dark")}
     content.append(element("h3", "", copyFor(editor, "tabs")[2]));
     renderCollaboration(editor, state, content);
     const workflow = element("ol", "glt-safe-stepper");
-    workflow.setAttribute("aria-label", "Migration workflow");
+    workflow.setAttribute("aria-label", copyFor(editor, "migrationWorkflow"));
     for (const [index, label] of copyFor(editor, "workflow").entries()) {
       workflow.append(element("li", state.preview || index === 0 ? "complete" : "", `${index + 1}. ${label}`));
     }
@@ -68984,7 +69038,7 @@ ${declare("dark")}
         if (co2 != null) totalCo2 += co2;
         return `<div class="glt-v1-card"><b>${esc(m.name || m.id)}</b><strong>${Number.isFinite(v2) ? v2.toFixed(2) : "–"} ${esc(st2?.attributes?.unit_of_measurement || m.unit || "")}</strong><small>${esc(m.kind || "meter")}${cost != null ? ` · ${cost.toFixed(2)} €` : ""}${co2 != null ? ` · ${co2.toFixed(2)} kg CO₂` : ""}</small></div>`;
       }).join("");
-      box(card2, "Energie & Medien", `<div class="glt-v1-grid"><div class="glt-v1-card"><b>Kostenindikator</b><strong>${totalCost.toFixed(2)} €</strong><small>aus aktuell konfigurierten Zählerständen</small></div><div class="glt-v1-card"><b>CO₂-Indikator</b><strong>${totalCo2.toFixed(2)} kg</strong><small>elektrische Zähler</small></div></div><h4>Medienfluss</h4><div class="glt-v1-grid">${rows || '<div class="glt-v1-card">Keine Energiezähler konfiguriert.</div>'}</div>`);
+      box(card2, "Energie & Medien", `<div class="glt-v1-grid"><div class="glt-v1-card"><b>Kostenindikator</b><strong>${totalCost.toFixed(2)} €</strong><small>aus aktuell konfigurierten Zählerständen</small></div><div class="glt-v1-card"><b>CO₂-Indikator</b><strong>${totalCo2.toFixed(2)} kg</strong><small>elektrische Zähler</small></div></div><h4>Medienfluss</h4><div class="glt-v1-grid">${rows || '<div class="glt-v1-card">${gltText("legacy.no_energy_meters")}</div>'}</div>`);
     }
     function reportPanel(editor) {
       const c = editor._config;

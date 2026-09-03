@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 10 closed; 15 of 15 plans implemented, 15 of 17 threats verified, T10-03 not met
+stopped_at: Phase 10 closed; 15 of 15 plans implemented, 16 of 17 threats verified
 last_updated: "2026-09-03T02:00:00.000Z"
 last_activity: 2026-09-02 -- Phase 10 executed and closed: one catalog per language with a lookup that refuses rather than falling back, formatting that refuses rather than guessing, plurals as data, wording parity as canonical bytes, names and roles across the shipped artifact with an automated sweep that cannot become a conformance claim, capacity measurements that carry their environment, and a claim registry that fails the build on a claim nothing supports and publishes a failed claim as failed
 progress:
@@ -31,15 +31,16 @@ Plan: 15 of 15 implemented (15 plans across 7 waves)
 **All ten phases are executed and closed.** The milestone's plans are done; what
 remains is close-out, and one row that is honestly unfinished.
 
-### The one row marked `not met`
+### The row that was carried as unfinished
 
-**T10-03.** 132 user-facing strings in the shipped artifact do not come from a
-catalog — the legacy card's two generated bases and the entry module.
-`tools/verify-i18n-coverage.mjs` names each one, and the claim registry
-publishes the corresponding claim **as failed** rather than omitting it.
+**T10-03** was marked `not met` — not `verified`, and deliberately not `planned`
+either — while 132 user-facing strings remained outside the catalog. The sweep
+named each one and the claim registry published the corresponding claim **as
+failed**, which is the registry working on its own author.
 
-It is deliberately not left `planned`: `planned` reads as work not started, and
-this work started and did not finish.
+It was finished on 2026-09-03. `verify-i18n-coverage` reports PASS: every
+user-facing string in the shipped artifact comes from a catalog, 768 keys across
+both languages, with ten allowlisted strings each carrying what it actually is.
 
 ### Phase 10, in one paragraph
 
@@ -64,7 +65,7 @@ this environment has no Docker engine. Each carries its exact failure output.
 ### What is claimed, and by what
 
 `node tools/claim-registry.mjs` runs every claim's command and publishes the
-result: **12 passed, 1 failed, 4 not exercised** at head. The four unexercised
+result: **13 passed, 0 failed, 4 not exercised** at head. The four unexercised
 capabilities are screen-reader behaviour, representative capacity, the pinned
 Home Assistant lanes and dependency provenance — each with its reason, because a
 reader who is not told assumes they were exercised.
@@ -88,7 +89,6 @@ reader who is not told assumes they were exercised.
 
 ### Outstanding, and not hidden
 
-- **T10-03**, above.
 - **Phases 3 and 4 have no per-plan summaries.** Their registers and phase
   summaries carry the evidence; the summaries are genuinely missing.
 - **Review passes for Phases 2 through 10** and Phase 1's consolidated

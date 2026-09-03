@@ -1,13 +1,15 @@
 # Phase 10 — Product-Wide Usability and Release Evidence
 
-**Status:** closed. 15 of 17 threats verified, each from its own owner command
-run at head. **T10-03 is `not met`** — the phase's own discipline applied to
-itself — and T10-16 is blocked by the environment, recorded with its exact
+**Status:** closed. 16 of 17 threats verified, each from its own owner command
+run at head. T10-16 is blocked by the environment, recorded with its exact
 failure.
+
+T10-03 was carried as `not met` for a while and is now met: every user-facing
+string in the shipped artifact comes from a catalog.
 
 **Evidence at head:** 521 Node, 691 Python, 92 exact-dist browser,
 `verify-docs-site` 28 sources / 41 byte-identical site files, claim registry
-12 passed / 1 failed / 4 not exercised.
+13 passed / 0 failed / 4 not exercised.
 
 ## What this phase was about
 
@@ -31,8 +33,9 @@ same defect from three angles:
 
 ## The headline
 
-**The registry is the phase, and its run is honest about this product:
-12 passed, 1 failed, 4 not exercised.**
+**The registry is the phase.** It carried this product's one unmet claim as
+*failed* for as long as that claim was unmet, which is exactly what it is for.
+Its run at head is 13 passed, 0 failed, 4 not exercised.
 
 Every published claim cites a command and what that command said. Three rules,
 each closing a row:
@@ -56,7 +59,7 @@ the registry is a build step — a document is edited by whoever wants the claim
 
 **A locale is data now.** Wording lived in fourteen modules as `{ de, en }`
 pairs, which made adding French an edit to every module that renders anything.
-683 keys in two flat catalogs, and the lookup **refuses**: the three spellings
+768 keys in two flat catalogs, and the lookup **refuses**: the three spellings
 of `?? COPY.en[key] ?? key` it replaces showed a German operator an English
 sentence, indistinguishable from a term deliberately left in English, or the raw
 key as UI text. A pseudo-locale generated at test time proves the refusal is
@@ -123,16 +126,21 @@ escaped and asserted rather than invisible in a diff.
 mattered under js-yaml's parser diagnostics and ajv's schema text. Scope is
 decided by provenance now, using the bundler's own module banners.
 
-## What this phase did not finish
+## The row that was carried as unfinished, and then finished
 
-**T10-03 is `not met`, and that is stated rather than rounded off.** 132
-user-facing strings in the shipped artifact still do not come from a catalog:
-the legacy card's two generated bases and the entry module. The sweep names each
-one — with a list, not a count, so the number cannot creep back up unnoticed and
-every line is one thing to move.
+**T10-03 was marked `not met` for most of this phase**, with 132 strings named
+by the sweep and the corresponding claim published as *failed*. That was the
+registry doing its job on its own author.
 
-It is not left `planned` either. `planned` reads as work not started; this work
-started and did not finish.
+It is met now. The last hundred and thirty came from the validation table (which
+rendered raw JSON to an engineer), ajv's diagnostics (excluded only once the fix
+made them provably unrendered), the legacy layers reaching the catalog through
+the SDK, and the last inline `de:{…} en:{…}` table.
+
+Ten strings are allowlisted, each with what it actually *is* — a font name, two
+grouping keys, three console diagnostics, the card-picker description Home
+Assistant takes as one static string before any locale is known, and the
+product's name. "Not UI" is still not a reason.
 
 ## Limits of what this phase proves
 

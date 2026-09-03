@@ -58,6 +58,16 @@ const ALLOWED = new Map(Object.entries({
   "use strict": "the ECMAScript strict-mode directive, emitted by the bundler",
   "false schema": "an ajv diagnostic fragment reaching this region through a generated validator",
   "not active": "a quoted phrase inside a source comment the bundler preserved",
+  "Segoe UI": "a font family name inside a CSS font stack",
+  " data-file style=": "an HTML attribute fragment, left over where a template literal was split around an interpolation",
+  "GLT Flow Card": "the product name, which is the same word in every language",
+  "Gebäude": "a category grouping key matched against `base.category` across the product; what a reader sees is the DOMAINS label that names it",
+  "Kälte": "a category grouping key matched against `base.category` across the product; what a reader sees is the DOMAINS label that names it",
+  "dist/glt-flow-card.js = Companion www": "a diagnostic label naming the two file paths a byte-equality check compares",
+  "GLT Platform 1.0: base card/editor missing": "a console.warn addressed to whoever is reading a browser console",
+  "GLT Flow Card v0.4 extensions: base card/editor not registered.": "a console.warn addressed to whoever is reading a browser console",
+  "GLT Platform 1.0 completion layer: drill-down, lasso, Z-order, energy and report designer enabled.": "a console.info startup banner, not rendered anywhere",
+  "Modern configurable building-management visualization with animated plant schemes, image overlays, pan/zoom, replay, trends and KPIs.": "the description Home Assistant's card picker registry takes, as one static string at module load — before any locale is known",
 }));
 
 /**

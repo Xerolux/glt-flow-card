@@ -5,10 +5,10 @@
 Every marked row was marked from its own owner command run at head; where four
 rows name `test/claim-registry.test.mjs`, that command was run four times.
 
-**T10-03 is marked `not met`**, which is a status this project had not needed
-before. It is not `verified`, and it is deliberately not left `planned` either —
-`planned` reads as work not started, and this work started and did not finish.
-132 strings remain, each named by the sweep.
+**T10-03 was marked `not met`**, a status this project had not needed before:
+not `verified`, and deliberately not `planned` either, because `planned` reads
+as work not started and that work had started. It has since been finished and is
+now verified.
 
 T10-16 stays `planned` with its exact failure output: no Docker engine, the same
 row eight phases carry.
