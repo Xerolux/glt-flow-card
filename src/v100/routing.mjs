@@ -549,9 +549,80 @@ function laneCandidates(points, span, spacing, boxes) {
   return candidates;
 }
 
-/** How many non-trunk overlaps the network still has. */
-function countOverlaps(routed, drawn) {
-  let total = 0;
+/**
+ * Displace only the overlapping stretch of a run, and bring it back.
+ *
+ * `laneCandidates` shifts a whole lane, which moves both of a run's ends
+ * together. That is enough whenever one route has somewhere to go, and it is
+ * not enough for the pair Phase 5 recorded as unresolvable: two diagonals in a
+ * closed box, each owning the near end of one row and the far end of the other,
+ * so whichever lane you shift you fix one end and break the other. No ordering
+ * of turn columns clears both — the phase's own note says the resolution needs
+ * a jog rather than an offset. This is that jog.
+ *
+ * It replaces the overlapping segment with five: run to the start of the
+ * overlap, step across by the required spacing, run parallel through it, step
+ * back, continue. Both endpoints stay exactly where they were, which is the
+ * whole point — an endpoint is a port, and a router that moves ports is drawing
+ * a different plant.
+ *
+ * Two extra bends per jog is the cost, so it is tried *after* a plain lane
+ * shift rather than instead of one: a route that can be moved cleanly should
+ * be, because the reader counts corners.
+ */
+function jogCandidates(points, span, spacing, boxes) {
+  const axis = span.axis === "x" ? 0 : 1;
+  const other = axis === 0 ? 1 : 0;
+  const candidates = [];
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const start = points[index];
+    const end = points[index + 1];
+    // The segment carrying the overlap: on the lane, and running along it.
+    if (start[axis] !== span.at || end[axis] !== span.at) continue;
+    const lo = Math.min(start[other], end[other]);
+    const hi = Math.max(start[other], end[other]);
+    if (span.from < lo || span.to > hi) continue;
+
+    // The two corners, in the order this segment is travelled.
+    const descending = start[other] > end[other];
+    const first = descending ? span.to : span.from;
+    const second = descending ? span.from : span.to;
+
+    for (const direction of [1, -1]) {
+      const shifted = span.at + spacing * direction;
+      const at = (along, lane) => (axis === 0 ? [lane, along] : [along, lane]);
+      const candidate = [
+        ...points.slice(0, index + 1),
+        at(first, span.at),
+        at(first, shifted),
+        at(second, shifted),
+        at(second, span.at),
+        ...points.slice(index + 1),
+      ];
+      if (clean(candidate, boxes)) candidates.push(dedupe(candidate));
+    }
+  }
+  return candidates;
+}
+
+/**
+ * What the network still gets wrong, as a pair a move can be judged against.
+ *
+ * A count alone is not enough. A jog can trade one long overlap for one short
+ * one -- two diagonals running together for two hundred units become two
+ * diagonals sharing twelve where they turn -- and by count that is a draw, so a
+ * resolver comparing counts declines a move that visibly improves the drawing.
+ *
+ * Length is the tie-break, and it is the right one: a reader sees the *extent*
+ * of two runs drawn on top of each other, not how many segment pairs the
+ * geometry decomposes into. Comparing the pair lexicographically keeps count
+ * primary, so a move is never accepted for shortening one overlap while
+ * creating another.
+ */
+function overlapCost(routed, drawn) {
+  let count = 0;
+  let length = 0;
   for (let index = 1; index < drawn.length; index += 1) {
     const mine = routed[drawn[index].id].points;
     for (let other = 0; other < index; other += 1) {
@@ -560,12 +631,21 @@ function countOverlaps(routed, drawn) {
       for (const a of segmentsOf(mine)) {
         for (const b of segmentsOf(theirs)) {
           const span = overlapSpan(a, b);
-          if (span && !withinTrunk(span, trunk)) total += 1;
+          if (span && !withinTrunk(span, trunk)) {
+            count += 1;
+            length += Math.abs(span.to - span.from);
+          }
         }
       }
     }
   }
-  return total;
+  return { count, length };
+}
+
+/** True when `next` is a strictly better drawing than `before`. */
+function improves(next, before) {
+  if (next.count !== before.count) return next.count < before.count;
+  return next.length < before.length;
 }
 
 /**
@@ -629,15 +709,20 @@ export function routeNetwork({ routes = [], obstacles = [], options = {} } = {})
   for (let attempt = 0; attempt < drawn.length * 4; attempt += 1) {
     const conflict = firstOverlap(routed, drawn);
     if (!conflict) break;
-    const before = countOverlaps(routed, drawn);
+    const before = overlapCost(routed, drawn);
     let resolved = false;
     for (const id of [conflict.later, conflict.earlier]) {
-      for (const moved of laneCandidates(
-        routed[id].points, conflict.span, spacing, boxesFor.get(id),
-      )) {
+      // A plain lane shift first, a jog only when no shift helps. A jog costs
+      // two bends, and a drawing with fewer corners is one an engineer reads
+      // faster; paying for them where a shift would have done is a bad trade.
+      const moves = [
+        ...laneCandidates(routed[id].points, conflict.span, spacing, boxesFor.get(id)),
+        ...jogCandidates(routed[id].points, conflict.span, spacing, boxesFor.get(id)),
+      ];
+      for (const moved of moves) {
         const original = routed[id];
         routed[id] = { ...original, points: moved, length: pathLength(moved) };
-        if (countOverlaps(routed, drawn) < before) {
+        if (improves(overlapCost(routed, drawn), before)) {
           resolved = true;
           break;
         }

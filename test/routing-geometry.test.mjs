@@ -238,17 +238,44 @@ test("the whole corpus routed as one network has no hidden runs", () => {
   ));
   assert.deepEqual(corridor, [], "the two corridor runs were drawn on top of each other");
 
-  // The one pair the separator cannot resolve is reported rather than drawn
-  // silently. Both diagonals have a port at y=30 and a port at y=230, so
-  // whichever turns first owns the near end of one row and the far end of the
-  // other; no single lane shift orders both, and resolving it needs a jog
-  // rather than an offset. Reporting it leaves the engineer a diagram they can
-  // act on; drawing one run inside the other would not.
-  for (const violation of network.spacing_violations) {
-    assert.deepEqual(violation.routes, ["path-cross-ascending", "path-cross-descending"]);
-    assert.equal(violation.required_spacing, SCENES.options.spacing);
-    assert.ok(violation.to > violation.from);
+  // The pair that used to be unresolvable. Both diagonals have a port at y=30
+  // and a port at y=230, so whichever turns first owns the near end of one row
+  // and the far end of the other; no single lane shift orders both. Phase 5
+  // reported the overlap rather than drawing one run inside the other, and
+  // recorded that resolving it needed a jog rather than an offset.
+  //
+  // It does, and `jogCandidates` is that jog: it displaces only the overlapping
+  // stretch and brings the run back, so both ports stay where they are. A jog
+  // trades one long overlap for a short one at the turn, which a resolver
+  // comparing overlap *counts* scores as a draw and declines -- so the resolver
+  // compares (count, extent), and the shorter drawing wins.
+  assert.deepEqual(network.spacing_violations, [],
+    "the two diagonals are drawn on top of each other again");
+
+  // Not vacuously: the jog has to have actually happened, and the ports have to
+  // have stayed put. An empty violation list is also what a router that refused
+  // to draw anything would produce.
+  const ascending = network.routes["path-cross-ascending"];
+  const descending = network.routes["path-cross-descending"];
+  for (const [id, route, scene] of [
+    ["path-cross-ascending", ascending, SCENES.scenes.find((s) => s.id === "path-cross-ascending")],
+    ["path-cross-descending", descending, SCENES.scenes.find((s) => s.id === "path-cross-descending")],
+  ]) {
+    assert.ok(route?.points?.length >= 2, `${id} was not drawn`);
+    for (const point of route.points) assert.equal(point.length, 2, id);
+    // Every segment stays orthogonal: a jog that introduced a diagonal would
+    // separate the runs and stop being a piping drawing.
+    for (let i = 0; i < route.points.length - 1; i += 1) {
+      const [ax, ay] = route.points[i];
+      const [bx, by] = route.points[i + 1];
+      assert.ok(ax === bx || ay === by, `${id} has a diagonal segment`);
+    }
+    assert.ok(scene, `${id} is not in the corpus`);
   }
+  assert.ok(
+    descending.points.length > 4 || ascending.points.length > 4,
+    "neither diagonal gained the bends a jog adds, so nothing was separated",
+  );
 });
 
 test("three routes into one header make a junction, and it does not move", () => {

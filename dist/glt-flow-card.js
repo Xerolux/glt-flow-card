@@ -67012,8 +67012,39 @@ ${declare("dark")}
     }
     return candidates;
   }
-  function countOverlaps(routed, drawn) {
-    let total = 0;
+  function jogCandidates(points, span, spacing, boxes) {
+    const axis = span.axis === "x" ? 0 : 1;
+    const other = axis === 0 ? 1 : 0;
+    const candidates = [];
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const start = points[index];
+      const end = points[index + 1];
+      if (start[axis] !== span.at || end[axis] !== span.at) continue;
+      const lo = Math.min(start[other], end[other]);
+      const hi = Math.max(start[other], end[other]);
+      if (span.from < lo || span.to > hi) continue;
+      const descending = start[other] > end[other];
+      const first = descending ? span.to : span.from;
+      const second = descending ? span.from : span.to;
+      for (const direction of [1, -1]) {
+        const shifted = span.at + spacing * direction;
+        const at3 = (along, lane) => axis === 0 ? [lane, along] : [along, lane];
+        const candidate = [
+          ...points.slice(0, index + 1),
+          at3(first, span.at),
+          at3(first, shifted),
+          at3(second, shifted),
+          at3(second, span.at),
+          ...points.slice(index + 1)
+        ];
+        if (clean(candidate, boxes)) candidates.push(dedupe(candidate));
+      }
+    }
+    return candidates;
+  }
+  function overlapCost(routed, drawn) {
+    let count = 0;
+    let length = 0;
     for (let index = 1; index < drawn.length; index += 1) {
       const mine = routed[drawn[index].id].points;
       for (let other = 0; other < index; other += 1) {
@@ -67022,12 +67053,19 @@ ${declare("dark")}
         for (const a of segmentsOf(mine)) {
           for (const b of segmentsOf(theirs)) {
             const span = overlapSpan(a, b);
-            if (span && !withinTrunk(span, trunk)) total += 1;
+            if (span && !withinTrunk(span, trunk)) {
+              count += 1;
+              length += Math.abs(span.to - span.from);
+            }
           }
         }
       }
     }
-    return total;
+    return { count, length };
+  }
+  function improves(next, before) {
+    if (next.count !== before.count) return next.count < before.count;
+    return next.length < before.length;
   }
   function routeNetwork({ routes = [], obstacles = [], options = {} } = {}) {
     const spacing = option(options, "spacing", DEFAULT_SPACING);
@@ -67064,18 +67102,17 @@ ${declare("dark")}
     for (let attempt = 0; attempt < drawn.length * 4; attempt += 1) {
       const conflict = firstOverlap(routed, drawn);
       if (!conflict) break;
-      const before = countOverlaps(routed, drawn);
+      const before = overlapCost(routed, drawn);
       let resolved = false;
       for (const id of [conflict.later, conflict.earlier]) {
-        for (const moved of laneCandidates(
-          routed[id].points,
-          conflict.span,
-          spacing,
-          boxesFor.get(id)
-        )) {
+        const moves = [
+          ...laneCandidates(routed[id].points, conflict.span, spacing, boxesFor.get(id)),
+          ...jogCandidates(routed[id].points, conflict.span, spacing, boxesFor.get(id))
+        ];
+        for (const moved of moves) {
           const original = routed[id];
           routed[id] = { ...original, points: moved, length: pathLength(moved) };
-          if (countOverlaps(routed, drawn) < before) {
+          if (improves(overlapCost(routed, drawn), before)) {
             resolved = true;
             break;
           }
