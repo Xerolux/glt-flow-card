@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 10 closed; 15 of 15 plans implemented, 16 of 17 threats verified
-last_updated: "2026-09-03T02:00:00.000Z"
-last_activity: 2026-09-02 -- Phase 10 executed and closed: one catalog per language with a lookup that refuses rather than falling back, formatting that refuses rather than guessing, plurals as data, wording parity as canonical bytes, names and roles across the shipped artifact with an automated sweep that cannot become a conformance claim, capacity measurements that carry their environment, and a claim registry that fails the build on a claim nothing supports and publishes a failed claim as failed
+stopped_at: all ten phases closed and reviewed; close-out complete, no release authorized
+last_updated: "2026-09-03T07:30:00.000Z"
+last_activity: 2026-09-03 -- close-out: review passes for all ten phases, Phase 1 blocker verified closed at head, three filtered-route authorization leaks fixed and the class guarded, the SSRF destination re-check given a structural guard, the i18n sweep's blind spot found and closed, and every phase given a summary and a summary per plan
 progress:
   total_phases: 10
   completed_phases: 10
@@ -38,9 +38,20 @@ either — while 132 user-facing strings remained outside the catalog. The sweep
 named each one and the claim registry published the corresponding claim **as
 failed**, which is the registry working on its own author.
 
-It was finished on 2026-09-03. `verify-i18n-coverage` reports PASS: every
-user-facing string in the shipped artifact comes from a catalog, 768 keys across
-both languages, with ten allowlisted strings each carrying what it actually is.
+It was reported finished on 2026-09-03 — and that report was wrong, which the
+review pass the same day found. The sweep asked a **linguistic** question: does
+this string read like prose? `PROSE` needs two whitespace-separated words and
+`GERMAN` needs an umlaut or a stop word, so eleven single-word German labels
+(`Projektname`, `Layername`, `Aufgabe`, `⚡ Energie` and the rest) were invisible
+to it while it printed PASS.
+
+The sweep now asks a **structural** question alongside it: was the literal handed
+to something that shows it? Any bare string passed to `prompt`, `confirm`,
+`alert`, `.textContent` or `.innerText` is a finding whatever it looks like.
+Nine keys were added, the sites rewritten, and two glyph-only buttons that had
+no accessible name at all gained one. `verify-i18n-coverage` reports PASS on
+both sweeps, and the structural one is mutation-checked against the exact blind
+spot.
 
 ### Phase 10, in one paragraph
 
@@ -65,7 +76,7 @@ this environment has no Docker engine. Each carries its exact failure output.
 ### What is claimed, and by what
 
 `node tools/claim-registry.mjs` runs every claim's command and publishes the
-result: **13 passed, 0 failed, 4 not exercised** at head. The four unexercised
+result: **15 passed, 0 failed, 4 not exercised** at head. The four unexercised
 capabilities are screen-reader behaviour, representative capacity, the pinned
 Home Assistant lanes and dependency provenance — each with its reason, because a
 reader who is not told assumes they were exercised.
@@ -87,17 +98,46 @@ reader who is not told assumes they were exercised.
    product certifies against is a product decision, so no resolver change was
    pushed.
 
-### Outstanding, and not hidden
+### Close-out, completed 2026-09-03
 
-- **Phases 3 and 4 have no per-plan summaries.** Their registers and phase
-  summaries carry the evidence; the summaries are genuinely missing.
-- **Review passes for Phases 2 through 10** and Phase 1's consolidated
-  verification are outstanding.
-- `REQUIREMENTS.md` traceability is now current, and says which row is blocked
-  wherever a requirement is complete with an exception.
+Every phase now carries a phase summary, a summary per plan, and a review.
 
-Next: the close-out above. **No release is authorized and none was made.**
-Last activity: 2026-09-02 -- Phase 10 executed and closed on `claude/chatgpt-continuation-hi3y86` (PR #3)
+**The review passes found four things worth having found**, three of them
+security-relevant:
+
+1. **Three filtered routes returned rows of projects the caller cannot read**
+   (`work_orders/list`, `reports/list`, `evidence/list` — the last of these the
+   trusted audit trail). This is the `alarms/list` leak of `9f53bcb` three more
+   times, because that fix was applied to the instance rather than the class.
+   Fixed, and `test_filtered_route_authority.py` now closes the class by
+   deriving its route list from the policy contract and asserting **rows**
+   rather than response codes.
+2. **The SSRF destination re-check was correct by memory, not by construction.**
+   Both outbound sites called it; nothing made that a property of the product.
+   `test_outbound_destination_guard.py` gives it the same AST guarantee Phase 8
+   built for service dispatch.
+3. **The i18n sweep had a blind spot and T10-03 was closed on its PASS** — see
+   above.
+4. **The authored v040 source did not parse as JavaScript.** `part06` carried a
+   ternary whose `?` reads as optional chaining, so the manual workflow that is
+   supposed to bundle those parts could never have run. The token test proved
+   each module was *mentioned* and never asked node to read the result; it now
+   runs `node --check`.
+
+Six phases came back with no defects: 3, 4, 6, 7, 8, and Phase 1's blocker
+confirmed closed at head (`01-REVIEW-VERIFY.md`).
+
+One warning is left open as a recorded decision, not an oversight: the correct
+pattern for a filtered route lives in docstrings rather than in a shape that
+makes the omission impossible (`02-REVIEW.md`, WR-01). The structural fix is a
+refactor of eight handlers with different result shapes, which is not what a
+close-out review should trade a tested fix for.
+
+`REQUIREMENTS.md` traceability is current, and says which row is blocked wherever
+a requirement is complete with an exception.
+
+**No release is authorized and none was made.**
+Last activity: 2026-09-03 -- close-out complete on `claude/chatgpt-continuation-hi3y86` (PR #3)
 
 Progress: [██████████] 100%
 
@@ -314,7 +354,9 @@ Two capabilities are deliberately out of v1.1 and recorded in
 
 ## Session Continuity
 
-Last session: 2026-09-02T16:30:00.000Z
-Stopped at: Phase 7 planned; every planning artifact committed and the
-roadmap's `Plans: TBD` replaced with the itemised list
-Resume file: .planning/phases/07-trends-energy-reports/.continue-here.md
+Last session: 2026-09-03T07:30:00.000Z
+Stopped at: close-out complete -- all ten phases closed, summarised per plan and
+reviewed; four review findings fixed and each guarded at the class rather than
+the instance
+Resume file: none. What remains needs a Docker engine, verified dependency
+provenance, or a person with assistive technology -- see "Environment limits".
