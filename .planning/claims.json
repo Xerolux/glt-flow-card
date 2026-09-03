@@ -23,7 +23,7 @@
       "claim": "Every user-facing string in the shipped artifact comes from a catalog.",
       "kind": "command",
       "command": "node tools/verify-i18n-coverage.mjs",
-      "covers": "I18N-01. This is the claim the product does not yet meet: the sweep names each remaining string."
+      "covers": "I18N-01. Met at head, by two sweeps. The linguistic one asks whether a string reads like prose; the close-out review found its blind spot -- a single German word with no umlaut -- so a structural one now also flags any bare literal handed to prompt, confirm, alert, .textContent or .innerText, whatever it looks like. Each allowlist entry carries a reason."
     },
     {
       "id": "locale-formatting",
