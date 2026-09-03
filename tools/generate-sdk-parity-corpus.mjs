@@ -17,7 +17,9 @@ import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { MANIFEST_LIMITS, validateManifest } from "../src/v100/sdk-manifest.mjs";
+import {
+  ELEMENTS_DELIBERATELY_ABSENT, MANIFEST_LIMITS, validateManifest,
+} from "../src/v100/sdk-manifest.mjs";
 
 export const SDK_CORPUS_PATH = resolve(
   import.meta.dirname,
@@ -43,6 +45,23 @@ const nested = (depth) => {
  * proves neither, so the accepted cases differ from the refused ones in exactly
  * the property under test.
  */
+/**
+ * One case per element the module says it deliberately excludes.
+ *
+ * Without these, "deliberately absent" rests on the allowlist being an
+ * allowlist -- true today, and still true if one runtime grew an entry the
+ * other did not, because no case would notice. Deriving the cases from the
+ * declaration means an element removed from the exclusion list without being
+ * added to the allowlist fails here, in the Node suite, where the decision was
+ * made.
+ */
+const excludedElementCases = Object.keys(ELEMENTS_DELIBERATELY_ABSENT).map(
+  (element) => [
+    `excluded_element_${element.toLowerCase()}`,
+    symbol(`<svg><${element}/></svg>`),
+  ],
+);
+
 export const SDK_PARITY_CASES = Object.freeze([
   ["accepted_minimal", symbol("<svg><circle r='19'/></svg>")],
   ["accepted_full_drawing", symbol(
@@ -119,6 +138,8 @@ export const SDK_PARITY_CASES = Object.freeze([
   ["manifest_not_an_object", ["not", "a", "manifest"]],
   ["manifest_not_json", "{ this is not json"],
   ["manifest_too_large", "x".repeat(MANIFEST_LIMITS.max_bytes + 1)],
+
+  ...excludedElementCases,
 ]);
 
 /** The recorded verdicts, as they must appear on disk. */

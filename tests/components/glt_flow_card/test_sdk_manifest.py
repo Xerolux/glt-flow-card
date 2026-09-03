@@ -23,6 +23,7 @@ import pytest
 
 from custom_components.glt_flow_card.sdk_manifest import (
     ALLOWED_ELEMENTS,
+    ELEMENTS_DELIBERATELY_ABSENT,
     MANIFEST_LIMITS,
     MANIFEST_REFUSALS,
     validate_manifest,
@@ -73,8 +74,53 @@ def test_the_bounds_match_the_ones_the_browser_declares() -> None:
 
 
 def test_the_allowlist_excludes_what_embeds_or_executes() -> None:
-    for element in ("script", "foreignObject", "iframe", "use", "image", "style", "a"):
+    """Derived from the declaration, not from a list retyped here.
+
+    A hand-written tuple stops covering the module the first time an element is
+    added to the exclusion list, and nothing says so.
+    """
+    for element in ELEMENTS_DELIBERATELY_ABSENT:
         assert element not in ALLOWED_ELEMENTS
+
+
+def test_every_deliberately_absent_element_is_refused() -> None:
+    """Each exclusion is proven by a refusal, not by the allowlist's shape.
+
+    "It is an allowlist, so anything unlisted is refused" is true and would
+    remain true if this runtime quietly grew an entry the browser did not. Each
+    element is asked directly instead.
+    """
+    for element in ELEMENTS_DELIBERATELY_ABSENT:
+        verdict = validate_manifest({
+            "namespace": "acme",
+            "version": "1.0.0",
+            "supports_schema_versions": [4],
+            "contributions": [{
+                "id": "acme/probe",
+                "kind": "symbol",
+                "payload": {"markup": f"<svg><{element}/></svg>"},
+            }],
+        })
+        assert verdict["valid"] is False, f"<{element}> was accepted"
+
+
+def test_the_exclusion_list_matches_the_one_the_browser_declares() -> None:
+    """The two mirrors must exclude the same elements.
+
+    The parity corpus compares *verdicts* on the cases it records. That catches
+    a rule one runtime enforces and the other does not, for the markup those
+    cases contain. This catches the lists themselves drifting, which is the
+    thing the corpus can only see once a case exercises it.
+    """
+    recorded = {
+        case["case"].removeprefix("excluded_element_")
+        for case in _CORPUS["cases"]
+        if case["case"].startswith("excluded_element_")
+    }
+    assert recorded == {element.lower() for element in ELEMENTS_DELIBERATELY_ABSENT}, (
+        "the browser's exclusion list and this one disagree; regenerate the "
+        "corpus with npm run generate:sdk:parity"
+    )
 
 
 def test_an_oversized_manifest_is_refused_by_its_length_not_by_the_parser() -> None:

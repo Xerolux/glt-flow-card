@@ -225,3 +225,42 @@ test("nothing in this module executes, imports, or fetches anything", async () =
     assert.ok(!forbidden.test(source), `sdk-manifest.mjs reaches ${forbidden}`);
   }
 });
+
+
+test("the exclusion list and the allowlist do not overlap", async () => {
+  const { ALLOWED_ELEMENTS, ELEMENTS_DELIBERATELY_ABSENT } =
+    await import("../src/v100/sdk-manifest.mjs");
+  const allowed = new Set(ALLOWED_ELEMENTS);
+  for (const element of Object.keys(ELEMENTS_DELIBERATELY_ABSENT)) {
+    assert.ok(!allowed.has(element),
+      `${element} is both allowed and declared deliberately absent`);
+  }
+});
+
+test("every deliberately absent element carries a reason", async () => {
+  // A bare list would let an entry be added with nobody able to say why it is
+  // dangerous, which is how an exclusion later gets dropped as unexplained.
+  const { ELEMENTS_DELIBERATELY_ABSENT } =
+    await import("../src/v100/sdk-manifest.mjs");
+  for (const [element, reason] of Object.entries(ELEMENTS_DELIBERATELY_ABSENT)) {
+    assert.equal(typeof reason, "string", element);
+    assert.ok(reason.trim().length > 0, `${element} has no stated reason`);
+  }
+});
+
+test("every deliberately absent element is actually refused", async () => {
+  const { ELEMENTS_DELIBERATELY_ABSENT, validateManifest } =
+    await import("../src/v100/sdk-manifest.mjs");
+  for (const element of Object.keys(ELEMENTS_DELIBERATELY_ABSENT)) {
+    const verdict = validateManifest({
+      namespace: "acme",
+      version: "1.0.0",
+      supports_schema_versions: [4],
+      contributions: [{
+        id: "acme/probe", kind: "symbol",
+        payload: { markup: `<svg><${element}/></svg>` },
+      }],
+    });
+    assert.equal(verdict.valid, false, `<${element}> was accepted`);
+  }
+});

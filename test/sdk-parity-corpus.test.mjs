@@ -55,11 +55,41 @@ test("each hostile case is refused, and names itself among the reasons", async (
     contribution_not_an_object: "contribution_payload_missing",
     schema_versions_boolean: "schema_versions_unsupported",
   };
+  // The `excluded_element_*` family is derived from
+  // ELEMENTS_DELIBERATELY_ABSENT rather than named after one code: `script`
+  // has its own refusal, `foreignObject` has its own, and the rest fall to
+  // `unknown_element` because the list is an allowlist. What matters for each
+  // is that it is refused *for being that element*, so any of the three counts
+  // and nothing else does.
+  const elementRefusals = ["unknown_element", "script_element", "foreign_object"];
   for (const entry of corpus.cases) {
     if (entry.valid) continue;
+    if (entry.case.startsWith("excluded_element_")) {
+      assert.ok(entry.codes.some((code) => elementRefusals.includes(code)),
+        `${entry.case} was refused as ${entry.codes.join(", ")}, `
+        + "which is not a refusal of the element itself");
+      continue;
+    }
     const code = expected[entry.case] ?? entry.case;
     assert.ok(entry.codes.includes(code),
       `${entry.case} was refused as ${entry.codes.join(", ")}`);
+  }
+});
+
+test("every deliberately absent element has a corpus case", async () => {
+  // The guard that makes the derivation real: an element added to the
+  // exclusion list without regenerating the corpus fails here, so the Python
+  // lanes -- which have no `node` and can only read the recording -- are never
+  // comparing against a list that has moved on without them.
+  const { ELEMENTS_DELIBERATELY_ABSENT } =
+    await import("../src/v100/sdk-manifest.mjs");
+  const corpus = JSON.parse(await readFile(SDK_CORPUS_PATH, "utf8"));
+  const recorded = new Set(corpus.cases.map((entry) => entry.case));
+  for (const element of Object.keys(ELEMENTS_DELIBERATELY_ABSENT)) {
+    const name = `excluded_element_${element.toLowerCase()}`;
+    assert.ok(recorded.has(name),
+      `${element} is declared deliberately absent but has no parity case; `
+      + "regenerate with npm run generate:sdk:parity");
   }
 });
 

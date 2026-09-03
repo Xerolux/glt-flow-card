@@ -39,10 +39,27 @@ MANIFEST_LIMITS: dict[str, int] = {
     "max_namespace_length": 64,
 }
 
-#: The elements a contribution may draw with. Deliberately absent: ``use`` and
-#: ``image`` (they reference), ``script`` and ``style`` (they execute or
-#: restyle the host), ``foreignObject`` and ``iframe`` (they embed a different
-#: document), ``animate`` and ``set`` (they mutate), ``a`` (it navigates).
+#: The elements deliberately kept out of the allowlist, and why. The mirror of
+#: ``ELEMENTS_DELIBERATELY_ABSENT`` in ``sdk-manifest.mjs``; the parity corpus
+#: derives one case per entry, so each is proven refused by both runtimes rather
+#: than only by the allowlist being an allowlist.
+ELEMENTS_DELIBERATELY_ABSENT: dict[str, str] = {
+    "use": "references another node",
+    "image": "references an external resource",
+    "script": "executes",
+    "style": "restyles the host document",
+    "foreignObject": "embeds a different document",
+    "iframe": "embeds a different document",
+    "animate": "mutates the drawing after it is checked",
+    "set": "mutates the drawing after it is checked",
+    "a": "navigates",
+    "filter": "references by url",
+    "marker": "references by url",
+    "pattern": "references by url",
+}
+
+#: The elements a contribution may draw with. What is deliberately absent, and
+#: why, is :data:`ELEMENTS_DELIBERATELY_ABSENT`.
 ALLOWED_ELEMENTS: tuple[str, ...] = (
     "svg", "g", "title", "desc", "defs",
     "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",

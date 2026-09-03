@@ -45,12 +45,32 @@ export const MANIFEST_LIMITS = Object.freeze({
 });
 
 /**
+ * The elements deliberately kept out of the allowlist, and why.
+ *
+ * A comment naming them is a claim; this is the claim in a form a test can
+ * enumerate. The parity corpus derives one case per entry, so each is proven
+ * refused by *both* runtimes rather than only by the allowlist being an
+ * allowlist -- which would still hold if one runtime quietly grew an entry.
+ */
+export const ELEMENTS_DELIBERATELY_ABSENT = Object.freeze({
+  use: "references another node",
+  image: "references an external resource",
+  script: "executes",
+  style: "restyles the host document",
+  foreignObject: "embeds a different document",
+  iframe: "embeds a different document",
+  animate: "mutates the drawing after it is checked",
+  set: "mutates the drawing after it is checked",
+  a: "navigates",
+  filter: "references by url",
+  marker: "references by url",
+  pattern: "references by url",
+});
+
+/**
  * The elements a contribution may draw with.
  *
- * Deliberately absent: `use` and `image` (they reference), `script` and
- * `style` (they execute or restyle the host), `foreignObject` and `iframe`
- * (they embed a different document), `animate` and `set` (they mutate),
- * `a` (it navigates), `filter`, `marker` and `pattern` (they reference by url).
+ * What is deliberately absent, and why, is `ELEMENTS_DELIBERATELY_ABSENT`.
  */
 export const ALLOWED_ELEMENTS = Object.freeze([
   "svg", "g", "title", "desc", "defs",

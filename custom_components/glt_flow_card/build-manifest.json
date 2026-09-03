@@ -138,7 +138,7 @@
   ],
   "build": {
     "commit": "bb1087a72522f24c564f10b2ee3a3ad509ff21f7",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -439,8 +439,8 @@
     },
     {
       "path": "src/v100/sdk-manifest.mjs",
-      "sha256": "8aa7ad9254679aecf8de477dc2d3f9791fdb2d804c98b7fbd37bdb5648bb86fc",
-      "size": 14760
+      "sha256": "ae7c980bd1ce7ba24c65945e258165f0fab7d2136140901b198eb641f0235744",
+      "size": 15422
     },
     {
       "path": "src/v100/semantic-model.mjs",

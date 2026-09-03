@@ -2660,6 +2660,282 @@
       "codes": [
         "manifest_too_large"
       ]
+    },
+    {
+      "case": "excluded_element_use",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><use/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "unknown_element"
+      ]
+    },
+    {
+      "case": "excluded_element_image",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><image/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "unknown_element"
+      ]
+    },
+    {
+      "case": "excluded_element_script",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><script/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "script_element"
+      ]
+    },
+    {
+      "case": "excluded_element_style",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><style/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "unknown_element"
+      ]
+    },
+    {
+      "case": "excluded_element_foreignobject",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><foreignObject/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "foreign_object"
+      ]
+    },
+    {
+      "case": "excluded_element_iframe",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><iframe/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "unknown_element"
+      ]
+    },
+    {
+      "case": "excluded_element_animate",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><animate/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "unknown_element"
+      ]
+    },
+    {
+      "case": "excluded_element_set",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><set/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "unknown_element"
+      ]
+    },
+    {
+      "case": "excluded_element_a",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><a/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "unknown_element"
+      ]
+    },
+    {
+      "case": "excluded_element_filter",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><filter/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "unknown_element"
+      ]
+    },
+    {
+      "case": "excluded_element_marker",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><marker/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "unknown_element"
+      ]
+    },
+    {
+      "case": "excluded_element_pattern",
+      "manifest": {
+        "namespace": "acme",
+        "version": "1.0.0",
+        "supports_schema_versions": [
+          4
+        ],
+        "contributions": [
+          {
+            "id": "acme/pump-x",
+            "kind": "symbol",
+            "payload": {
+              "markup": "<svg><pattern/></svg>"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "codes": [
+        "unknown_element"
+      ]
     }
   ]
 }
