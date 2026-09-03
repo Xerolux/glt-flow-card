@@ -1,7 +1,34 @@
+
+/**
+ * One catalog string, read off the SDK at call time.
+ *
+ * This file is concatenated before the v1 bundle, or loaded beside it, so it
+ * cannot import the catalog. It reaches the same lookup the rest of the product
+ * uses through `window.GLTFlowCardSDK` — one source for a string, because two
+ * sources is how a screen ends up disagreeing with itself.
+ *
+ * The language comes from Home Assistant rather than `navigator.language`,
+ * which on a shared control-room workstation is whoever installed it. Falling
+ * back to the key rather than to a German sentence: a raw key on screen is
+ * visibly wrong, where a German sentence in an English interface looks
+ * deliberate.
+ */
+function gltText(key) {
+  const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
+  if (!sdk?.text) return key;
+  try {
+    const hass = sdk.currentHass?.() ?? null;
+    const language = hass?.locale?.language;
+    return sdk.text(key, String(language ?? "de").toLowerCase().startsWith("en") ? "en" : "de");
+  } catch (_err) {
+    return key;
+  }
+}
+
     };
     m.querySelectorAll("[data-select]").forEach((b)=>b.onclick=()=>{ const g=groups.find(x=>x.id===b.dataset.select); editor._glt4Multi=new Set((g?.members||[]).map(x=>`${x.kind}:${x.id}`)); editor._glt4ActiveGroup=g?.id; editor._render(); m.remove(); });
     m.querySelectorAll("[data-delete]").forEach((b)=>b.onclick=()=>{ editor._remember?.(); editor._config.groups=groups.filter(x=>x.id!==b.dataset.delete); editor._emit(); editor._render(); m.remove(); });
-    m.querySelectorAll("[data-template]").forEach((b)=>b.onclick=async()=>{ const g=groups.find(x=>x.id===b.dataset.template); if(!g)return; const objects=(g.members||[]).map((r)=>{const arr=r.kind==="equipment"?editor._config.equipment:r.kind==="datapoint"?editor._config.datapoints:r.kind==="path"?editor._config.paths:editor._config.kpis;return {kind:r.kind,object:clone(arr.find(x=>x.id===r.id))};}).filter(x=>x.object); await editorStore(editor).saveTemplate({id:`group-${g.id}-${Date.now().toString(36)}`,name:g.name,kind:"group",objects}); editorNotice(editor, "Unteranlage als Vorlage gespeichert."); });
+    m.querySelectorAll("[data-template]").forEach((b)=>b.onclick=async()=>{ const g=groups.find(x=>x.id===b.dataset.template); if(!g)return; const objects=(g.members||[]).map((r)=>{const arr=r.kind==="equipment"?editor._config.equipment:r.kind==="datapoint"?editor._config.datapoints:r.kind==="path"?editor._config.paths:editor._config.kpis;return {kind:r.kind,object:clone(arr.find(x=>x.id===r.id))};}).filter(x=>x.object); await editorStore(editor).saveTemplate({id:`group-${g.id}-${Date.now().toString(36)}`,name:g.name,kind:"group",objects}); editorNotice(editor, gltText("legacy.subplant_saved")); });
   }
 
   function showAutoRoute(editor) {
@@ -11,7 +38,7 @@
     const a0 = selectedEq[0] || eq[0]?.id || "", b0 = selectedEq[1] || eq[1]?.id || "";
     const options = eq.map((e)=>`<option value="${esc(e.id)}">${esc(e.name||e.id)}</option>`).join("");
     const mediumOpts = [["heating_supply","Vorlauf"],["heating_return","Rücklauf"],["cooling_supply","Kälte VL"],["cooling_return","Kälte RL"],["air_supply","Zuluft"],["air_extract","Abluft"],["electrical","Elektrisch"],["neutral","Neutral"]].map(([v,l])=>`<option value="${v}">${l}</option>`).join("");
-    const m = modal(editor,"Automatisch verbinden",`<div class="glt4-grid"><label>Von<select class="glt4-select" data-from>${options}</select></label><label>Nach<select class="glt4-select" data-to>${options}</select></label><label>Medium<select class="glt4-select" data-medium>${mediumOpts}</select></label></div><div class="glt4-actions"><button class="glt4-btn" data-create>Orthogonale Verbindung erstellen</button></div><p style="font-size:9px;color:var(--mut)">Auto-Routen bleiben an den Bauteilen verankert und werden beim Verschieben neu berechnet.</p>`);
+    const m = modal(editor,gltText("legacy.auto_connect"),`<div class="glt4-grid"><label>Von<select class="glt4-select" data-from>${options}</select></label><label>Nach<select class="glt4-select" data-to>${options}</select></label><label>Medium<select class="glt4-select" data-medium>${mediumOpts}</select></label></div><div class="glt4-actions"><button class="glt4-btn" data-create>Orthogonale Verbindung erstellen</button></div><p style="font-size:9px;color:var(--mut)">Auto-Routen bleiben an den Bauteilen verankert und werden beim Verschieben neu berechnet.</p>`);
     m.querySelector("[data-from]").value=a0; m.querySelector("[data-to]").value=b0;
     m.querySelector("[data-create]").onclick=()=>{ const from=m.querySelector("[data-from]").value,to=m.querySelector("[data-to]").value;if(!from||!to||from===to)return; editor._remember?.(); const p={id:editor._id?.("path")||`path_${Date.now()}`,medium:m.querySelector("[data-medium]").value,width:8,from_equipment:from,to_equipment:to,auto_route:true,points:[]}; p.points=autoRoute(editor._config,p,editor._viewId)||[]; editor._config.paths.push(p);editor._sel={k:"path",id:p.id};editor._emit();editor._render();m.remove(); };
   }

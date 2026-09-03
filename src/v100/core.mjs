@@ -1,4 +1,8 @@
 /* GLT Flow Card Platform 1.0 pure engineering core */
+
+import { text as catalogText } from "./catalog-lookup.mjs";
+import "./catalog-de.mjs";
+import "./catalog-en.mjs";
 import { COMPONENT_PROFILES, SYMBOL_VARIANTS, VISUAL_STYLES, profileForEquipment, portsForEquipment, renderVariant } from "./catalog.mjs";
 import { computeProjectDiff } from "./project-diff.mjs";
 import { createProjectBundle, readProjectBundleArchive } from "./project-bundle.mjs";
@@ -7,20 +11,20 @@ import { migrateProjectDocument } from "./project-migrations.mjs";
 export const SCHEMA_VERSION = 1;
 export const OPERATIONAL_STATES = {
   comm_error: { label: "Kommunikationsfehler", severity: 100, className: "comm-error" },
-  fault: { label: "Störung", severity: 95, className: "fault" },
-  command_failed: { label: "Befehl fehlgeschlagen", severity: 92, className: "command-failed" },
+  fault: { label: catalogText("legacy.fault", "de"), severity: 95, className: "fault" },
+  command_failed: { label: catalogText("legacy.command_failed", "de"), severity: 92, className: "command-failed" },
   interlock: { label: "Interlock", severity: 88, className: "interlock" },
   locked: { label: "Gesperrt", severity: 84, className: "locked" },
   maintenance: { label: "Wartung", severity: 78, className: "maintenance" },
   warning: { label: "Warnung", severity: 70, className: "warning" },
   local: { label: "Lokal", severity: 60, className: "local" },
   manual: { label: "Hand", severity: 58, className: "manual" },
-  command_pending: { label: "Befehl läuft", severity: 50, className: "command-pending" },
-  stale: { label: "Wert veraltet", severity: 45, className: "stale" },
-  invalid: { label: "Wert ungültig", severity: 44, className: "invalid" },
+  command_pending: { label: catalogText("legacy.command_running", "de"), severity: 50, className: "command-pending" },
+  stale: { label: catalogText("legacy.value_stale", "de"), severity: 45, className: "stale" },
+  invalid: { label: catalogText("legacy.value_invalid", "de"), severity: 44, className: "invalid" },
   auto: { label: "Auto", severity: 20, className: "auto" },
   remote: { label: "Fern", severity: 18, className: "remote" },
-  running: { label: "Läuft", severity: 15, className: "running" },
+  running: { label: catalogText("legacy.running", "de"), severity: 15, className: "running" },
   standby: { label: "Standby", severity: 8, className: "standby" },
   off: { label: "Aus", severity: 5, className: "off" },
   unknown: { label: "Unbekannt", severity: 40, className: "unknown" },
@@ -299,7 +303,7 @@ export function diagnoseConfig(config, hassStates = {}, now = Date.now()) {
   const issues = [];
   for (const id of refs) {
     const st = hassStates[id];
-    if (!st) { issues.push({ entity_id: id, severity: "error", code: "missing", message: "Entity fehlt" }); continue; }
+    if (!st) { issues.push({ entity_id: id, severity: "error", code: "missing", message: catalogText("legacy.entity_missing", "de") }); continue; }
     const raw = lower(st.state);
     if (["unavailable", "unknown"].includes(raw)) issues.push({ entity_id: id, severity: "warning", code: raw, message: `Entity ist ${raw}` });
     const t = Date.parse(st.last_updated || st.last_changed || "");

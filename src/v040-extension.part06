@@ -1,5 +1,32 @@
 
 /* Deep GLT symbol + control layer ------------------------------------------------ */
+
+/**
+ * One catalog string, read off the SDK at call time.
+ *
+ * This file is concatenated before the v1 bundle, or loaded beside it, so it
+ * cannot import the catalog. It reaches the same lookup the rest of the product
+ * uses through `window.GLTFlowCardSDK` — one source for a string, because two
+ * sources is how a screen ends up disagreeing with itself.
+ *
+ * The language comes from Home Assistant rather than `navigator.language`,
+ * which on a shared control-room workstation is whoever installed it. Falling
+ * back to the key rather than to a German sentence: a raw key on screen is
+ * visibly wrong, where a German sentence in an English interface looks
+ * deliberate.
+ */
+function gltText(key) {
+  const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
+  if (!sdk?.text) return key;
+  try {
+    const hass = sdk.currentHass?.() ?? null;
+    const language = hass?.locale?.language;
+    return sdk.text(key, String(language ?? "de").toLowerCase().startsWith("en") ? "en" : "de");
+  } catch (_err) {
+    return key;
+  }
+}
+
 (() => {
   "use strict";
   const Card = customElements.get("glt-flow-card");
@@ -17,7 +44,7 @@
     ["fan_supply","Zuluftventilator","RLT"],["fan_extract","Abluftventilator","RLT"],["damper","Luftklappe","RLT"],["fire_damper","Brandschutzklappe","RLT"],
     ["air_filter","Luftfilter","RLT"],["heating_coil","Heizregister","RLT"],["cooling_coil","Kühlregister","RLT"],["heat_recovery_rotary","Rotationswärmetauscher","RLT"],
     ["heat_recovery_plate","Platten-WRG","RLT"],["humidifier","Befeuchter","RLT"],["silencer","Schalldämpfer","RLT"],
-    ["chiller","Kältemaschine","Kälte"],["compressor","Verdichter","Kälte"],["cooling_tower","Kühlturm","Kälte"],
+    ["chiller","Kältemaschine",gltText("legacy.category_cooling")],["compressor","Verdichter",gltText("legacy.category_cooling")],["cooling_tower","Kühlturm",gltText("legacy.category_cooling")],
     ["pv_array","PV-Feld","Energie"],["inverter","Wechselrichter","Energie"],["battery","Batteriespeicher","Energie"],["grid","Netz","Energie"],["meter","Energiezähler","Energie"],
     ["temp_sensor","Temperaturfühler","Sensorik"],["pressure_sensor","Drucksensor","Sensorik"],["dp_sensor","Differenzdruck","Sensorik"],["flow_sensor","Volumenstrom","Sensorik"],
     ["humidity_sensor","Feuchtefühler","Sensorik"],["co2_sensor","CO₂-Sensor","Sensorik"],["frost_thermostat","Frostschutzthermostat","Sensorik"]

@@ -128,11 +128,30 @@ function diagnosticRanges(source) {
   return ranges;
 }
 
+/**
+ * Blank out comments, keeping every byte offset.
+ *
+ * An apostrophe in prose — "One symbol's label" — opens a single-quoted string
+ * as far as a scanner is concerned, and the next apostrophe closes it. That
+ * produced findings like `"s label, in the card"`: a fragment of a doc comment,
+ * reported as untranslated UI text. A sweep that reports work nobody has to do
+ * is a sweep people learn to ignore.
+ *
+ * Replaced with spaces rather than removed, so every offset still lines up with
+ * the module banners and catalog ranges computed against the same source.
+ */
+function withoutComments(source) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//gu, (block) => block.replace(/[^\n]/gu, " "))
+    .replace(/(^|[^:"'`\\])\/\/[^\n]*/gmu, (line, prefix) => prefix + " ".repeat(line.length - prefix.length));
+}
+
 /** Extract quoted literals from the bundle, with their offsets. */
 function literals(source) {
   const found = [];
+  const scannable = withoutComments(source);
   const pattern = /(["'])((?:\\.|(?!\1)[^\\\n])*)\1/gu;
-  for (const match of source.matchAll(pattern)) {
+  for (const match of scannable.matchAll(pattern)) {
     found.push({ index: match.index, raw: match[2] });
   }
   return found;

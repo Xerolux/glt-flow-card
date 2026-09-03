@@ -5,6 +5,33 @@
  * MIT License - Copyright (c) 2026 Xerolux
  */
 
+/**
+ * One catalog string, read off the SDK at call time.
+ *
+ * This file is concatenated before the v1 bundle, or loaded beside it, so it
+ * cannot import the catalog. It reaches the same lookup the rest of the product
+ * uses through `window.GLTFlowCardSDK` — one source for a string, because two
+ * sources is how a screen ends up disagreeing with itself.
+ *
+ * The language comes from Home Assistant rather than `navigator.language`,
+ * which on a shared control-room workstation is whoever installed it. Falling
+ * back to the key rather than to a German sentence: a raw key on screen is
+ * visibly wrong, where a German sentence in an English interface looks
+ * deliberate.
+ */
+function gltText(key) {
+  const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
+  if (!sdk?.text) return key;
+  try {
+    const hass = sdk.currentHass?.() ?? null;
+    const language = hass?.locale?.language;
+    return sdk.text(key, String(language ?? "de").toLowerCase().startsWith("en") ? "en" : "de");
+  } catch (_err) {
+    return key;
+  }
+}
+
+
 (() => {
   "use strict";
 
@@ -113,20 +140,20 @@
     { id:"expansion_vessel", labelKey:"legacy.symbol_expansion_vessel", category:"Hydraulik", type:"tank", icon:"mdi:circle-half-full" },
     { id:"filter_water", labelKey:"legacy.symbol_filter_water", category:"Hydraulik", type:"generic", icon:"mdi:filter-outline" },
 
-    { id:"ahu", labelKey:"legacy.symbol_ahu", category:"RLT / Lüftung", type:"ahu", icon:"mdi:air-filter" },
-    { id:"fan_supply", labelKey:"legacy.symbol_fan_supply", category:"RLT / Lüftung", type:"fan", icon:"mdi:fan" },
-    { id:"fan_extract", labelKey:"legacy.symbol_fan_extract", category:"RLT / Lüftung", type:"fan", icon:"mdi:fan-chevron-down" },
-    { id:"damper", labelKey:"legacy.symbol_damper", category:"RLT / Lüftung", type:"valve", icon:"mdi:blinds-horizontal" },
-    { id:"air_filter", labelKey:"legacy.symbol_air_filter", category:"RLT / Lüftung", type:"generic", icon:"mdi:air-filter" },
-    { id:"heating_coil", labelKey:"legacy.symbol_heating_coil", category:"RLT / Lüftung", type:"heat_exchanger", icon:"mdi:radiator" },
-    { id:"cooling_coil", labelKey:"legacy.symbol_cooling_coil", category:"RLT / Lüftung", type:"heat_exchanger", icon:"mdi:snowflake" },
-    { id:"humidifier", labelKey:"legacy.symbol_humidifier", category:"RLT / Lüftung", type:"generic", icon:"mdi:air-humidifier" },
-    { id:"room_air", labelKey:"legacy.symbol_room_air", category:"RLT / Lüftung", type:"room", icon:"mdi:home-thermometer" },
+    { id:"ahu", labelKey:"legacy.symbol_ahu", category:gltText("legacy.category_air"), type:"ahu", icon:"mdi:air-filter" },
+    { id:"fan_supply", labelKey:"legacy.symbol_fan_supply", category:gltText("legacy.category_air"), type:"fan", icon:"mdi:fan" },
+    { id:"fan_extract", labelKey:"legacy.symbol_fan_extract", category:gltText("legacy.category_air"), type:"fan", icon:"mdi:fan-chevron-down" },
+    { id:"damper", labelKey:"legacy.symbol_damper", category:gltText("legacy.category_air"), type:"valve", icon:"mdi:blinds-horizontal" },
+    { id:"air_filter", labelKey:"legacy.symbol_air_filter", category:gltText("legacy.category_air"), type:"generic", icon:"mdi:air-filter" },
+    { id:"heating_coil", labelKey:"legacy.symbol_heating_coil", category:gltText("legacy.category_air"), type:"heat_exchanger", icon:"mdi:radiator" },
+    { id:"cooling_coil", labelKey:"legacy.symbol_cooling_coil", category:gltText("legacy.category_air"), type:"heat_exchanger", icon:"mdi:snowflake" },
+    { id:"humidifier", labelKey:"legacy.symbol_humidifier", category:gltText("legacy.category_air"), type:"generic", icon:"mdi:air-humidifier" },
+    { id:"room_air", labelKey:"legacy.symbol_room_air", category:gltText("legacy.category_air"), type:"room", icon:"mdi:home-thermometer" },
 
-    { id:"chiller", labelKey:"legacy.symbol_chiller", category:"Kälte", type:"heat_pump", icon:"mdi:snowflake-thermometer" },
-    { id:"cooling_tower", labelKey:"legacy.symbol_cooling_tower", category:"Kälte", type:"generic", icon:"mdi:coolant-temperature" },
-    { id:"cooling_buffer", labelKey:"legacy.symbol_cooling_buffer", category:"Kälte", type:"tank", icon:"mdi:storage-tank" },
-    { id:"fancoil_cooling", labelKey:"legacy.symbol_fancoil_cooling", category:"Kälte", type:"fan", icon:"mdi:hvac" },
+    { id:"chiller", labelKey:"legacy.symbol_chiller", category:gltText("legacy.category_cooling"), type:"heat_pump", icon:"mdi:snowflake-thermometer" },
+    { id:"cooling_tower", labelKey:"legacy.symbol_cooling_tower", category:gltText("legacy.category_cooling"), type:"generic", icon:"mdi:coolant-temperature" },
+    { id:"cooling_buffer", labelKey:"legacy.symbol_cooling_buffer", category:gltText("legacy.category_cooling"), type:"tank", icon:"mdi:storage-tank" },
+    { id:"fancoil_cooling", labelKey:"legacy.symbol_fancoil_cooling", category:gltText("legacy.category_cooling"), type:"fan", icon:"mdi:hvac" },
 
     { id:"pv_array", labelKey:"legacy.symbol_pv_array", category:"Energie", type:"pv", icon:"mdi:solar-power-variant" },
     { id:"solar_thermal", labelKey:"legacy.symbol_solar_thermal", category:"Energie", type:"solar", icon:"mdi:solar-panel-large" },
@@ -334,6 +361,10 @@
     }
 
     set hass(hass) {
+      // Published so the surfaces that cannot reach a card instance — the
+      // concatenated legacy layers — can resolve a language rather than
+      // guessing one from the browser.
+      if (typeof window !== "undefined") window.__gltCurrentHass = hass;
       this._hass = hass;
       this._queueRender();
     }
@@ -775,7 +806,7 @@
       const online = status.online ? this._isActive(status.online) : true;
       return `<div class="glt-status-block">
         <span class="glt-status-pill ${online ? "ok" : "bad"}"><i></i>${online ? "Online" : "Offline"}</span>
-        ${status.alarm ? `<span class="glt-status-pill ${alarms ? "bad" : "ok"}"><i></i>${alarms ? "Störung" : "Keine Störung"}</span>` : ""}
+        ${status.alarm ? `<span class="glt-status-pill ${alarms ? "bad" : "ok"}"><i></i>${alarms ? gltText("legacy.fault") : gltText("legacy.no_fault")}</span>` : ""}
       </div>`;
     }
 
@@ -906,7 +937,7 @@
           <header class="glt-header">
             <div class="glt-heading">
               <div class="glt-logo"><ha-icon icon="mdi:chart-sankey-variant"></ha-icon></div>
-              <div><h2>${esc(this._config.title)}</h2><span>${esc(this._config.subtitle || "Gebäudeleittechnik · Live-Anlagenbild")}</span></div>
+              <div><h2>${esc(this._config.title)}</h2><span>${esc(this._config.subtitle || gltText("legacy.subtitle"))}</span></div>
             </div>
             ${this._statusMarkup()}
           </header>
@@ -916,7 +947,7 @@
             <div class="glt-tool-actions">
               ${this._config.appearance?.show_switch !== false ? `<div class="glt-style-switch"><button type="button" data-style="neo2030" class="${(this._styleMode || this._config.appearance?.mode || "neo2030") === "neo2030" ? "active" : ""}">Neo 2030</button><button type="button" data-style="clean" class="${(this._styleMode || this._config.appearance?.mode) === "clean" ? "active" : ""}">Clean</button><button type="button" data-style="classic_scada" class="${(this._styleMode || this._config.appearance?.mode) === "classic_scada" ? "active" : ""}">Classic SCADA</button></div>` : ""}
               ${this._config.trend.enabled ? `<button type="button" class="glt-tool-btn ${this._trendOpen ? "active" : ""}" data-action="trend"><ha-icon icon="mdi:chart-line"></ha-icon>Trend</button>` : ""}
-              ${this._config.zoom.controls ? `<button type="button" class="glt-icon-btn" data-action="zoom-out" title="Verkleinern"><ha-icon icon="mdi:magnify-minus-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="fit" title="Ansicht einpassen"><ha-icon icon="mdi:fit-to-screen-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="zoom-in" title="Vergrößern"><ha-icon icon="mdi:magnify-plus-outline"></ha-icon></button>` : ""}
+              ${this._config.zoom.controls ? `<button type="button" class="glt-icon-btn" data-action="zoom-out" title="Verkleinern"><ha-icon icon="mdi:magnify-minus-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="fit" title=gltText("legacy.fit_view")><ha-icon icon="mdi:fit-to-screen-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="zoom-in" title=gltText("legacy.zoom_in")><ha-icon icon="mdi:magnify-plus-outline"></ha-icon></button>` : ""}
             </div>
           </div>
           <div class="glt-viewport" style="height:${this._config.canvas.viewport_height}px" data-kind="${esc(view.kind || "schematic")}"></div>
@@ -1332,8 +1363,8 @@
     _s(l,v,p,a){return`<div class="f"><label>${esc(l)}</label><select data-e="${p}">${a.map(x=>`<option value="${x[0]}" ${x[0]===v?'selected':''}>${esc(x[1])}</option>`).join('')}</select></div>`}
     _ef(l,v,p,domains=[]){return`<div class="f"><label>${esc(l)}</label><ha-entity-picker data-ep data-e="${p}" data-v="${esc(v||'')}" data-domains="${esc(domains.join(','))}"></ha-entity-picker></div>`}
     _equipmentDomains(o){let t=o?.type||'';if(['fan','ahu'].includes(t))return['fan','switch','binary_sensor','sensor'];if(['room','heating_circuit','radiator','underfloor','fancoil'].includes(t))return['climate','sensor','switch','binary_sensor'];if(['valve','damper'].includes(t))return['valve','cover','switch','binary_sensor','sensor'];if(['pump'].includes(t))return['switch','binary_sensor','sensor','number'];return['switch','binary_sensor','sensor','climate','water_heater','fan','valve','number']}
-    _insp(){let v=this._view(),o=this._obj(),m=this._config.appearance?.mode||'neo2030',base=`<div class="sec"><div class="st">Ansicht <span class="chip">${esc(v.kind||'schematic')}</span></div>${this._f('Name',v.name,'@v.name')}${this._s('Typ',v.kind||'schematic','@v.kind',[['schematic','Anlagenschema'],['image','Anlagenbild']])}${this._f('Hintergrundbild (optional)',v.background||'','@v.background')}</div><div class="sec"><div class="st">Optik <span class="chip">${esc(m)}</span></div>${this._s('Design',m,'@c.appearance.mode',[['neo2030','Neo 2030'],['clean','Clean / Modern Light'],['classic_scada','Classic SCADA']])}</div>`;if(!o)return base+`<div class="sec"><div class="st">Karte <span class="chip">Global</span></div>${this._f('Titel',this._config.title,'@c.title')}<div class="g2">${this._f('Breite',this._config.canvas.width,'@a.width','number')}${this._f('Höhe',this._config.canvas.height,'@a.height','number')}</div></div><div class="help">Bauteile, Leitungen und Datenpunkte links auf die Zeichenfläche ziehen. Entitäten werden direkt aus Home Assistant über den nativen Entity-Picker ausgewählt.</div>`;let p=this._pos(o),body='';if(this._sel.k==='equipment'){o.fields=o.fields||[];while(o.fields.length<2)o.fields.push({label:'',entity:''});body=this._f('Name',o.name,'name')+this._s('Symbol',o.symbol||symbolById(null,o.type).id,'symbol',SYMBOL_LIBRARY.map(x=>[x.id,`${x.category} · ${symbolLabel(x,cardLanguage(this._hass))}`]))+this._s('Typ',o.type,'type',[...new Set(SYMBOL_LIBRARY.map(x=>x.type))].map(x=>[x,x.replaceAll('_',' ')]))+this._ef('Haupt-Entität',entityField(o.entity)?.entity||o.entity||'','entity',this._equipmentDomains(o))+this._ef('Status-Entität',entityField(o.state_entity)?.entity||o.state_entity||'','state_entity',['binary_sensor','switch','sensor'])+this._f('Eigenes Bild / SVG (optional)',o.image||'','image')+`<div class="g2">${this._f('X',p.x,'x','number')}${this._f('Y',p.y,'y','number')}${this._f('Breite',p.width||o.width,'width','number')}${this._f('Höhe',p.height||o.height,'height','number')}</div>`+this._f('Wert 1 Label',o.fields[0].label,'fields.0.label')+this._ef('Wert 1 Entität',entityField(o.fields[0].entity)?.entity||o.fields[0].entity||'','fields.0.entity',['sensor','number','climate','water_heater'])+this._f('Wert 2 Label',o.fields[1].label,'fields.1.label')+this._ef('Wert 2 Entität',entityField(o.fields[1].entity)?.entity||o.fields[1].entity||'','fields.1.entity',['sensor','number','climate','water_heater'])}else if(this._sel.k==='datapoint')body=this._f('Label',o.label,'label')+this._ef('Entität',entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number','climate','water_heater'])+`<div class="g2">${this._f('X in Ansicht',p.x,'x','number')}${this._f('Y in Ansicht',p.y,'y','number')}</div><div class="help">Der Datenpunkt kann im Schema und im Anlagenfoto separat positioniert werden.</div>`;else if(this._sel.k==='path')body=this._s('Medium',o.medium||'neutral','medium',Object.entries(MEDIUMS).map(([k,x])=>[k,mediumLabel(x,cardLanguage(this._hass))]))+this._ef('Aktiv / Fluss',entityField(o.flow)?.entity||o.flow||'','flow',['binary_sensor','switch','fan','sensor','number','valve'])+this._ef('Temperatur / Wert',entityField(o.temperature)?.entity||o.temperature||'','temperature',['sensor','number','climate'])+`<div class="g2">${this._f('Breite',o.width||8,'width','number')}${this._f('Geschwindigkeit',o.speed||1.3,'speed','number')}</div><div class="acts"><button class="act" data-act="addpoint">Punkt hinzufügen</button></div>`;else body=this._f('KPI Name',o.name,'name')+this._ef('Entität',entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number']);return base+`<div class="sec"><div class="st">${this._sel.k} <span class="chip">${o.id}</span></div>${body}</div><div class="acts"><button class="act" data-act="dup">Duplizieren</button><button class="act" data-act="del">Löschen</button></div>`}
-    _render(){if(!this.shadowRoot)return;let v=this._view(),mode=this._config.appearance?.mode||'neo2030',entityCount=Object.keys(this._hass?.states||{}).length;this.shadowRoot.innerHTML=`<style>${EDITOR_STYLES}</style><div class="de"><div class="dt"><div class="brand"><i><ha-icon icon="mdi:vector-square-edit"></ha-icon></i><span><b>GLT Flow Card Designer</b><small>Neo 2030 · Drag & Drop · ${esc(v?.name||'Anlage')}</small></span></div><div class="tools"><div class="seg"><button data-style="neo2030" class="${mode==='neo2030'?'on':''}">Neo 2030</button><button data-style="clean" class="${mode==='clean'?'on':''}">Clean</button><button data-style="classic_scada" class="${mode==='classic_scada'?'on':''}">Classic SCADA</button></div><button class="tb" data-act="undo" ${this._undoS.length?'':'disabled'}>↶ Undo</button><button class="tb" data-act="redo" ${this._redoS.length?'':'disabled'}>↷ Redo</button><button class="tb ${this._snap?'on':''}" data-act="snap">Snap</button><button class="tb ${this._grid?'on':''}" data-act="grid">Raster</button><button class="tb ${this._preview?'on':''}" data-act="preview">Vorschau</button><button class="tb ${this._yamlOpen?'on':''}" data-act="yaml">YAML</button></div></div><div class="work"><aside class="left"><div class="ph">Bausteine <span class="chip">${SYMBOL_LIBRARY.length}+ Symbole</span></div><div class="search"><input data-search placeholder="Bauteil oder Symbol suchen…" value="${esc(this._search)}"></div><div class="pal">${this._palette()}</div></aside><main class="center"><div class="vb"><div class="views">${this._config.views.map(x=>`<button class="tab ${x.id===this._viewId?'on':''}" data-view="${x.id}">${esc(x.name||x.id)}</button>`).join('')}<button class="mini" data-act="addview">＋</button></div><div class="tools"><span class="entity-stat">${entityCount?`${entityCount} HA-Entities verfügbar`:'HA-Entities werden geladen'}</span><button class="mini" data-act="zout">−</button><button class="mini" data-act="fit">Fit</button><button class="mini" data-act="zin">＋</button></div></div><div class="stage" data-stage>${this._canvas()}</div></main><aside class="right"><div class="ph">Eigenschaften <span class="chip">${this._sel?this._sel.k:'Ansicht'}</span></div><div class="insp">${this._insp()}</div></aside></div>${this._yamlOpen?`<div class="drawer"><div class="drawer-head"><b>Lovelace YAML</b><div class="tools"><span class="notice">Direkt in eine manuelle Dashboard-Karte kopierbar</span><button class="act" data-act="copyyaml">${this._copied?'Kopiert ✓':'YAML kopieren'}</button></div></div><pre class="yaml">${esc(configToYaml(this._config))}</pre></div>`:''}<div class="bottom"><span>Änderungen werden direkt in die Kartenkonfiguration übernommen · Entity-Auswahl aus Home Assistant</span><span>${Math.round(this._zoom*100)} %</span></div></div>`;this._bind();requestAnimationFrame(()=>{this._wireEntityPickers();this._live();this._wirePreview()})}
+    _insp(){let v=this._view(),o=this._obj(),m=this._config.appearance?.mode||'neo2030',base=`<div class="sec"><div class="st">Ansicht <span class="chip">${esc(v.kind||'schematic')}</span></div>${this._f('Name',v.name,'@v.name')}${this._s('Typ',v.kind||'schematic','@v.kind',[['schematic','Anlagenschema'],['image','Anlagenbild']])}${this._f('Hintergrundbild (optional)',v.background||'','@v.background')}</div><div class="sec"><div class="st">Optik <span class="chip">${esc(m)}</span></div>${this._s('Design',m,'@c.appearance.mode',[['neo2030','Neo 2030'],['clean',gltText("legacy.style_clean_light")],['classic_scada','Classic SCADA']])}</div>`;if(!o)return base+`<div class="sec"><div class="st">Karte <span class="chip">Global</span></div>${this._f('Titel',this._config.title,'@c.title')}<div class="g2">${this._f('Breite',this._config.canvas.width,'@a.width','number')}${this._f(gltText("legacy.height"),this._config.canvas.height,'@a.height','number')}</div></div><div class="help">Bauteile, Leitungen und Datenpunkte links auf die Zeichenfläche ziehen. Entitäten werden direkt aus Home Assistant über den nativen Entity-Picker ausgewählt.</div>`;let p=this._pos(o),body='';if(this._sel.k==='equipment'){o.fields=o.fields||[];while(o.fields.length<2)o.fields.push({label:'',entity:''});body=this._f('Name',o.name,'name')+this._s('Symbol',o.symbol||symbolById(null,o.type).id,'symbol',SYMBOL_LIBRARY.map(x=>[x.id,`${x.category} · ${symbolLabel(x,cardLanguage(this._hass))}`]))+this._s('Typ',o.type,'type',[...new Set(SYMBOL_LIBRARY.map(x=>x.type))].map(x=>[x,x.replaceAll('_',' ')]))+this._ef(gltText("legacy.main_entity"),entityField(o.entity)?.entity||o.entity||'','entity',this._equipmentDomains(o))+this._ef(gltText("legacy.state_entity"),entityField(o.state_entity)?.entity||o.state_entity||'','state_entity',['binary_sensor','switch','sensor'])+this._f(gltText("legacy.custom_image_optional"),o.image||'','image')+`<div class="g2">${this._f('X',p.x,'x','number')}${this._f('Y',p.y,'y','number')}${this._f('Breite',p.width||o.width,'width','number')}${this._f(gltText("legacy.height"),p.height||o.height,'height','number')}</div>`+this._f(gltText("legacy.value1_label"),o.fields[0].label,'fields.0.label')+this._ef(gltText("legacy.value1_entity"),entityField(o.fields[0].entity)?.entity||o.fields[0].entity||'','fields.0.entity',['sensor','number','climate','water_heater'])+this._f(gltText("legacy.value2_label"),o.fields[1].label,'fields.1.label')+this._ef(gltText("legacy.value2_entity"),entityField(o.fields[1].entity)?.entity||o.fields[1].entity||'','fields.1.entity',['sensor','number','climate','water_heater'])}else if(this._sel.k==='datapoint')body=this._f('Label',o.label,'label')+this._ef(gltText("legacy.entity"),entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number','climate','water_heater'])+`<div class="g2">${this._f(gltText("legacy.x_in_view"),p.x,'x','number')}${this._f(gltText("legacy.y_in_view"),p.y,'y','number')}</div><div class="help">Der Datenpunkt kann im Schema und im Anlagenfoto separat positioniert werden.</div>`;else if(this._sel.k==='path')body=this._s('Medium',o.medium||'neutral','medium',Object.entries(MEDIUMS).map(([k,x])=>[k,mediumLabel(x,cardLanguage(this._hass))]))+this._ef('Aktiv / Fluss',entityField(o.flow)?.entity||o.flow||'','flow',['binary_sensor','switch','fan','sensor','number','valve'])+this._ef('Temperatur / Wert',entityField(o.temperature)?.entity||o.temperature||'','temperature',['sensor','number','climate'])+`<div class="g2">${this._f('Breite',o.width||8,'width','number')}${this._f('Geschwindigkeit',o.speed||1.3,'speed','number')}</div><div class="acts"><button class="act" data-act="addpoint">Punkt hinzufügen</button></div>`;else body=this._f('KPI Name',o.name,'name')+this._ef(gltText("legacy.entity"),entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number']);return base+`<div class="sec"><div class="st">${this._sel.k} <span class="chip">${o.id}</span></div>${body}</div><div class="acts"><button class="act" data-act="dup">Duplizieren</button><button class="act" data-act="del">Löschen</button></div>`}
+    _render(){if(!this.shadowRoot)return;let v=this._view(),mode=this._config.appearance?.mode||'neo2030',entityCount=Object.keys(this._hass?.states||{}).length;this.shadowRoot.innerHTML=`<style>${EDITOR_STYLES}</style><div class="de"><div class="dt"><div class="brand"><i><ha-icon icon="mdi:vector-square-edit"></ha-icon></i><span><b>GLT Flow Card Designer</b><small>Neo 2030 · Drag & Drop · ${esc(v?.name||'Anlage')}</small></span></div><div class="tools"><div class="seg"><button data-style="neo2030" class="${mode==='neo2030'?'on':''}">Neo 2030</button><button data-style="clean" class="${mode==='clean'?'on':''}">Clean</button><button data-style="classic_scada" class="${mode==='classic_scada'?'on':''}">Classic SCADA</button></div><button class="tb" data-act="undo" ${this._undoS.length?'':'disabled'}>↶ Undo</button><button class="tb" data-act="redo" ${this._redoS.length?'':'disabled'}>↷ Redo</button><button class="tb ${this._snap?'on':''}" data-act="snap">Snap</button><button class="tb ${this._grid?'on':''}" data-act="grid">Raster</button><button class="tb ${this._preview?'on':''}" data-act="preview">Vorschau</button><button class="tb ${this._yamlOpen?'on':''}" data-act="yaml">YAML</button></div></div><div class="work"><aside class="left"><div class="ph">Bausteine <span class="chip">${SYMBOL_LIBRARY.length}+ Symbole</span></div><div class="search"><input data-search placeholder=gltText("legacy.search_component") value="${esc(this._search)}"></div><div class="pal">${this._palette()}</div></aside><main class="center"><div class="vb"><div class="views">${this._config.views.map(x=>`<button class="tab ${x.id===this._viewId?'on':''}" data-view="${x.id}">${esc(x.name||x.id)}</button>`).join('')}<button class="mini" data-act="addview">＋</button></div><div class="tools"><span class="entity-stat">${entityCount?`${entityCount} HA-Entities verfügbar`:gltText("legacy.loading_entities")}</span><button class="mini" data-act="zout">−</button><button class="mini" data-act="fit">Fit</button><button class="mini" data-act="zin">＋</button></div></div><div class="stage" data-stage>${this._canvas()}</div></main><aside class="right"><div class="ph">Eigenschaften <span class="chip">${this._sel?this._sel.k:'Ansicht'}</span></div><div class="insp">${this._insp()}</div></aside></div>${this._yamlOpen?`<div class="drawer"><div class="drawer-head"><b>Lovelace YAML</b><div class="tools"><span class="notice">Direkt in eine manuelle Dashboard-Karte kopierbar</span><button class="act" data-act="copyyaml">${this._copied?'Kopiert ✓':'YAML kopieren'}</button></div></div><pre class="yaml">${esc(configToYaml(this._config))}</pre></div>`:''}<div class="bottom"><span>Änderungen werden direkt in die Kartenkonfiguration übernommen · Entity-Auswahl aus Home Assistant</span><span>${Math.round(this._zoom*100)} %</span></div></div>`;this._bind();requestAnimationFrame(()=>{this._wireEntityPickers();this._live();this._wirePreview()})}
     _wirePreview(){let p=this.shadowRoot?.querySelector('[data-preview]');if(p){p.hass=this._hass;p.setConfig?.(deepClone(this._config))}}
     _wireEntityPickers(){this.shadowRoot?.querySelectorAll('[data-ep]').forEach(p=>{p.hass=this._hass;p.value=p.dataset.v||'';p.allowCustomEntity=true;let d=(p.dataset.domains||'').split(',').filter(Boolean);if(d.length)p.includeDomains=d;if(!p.dataset.bound){p.dataset.bound='1';p.addEventListener('value-changed',e=>{let value=e.detail?.value??'';this._entityEdit(p.dataset.e,value)})}})}
     _entityEdit(path,value){this._remember();if(path.startsWith('@'))return;let o=this._obj();if(!o)return;this._set(o,path,value);this._emit();this._render()}
@@ -4926,7 +4957,7 @@
     }
     function showYaml(editor, importMode = false) {
       const text = importMode ? "" : yamlConfig(editor._config);
-      const m = modal(editor, importMode ? "YAML importieren" : "Lovelace YAML", `<textarea class="glt4-textarea" data-yaml placeholder="type: custom:glt-flow-card
+      const m = modal(editor, importMode ? "YAML importieren" : gltText("legacy.lovelace_yaml"), `<textarea class="glt4-textarea" data-yaml placeholder="type: custom:glt-flow-card
 ...">${esc(text)}</textarea><div class="glt4-actions"><input type="file" accept=".yaml,.yml,text/yaml" data-file style="display:none"><button class="glt4-btn" data-filebtn>Datei \xF6ffnen</button><button class="glt4-btn" data-import>Importieren & weiterbearbeiten</button><button class="glt4-btn" data-copy>YAML kopieren</button><button class="glt4-btn" data-download>YAML herunterladen</button></div><div data-error style="margin-top:9px;color:#dc2626;font-size:9px"></div>`);
       const area = m.querySelector("[data-yaml]");
       m.querySelector("[data-filebtn]").onclick = () => m.querySelector("[data-file]").click();
@@ -5046,7 +5077,7 @@
           return { kind: r.kind, object: clone(arr.find((x) => x.id === r.id)) };
         }).filter((x) => x.object);
         await editorStore(editor).saveTemplate({ id: `group-${g.id}-${Date.now().toString(36)}`, name: g.name, kind: "group", objects });
-        editorNotice(editor, "Unteranlage als Vorlage gespeichert.");
+        editorNotice(editor, gltText("legacy.subplant_saved"));
       });
     }
     function showAutoRoute(editor) {
@@ -5056,7 +5087,7 @@
       const a0 = selectedEq[0] || eq[0]?.id || "", b0 = selectedEq[1] || eq[1]?.id || "";
       const options = eq.map((e) => `<option value="${esc(e.id)}">${esc(e.name || e.id)}</option>`).join("");
       const mediumOpts = [["heating_supply", "Vorlauf"], ["heating_return", "R\xFCcklauf"], ["cooling_supply", "K\xE4lte VL"], ["cooling_return", "K\xE4lte RL"], ["air_supply", "Zuluft"], ["air_extract", "Abluft"], ["electrical", "Elektrisch"], ["neutral", "Neutral"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
-      const m = modal(editor, "Automatisch verbinden", `<div class="glt4-grid"><label>Von<select class="glt4-select" data-from>${options}</select></label><label>Nach<select class="glt4-select" data-to>${options}</select></label><label>Medium<select class="glt4-select" data-medium>${mediumOpts}</select></label></div><div class="glt4-actions"><button class="glt4-btn" data-create>Orthogonale Verbindung erstellen</button></div><p style="font-size:9px;color:var(--mut)">Auto-Routen bleiben an den Bauteilen verankert und werden beim Verschieben neu berechnet.</p>`);
+      const m = modal(editor, gltText("legacy.auto_connect"), `<div class="glt4-grid"><label>Von<select class="glt4-select" data-from>${options}</select></label><label>Nach<select class="glt4-select" data-to>${options}</select></label><label>Medium<select class="glt4-select" data-medium>${mediumOpts}</select></label></div><div class="glt4-actions"><button class="glt4-btn" data-create>Orthogonale Verbindung erstellen</button></div><p style="font-size:9px;color:var(--mut)">Auto-Routen bleiben an den Bauteilen verankert und werden beim Verschieben neu berechnet.</p>`);
       m.querySelector("[data-from]").value = a0;
       m.querySelector("[data-to]").value = b0;
       m.querySelector("[data-create]").onclick = () => {
@@ -5370,7 +5401,7 @@
         const dueDate = a.due_date && a.due_date <= today;
         const dueHours = Number.isFinite(hours) && a.service_interval_hours && hours >= (a.last_service_hours || 0) + a.service_interval_hours;
         const due = dueDate || dueHours;
-        return `<div class="glt4-runtime-card ${due ? "warning" : ""}"><b>${due ? "\u26A0 " : "\u2713 "}${esc(a.name || a.id)}</b><small>${hours != null ? `${hours.toFixed(0)} h \xB7 ` : ""}${a.due_date ? `F\xE4llig ${esc(a.due_date)}` : "Kein Datum"}${a.notes ? ` \xB7 ${esc(a.notes)}` : ""}</small>${(a.documents || []).length ? `<div class="glt4-runtime-actions">${a.documents.map((d) => `<button data-url="${esc(d.url)}">${esc(d.name || "Dokument")}</button>`).join("")}</div>` : ""}</div>`;
+        return `<div class="glt4-runtime-card ${due ? "warning" : ""}"><b>${due ? "\u26A0 " : "\u2713 "}${esc(a.name || a.id)}</b><small>${hours != null ? `${hours.toFixed(0)} h \xB7 ` : ""}${a.due_date ? `F\xE4llig ${esc(a.due_date)}` : gltText("legacy.no_date")}${a.notes ? ` \xB7 ${esc(a.notes)}` : ""}</small>${(a.documents || []).length ? `<div class="glt4-runtime-actions">${a.documents.map((d) => `<button data-url="${esc(d.url)}">${esc(d.name || "Dokument")}</button>`).join("")}</div>` : ""}</div>`;
       }).join("") || '<div class="glt4-runtime-card">Keine Assets konfiguriert.</div>'}</div></section>`;
     }
     function siteStrip(card) {
