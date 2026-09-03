@@ -10,7 +10,7 @@ findings:
   warning: 1
   info: 1
   total: 3
-fixed_in_this_pass: 2
+fixed_in_this_pass: 3
 status: issues_found_and_fixed
 ---
 
@@ -97,7 +97,7 @@ would be passing over an empty store) and was mutation-checked: removing the
 
 ## Warning
 
-### WR-01: The correct pattern is documented in prose, not enforced by shape
+### WR-01: The correct pattern is documented in prose, not enforced by shape — FIXED
 
 **Files:** `custom_components/glt_flow_card/policy.py`, route handlers
 
@@ -106,13 +106,27 @@ the type of a `RoutePolicy`, the decorator, or the handler signature makes the
 omission impossible — the rule lives in docstrings and in reviewers' memory,
 which is precisely why it was forgotten four times.
 
-**Not fixed, deliberately.** The structural fix is a decorator that filters for
-the handler, which would mean routing every filtered route's row source through
-one place. That is a real refactor of eight handlers with different result
-shapes, and doing it during a close-out review — after the release evidence was
-gathered — trades a demonstrated, tested fix for an untested larger one. The new
-test closes the hole at the class level, which was the urgent part. Recorded
-here so the refactor is a decision rather than an oversight.
+**Fixed 2026-09-03, and the estimate above was wrong.** It read as a refactor of
+eight handlers because the *result shapes* differ. They do — but the shapes are
+data, and there was already one place every command passes through.
+
+`RoutePolicy` now carries `empty_result`: what the route answers a caller who
+may not read the project, as JSON, since the dataclass is frozen and a dict
+default would be shared mutable state. `__post_init__` **refuses to construct**
+an active project-scoped filtered route without one, so such a route cannot be
+declared until somebody says what its empty answer looks like. `_guard_command`
+then sends that answer itself when the capability is absent, and the handler is
+never invoked — it cannot forget a filter it is never asked to perform.
+
+`test_the_boundary_filters_without_the_handlers` proves the handlers are no
+longer load-bearing: it puts a deliberately unfiltered handler behind the guard
+— the original defect, exactly — and requires the answer to stay empty.
+Confirmed the other way too: with the `work_orders`, `reports` and `alarms`
+in-handler checks deleted, every assertion still passes. Those checks stay as
+defence in depth.
+
+The finding stands as written. It shipped, and the estimate that deferred it was
+mine.
 
 ## Info
 
@@ -135,5 +149,5 @@ in the plan files. Written in this pass as `02-SUMMARY.md`.
 
 **Issues found and fixed.** The boundary's design held under review; what failed
 was the assumption that a fix applied once to one route had closed the class.
-The critical finding is fixed and guarded. WR-01 stays open as a recorded
-decision.
+Both the critical finding and WR-01 are fixed and guarded; WR-01 was closed on
+2026-09-03, after the estimate that deferred it turned out to be wrong.

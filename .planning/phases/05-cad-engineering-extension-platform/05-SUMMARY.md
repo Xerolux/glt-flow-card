@@ -89,14 +89,36 @@ Each owns the near end of one row and the far end of the other, so no ordering
 of the turn columns clears both. Resolving it needs a jog rather than an offset.
 The pair keeps its geometry and is reported in `spacing_violations`.
 
+> **Closed 2026-09-03.** `jogCandidates` displaces only the overlapping stretch
+> and brings the run back, so both ports stay put. The jog alone was still
+> declined, because it trades one 200-unit overlap for a 12-unit one at the turn
+> and the resolver compared overlap *counts* — one for one is a draw.
+> `countOverlaps` became `overlapCost`, returning (count, extent) compared
+> lexicographically. The corpus now routes with zero spacing violations.
+
 **Five `prompt()` calls remain** on editor naming paths — not destructive, and
 replacing them with inline inputs is its own change.
+
+> **Closed 2026-09-03.** Nine naming paths, across four files, now use one
+> dialog: `askText` in the v1 bundle, reached through `window.GLTFlowCardSDK`
+> by the two files concatenated ahead of it, and a standalone equivalent in the
+> editor app, which has no SDK. `prompt` survives only as the SDK-absent
+> fallback in the two bridges.
 
 **The v040 extension parts 05 and 06 are still not in the artifact.** The two
 paths that mattered are fixed directly; the mechanism is not. Part 06's symbol
 renderer is still missing from what ships, and re-bundling all seven parts is a
 decision about the build — the workflow that does it also resets the package
 version to 0.4.0 — so it is raised rather than taken.
+
+> **Still open, and now safer 2026-09-03.** The decision stands: re-bundling
+> would downgrade the product, so it is not taken here. What changed is that it
+> can no longer happen *by accident*. `apply-v040.yml` fired on any push to
+> `main` touching those parts, and would have committed the 0.4.0 downgrade as
+> a bot; it was stopped only by `apply-v040.mjs` throwing on a version anchor,
+> which is a coincidence rather than a safety property. The push trigger is
+> removed and `workflow_dispatch` kept, so the job stays reachable by a person
+> who means it. `test/workflow-safety.test.mjs` asserts the trigger.
 
 ## Evidence at head
 

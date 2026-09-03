@@ -127,11 +127,32 @@ security-relevant:
 Six phases came back with no defects: 3, 4, 6, 7, 8, and Phase 1's blocker
 confirmed closed at head (`01-REVIEW-VERIFY.md`).
 
-One warning is left open as a recorded decision, not an oversight: the correct
-pattern for a filtered route lives in docstrings rather than in a shape that
-makes the omission impossible (`02-REVIEW.md`, WR-01). The structural fix is a
-refactor of eight handlers with different result shapes, which is not what a
-close-out review should trade a tested fix for.
+**Nothing is left open in the repository.** WR-01 — the last recorded review
+warning — was closed the same day, and the estimate that had deferred it was
+wrong: it read as a refactor of eight handlers because their result shapes
+differ, but the shapes are data and there was already one choke point every
+command passes through. `RoutePolicy` now refuses to declare a project-scoped
+filtered route without the empty answer it gives an unauthorized caller, and the
+boundary sends that answer, so the handler is never invoked and cannot forget.
+
+Three product limitations recorded by earlier phases were also closed:
+
+- **The two diagonals** Phase 5 could not separate now route with **zero**
+  spacing violations. `jogCandidates` displaces only the overlapping stretch and
+  keeps both ports fixed; the jog alone was still declined until
+  `countOverlaps` became `overlapCost`, comparing (count, extent), because
+  trading a 200-unit overlap for a 12-unit one scored as a draw.
+- **The nine `prompt()` naming paths** use one real dialog, reached through the
+  SDK by the files that cannot import it.
+- **`apply-v040.yml`** no longer fires on a push to `main`. It would have
+  committed a 0.4.0 downgrade as a bot, stopped only by a thrown exception on a
+  version anchor — a coincidence, not a safety property.
+
+**Still deliberately not done:** a site cannot express four or five alarm
+priority classes. That is a schema change, and the alarm philosophy — configuration
+with conservative defaults, the priority vocabulary being the one deliberate
+exception — was decided with the user on 2026-09-02. Reversing it is a product
+decision, not a close-out task.
 
 `REQUIREMENTS.md` traceability is current, and says which row is blocked wherever
 a requirement is complete with an exception.
