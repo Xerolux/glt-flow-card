@@ -99,6 +99,80 @@ import { factoryTemplates } from "./templates.mjs";
   .glt-v1-notice{margin-top:10px;padding:10px 12px;border:1px solid currentColor;border-radius:10px;min-height:44px;display:flex;align-items:center;gap:8px}
   .glt-v1-modal{position:fixed;inset:0;z-index:12000;background:#020617bd;display:grid;place-items:center;padding:20px}.glt-v1-dialog{width:min(1080px,97vw);max-height:92vh;overflow:auto;border:1px solid var(--glt-border,var(--divider-color));border-radius:16px;background:var(--card-background-color,#fff);color:var(--primary-text-color);box-shadow:0 30px 90px #0008}.glt-v1-head{position:sticky;top:0;z-index:4;display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid var(--glt-border,var(--divider-color));background:var(--card-background-color,#fff)}.glt-v1-body{padding:14px}.glt-v1-close,.glt-v1-btn{border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:transparent;color:var(--primary-text-color);padding:7px 9px;font-size:9px;font-weight:750;cursor:pointer}.glt-v1-close{border:0;font-size:15px}.glt-v1-btn.primary{color:#fff;background:#0b83cc;border-color:#1fb4ff}.glt-v1-btn.warn{color:#dc2626}.glt-v1-actions{display:flex;gap:6px;flex-wrap:wrap}.glt-v1-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.glt-v1-card{border:1px solid var(--glt-border,var(--divider-color));border-radius:11px;padding:10px;background:color-mix(in srgb,var(--card-background-color) 96%,#64748b 4%)}.glt-v1-card b{display:block;font-size:11px}.glt-v1-card small{display:block;color:var(--secondary-text-color);margin-top:3px;font-size:8px}.glt-v1-table{width:100%;border-collapse:collapse;font-size:9px}.glt-v1-table th,.glt-v1-table td{padding:7px;border-bottom:1px solid var(--glt-border,var(--divider-color));text-align:left;vertical-align:top}.glt-v1-input,.glt-v1-select,.glt-v1-text{width:100%;padding:7px;border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:var(--card-background-color);color:var(--primary-text-color);font-size:9px}.glt-v1-text{min-height:100px}.glt-v1-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:5px 8px;border-bottom:1px solid var(--b,var(--divider-color));background:color-mix(in srgb,var(--bg,var(--card-background-color)) 96%,#0ea5e9 4%)}.glt-v1-toolbar button{height:29px;border:1px solid var(--b,var(--divider-color));border-radius:7px;background:transparent;color:var(--mut,var(--secondary-text-color));font-size:8px;font-weight:760;padding:0 8px;cursor:pointer}.glt-v1-toolbar button:hover{color:var(--e,#0ea5e9);border-color:#0ea5e966}.glt-v1-minimap{position:absolute;right:12px;bottom:12px;width:180px;height:110px;border:1px solid var(--b);border-radius:9px;background:#07131fe6;z-index:50;overflow:hidden;pointer-events:none}.glt-v1-miniitem{position:absolute;background:#2aaeff66;border:1px solid #4bc6ff88;border-radius:2px}.glt-v1-layer-hidden{display:none!important}.glt-v1-layer-locked{pointer-events:none!important;opacity:.65}.glt-v1-breadcrumbs{display:flex;gap:5px;align-items:center;padding:5px 14px;font-size:9px;color:var(--secondary-text-color);border-bottom:1px solid var(--glt-border)}.glt-v1-breadcrumbs button{border:0;background:transparent;color:var(--glt-accent);cursor:pointer;font-size:9px}.glt-v1-quality.good{color:#22c55e}.glt-v1-quality.uncertain{color:#f59e0b}.glt-v1-quality.bad{color:#ef4444}
   body.glt-v1-kiosk .header,body.glt-v1-kiosk app-toolbar{display:none!important}@media(min-width:1800px){.glt-v1-dialog{width:min(1320px,96vw)}}`;
+  /* The base card ships _ensureHistory as a stub, so replay and the trend
+   * panel never had data to show. This override gathers every entity the
+   * config references and asks the Companion for its series. The Companion is
+   * the only historian the card may read (the artifact is gated on issuing no
+   * Recorder request of its own), so a project without a stored companion
+   * project shows the panel's explicit "unavailable" wording instead of
+   * silently empty charts. */
+  const normalizePoint = (p) => {
+    if (Array.isArray(p) && p.length >= 2) return [Number(p[0]) || 0, p[1]];
+    if (p && typeof p === "object") {
+      const t = p.t ?? p.ts ?? p.time ?? p.last_updated ?? p.last_changed;
+      const v = p.v ?? p.val ?? p.value ?? p.state;
+      if (t != null) {
+        const ms = typeof t === "number" ? t : Date.parse(t);
+        if (Number.isFinite(ms)) return [ms, v];
+      }
+    }
+    return null;
+  };
+  Card.prototype._ensureHistory = async function () {
+    if (this._historyLoading) return this._history;
+    this._historyLoading = true;
+    try {
+      const cfg = ensureV1(this._config);
+      const hours = Math.max(1, Number(cfg.replay?.hours || 168));
+      const end = new Date();
+      const start = new Date(end.getTime() - hours * 3600e3);
+      const ids = new Set();
+      const add = (value) => {
+        if (typeof value === "string") {
+          if (value.includes(".")) ids.add(value);
+        } else if (value && typeof value === "object" && typeof value.entity === "string" && value.entity.includes(".")) {
+          ids.add(value.entity);
+        }
+      };
+      (cfg.datapoints || []).forEach((d) => add(d.entity));
+      (cfg.equipment || []).forEach((eq) => {
+        add(eq.entity);
+        (eq.fields || []).forEach((f) => add(f.entity));
+      });
+      (cfg.kpis || []).forEach((k) => add(k.entity));
+      (cfg.paths || []).forEach((p) => { add(p.temperature); add(p.flow); });
+      const entityIds = [...ids];
+      let series = [];
+      let source = "unavailable";
+      if (entityIds.length) {
+        const loaded = await loadHistory(this, {
+          contract: "series",
+          entity_ids: entityIds,
+          start: start.toISOString(),
+          end: end.toISOString(),
+          limit: 3000,
+        });
+        series = loaded.series || [];
+        source = loaded.source || "unavailable";
+      }
+      const map = new Map();
+      for (const s of series || []) {
+        const key = s.entity_id || s.entity || s.id;
+        if (!key) continue;
+        const points = (s.points || s.values || []).map(normalizePoint).filter((p) => p && Number.isFinite(Number(p[1])));
+        if (points.length) map.set(key, points.sort((a, b) => a[0] - b[0]));
+      }
+      this._history = map;
+      this._historyRange = { start: start.getTime(), end: end.getTime() };
+      this._historyError = null;
+      this._historySource = source;
+      this._queueRender?.();
+      return map;
+    } finally {
+      this._historyLoading = false;
+    }
+  };
+
   const SYMBOL_STYLES = `
   .glt-eq-symbol .glt-sym{width:100%;height:100%;display:block}
   .glt-sym line,.glt-sym path,.glt-sym rect,.glt-sym circle{stroke-linecap:round;stroke-linejoin:round}
@@ -216,9 +290,48 @@ import { factoryTemplates } from "./templates.mjs";
    * sentence next to the thing it is about becomes a blocking interruption the
    * operator has to dismiss before they can look at what went wrong.
    */
-  function notice(owner,message){const root=owner.shadowRoot||owner;root.querySelector("[data-glt-notice]")?.remove();const strip=document.createElement("div");strip.dataset.gltNotice="1";strip.setAttribute("role","status");strip.setAttribute("aria-live","polite");strip.className="glt-v1-notice";strip.textContent=String(message);(root.querySelector(".glt-v1-modal .glt-v1-body")||root).appendChild(strip);}
+  function notice(owner,message){ensureGlobalModalStyles();document.querySelector("[data-glt-notice]")?.remove();const host=document.querySelector(".glt-v1-modal .glt-v1-body");const strip=document.createElement("div");strip.dataset.gltNotice="1";strip.setAttribute("role","status");strip.setAttribute("aria-live","polite");strip.className="glt-v1-notice";strip.textContent=String(message);if(host){host.appendChild(strip);}else{strip.dataset.floating="1";document.body.appendChild(strip);setTimeout(()=>strip.remove(),6000);}}
 
-  function modal(owner,title,html){const root=owner.shadowRoot||owner;root.querySelector(".glt-v1-modal")?.remove();const m=document.createElement("div");m.className="glt-v1-modal";m.innerHTML=`<div class="glt-v1-dialog"><div class="glt-v1-head"><b>${esc(title)}</b><button class="glt-v1-close">✕</button></div><div class="glt-v1-body">${html}</div></div>`;m.querySelector(".glt-v1-close").onclick=()=>m.remove();m.onclick=e=>{if(e.target===m)m.remove()};root.appendChild(m);return m;}
+  /* Dialogs live at document level. The card rewrites its whole shadow root
+   * on every live state update, so anything mounted inside it -- every panel,
+   * every prompt -- was destroyed within seconds of opening. A body-level
+   * dialog needs the modal styles outside the shadow root too, so they are
+   * injected once per document with a guard. */
+  const GLOBAL_MODAL_STYLES = `
+  .glt-v1-modal{position:fixed;inset:0;z-index:12000;background:#020617bd;display:grid;place-items:center;padding:20px}
+  .glt-v1-dialog{width:min(1080px,97vw);max-height:92vh;overflow:auto;border:1px solid var(--glt-border,var(--divider-color));border-radius:16px;background:var(--card-background-color,#fff);color:var(--primary-text-color);box-shadow:0 30px 90px #0008}
+  .glt-v1-head{position:sticky;top:0;z-index:4;display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid var(--glt-border,var(--divider-color));background:var(--card-background-color,#fff)}
+  .glt-v1-body{padding:14px}
+  .glt-v1-close,.glt-v1-btn{border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:transparent;color:var(--primary-text-color);padding:7px 9px;font-size:9px;font-weight:750;cursor:pointer}
+  .glt-v1-close{border:0;font-size:15px}
+  .glt-v1-btn.primary{color:#fff;background:#0b83cc;border-color:#1fb4ff}
+  .glt-v1-label{display:block;font-size:9px;margin-bottom:6px}
+  .glt-v1-input,.glt-v1-select{width:100%;padding:7px;border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:var(--card-background-color);color:var(--primary-text-color);font-size:9px}
+  .glt-v1-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .glt-v1-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
+  .glt-v1-card{border:1px solid var(--glt-border,var(--divider-color));border-radius:11px;padding:10px;background:color-mix(in srgb,var(--card-background-color) 96%,#64748b 4%)}
+  .glt-v1-card b{display:block;font-size:11px}
+  .glt-v1-card small{display:block;color:var(--secondary-text-color);margin-top:3px;font-size:8px}
+  .glt-v1-table{width:100%;border-collapse:collapse;font-size:9px}
+  .glt-v1-table th,.glt-v1-table td{padding:7px;border-bottom:1px solid var(--glt-border,var(--divider-color));text-align:left;vertical-align:top}
+  .glt-v1-notice{margin-top:10px;padding:10px 12px;border:1px solid currentColor;border-radius:10px;min-height:44px;display:flex;align-items:center;gap:8px}
+  .glt-v1-notice[data-floating]{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:12100;max-width:min(680px,90vw);background:var(--card-background-color,#fff);box-shadow:0 18px 50px #0008}`;
+  function ensureGlobalModalStyles(){
+    if (document.head.querySelector("style[data-glt-v1-global]")) return;
+    const style=document.createElement("style");
+    style.dataset.gltV1Global="1";
+    style.textContent=GLOBAL_MODAL_STYLES;
+    document.head.appendChild(style);
+  }
+  function modal(owner,title,html){
+    ensureGlobalModalStyles();
+    document.querySelector(".glt-v1-modal")?.remove();
+    const m=document.createElement("div");m.className="glt-v1-modal";m.innerHTML=`<div class="glt-v1-dialog"><div class="glt-v1-head"><b>${esc(title)}</b><button class="glt-v1-close">✕</button></div><div class="glt-v1-body">${html}</div></div>`;
+    m.querySelector(".glt-v1-close").onclick=()=>m.remove();
+    m.onclick=e=>{if(e.target===m)m.remove()};
+    document.body.appendChild(m);
+    return m;
+  }
   // A fully qualified type is passed through unchanged, so a call site may name
   // the exact wire route it depends on rather than a suffix that reads the same
   // as several unrelated things.
@@ -227,7 +340,7 @@ import { factoryTemplates } from "./templates.mjs";
   // acknowledgement path: it blocks the whole page, cannot be styled, cannot be
   // localized, and is unreachable in a kiosk. Resolves to null when cancelled,
   // so a caller can tell "cancelled" from "entered nothing".
-  function askText(owner,label,initial=""){return new Promise(resolve=>{const root=owner.shadowRoot||owner;const host=document.createElement("div");host.className="glt-v1-modal";host.dataset.gltAsk="1";host.innerHTML=`<div class="glt-v1-body" role="dialog" aria-modal="true" aria-label="${esc(label)}"><label class="glt-v1-label">${esc(label)}<input class="glt-v1-input" data-value></label><div class="glt-v1-actions"><button class="glt-v1-btn primary" data-ok>OK</button><button class="glt-v1-btn" data-cancel>Abbrechen</button></div></div>`;const input=host.querySelector("[data-value]");input.value=String(initial??"");const close=value=>{host.remove();resolve(value)};host.querySelector("[data-ok]").onclick=()=>close(input.value);host.querySelector("[data-cancel]").onclick=()=>close(null);host.addEventListener("keydown",event=>{if(event.key==="Escape")close(null);if(event.key==="Enter")close(input.value)});root.appendChild(host);input.focus();});}
+  function askText(owner,label,initial=""){return new Promise(resolve=>{ensureGlobalModalStyles();const host=document.createElement("div");host.className="glt-v1-modal";host.dataset.gltAsk="1";host.innerHTML=`<div class="glt-v1-body" role="dialog" aria-modal="true" aria-label="${esc(label)}"><label class="glt-v1-label">${esc(label)}<input class="glt-v1-input" data-value></label><div class="glt-v1-actions"><button class="glt-v1-btn primary" data-ok>OK</button><button class="glt-v1-btn" data-cancel>Abbrechen</button></div></div>`;const input=host.querySelector("[data-value]");input.value=String(initial??"");const close=value=>{host.remove();resolve(value)};host.querySelector("[data-ok]").onclick=()=>close(input.value);host.querySelector("[data-cancel]").onclick=()=>close(null);host.addEventListener("keydown",event=>{if(event.key==="Escape")close(null);if(event.key==="Enter")close(input.value)});document.body.appendChild(host);input.focus();});}
 
   async function audit(owner,action,detail={}){try{await ws(owner,"audit/add",{event:{action,detail,at:new Date().toISOString()}})}catch(_e){}}
   async function registryMeta(owner,id){if(!id||!owner?._hass?.callWS)return null;try{return await owner._hass.callWS({type:"config/entity_registry/get",entity_id:id})}catch(_e){return null}}
@@ -335,7 +448,7 @@ import { factoryTemplates } from "./templates.mjs";
     const failed=delivery&&delivery.outcome&&delivery.outcome!=="delivered";
     return `<tr data-alarm="${esc(a.id)}"><td><span data-priority-shape>${shape}</span> <span data-state>${esc(state)}</span></td><td data-priority>${priority}</td><td>${esc(a.name||entityId(a.entity))}</td><td data-suppression>${why}</td><td>${failed?`<span data-delivery-failed>Zustellung fehlgeschlagen: ${esc(String(delivery.error||delivery.outcome))}</span>`:""}</td><td>${active&&!suppression?`<button class="glt-v1-btn" data-ack="${esc(a.id)}">Quittieren</button> <button class="glt-v1-btn" data-shelve="${esc(a.id)}">Shelve</button>`:""}</td></tr>`;}
   async function alarmsPanel(card){const cfg=ensureV1(card._config);const loaded=await loadAlarms(card);const rows=cfg.alarms.map(a=>alarmRow(cfg,a,loaded.byId[String(a.id)]));
-    const m=modal(card,t(cfg,"alarms"),`<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div>${loaded.unavailable?'<p data-unavailable style="font-size:9px;color:var(--mut)">${gltText("legacy.alarm_state_unavailable")}</p>':""}<table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorit\u00e4t</th><th>Meldung</th><th>Unterdr\u00fcckung</th><th>Zustellung</th><th>Aktion</th></tr></thead><tbody>${rows.join("")||'<tr><td colspan="6">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`);
+    const m=modal(card,t(cfg,"alarms"),`<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div>${loaded.unavailable?`<p data-unavailable style="font-size:9px;color:var(--secondary-text-color)">${gltText("legacy.alarm_state_unavailable")}</p>`:""}<table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorit\u00e4t</th><th>Meldung</th><th>Unterdr\u00fcckung</th><th>Zustellung</th><th>Aktion</th></tr></thead><tbody>${rows.join("")||'<tr><td colspan="6">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`);
     m.querySelector("[data-refresh]").onclick=()=>{m.remove();alarmsPanel(card)};
     // Post, then re-read. An optimistic paint the server refused is a lie the
     // operator will act on.

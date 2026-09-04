@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "720d3d439146d744298872708a51dbd9aa4e1475eddb62a52a987e43dabfd450",
-      "size": 3165936
+      "sha256": "e42cb6e34e75342d1cb9294765538c3c55b93b8a1d77dc2b4cba7d0cd2eb36a2",
+      "size": 3173422
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "720d3d439146d744298872708a51dbd9aa4e1475eddb62a52a987e43dabfd450",
-      "size": 3165936
+      "sha256": "e42cb6e34e75342d1cb9294765538c3c55b93b8a1d77dc2b4cba7d0cd2eb36a2",
+      "size": 3173422
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -138,7 +138,7 @@
   ],
   "build": {
     "commit": "f6561869bd74cba78912b1cc91e224065c6c2789",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -159,7 +159,7 @@
   "sources": [
     {
       "path": "custom_components/glt_flow_card/manifest.json",
-      "sha256": "76b7e425736c775b0a22382c2bf7e8a4e5d572b83a10443e6c8abdf9548c3f69",
+      "sha256": "bef63ff2ec1cb21e7b94f3026ded62fea0b4ede3745e9352239df128299e74e5",
       "size": 350
     },
     {
@@ -169,7 +169,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "daf06db1d19ff15e9f2b795f19413f88376c6b031302733eb7af4e11235b20e5",
+      "sha256": "48287aa9971cf1f8c49f785168b444598a493234d845441c68e304671446080d",
       "size": 5368
     },
     {
@@ -209,7 +209,7 @@
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "aa0dc5996f8687309a28491320e6a0d4782aa0ea6b8154d3a051423629d608cf",
+      "sha256": "b084e1c5279eaf624a5d6968cb5265b17845261444b587c944b35ea331c4f255",
       "size": 294748
     },
     {
@@ -299,8 +299,8 @@
     },
     {
       "path": "src/v100/index.js",
-      "sha256": "3cd5e5420636c8de2aef93f4cc94e12500fad57bcd3a9bb44868369ce72b1e8c",
-      "size": 62036
+      "sha256": "346dae376e429b8e45c7331dd37eaf777fad4a9db874a62f2879d15cd5456589",
+      "size": 68199
     },
     {
       "path": "src/v100/locale-format.mjs",
@@ -469,8 +469,8 @@
     },
     {
       "path": "src/v100/v1-addons.js",
-      "sha256": "0044e9956176134044d2fa4740511264b0c063e4677a8ba83ff6898da148b8fa",
-      "size": 10073
+      "sha256": "17ac7951fe37e3e0cfd248773ce759d7dd02c923031a632fe7a5ca5aacb99fae",
+      "size": 12170
     },
     {
       "path": "src/v100/view-resync.mjs",
@@ -503,9 +503,9 @@
     "size": 1532613
   },
   "versions": {
-    "card": "1.1.0-b2",
-    "companion": "1.1.0-b2",
-    "package": "1.1.0-b2",
+    "card": "1.1.0-b3",
+    "companion": "1.1.0-b3",
+    "package": "1.1.0-b3",
     "project_schema": [
       0,
       1,
