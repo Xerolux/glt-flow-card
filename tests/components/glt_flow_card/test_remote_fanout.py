@@ -18,7 +18,7 @@ import pytest
 
 from custom_components.glt_flow_card import remote_fanout
 from custom_components.glt_flow_card.remote_fanout import MAX_ENTITIES, read_sites
-from tests.components.glt_flow_card.site_factory import (
+from .site_factory import (
     FakeClock,
     FakeSite,
     FakeTransport,

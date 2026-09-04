@@ -102,9 +102,10 @@ test("manifest is canonical, deterministic and non-circular", async () => {
   assert.equal(raw, `${JSON.stringify(sorted(manifest), null, 2)}\n`);
   assert.equal(manifest.format, "glt-flow-card-build-manifest");
   assert.equal(manifest.manifest_version, 1);
-  assert.equal(manifest.versions.package, "1.0.0");
-  assert.equal(manifest.versions.companion, "1.0.0");
-  assert.equal(manifest.versions.card, "1.0.0");
+  const packageVersion = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8")).version;
+  assert.equal(manifest.versions.package, packageVersion);
+  assert.equal(manifest.versions.companion, packageVersion);
+  assert.equal(manifest.versions.card, packageVersion);
   assert.deepEqual(manifest.versions.project_schema, [0, 1, 2, 3, 4, 5, 6, 7]);
   assert.match(manifest.build.commit, /^(?:[a-f0-9]{40}|WORKTREE)$/);
   assert.equal(typeof manifest.build.dirty, "boolean");
@@ -141,7 +142,9 @@ test("dist www bytes come from one assembled card image", async () => {
   ));
   assert.deepEqual(companion, dist);
   const text = dist.toString("utf8");
-  assert.match(text, /const VERSION = "1\.0\.0";/);
+  const packageVersion = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8")).version;
+  const escapedVersion = packageVersion.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  assert.match(text, new RegExp(`const VERSION = "${escapedVersion}";`));
   assert.doesNotMatch(text, /(?:\.\.\/)+(?:[^/"\r\n]+\/)*node_modules\//gu);
 });
 

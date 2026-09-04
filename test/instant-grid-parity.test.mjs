@@ -11,6 +11,10 @@
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -37,12 +41,31 @@ test("both runtimes produce byte-identical bucket grids", () => {
     "    c['spec'], now=c['now'], timezone=c['timezone'])) for c in corpus]))",
   ].join("\n");
 
-  const [command, ...args] = pythonCommand().split(" ");
-  const companion = JSON.parse(execFileSync(command, [...args, "-c", script], {
-    cwd: new URL("..", import.meta.url),
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  }));
+  // The corpus exceeds the Windows command-line length limit, so the script
+  // travels through a file instead of a -c argument on every platform.
+  const scriptRoot = mkdtempSync(path.join(os.tmpdir(), "glt-instant-grid-"));
+  const scriptPath = path.join(scriptRoot, "grid.py");
+  const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+  writeFileSync(scriptPath, [
+    "import json, sys",
+    // A script file puts its own directory on sys.path instead of the cwd,
+    // so the repo root has to be named for the Companion import to resolve.
+    `sys.path.insert(0, ${JSON.stringify(repoRoot)})`,
+    script,
+  ].join("\n"), "utf8");
+  let companionOutput;
+  try {
+    const [command, ...args] = pythonCommand().split(" ");
+    companionOutput = execFileSync(command, [...args, scriptPath], {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, PYTHONUTF8: "1" },
+    });
+  } finally {
+    rmSync(scriptRoot, { recursive: true, force: true });
+  }
+  const companion = JSON.parse(companionOutput);
 
   const divergences = [];
   for (const [index, entry] of CORPUS.cases.entries()) {

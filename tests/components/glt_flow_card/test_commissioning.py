@@ -240,7 +240,7 @@ def test_a_full_run_dispatches_nothing_while_still_producing_findings(hass, conf
     is empty **and** that findings were produced — an empty ledger from an empty
     run is the vacuous pass this suite corrected in Phase 4 and again in Phase 7.
     """
-    from tests.components.glt_flow_card.dispatch_factory import DispatchLedger
+    from .dispatch_factory import DispatchLedger
 
     ledger = DispatchLedger()
     config = {

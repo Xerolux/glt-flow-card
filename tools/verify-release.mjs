@@ -343,6 +343,7 @@ async function main() {
       "version",
       firstRoot,
       async (mutationRoot) => {
+        const version = require(path.join(ROOT, "package.json")).version;
         const paths = [
           "dist/glt-flow-card.js",
           "custom_components/glt_flow_card/www/glt-flow-card.js",
@@ -350,8 +351,8 @@ async function main() {
         for (const relativePath of paths) {
           const source = await readFile(path.join(mutationRoot, relativePath), "utf8");
           await writeFile(path.join(mutationRoot, relativePath), source.replace(
-            'const VERSION = "1.0.0";',
-            'const VERSION = "1.0.1";',
+            `const VERSION = "${version}";`,
+            `const VERSION = "${version}-mutated";`,
           ));
         }
         await updateArtifactDescriptor(mutationRoot, paths);

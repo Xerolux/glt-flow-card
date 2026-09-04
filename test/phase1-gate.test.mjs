@@ -171,13 +171,14 @@ after(async () => {
 
 test("release acceptance joins source build stage browser HA and release identities", async () => {
   const fixtureRoot = await createAcceptanceFixture();
+  const fixtureVersion = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8")).version;
   const report = await acceptance.verifyReleaseAcceptance({
     root: fixtureRoot,
     runBrowser: false,
-    tag: "v1.0.0",
+    tag: `v${fixtureVersion}`,
   });
   assert.equal(report.verified, true);
-  assert.equal(report.release.version, "1.0.0");
+  assert.equal(report.release.version, fixtureVersion);
   assert.equal(report.artifacts.card.sha256, report.browser.card_sha256);
   assert.equal(report.artifacts.card.sha256, report.home_assistant.card_sha256);
   assert.equal(report.artifacts.companion_zip.sha256, report.home_assistant.zip_sha256);

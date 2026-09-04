@@ -343,7 +343,7 @@ function validateHomeAssistantManifest(manifest, version) {
   }
   if (manifest.domain !== "glt_flow_card") throw new Error("Companion domain disagreement");
   if (manifest.version !== version) throw new Error("Companion version disagreement");
-  if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) throw new Error("Companion version is not semantic");
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(manifest.version)) throw new Error("Companion version is not semantic");
   if (
     typeof manifest.documentation !== "string"
     || !manifest.documentation.startsWith("https://")

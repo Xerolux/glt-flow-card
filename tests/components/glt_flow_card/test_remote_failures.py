@@ -22,7 +22,7 @@ from custom_components.glt_flow_card.site_vocabulary import (
     REMOTE_FAILURES,
     outcome_for_failure,
 )
-from tests.components.glt_flow_card.site_factory import (
+from .site_factory import (
     SENTINEL_TOKEN,
     FakeClock,
     FakeSite,

@@ -143,7 +143,10 @@ const REJECTIONS = [
 ];
 
 for (const [name, options, pattern, key = PYTHON_KEY] of REJECTIONS) {
-  test(`rejects ${name}`, () => {
+  // Windows cannot deliver POSIX signals: a child killed with SIGTERM reports
+  // exit status 1 and signal null, so the classifier can never observe the
+  // termination this case feeds it. Keep the strict check on POSIX lanes.
+  test(`rejects ${name}`, { skip: name === "a terminating signal" && process.platform === "win32" }, () => {
     const result = runClassifier(key, options);
     assert.equal(result.status, 1, result.combined);
     assert.match(result.combined, /RED_CLASSIFICATION_FAILED\[/);

@@ -38,6 +38,9 @@ function companionCatalog() {
     cwd: new URL("..", import.meta.url),
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    // Windows pipes default to the ANSI code page and would mangle the umlauts
+    // this byte-parity gate compares.
+    env: { ...process.env, PYTHONUTF8: "1" },
   }).trim();
 }
 
@@ -101,6 +104,7 @@ test("the Companion refuses a wording group with no browser namespace", () => {
     cwd: new URL("..", import.meta.url),
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, PYTHONUTF8: "1" },
   }).trim();
   assert.match(output, /^REFUSED/u, output);
   assert.match(output, /no browser namespace/u);

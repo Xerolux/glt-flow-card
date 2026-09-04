@@ -1,6 +1,6 @@
 {
   "name": "glt-flow-card",
-  "version": "1.0.0",
+  "version": "1.1.0-b1",
   "description": "Professional GLT/BMS/SCADA engineering platform for Home Assistant: operational states, secure controls, alarm lifecycle, schedules, semantic model, auto mapping, CAD designer, simulation, diagnostics, energy, assets, reports, multi-site and project bundles.",
   "license": "MIT",
   "author": "Xerolux",

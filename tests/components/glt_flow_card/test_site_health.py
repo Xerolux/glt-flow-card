@@ -6,7 +6,7 @@ import json
 from custom_components.glt_flow_card import site_health
 from custom_components.glt_flow_card.remote_fanout import SiteAnswer
 from custom_components.glt_flow_card.site_health import COOLDOWN_SECONDS, SiteBreakers
-from tests.components.glt_flow_card.site_factory import FakeClock
+from .site_factory import FakeClock
 
 EFFECT_PREFIX = "PHASE9_HEALTH_EFFECTS "
 

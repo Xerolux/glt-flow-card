@@ -103,6 +103,7 @@ test("[expected-red:phase5-catalog] the catalog count is proven by rendering", a
 // proves — otherwise the evidence describes a catalog nobody ships.
 
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { writeFile } from "node:fs/promises";
 import { BASE_SYMBOLS, VISUAL_STYLES, renderVariant } from "../src/v100/catalog.mjs";
 import { symbolCatalogStats } from "../src/v100/core.mjs";
@@ -124,7 +125,7 @@ test("a stale manifest fails --check, proven by seeding one", async () => {
     await writeFile(CATALOG_EVIDENCE_PATH, `${JSON.stringify(seeded, null, 2)}\n`);
     const result = spawnSync(process.execPath,
       ["tools/generate-catalog-evidence.mjs", "--check"],
-      { cwd: new URL("..", import.meta.url).pathname, encoding: "utf8" });
+      { cwd: fileURLToPath(new URL("..", import.meta.url)), encoding: "utf8" });
     assert.notEqual(result.status, 0, "a stale manifest passed --check");
     assert.match(result.stderr, /stale/);
   } finally {
@@ -132,7 +133,7 @@ test("a stale manifest fails --check, proven by seeding one", async () => {
   }
   const result = spawnSync(process.execPath,
     ["tools/generate-catalog-evidence.mjs", "--check"],
-    { cwd: new URL("..", import.meta.url).pathname, encoding: "utf8" });
+    { cwd: fileURLToPath(new URL("..", import.meta.url)), encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
 });
 

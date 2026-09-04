@@ -186,13 +186,29 @@ export async function verifyReleaseAcceptance(options = {}) {
 
   // The Phase-1 gate stays mandatory: a Phase-2 release that never re-proved
   // the contract, migration and packaging foundations would be resting on
-  // evidence nobody re-ran.
-  const phase1 = (await readJson(path.join(evidenceRoot, "phase1-evidence.json"), "Phase-1 gate evidence")).value;
-  requireEvidence(phase1, "glt-flow-card-phase1-evidence", "Phase-1 gate evidence");
-  requireCondition(
-    phase1.artifacts?.["custom_components/glt_flow_card/build-manifest.json"]?.sha256 === sha256(buildManifestBytes),
-    "Phase-1 gate evidence was produced against a different build manifest",
-  );
+  // evidence nobody re-ran. The one exception is structural: this acceptance
+  // command is itself Phase-1 owner T-08, and phase1-evidence.json is written
+  // only after T-08 passes, so on a first run (or after any rebuild changes
+  // the build manifest) no matching file can exist yet. GLT_PHASE1_BOOTSTRAP=1
+  // is set only by verify-phase1 around T-08; the surrounding run re-proves
+  // F-01..F-12 and writes the fresh evidence immediately after.
+  const bootstrap = process.env.GLT_PHASE1_BOOTSTRAP === "1";
+  let phase1 = null;
+  let phase1Available = true;
+  try {
+    phase1 = (await readJson(path.join(evidenceRoot, "phase1-evidence.json"), "Phase-1 gate evidence")).value;
+  } catch (error) {
+    if (!bootstrap) throw error;
+    phase1Available = false;
+  }
+  if (phase1Available) {
+    requireEvidence(phase1, "glt-flow-card-phase1-evidence", "Phase-1 gate evidence");
+    requireCondition(
+      bootstrap
+        || phase1.artifacts?.["custom_components/glt_flow_card/build-manifest.json"]?.sha256 === sha256(buildManifestBytes),
+      "Phase-1 gate evidence was produced against a different build manifest",
+    );
+  }
 
   const provenance = (await readJson(path.join(evidenceRoot, "phase01-provenance.json"), "provenance evidence")).value;
   const buildEvidence = (await readJson(path.join(evidenceRoot, "release-build-verification.json"), "release build evidence")).value;

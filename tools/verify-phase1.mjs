@@ -198,6 +198,13 @@ function executeCommand(root, command) {
   const result = spawnSync(portableCommand(command.command), {
     cwd: root,
     encoding: "utf8",
+    env: {
+      ...process.env,
+      // Only T-08 runs the release acceptance, and the acceptance cannot read
+      // this run's evidence before this run finishes writing it. Scoped here
+      // so nested test suites never inherit the relaxation.
+      ...(command.id === "T-08" ? { GLT_PHASE1_BOOTSTRAP: "1" } : {}),
+    },
     maxBuffer: 20 * 1024 * 1024,
     shell: true,
   });

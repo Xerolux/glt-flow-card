@@ -25,6 +25,68 @@ if sys.platform == "win32" and "resource" not in sys.modules:
     resource.getrlimit = lambda _limit: (2048, 2048)
     resource.setrlimit = lambda _limit, _value: None
     sys.modules["resource"] = resource
+if sys.platform == "win32":
+    # The Home Assistant test plugin installs HassEventLoopPolicy at import and
+    # then neuters asyncio.set_event_loop_policy, so the policy can only be
+    # replaced after plugin load through the events module global. On Windows
+    # the default proactor loop opens a socket while constructing itself, which
+    # pytest-socket blocks before any test can run; the selector variant keeps
+    # every HA loop decoration. Deferred to pytest_configure because importing
+    # homeassistant any earlier would trip the plugin's recorder import guard.
+    def _install_selector_hass_loop_policy() -> None:
+        import asyncio
+
+        from homeassistant import runner
+
+        current = asyncio.get_event_loop_policy()
+        if not isinstance(current, runner.HassEventLoopPolicy):
+            return
+
+        class _SelectorHassEventLoopPolicy(runner.HassEventLoopPolicy):
+            _loop_factory = asyncio.SelectorEventLoop
+
+        asyncio.events._event_loop_policy = _SelectorHassEventLoopPolicy(current.debug)
+
+
+def pytest_configure(config) -> None:
+    """Make the socket guard Windows-equivalent to the CI lanes.
+
+    On Linux the asyncio self-pipe is an AF_UNIX socketpair, which the harness
+    permits through --allow-unix-socket. Windows has no AF_UNIX, so every event
+    loop constructs its self-pipe over AF_INET loopback and pytest-socket's
+    constructor guard would block the loop itself. Loopback construction stays
+    allowed; every other family is still refused at construction and every
+    non-loopback connect is still refused after it.
+    """
+    if sys.platform != "win32":
+        return
+    import socket
+
+    import pytest_socket
+
+    original_disable_socket = pytest_socket.disable_socket
+    loopback = {"127.0.0.1", "localhost", "::1"}
+
+    def loopback_permissive_disable_socket(allow_unix_socket=False):
+        original_disable_socket(allow_unix_socket=allow_unix_socket)
+
+        class WindowsLoopbackGuardedSocket(pytest_socket._true_socket):
+            def __new__(cls, family=-1, type=-1, proto=-1, fileno=None):
+                if family in (socket.AF_INET, socket.AF_INET6):
+                    return super().__new__(cls, family, type, proto, fileno)
+                raise pytest_socket.SocketBlockedError()
+
+            def connect(self, address):
+                host = str(address[0]) if isinstance(address, tuple) else str(address)
+                if host in loopback:
+                    return super().connect(address)
+                raise pytest_socket.SocketConnectBlockedError(sorted(loopback), host)
+
+        pytest_socket.socket.socket = WindowsLoopbackGuardedSocket
+
+    pytest_socket.disable_socket = loopback_permissive_disable_socket
+    _install_selector_hass_loop_policy()
+
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntryState

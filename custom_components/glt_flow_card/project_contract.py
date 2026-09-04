@@ -71,6 +71,7 @@ _REFERENCE_EDGES = (
     ("datapoints", ("layer",), "layers"),
 )
 _REQUIRED_PROPERTY = re.compile(r"^'([^']+)' is a required property$")
+_UNEVALUATED_PROPERTIES = re.compile(r"'([^']+)'")
 
 
 def _escape_pointer(value: object) -> str:
@@ -437,6 +438,33 @@ def _map_schema_error(error: Any) -> dict[str, Any]:
     return _issue("contract.type", path, {"keyword": error.validator or "false_schema"})
 
 
+def _map_schema_errors(errors: list[Any]) -> list[dict[str, Any]]:
+    """Map validator errors with ajv-compatible anyOf sub-error ordering.
+
+    jsonschema reports a failed ``anyOf`` as one error whose ``context`` holds
+    the branch failures. ajv reports the first branch failure, the ``anyOf``
+    summary, then the remaining branch failures, and the byte-parity contract
+    compares both runtimes' translated evidence. Unfolding the context in that
+    order keeps the two libraries' output identical.
+    """
+    mapped: list[dict[str, Any]] = []
+    for error in errors:
+        context = list(getattr(error, "context", None) or [])
+        if error.validator == "anyOf" and context:
+            mapped.append(_map_schema_error(context[0]))
+            mapped.append(_map_schema_error(error))
+            mapped.extend(_map_schema_error(sub_error) for sub_error in context[1:])
+        elif error.validator == "unevaluatedProperties":
+            # ajv reports one error per unevaluated property while jsonschema
+            # summarizes them in one message; parity needs one issue per name.
+            names = _UNEVALUATED_PROPERTIES.findall(error.message)
+            repetitions = names or [None]
+            mapped.extend(_map_schema_error(error) for _ in repetitions)
+        else:
+            mapped.append(_map_schema_error(error))
+    return mapped
+
+
 def _reference_issues(document: Any) -> list[dict[str, Any]]:
     if not isinstance(document, dict):
         return []
@@ -517,7 +545,7 @@ def evaluate_project_contract(raw_input: Any) -> dict[str, Any]:
         )
     version = declared["version"]
     schema_errors = list(_PROJECT_VALIDATORS[version].iter_errors(raw["document"]))
-    errors = [_map_schema_error(error) for error in schema_errors]
+    errors = _map_schema_errors(schema_errors)
     if not errors:
         errors = _reference_issues(raw["document"])
     return _result(

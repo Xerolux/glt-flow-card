@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 
 const source = await readFile(new URL("../dist/glt-flow-card.js", import.meta.url), "utf8");
 
@@ -24,7 +25,9 @@ test("drag and drop editor foundations", () => {
 
 
 test("Neo 2030 designer, native entities and YAML export", () => {
-  for (const token of ["VERSION = \"1.0.0\"", "SYMBOL_LIBRARY", "ha-entity-picker", "configToYaml", "glt-style-neo2030", "classic_scada", "data-preview", "YAML kopieren"]) {
+  const packageVersion = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
+  const tokens = [`VERSION = "${packageVersion}"`, "SYMBOL_LIBRARY", "ha-entity-picker", "configToYaml", "glt-style-neo2030", "classic_scada", "data-preview", "YAML kopieren"];
+  for (const token of tokens) {
     assert.ok(source.includes(token), `missing ${token}`);
   }
 });

@@ -47,7 +47,13 @@ function run(command, args, input, runtime) {
   if (completed.status !== 0) {
     throw new Error(`${runtime} contract process failed (${completed.status}): ${completed.stderr || completed.stdout}`);
   }
-  return { output: completed.stdout, records: parseJsonLines(completed.stdout, runtime) };
+  // Windows Python text streams translate "\n" to "\r\n" on piped stdout.
+  // Newline style is platform plumbing, not contract bytes, so both runtimes
+  // are normalized before the byte comparison.
+  return {
+    output: completed.stdout.replace(/\r\n/g, "\n"),
+    records: parseJsonLines(completed.stdout, runtime),
+  };
 }
 
 export function compareRuntimeEvidence(javascript, python) {
