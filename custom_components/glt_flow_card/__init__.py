@@ -3476,8 +3476,13 @@ async def _serve_bundled_frontend_once(hass: HomeAssistant) -> None:
         return
     # Imported here, not at module scope: the parity gates import this package
     # against minimal Home Assistant test lanes that do not ship the
-    # static-path HTTP API, and the serving path never runs there.
-    from homeassistant.components.http import StaticPathConfig, async_register_static_paths
+    # static-path HTTP API. On those installations the companion simply keeps
+    # working without its own card URL -- the dashboard installs via HACS or a
+    # manual /config/www copy cover them.
+    try:
+        from homeassistant.components.http import StaticPathConfig, async_register_static_paths
+    except ImportError:
+        return
 
     await async_register_static_paths(
         hass,

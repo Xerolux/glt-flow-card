@@ -30,7 +30,9 @@ Copy `dist/glt-flow-card.js` to `/config/www/glt-flow-card.js` and register
 ## Straight from the Companion (from 1.1.0)
 
 The Companion ships the card in `custom_components/glt_flow_card/www/` and
-serves it after setup at
+serves it after setup (requires a Home Assistant with the static-path HTTP
+API, roughly 2025.2 and newer; older installations use the HACS dashboard or
+`/config/www`) at
 
 `http://<home-assistant>/glt_flow_card/www/glt-flow-card.js`
 

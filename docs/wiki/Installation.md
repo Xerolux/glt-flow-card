@@ -28,7 +28,9 @@ Danach kann `custom:glt-flow-card` im Lovelace-Karteneditor gewählt werden. Der
 ## Direkt über den Companion (ab 1.1.0)
 
 Der Companion liefert die Card in `custom_components/glt_flow_card/www/` mit und
-serviert sie nach dem Setup unter
+serviert sie nach dem Setup unter (benötigt Home Assistant mit der
+statischen Pfad-API, ab ca. 2025.2; ältere Installationen nutzen HACS-Dashboard
+oder `/config/www`):
 
 `http://<home-assistant>/glt_flow_card/www/glt-flow-card.js`
 
