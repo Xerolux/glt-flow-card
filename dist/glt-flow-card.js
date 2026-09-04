@@ -60,7 +60,7 @@ function gltText(key) {
 (() => {
   "use strict";
 
-  const VERSION = "1.1.0-b3";
+  const VERSION = "1.1.0-b4";
   const CARD_TYPE = "glt-flow-card";
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -278,7 +278,7 @@ function gltText(key) {
   function normalizeConfig(raw) {
     const config = deepClone(raw || {});
     config.title = config.title ?? "GLT Anlagenvisualisierung";
-    config.appearance = { mode: "neo2030", show_switch: true, ...(config.appearance || {}) };
+    config.appearance = { mode: "neo2030", show_switch: false, ...(config.appearance || {}) };
     config.canvas = {
       width: 1600,
       height: 900,
@@ -985,9 +985,18 @@ function gltText(key) {
           <div class="glt-toolbar">
             <div class="glt-view-switch">${this._config.views.map((item) => `<button type="button" data-view="${esc(item.id)}" class="${item.id === this._view ? "active" : ""}"><ha-icon icon="${esc(item.icon || (item.kind === "image" ? "mdi:image-outline" : "mdi:sitemap-outline"))}"></ha-icon>${esc(item.name || item.id)}</button>`).join("")}</div>
             <div class="glt-tool-actions">
-              ${this._config.appearance?.show_switch !== false ? `<div class="glt-style-switch"><button type="button" data-style="neo2030" class="${(this._styleMode || this._config.appearance?.mode || "neo2030") === "neo2030" ? "active" : ""}">Neo 2030</button><button type="button" data-style="clean" class="${(this._styleMode || this._config.appearance?.mode) === "clean" ? "active" : ""}">Clean</button><button type="button" data-style="classic_scada" class="${(this._styleMode || this._config.appearance?.mode) === "classic_scada" ? "active" : ""}">Classic SCADA</button></div>` : ""}
-              ${this._config.trend.enabled ? `<button type="button" class="glt-tool-btn ${this._trendOpen ? "active" : ""}" data-action="trend"><ha-icon icon="mdi:chart-line"></ha-icon>Trend</button>` : ""}
-              ${this._config.zoom.controls ? `<button type="button" class="glt-icon-btn" data-action="zoom-out" title="${esc(gltText("legacy.zoom_out"))}"><ha-icon icon="mdi:magnify-minus-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="fit" title="${esc(gltText("legacy.fit_view"))}"><ha-icon icon="mdi:fit-to-screen-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="zoom-in" title="${esc(gltText("legacy.zoom_in"))}"><ha-icon icon="mdi:magnify-plus-outline"></ha-icon></button>` : ""}<button type="button" class="glt-icon-btn" data-action="fullscreen" title="${esc(gltText("legacy.fullscreen"))}"><ha-icon icon="${this._fullscreen ? "mdi:fullscreen-exit" : "mdi:fullscreen"}"></ha-icon></button>
+              <div class="glt-menu${this._menuOpen ? " open" : ""}" data-glt-menu>
+                <button type="button" class="glt-tool-btn" data-action="menu" title="${esc(gltText("legacy.menu"))}" aria-haspopup="true" aria-expanded="${this._menuOpen ? "true" : "false"}"><ha-icon icon="mdi:menu"></ha-icon></button>
+                <div class="glt-menu-panel" role="menu">
+                  <div class="glt-menu-group" data-menu-group="operation"><div class="glt-menu-title">${esc(gltText("legacy.menu_operation"))}</div></div>
+                  <div class="glt-menu-group"><div class="glt-menu-title">${esc(gltText("legacy.menu_view"))}</div>
+                    ${this._config.trend.enabled ? `<button type="button" class="glt-menu-item ${this._trendOpen ? "active" : ""}" data-action="trend" role="menuitem"><ha-icon icon="mdi:chart-line"></ha-icon>${esc(gltText("legacy.trend_chart"))}</button>` : ""}
+                    ${this._config.zoom.controls ? `<button type="button" class="glt-menu-item" data-action="zoom-out" role="menuitem"><ha-icon icon="mdi:magnify-minus-outline"></ha-icon>${esc(gltText("legacy.zoom_out"))}</button><button type="button" class="glt-menu-item" data-action="fit" role="menuitem"><ha-icon icon="mdi:fit-to-screen-outline"></ha-icon>${esc(gltText("legacy.fit_view"))}</button><button type="button" class="glt-menu-item" data-action="zoom-in" role="menuitem"><ha-icon icon="mdi:magnify-plus-outline"></ha-icon>${esc(gltText("legacy.zoom_in"))}</button>` : ""}
+                    <button type="button" class="glt-menu-item" data-action="fullscreen" role="menuitem"><ha-icon icon="${this._fullscreen ? "mdi:fullscreen-exit" : "mdi:fullscreen"}"></ha-icon>${esc(gltText("legacy.fullscreen"))}</button>
+                  </div>
+                  ${this._config.appearance?.show_switch === true ? `<div class="glt-menu-group"><div class="glt-menu-title">${esc(gltText("legacy.menu_style"))}</div><div class="glt-style-switch"><button type="button" data-style="neo2030" class="${(this._styleMode || this._config.appearance?.mode || "neo2030") === "neo2030" ? "active" : ""}">Neo 2030</button><button type="button" data-style="clean" class="${(this._styleMode || this._config.appearance?.mode) === "clean" ? "active" : ""}">Clean</button><button type="button" data-style="classic_scada" class="${(this._styleMode || this._config.appearance?.mode) === "classic_scada" ? "active" : ""}">Classic SCADA</button></div></div>` : ""}
+                </div>
+              </div>
             </div>
           </div>
           <div class="${viewportClass}" style="${viewportStyle}" data-kind="${esc(view.kind || "schematic")}"></div>
@@ -1021,6 +1030,27 @@ function gltText(key) {
       this.shadowRoot.querySelector("[data-action='zoom-out']")?.addEventListener("click", () => this._zoomBy(1 / 1.2));
       this.shadowRoot.querySelector("[data-action='fit']")?.addEventListener("click", () => this._fitCanvas(true));
       this.shadowRoot.querySelector("[data-action='fullscreen']")?.addEventListener("click", () => this._toggleFullscreen());
+      const menuButton = this.shadowRoot.querySelector("[data-action='menu']");
+      const menuRoot = this.shadowRoot.querySelector("[data-glt-menu]");
+      menuButton?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this._menuOpen = !this._menuOpen;
+        menuRoot?.classList.toggle("open", this._menuOpen);
+        menuButton.setAttribute("aria-expanded", this._menuOpen ? "true" : "false");
+      });
+      if (!this._gltMenuBound) {
+        this._gltMenuBound = true;
+        document.addEventListener("click", (event) => {
+          const host = this.shadowRoot?.host;
+          if (host && event.composedPath().includes(host)) {
+            const inside = event.composedPath().some((n) => n instanceof Element && n.closest?.("[data-glt-menu]"));
+            if (inside) return;
+          }
+          if (!this._menuOpen) return;
+          this._menuOpen = false;
+          this.shadowRoot?.querySelector("[data-glt-menu]")?.classList.remove("open");
+        });
+      }
       this.shadowRoot.querySelector("[data-action='trend']")?.addEventListener("click", () => {
         this._trendOpen = !this._trendOpen;
         if (this._trendOpen) this._ensureHistory();
@@ -1236,6 +1266,15 @@ function gltText(key) {
     .glt-icon-btn { width:34px; height:34px; display:grid; place-items:center; border-radius:9px; }
     .glt-icon-btn ha-icon { --mdc-icon-size:19px; }
     .glt-icon-btn:disabled { opacity:.34; cursor:default; }
+    .glt-menu { position:relative; margin-left:auto; }
+    .glt-menu-panel { display:none; position:absolute; right:0; top:calc(100% + 6px); z-index:60; min-width:240px; background:var(--card-background-color); border:1px solid var(--glt-border); border-radius:12px; box-shadow:0 18px 50px #0007; padding:6px; }
+    .glt-menu.open .glt-menu-panel { display:block; }
+    .glt-menu-title { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--secondary-text-color); padding:8px 10px 4px; }
+    .glt-menu-group + .glt-menu-group { border-top:1px solid var(--glt-border); margin-top:4px; padding-top:2px; }
+    .glt-menu-item { display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:8px 10px; border:0; background:transparent; color:var(--primary-text-color); border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; }
+    .glt-menu-item:hover, .glt-menu-item.active { background:var(--glt-accent-soft); color:var(--glt-accent); }
+    .glt-menu-item ha-icon { --mdc-icon-size:17px; }
+    .glt-menu-panel .glt-style-switch { display:flex; gap:4px; padding:4px 10px 8px; flex-wrap:wrap; }
     .glt-viewport { position:relative; overflow:hidden; background:color-mix(in srgb, var(--card-background-color) 92%, #64748b 8%); touch-action:none; cursor:grab; }
     .glt-viewport-auto { height:calc(100dvh - 250px); min-height:340px; }
     ha-card.glt-card:fullscreen { height:100dvh; display:flex; flex-direction:column; border-radius:0; }
@@ -6066,6 +6105,10 @@ function gltText(key) {
     "legacy.medium_heating_supply": "Vorlauf",
     "legacy.medium_neutral": "Medium",
     "legacy.medium_source": "Quelle",
+    "legacy.menu": "Menü",
+    "legacy.menu_operation": "Bedienung",
+    "legacy.menu_style": "Stil",
+    "legacy.menu_view": "Ansicht",
     "legacy.meter": "Zähler",
     "legacy.migration_workflow": "Migration workflow",
     "legacy.nav_alarms": "Alarme",
@@ -6175,6 +6218,7 @@ function gltText(key) {
     "legacy.templates_load": "Laden",
     "legacy.templates_none": "Noch keine eigenen Vorlagen gespeichert.",
     "legacy.templates_own": "Eigene Vorlagen",
+    "legacy.trend_chart": "Trend-Diagramm",
     "legacy.undo": "Rückgängig",
     "legacy.value1_entity": "Wert 1 Entität",
     "legacy.value1_label": "Wert 1 Label",
@@ -6939,6 +6983,10 @@ function gltText(key) {
     "legacy.medium_heating_supply": "Flow",
     "legacy.medium_neutral": "Medium",
     "legacy.medium_source": "Source",
+    "legacy.menu": "Menu",
+    "legacy.menu_operation": "Operations",
+    "legacy.menu_style": "Style",
+    "legacy.menu_view": "View",
     "legacy.meter": "Meter",
     "legacy.migration_workflow": "Migration workflow",
     "legacy.nav_alarms": "Alarms",
@@ -7048,6 +7096,7 @@ function gltText(key) {
     "legacy.templates_load": "Load",
     "legacy.templates_none": "No own templates saved yet.",
     "legacy.templates_own": "Your templates",
+    "legacy.trend_chart": "Trend chart",
     "legacy.undo": "Undo",
     "legacy.value1_entity": "Value 1 entity",
     "legacy.value1_label": "Value 1 label",
@@ -63139,12 +63188,15 @@ function gltText(key) {
       });
     }
     function runtimeButtons(card2) {
-      const root = card2.shadowRoot, bar = root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");
+      const root = card2.shadowRoot;
+      const group = root.querySelector("[data-menu-group='operation']");
+      const bar = group || root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");
       if (!bar || bar.querySelector("[data-glt-v1-runtime]")) return;
-      const wrap = document.createElement("span");
+      const wrap = document.createElement(group ? "div" : "span");
       wrap.dataset.gltV1Runtime = "1";
-      wrap.className = "glt-v1-actions";
-      wrap.innerHTML = `<button class="glt4-pill glt-v1-btn" data-ops>${t(card2._config, "operations")}</button><button class="glt4-pill glt-v1-btn" data-alarm>${t(card2._config, "alarms")}</button><button class="glt4-pill glt-v1-btn" data-trend>${t(card2._config, "trends")}</button>`;
+      wrap.className = group ? "" : "glt-v1-actions";
+      const cls = group ? "glt-menu-item" : "glt4-pill glt-v1-btn";
+      wrap.innerHTML = `<button class="${cls}" role="menuitem" data-ops><ha-icon icon="mdi:tune-vertical"></ha-icon>${t(card2._config, "operations")}</button><button class="${cls}" role="menuitem" data-alarm><ha-icon icon="mdi:bell-ring-outline"></ha-icon>${t(card2._config, "alarms")}</button><button class="${cls}" role="menuitem" data-trend><ha-icon icon="mdi:chart-multiple"></ha-icon>${t(card2._config, "trends")}</button>`;
       wrap.querySelector("[data-ops]").onclick = () => operationsPanel(card2);
       wrap.querySelector("[data-alarm]").onclick = () => alarmsPanel(card2);
       wrap.querySelector("[data-trend]").onclick = () => trendsPanel(card2);
@@ -70144,12 +70196,19 @@ ${declare("dark")}
       };
     }
     function addRuntimeButtons(card2) {
-      const bar = card2.shadowRoot.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");
+      const root = card2.shadowRoot;
+      const group = root.querySelector("[data-menu-group='operation']");
+      const bar = group || root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");
       if (!bar || bar.querySelector("[data-v1-energy]")) return;
       const b = document.createElement("button");
-      b.className = "glt4-pill glt-v1-btn";
+      b.className = group ? "glt-menu-item" : "glt4-pill glt-v1-btn";
+      if (group) {
+        b.setAttribute("role", "menuitem");
+        b.innerHTML = `<ha-icon icon="mdi:lightning-bolt-circle"></ha-icon>${esc(gltText2("legacy.button_energy"))}`;
+      } else {
+        b.textContent = gltText2("legacy.button_energy");
+      }
       b.dataset.v1Energy = "1";
-      b.textContent = gltText2("legacy.button_energy");
       b.onclick = () => energyPanel(card2);
       bar.appendChild(b);
     }

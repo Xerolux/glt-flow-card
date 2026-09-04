@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "e42cb6e34e75342d1cb9294765538c3c55b93b8a1d77dc2b4cba7d0cd2eb36a2",
-      "size": 3173422
+      "sha256": "0533dbea2d5c09826e8377d672d6e450c78e607831add7a74b752539623a5874",
+      "size": 3177562
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "e42cb6e34e75342d1cb9294765538c3c55b93b8a1d77dc2b4cba7d0cd2eb36a2",
-      "size": 3173422
+      "sha256": "0533dbea2d5c09826e8377d672d6e450c78e607831add7a74b752539623a5874",
+      "size": 3177562
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -132,13 +132,13 @@
     },
     {
       "path": "docs/editor/app.js",
-      "sha256": "f7af1593f851870c2dc205dc0d2d693f0c3657ea54eb3aa470de3b8db83be228",
-      "size": 164370
+      "sha256": "c77d6cf33b7ff14357572d8e7006f4c44777b8b286cdc9d01e0709431b894401",
+      "size": 164731
     }
   ],
   "build": {
     "commit": "9ce60c24e40a2f8f2998356093f0a962594d3616",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -159,7 +159,7 @@
   "sources": [
     {
       "path": "custom_components/glt_flow_card/manifest.json",
-      "sha256": "bef63ff2ec1cb21e7b94f3026ded62fea0b4ede3745e9352239df128299e74e5",
+      "sha256": "6a20d9e06320ef4115ab5eec6a982b3afbe401b7caa0f4510dc9eaa43486697f",
       "size": 350
     },
     {
@@ -169,7 +169,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "48287aa9971cf1f8c49f785168b444598a493234d845441c68e304671446080d",
+      "sha256": "9536ec848e897e62b91420c75aed876525585beac4edad9116f792ca0abb11ee",
       "size": 5368
     },
     {
@@ -209,8 +209,8 @@
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "b084e1c5279eaf624a5d6968cb5265b17845261444b587c944b35ea331c4f255",
-      "size": 294748
+      "sha256": "9d451422c28307449204a3ea96452d1ccf877b6a8db0bd6ab25ab05118da2d44",
+      "size": 297856
     },
     {
       "path": "src/v100/alarm-vocabulary.mjs",
@@ -219,13 +219,13 @@
     },
     {
       "path": "src/v100/catalog-de.mjs",
-      "sha256": "84a9563e415fa4a7e84bb25ebe73d13ade415fad6eae0e4aed030f3e1c0a34d8",
-      "size": 50028
+      "sha256": "d9ec320dc1d0ca2cb30c2453f66a815a4678942c77ea2e5caed082bc8f507000",
+      "size": 50200
     },
     {
       "path": "src/v100/catalog-en.mjs",
-      "sha256": "4a963df6a122aea7235c6fb1ebc584be06c678d21049cb68b707095d205f1a14",
-      "size": 46834
+      "sha256": "c84ad7eadc7cdc851ddb835ae48d9ab0ac539724d727b46b99b13078a84b51f2",
+      "size": 47001
     },
     {
       "path": "src/v100/catalog-lookup.mjs",
@@ -299,8 +299,8 @@
     },
     {
       "path": "src/v100/index.js",
-      "sha256": "346dae376e429b8e45c7331dd37eaf777fad4a9db874a62f2879d15cd5456589",
-      "size": 68199
+      "sha256": "cb5a2b6867c148f2b259351a13adbdc621f5a3bb20cf52db1a05f3ad39d980e7",
+      "size": 68622
     },
     {
       "path": "src/v100/locale-format.mjs",
@@ -469,8 +469,8 @@
     },
     {
       "path": "src/v100/v1-addons.js",
-      "sha256": "17ac7951fe37e3e0cfd248773ce759d7dd02c923031a632fe7a5ca5aacb99fae",
-      "size": 12170
+      "sha256": "f8e59794d61ec4b61e88567e69f40978d85ea9d1b77793a1f76232187ca321ba",
+      "size": 12436
     },
     {
       "path": "src/v100/view-resync.mjs",
@@ -503,9 +503,9 @@
     "size": 1532613
   },
   "versions": {
-    "card": "1.1.0-b3",
-    "companion": "1.1.0-b3",
-    "package": "1.1.0-b3",
+    "card": "1.1.0-b4",
+    "companion": "1.1.0-b4",
+    "package": "1.1.0-b4",
     "project_schema": [
       0,
       1,

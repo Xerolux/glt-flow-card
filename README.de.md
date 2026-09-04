@@ -6,6 +6,8 @@
 
 **GLT Flow Card** ist eine moderne, frei konfigurierbare Gebäudeleit-/Anlagenkarte für Home Assistant. Sie verbindet ein professionelles GLT-Anlagenschema mit Live-Entitäten, animierten Medienströmen, optionalen Anlagenfotos, Replay, Mehrfach-Trends und frei definierbaren KPI-Kacheln.
 
+> **Was heißt GLT auf Englisch?** GLT steht für *Gebäudetechnik / Gebäudeleittechnik* — die Disziplin, die technische Anlagen im Gebäude plant, überwacht und betreibt. Im englischsprachigen Raum heißt dieselbe Fachrichtung **BMS** (Building Management System), **BAS** (Building Automation System) oder **SCADA** (Supervisory Control and Data Acquisition). Die GLT Flow Card bedient beide Welten: deutsche Anlagenbau-Vokabeln auf internationalen BMS/SCADA-Darstellungen — für Kunden aus aller Welt.
+
 *[English version](README.md)*
 
 > Unabhängiges Open-Source-Projekt, nicht mit iDM Energiesysteme verbunden. Die Idee orientiert sich allgemein an professionellen GLT/BMS-Oberflächen und den öffentlich beschriebenen [iVIS](https://www.idm-energie.at/ivis/)-Funktionen; Oberfläche, Code und Konfigurationsmodell sind eigenständig.
