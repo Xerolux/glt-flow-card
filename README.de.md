@@ -670,7 +670,7 @@ Der Designer bietet außerdem **Live-Vorschau** sowie eine **Lovelace-YAML-Ansic
 
 ## Erweiterte Symbolbibliothek
 
-**600 Varianten** aus **100 Basissymbolen** in **6 Stilen**, über Heizung,
+**720 Varianten** aus **120 Basissymbolen** in **6 Stilen**, über Heizung,
 Hydraulik, RLT, Kälte, Energie, Sensorik, Elektro und Brandschutz.
 
 Diese Zahl ist gemessen, nicht behauptet. `catalog-evidence.json` entsteht,

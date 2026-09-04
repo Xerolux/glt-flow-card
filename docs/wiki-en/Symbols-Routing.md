@@ -5,7 +5,7 @@ on this page comes from.
 
 ## The published catalogue
 
-**600 variants** from **100 base symbols** in **6 styles**, across 8 trades. Every symbol belongs to a main group (trade) and a subgroup (e.g. Heating → Heat pumps, Air handling → Heat recovery); the designer's symbol browser shows and searches both levels.
+**720 variants** from **120 base symbols** in **6 styles**, across 8 trades. Every symbol belongs to a main group (trade) and a subgroup (e.g. Heating → Heat pumps, Air handling → Heat recovery); the designer's symbol browser shows and searches both levels.
 
 That number is not a claim, it is a measured quantity. `catalog-evidence.json`
 is produced by actually drawing every variant and hashing the result; the
@@ -21,13 +21,13 @@ were still counted, and nine more shared another symbol's drawing.
 
 | Trade | Base symbols | Variants |
 |---|---:|---:|
-| Heating | 15 | 90 |
-| Hydraulics | 21 | 126 |
-| Air handling | 16 | 96 |
-| Refrigeration | 8 | 48 |
-| Energy | 9 | 54 |
-| Instrumentation | 10 | 60 |
-| Electrical | 11 | 66 |
+| Heating | 17 | 102 |
+| Hydraulics | 26 | 156 |
+| Air handling | 19 | 114 |
+| Refrigeration | 12 | 72 |
+| Energy | 10 | 60 |
+| Instrumentation | 13 | 78 |
+| Electrical | 13 | 78 |
 | Fire safety | 10 | 60 |
 
 Electrical covers distribution, protection and isolation (low-voltage

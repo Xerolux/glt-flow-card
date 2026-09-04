@@ -60,7 +60,7 @@ function gltText(key) {
 (() => {
   "use strict";
 
-  const VERSION = "1.1.0-b4";
+  const VERSION = "1.1.0-b5";
   const CARD_TYPE = "glt-flow-card";
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -6132,6 +6132,7 @@ function gltText(key) {
     "legacy.no_fault": "Keine Störung",
     "legacy.no_work_orders": "Keine Arbeitsaufträge.",
     "legacy.open_detail": "Detailansicht öffnen",
+    "legacy.own_image": "Eigenes Bild",
     "legacy.paste_compare_json": "Vergleichskonfiguration als JSON einfügen",
     "legacy.perform_maintenance": "Wartung durchführen",
     "legacy.project_locked": "Projekt gesperrt.",
@@ -6652,6 +6653,7 @@ function gltText(key) {
     "symbols.symbol_balancing_valve": "Strangregulierventil",
     "symbols.symbol_battery": "Batteriespeicher",
     "symbols.symbol_boiler": "Heizkessel",
+    "symbols.symbol_booster_station": "Druckerhöhungsanlage",
     "symbols.symbol_brine_station": "Solestation",
     "symbols.symbol_buffer_layered": "Schichtspeicher",
     "symbols.symbol_burner": "Brenner",
@@ -6659,6 +6661,7 @@ function gltText(key) {
     "symbols.symbol_check_valve": "Rückschlagventil",
     "symbols.symbol_chiller": "Kältemaschine",
     "symbols.symbol_circuit_breaker": "Leitungsschutzschalter",
+    "symbols.symbol_cistern": "Regenwasserzisterne",
     "symbols.symbol_co2_sensor": "CO₂-Sensor",
     "symbols.symbol_co2_voc_sensor": "CO₂-VOC-Sensor",
     "symbols.symbol_cogen_unit": "BHKW",
@@ -6674,6 +6677,8 @@ function gltText(key) {
     "symbols.symbol_dirt_separator": "Schlammabscheider",
     "symbols.symbol_dp_sensor": "Differenzdrucksensor",
     "symbols.symbol_dry_cooler": "Trockenkühler",
+    "symbols.symbol_duct": "Kanalstück",
+    "symbols.symbol_duct_sensor": "Kanalsensor",
     "symbols.symbol_ec_fan": "EC-Ventilator",
     "symbols.symbol_expansion_vessel": "Ausdehnungsgefäß",
     "symbols.symbol_extinguishing_system": "Löschanlage",
@@ -6686,11 +6691,14 @@ function gltText(key) {
     "symbols.symbol_fire_door": "Brandschutztür",
     "symbols.symbol_flat_collector": "Flachkollektor",
     "symbols.symbol_flexible_compensator": "Kompensator",
+    "symbols.symbol_flow_limiter": "Durchflussbegrenzer",
     "symbols.symbol_flow_sensor": "Volumenstromsensor",
     "symbols.symbol_flow_switch": "Strömungswächter",
+    "symbols.symbol_flue": "Abgasführung",
     "symbols.symbol_frequency_drive": "Frequenzumrichter",
     "symbols.symbol_frost_thermostat": "Frostschutzthermostat",
     "symbols.symbol_fuel_cell": "Brennstoffzelle",
+    "symbols.symbol_gas_sensor": "Gassensor",
     "symbols.symbol_generator_set": "Netzersatzanlage",
     "symbols.symbol_grid": "Stromnetz",
     "symbols.symbol_heat_detector": "Wärmemelder",
@@ -6710,10 +6718,16 @@ function gltText(key) {
     "symbols.symbol_immersion_heater": "Heizstab",
     "symbols.symbol_inverter": "Wechselrichter",
     "symbols.symbol_isolator_switch": "Lasttrennschalter",
+    "symbols.symbol_kitchen_hood": "Dunstabzugshaube",
+    "symbols.symbol_louvre": "Wettergitter",
+    "symbols.symbol_main_switch": "Hauptschalter",
     "symbols.symbol_manifold": "Verteiler / Sammler",
     "symbols.symbol_manual_call_point": "Handfeuermelder",
     "symbols.symbol_meter": "Energiezähler",
     "symbols.symbol_mixing_valve": "3-Wege-Mischer",
+    "symbols.symbol_motion_detector": "Bewegungsmelder",
+    "symbols.symbol_motor_protection": "Motorschutzrelais",
+    "symbols.symbol_oil_separator": "Ölabscheider",
     "symbols.symbol_pressure_reducing_valve": "Druckminderer",
     "symbols.symbol_pressure_sensor": "Drucksensor",
     "symbols.symbol_pump_dhw": "Zirkulationspumpe",
@@ -6724,16 +6738,21 @@ function gltText(key) {
     "symbols.symbol_pv_array": "PV-Feld",
     "symbols.symbol_radiator": "Heizkörper",
     "symbols.symbol_rcd": "FI-Schutzschalter",
+    "symbols.symbol_receiver_drier": "Flüssigkeitstrockner",
+    "symbols.symbol_reducer": "Reduzierung",
     "symbols.symbol_room_sensor": "Raumsensor",
     "symbols.symbol_safety_valve": "Sicherheitsventil",
     "symbols.symbol_shutoff_valve": "Absperrventil",
+    "symbols.symbol_sight_glass": "Schauglas",
     "symbols.symbol_silencer": "Schalldämpfer",
     "symbols.symbol_smoke_detector": "Rauchmelder",
+    "symbols.symbol_solar_controller": "Solarregler",
     "symbols.symbol_solar_station": "Solarstation",
     "symbols.symbol_sprinkler_head": "Sprinklerkopf",
     "symbols.symbol_sprinkler_valve_station": "Nassalarmventil",
     "symbols.symbol_steam_humidifier": "Dampfluftbefeuchter",
     "symbols.symbol_sub_distribution_board": "Unterverteilung",
+    "symbols.symbol_suction_accumulator": "Saugbehälter",
     "symbols.symbol_surge_arrester": "Überspannungsableiter",
     "symbols.symbol_switchgear": "Niederspannungsverteilung",
     "symbols.symbol_temp_sensor": "Temperaturfühler",
@@ -6745,6 +6764,8 @@ function gltText(key) {
     "symbols.symbol_valve_3way": "3-Wege-Ventil",
     "symbols.symbol_vav_box": "VAV-Regler",
     "symbols.symbol_wallbox": "Wallbox",
+    "symbols.symbol_water_meter": "Wasseruhr",
+    "symbols.symbol_y_strainer": "Y-Schmutzfänger",
     "trends.coverage": "Abdeckung {percent} %",
     "trends.coverage_gaps": "Abdeckung {percent} % · {gaps} {gapWord}",
     "trends.gap_one": "Lücke",
@@ -7010,6 +7031,7 @@ function gltText(key) {
     "legacy.no_fault": "No fault",
     "legacy.no_work_orders": "No work orders.",
     "legacy.open_detail": "Open detail view",
+    "legacy.own_image": "Own image",
     "legacy.paste_compare_json": "Paste the comparison configuration as JSON",
     "legacy.perform_maintenance": "Perform maintenance",
     "legacy.project_locked": "Project locked.",
@@ -7530,6 +7552,7 @@ function gltText(key) {
     "symbols.symbol_balancing_valve": "Balancing valve",
     "symbols.symbol_battery": "Battery storage",
     "symbols.symbol_boiler": "Boiler",
+    "symbols.symbol_booster_station": "Pressure booster station",
     "symbols.symbol_brine_station": "Brine station",
     "symbols.symbol_buffer_layered": "Stratified buffer tank",
     "symbols.symbol_burner": "Burner",
@@ -7537,6 +7560,7 @@ function gltText(key) {
     "symbols.symbol_check_valve": "Check valve",
     "symbols.symbol_chiller": "Chiller",
     "symbols.symbol_circuit_breaker": "Circuit breaker",
+    "symbols.symbol_cistern": "Rainwater cistern",
     "symbols.symbol_co2_sensor": "CO₂ sensor",
     "symbols.symbol_co2_voc_sensor": "CO₂-VOC sensor",
     "symbols.symbol_cogen_unit": "CHP unit",
@@ -7552,6 +7576,8 @@ function gltText(key) {
     "symbols.symbol_dirt_separator": "Dirt separator",
     "symbols.symbol_dp_sensor": "Differential pressure sensor",
     "symbols.symbol_dry_cooler": "Dry cooler",
+    "symbols.symbol_duct": "Duct section",
+    "symbols.symbol_duct_sensor": "Duct sensor",
     "symbols.symbol_ec_fan": "EC fan",
     "symbols.symbol_expansion_vessel": "Expansion vessel",
     "symbols.symbol_extinguishing_system": "Extinguishing system",
@@ -7564,11 +7590,14 @@ function gltText(key) {
     "symbols.symbol_fire_door": "Fire door",
     "symbols.symbol_flat_collector": "Flat plate collector",
     "symbols.symbol_flexible_compensator": "Expansion compensator",
+    "symbols.symbol_flow_limiter": "Flow limiter",
     "symbols.symbol_flow_sensor": "Flow sensor",
     "symbols.symbol_flow_switch": "Flow switch",
+    "symbols.symbol_flue": "Flue",
     "symbols.symbol_frequency_drive": "Frequency drive",
     "symbols.symbol_frost_thermostat": "Frost thermostat",
     "symbols.symbol_fuel_cell": "Fuel cell",
+    "symbols.symbol_gas_sensor": "Gas sensor",
     "symbols.symbol_generator_set": "Standby generator",
     "symbols.symbol_grid": "Grid",
     "symbols.symbol_heat_detector": "Heat detector",
@@ -7588,10 +7617,16 @@ function gltText(key) {
     "symbols.symbol_immersion_heater": "Immersion heater",
     "symbols.symbol_inverter": "Inverter",
     "symbols.symbol_isolator_switch": "Isolator switch",
+    "symbols.symbol_kitchen_hood": "Kitchen hood",
+    "symbols.symbol_louvre": "Louvre grille",
+    "symbols.symbol_main_switch": "Main switch",
     "symbols.symbol_manifold": "Manifold",
     "symbols.symbol_manual_call_point": "Manual call point",
     "symbols.symbol_meter": "Energy meter",
     "symbols.symbol_mixing_valve": "Three-way mixing valve",
+    "symbols.symbol_motion_detector": "Motion detector",
+    "symbols.symbol_motor_protection": "Motor protection relay",
+    "symbols.symbol_oil_separator": "Oil separator",
     "symbols.symbol_pressure_reducing_valve": "Pressure reducing valve",
     "symbols.symbol_pressure_sensor": "Pressure sensor",
     "symbols.symbol_pump_dhw": "Circulation pump",
@@ -7602,16 +7637,21 @@ function gltText(key) {
     "symbols.symbol_pv_array": "PV array",
     "symbols.symbol_radiator": "Radiator",
     "symbols.symbol_rcd": "Residual-current device",
+    "symbols.symbol_receiver_drier": "Receiver drier",
+    "symbols.symbol_reducer": "Reducer",
     "symbols.symbol_room_sensor": "Room sensor",
     "symbols.symbol_safety_valve": "Safety valve",
     "symbols.symbol_shutoff_valve": "Shut-off valve",
+    "symbols.symbol_sight_glass": "Sight glass",
     "symbols.symbol_silencer": "Silencer",
     "symbols.symbol_smoke_detector": "Smoke detector",
+    "symbols.symbol_solar_controller": "Solar controller",
     "symbols.symbol_solar_station": "Solar station",
     "symbols.symbol_sprinkler_head": "Sprinkler head",
     "symbols.symbol_sprinkler_valve_station": "Wet alarm valve station",
     "symbols.symbol_steam_humidifier": "Steam humidifier",
     "symbols.symbol_sub_distribution_board": "Sub-distribution board",
+    "symbols.symbol_suction_accumulator": "Suction accumulator",
     "symbols.symbol_surge_arrester": "Surge arrester",
     "symbols.symbol_switchgear": "Low-voltage switchgear",
     "symbols.symbol_temp_sensor": "Temperature sensor",
@@ -7623,6 +7663,8 @@ function gltText(key) {
     "symbols.symbol_valve_3way": "Three-way valve",
     "symbols.symbol_vav_box": "VAV box",
     "symbols.symbol_wallbox": "Wallbox",
+    "symbols.symbol_water_meter": "Water meter",
+    "symbols.symbol_y_strainer": "Y-strainer",
     "trends.coverage": "Coverage {percent} %",
     "trends.coverage_gaps": "Coverage {percent} % · {gaps} {gapWord}",
     "trends.gap_one": "gap",
@@ -7931,7 +7973,27 @@ function gltText(key) {
     ["heat_meter", pair("symbols.symbol_heat_meter"), "Energie", "meter", "netz_zaehler"],
     ["co2_voc_sensor", pair("symbols.symbol_co2_voc_sensor"), "Sensorik", "meter", "luftqualitaet"],
     ["flow_switch", pair("symbols.symbol_flow_switch"), "Sensorik", "meter", "durchfluss"],
-    ["frequency_drive", pair("symbols.symbol_frequency_drive"), "Elektro", "generic", "antriebe"]
+    ["frequency_drive", pair("symbols.symbol_frequency_drive"), "Elektro", "generic", "antriebe"],
+    ["flue", pair("symbols.symbol_flue"), "Heizung", "boiler", "kessel_erzeuger"],
+    ["solar_controller", pair("symbols.symbol_solar_controller"), "Heizung", "generic", "solar"],
+    ["y_strainer", pair("symbols.symbol_y_strainer"), "Hydraulik", "valve", "schmutzfaenger"],
+    ["flow_limiter", pair("symbols.symbol_flow_limiter"), "Hydraulik", "valve", "ventile"],
+    ["reducer", pair("symbols.symbol_reducer"), "Hydraulik", "generic", "verteilung"],
+    ["booster_station", pair("symbols.symbol_booster_station"), "Hydraulik", "pump", "pumpen"],
+    ["cistern", pair("symbols.symbol_cistern"), "Hydraulik", "tank", "speicher"],
+    ["duct", pair("symbols.symbol_duct"), "RLT", "damper", "verteilung"],
+    ["louvre", pair("symbols.symbol_louvre"), "RLT", "damper", "klappen_regelung"],
+    ["kitchen_hood", pair("symbols.symbol_kitchen_hood"), "RLT", "generic", "geraete"],
+    ["oil_separator", pair("symbols.symbol_oil_separator"), "Kälte", "generic", "komponenten"],
+    ["receiver_drier", pair("symbols.symbol_receiver_drier"), "Kälte", "generic", "komponenten"],
+    ["sight_glass", pair("symbols.symbol_sight_glass"), "Kälte", "meter", "komponenten"],
+    ["suction_accumulator", pair("symbols.symbol_suction_accumulator"), "Kälte", "tank", "komponenten"],
+    ["water_meter", pair("symbols.symbol_water_meter"), "Energie", "meter", "netz_zaehler"],
+    ["main_switch", pair("symbols.symbol_main_switch"), "Elektro", "generic", "schutz_schaltung"],
+    ["motor_protection", pair("symbols.symbol_motor_protection"), "Elektro", "generic", "schutz_schaltung"],
+    ["duct_sensor", pair("symbols.symbol_duct_sensor"), "Sensorik", "meter", "temperatur"],
+    ["gas_sensor", pair("symbols.symbol_gas_sensor"), "Sensorik", "meter", "luftqualitaet"],
+    ["motion_detector", pair("symbols.symbol_motion_detector"), "Sensorik", "meter", "raum"]
   ].map(([id, label, category, profile, group]) => ({ id, label, category, profile, group: group || category }));
   var joinLabels = (first, second) => Object.freeze(Object.fromEntries(
     Object.keys(first).map((language) => [language, `${first[language]} · ${second[language]}`])
@@ -8132,7 +8194,27 @@ function gltText(key) {
     ["heat_meter", [rc(20, 14, 24, 20, 3, "body"), tx(32, 26, "kWh", "txt"), ci(32, 46, 9, "body"), pa("M28 50 L28 42 L38 46 Z", "accent rotor"), ln(3, 46, 23, 46, "hot"), ln(41, 46, 61, 46, "cold"), ln(32, 34, 32, 37, "thin")]],
     ["co2_voc_sensor", [ci(32, 34, 18, "body"), tx(32, 38, "CO2", "accent txt"), pa("M22 12 Q27 8 32 12 Q37 16 42 12", "thin"), ci(46, 46, 4, "accent")]],
     ["flow_switch", [ln(3, 32, 61, 32, "body"), pa("M28 32 L28 18 L40 24 L28 30", "accent"), ci(34, 32, 3, "accent"), ln(28, 18, 22, 10, "thin")]],
-    ["frequency_drive", [rc(12, 16, 40, 32, 3, "body"), pa("M18 42 L30 42 L46 22", "accent"), tx(32, 14, "FU", "txt"), ln(3, 32, 12, 32, "power"), ln(52, 32, 61, 32, "power")]]
+    ["frequency_drive", [rc(12, 16, 40, 32, 3, "body"), pa("M18 42 L30 42 L46 22", "accent"), tx(32, 14, "FU", "txt"), ln(3, 32, 12, 32, "power"), ln(52, 32, 61, 32, "power")]],
+    ["flue", [rc(18, 8, 28, 6, 2, "accent"), rc(24, 14, 16, 44, 2, "body"), ln(28, 20, 28, 54, "thin"), ln(36, 20, 36, 54, "thin"), pa("M30 5 C27 2 33 2 30 -1", "thin")]],
+    ["solar_controller", [rc(12, 16, 40, 32, 4, "body"), ci(24, 32, 7, "accent"), ln(24, 21, 24, 17, "accent"), ln(24, 43, 24, 47, "accent"), ln(13, 32, 17, 32, "accent"), ln(31, 32, 35, 32, "accent"), ln(36, 24, 44, 24, "hot"), ln(36, 40, 44, 40, "cold"), tx(44, 33, "S", "txt")]],
+    ["y_strainer", [ln(4, 32, 20, 32, "hot"), rc(20, 22, 14, 20, 3, "body"), ln(34, 32, 60, 32, "hot"), pa("M27 42 L45 58", "body"), ln(31, 46, 41, 56, "thin"), ln(36, 50, 46, 60, "thin")]],
+    ["flow_limiter", [rc(14, 22, 36, 20, 3, "body"), pa("M22 26 L42 26 L32 38 Z", "accent"), pa("M32 22 L32 12 M26 16 L32 10 L38 16", "thin"), pa("M50 32 L58 32 M55 29 L58 32 L55 35", "thin")]],
+    ["reducer", [pa("M6 20 L30 20 L58 28 L58 36 L30 44 L6 44 Z", "body"), ln(30, 20, 30, 44, "thin"), ln(6, 20, 6, 44, "thin")]],
+    ["booster_station", [rc(8, 44, 48, 8, 2, "body"), rc(18, 16, 8, 28, 3, "body"), rc(38, 16, 8, 28, 3, "body"), ci(22, 30, 3, "accent"), ci(42, 30, 3, "accent"), ln(3, 48, 8, 48, "cold"), ln(56, 48, 61, 48, "hot")]],
+    ["cistern", [pa("M20 18 Q20 10 32 10 Q44 10 44 18 L44 54 Q44 60 32 60 Q20 60 20 54 Z", "tank"), pa("M14 4 L12 8 M32 2 L30 6 M50 4 L48 8", "cold"), ln(44, 36, 60, 36, "cold")]],
+    ["duct", [rc(8, 22, 48, 20, 2, "body"), pa("M16 32 L28 32 M24 28 L28 32 L24 36", "thin"), pa("M36 32 L48 32 M44 28 L48 32 L44 36", "thin")]],
+    ["louvre", [rc(10, 14, 44, 36, 2, "body"), pa("M14 22 L50 18 M14 30 L50 26 M14 38 L50 34 M14 46 L50 42", "thin")]],
+    ["kitchen_hood", [pa("M16 26 L48 26 L42 12 L22 12 Z", "body"), rc(28, 4, 8, 8, 1, "body"), pa("M20 30 L44 30 M22 35 L42 35 M24 40 L40 40", "thin")]],
+    ["oil_separator", [rc(16, 14, 32, 40, 8, "body"), rc(20, 38, 24, 12, 2, "hotfill"), ci(26, 44, 2, "accent"), ci(38, 46, 2, "accent"), ln(8, 24, 16, 24, "hot"), ln(48, 24, 56, 24, "hot")]],
+    ["receiver_drier", [rc(24, 12, 16, 44, 7, "body"), pa("M24 24 L40 24 M24 32 L40 32 M24 40 L40 40 M24 48 L40 48", "thin"), ln(32, 4, 32, 12, "hot"), ln(32, 56, 32, 60, "cold")]],
+    ["sight_glass", [ln(4, 32, 60, 32, "body"), ci(32, 32, 9, "accent"), ci(32, 32, 5, "thin"), ci(24, 32, 1.5, "thin"), ci(40, 32, 1.5, "thin")]],
+    ["suction_accumulator", [rc(22, 10, 20, 48, 8, "body"), pa("M8 24 C14 24 16 20 22 20", "cold"), pa("M42 44 L58 44 L58 24", "cold"), pa("M14 54 C20 54 22 50 22 50", "thin")]],
+    ["water_meter", [ln(4, 32, 60, 32, "body"), ci(32, 32, 12, "accent"), ci(32, 32, 8, "body"), ln(32, 32, 38, 26, "thin"), tx(32, 54, "m3", "txt")]],
+    ["main_switch", [rc(14, 10, 36, 44, 4, "body"), pa("M32 40 L32 24 M24 24 L40 24", "accent"), pa("M32 24 C26 18 38 14 32 8", "thin"), ln(6, 32, 14, 32, "power"), ln(50, 32, 58, 32, "power")]],
+    ["motor_protection", [rc(12, 14, 40, 36, 4, "body"), pa("M20 40 L26 28 L32 40 L38 28 L44 40", "accent"), ln(12, 48, 52, 48, "thin"), tx(32, 20, "M", "txt")]],
+    ["duct_sensor", [rc(8, 26, 48, 12, 2, "body"), ci(46, 20, 6, "accent"), ln(46, 26, 46, 20, "thin"), tx(32, 22, "T", "txt")]],
+    ["gas_sensor", [ci(32, 34, 16, "body"), tx(32, 38, "GAS", "accent txt"), pa("M22 12 Q27 8 32 12 Q37 16 42 12", "thin"), ci(46, 44, 4, "accent")]],
+    ["motion_detector", [pa("M18 44 Q18 20 32 20 Q46 20 46 44 Z", "body"), rc(16, 44, 32, 6, 2, "body"), pa("M10 34 Q8 24 14 16", "thin"), pa("M54 34 Q56 24 50 16", "thin")]]
   ]);
   var DOMAINS = Object.freeze([
     { id: "heating", category: "Heizung", label: pair("symbols.category_heizung") },
@@ -62662,6 +62744,107 @@ function gltText(key) {
       [kpi("Wasser", "mdi:pool"), kpi("Solar", "mdi:weather-sunny")]
     ),
     tpl(
+      "pv-energy",
+      "PV-Energiefluss",
+      "Photovoltaik, Wechselrichter, Batterie, Netz, Haus — alle Energieflüsse.",
+      "PV-Energiefluss",
+      "Erzeugung · Speicher · Netz · Verbrauch",
+      [
+        eq("pv", "generic", "PV-Anlage", "Generator", 130, 255, 285, 185, ["Leistung", "Ertrag heute"]),
+        eq("wr", "hybrid_inverter", "Wechselrichter", "AC-Seite", 640, 200, 260, 185, ["AC-Leistung"]),
+        eq("bat", "battery", "Batteriespeicher", "DC-Seite", 640, 520, 260, 230, ["Ladestand", "Laden / Entladen"]),
+        eq("netz", "grid", "Netzanschluss", "Bezug / Einspeisung", 1160, 200, 260, 185, ["Leistung", "Zählerstand"]),
+        eq("haus", "room", "Hausverbrauch", "Verbraucher", 1160, 520, 280, 200, ["Leistung", "Autarkie"])
+      ],
+      [
+        pipe("pv_wr", "neutral", [[415, 330], [640, 330]]),
+        pipe("wr_bat", "neutral", [[770, 385], [770, 600], [900, 600]]),
+        pipe("wr_netz", "neutral", [[900, 290], [1160, 290]]),
+        pipe("wr_haus", "neutral", [[900, 340], [1020, 340], [1020, 600], [1160, 600]])
+      ],
+      [kpi("PV-Leistung", "mdi:solar-power"), kpi("Speicher", "mdi:battery"), kpi("Autarkie", "mdi:home-circle-outline"), kpi("Netz", "mdi:transmission-tower")]
+    ),
+    tpl(
+      "solar-thermal",
+      "Solarthermie",
+      "Kollektoren, Solarstation, Puffer, Warmwasser.",
+      "Solarthermie",
+      "Kollektorkreis mit Schichtung",
+      [
+        eq("kollektor", "flat_collector", "Kollektorfeld", "Dach", 130, 255, 285, 185, ["Kollektortemperatur", "Ertrag heute"]),
+        eq("station", "solar_station", "Solarstation", "Kreislaufs", 640, 200, 260, 230, ["Vorlauf", "Rücklauf", "Pumpenleistung"]),
+        eq("puffer", "tank", "Pufferspeicher", "Schichtung", 640, 530, 260, 230, ["Oben", "Mitte", "Unten"]),
+        eq("twe", "dhw_tank", "Trinkwarmwasser", "Speicher", 1160, 255, 280, 230, ["Oben", "Soll"])
+      ],
+      [
+        pipe("kol_station", "heating_supply", [[415, 330], [535, 330], [535, 290], [640, 290]]),
+        pipe("station_ret", "heating_return", [[640, 340], [535, 340], [535, 390], [415, 390]]),
+        pipe("station_puffer", "heating_supply", [[770, 430], [770, 600], [900, 600]])
+      ],
+      [kpi("Kollektor", "mdi:weather-sunny"), kpi("Puffer oben", "mdi:thermometer-high"), kpi("Ertrag", "mdi:chart-areaspline")]
+    ),
+    tpl(
+      "pv-hp",
+      "PV + Speicher + WP",
+      "Photovoltaik, Batterie und Wärmepumpe in einem Bild.",
+      "PV & Wärmepumpe",
+      "Strom und Wärme kombiniert",
+      [
+        eq("pv", "generic", "PV-Anlage", "Generator", 130, 180, 280, 185, ["Leistung", "Ertrag heute"]),
+        eq("wr", "hybrid_inverter", "Hybrid-Wechselrichter", "Umwandlung", 560, 180, 260, 185, ["AC-Leistung"]),
+        eq("bat", "battery", "Batteriespeicher", "DC-Seite", 980, 180, 260, 185, ["Ladestand"]),
+        eq("netz", "grid", "Netzanschluss", "Übergabepunkt", 130, 560, 260, 185, ["Leistung", "Zählerstand"]),
+        eq("wp", "heat_pump", "Wärmepumpe", "Verbraucher", 560, 500, 280, 200, ["Leistung", "Vorlauf", "COP"])
+      ],
+      [
+        pipe("pv_wr", "neutral", [[410, 260], [560, 260]]),
+        pipe("wr_bat", "neutral", [[820, 260], [980, 260]]),
+        pipe("wr_wp", "neutral", [[690, 365], [690, 500]]),
+        pipe("netz_wp", "neutral", [[390, 640], [560, 640]])
+      ],
+      [kpi("PV", "mdi:solar-power"), kpi("Speicher", "mdi:battery"), kpi("WP-Leistung", "mdi:heat-pump"), kpi("Haus", "mdi:home-lightning-bolt")]
+    ),
+    tpl(
+      "cascade",
+      "WP-Kaskade",
+      "Zwei Wärmepumpen am gemeinsamen Puffer.",
+      "Wärmepumpen-Kaskade",
+      "Kaskade mit gemeinsamer Hydraulik",
+      [
+        eq("wp1", "heat_pump_duo", "Wärmepumpe 1", "Kaskade Stufe 1", 130, 180, 285, 185, ["Vorlauf", "Rücklauf", "Leistung"]),
+        eq("wp2", "heat_pump_duo", "Wärmepumpe 2", "Kaskade Stufe 2", 130, 500, 285, 185, ["Vorlauf", "Rücklauf", "Leistung"]),
+        eq("puffer", "tank", "Gemeinsamer Puffer", "Hydraulik", 640, 300, 260, 260, ["Oben", "Mitte", "Unten"]),
+        eq("hk", "room", "Heizkreise", "Verteilung", 1160, 300, 285, 225, ["Vorlauf", "Raum"])
+      ],
+      [
+        pipe("wp1_puffer", "heating_supply", [[415, 255], [535, 255], [535, 340], [640, 340]]),
+        pipe("wp2_puffer", "heating_supply", [[415, 575], [535, 575], [535, 430], [640, 430]]),
+        pipe("puffer_hk", "heating_supply", [[900, 390], [1160, 390]])
+      ],
+      [kpi("Gesamtleistung", "mdi:heat-pump-outline"), kpi("Puffer oben", "mdi:thermometer-high"), kpi("Außen", "mdi:weather-partly-rainy")]
+    ),
+    tpl(
+      "boiler-solar",
+      "Kessel + Solar",
+      "Konventioneller Kessel mit Solarunterstützung.",
+      "Kessel & Solar",
+      "Kessel mit Solarunterstützung",
+      [
+        eq("kessel", "boiler", "Heizkessel", "Haupterzeuger", 130, 305, 285, 185, ["Kesseltemperatur", "Leistung"]),
+        eq("solar", "solar_station", "Solarstation", "Unterstützung", 640, 180, 260, 230, ["Kollektor", "Rücklauf"]),
+        eq("puffer", "tank", "Pufferspeicher", "Hydraulik", 640, 520, 260, 230, ["Oben", "Unten"]),
+        eq("twe", "dhw_tank", "Trinkwarmwasser", "Speicher", 1160, 255, 280, 230, ["Oben", "Soll"]),
+        eq("hk", "room", "Heizkreis", "Verteilung", 1160, 560, 280, 200, ["Vorlauf", "Raum"])
+      ],
+      [
+        pipe("k_puffer", "heating_supply", [[415, 380], [535, 380], [535, 590], [640, 590]]),
+        pipe("solar_puffer", "heating_supply", [[770, 410], [770, 560], [900, 560]]),
+        pipe("puffer_twe", "heating_supply", [[900, 590], [1020, 590], [1020, 350], [1160, 350]]),
+        pipe("puffer_hk", "heating_supply", [[900, 640], [1160, 640]])
+      ],
+      [kpi("Kessel", "mdi:fire"), kpi("Kollektor", "mdi:weather-sunny"), kpi("Warmwasser", "mdi:water-boiler")]
+    ),
+    tpl(
       "district-transfer",
       "Fernwärme-Übergabe",
       "Übergabestation, Warmwasser, Heizkreis.",
@@ -63277,7 +63460,26 @@ function gltText(key) {
     const groupText = (group) => group && SYMBOL_GROUPS[group] ? labelText(SYMBOL_GROUPS[group]) : group || "";
     function showSymbolLibrary(editor) {
       const stats = symbolCatalogStats(), current = selectedEquipment(editor)[0];
-      const m = editorModal(editor, `${t(editor._config, "symbols")} · ${stats.variants} Varianten`, `<div class="glt-v1-actions"><select class="glt-v1-select" data-style>${VISUAL_STYLES.map((s) => `<option value="${s.id}">${s.label}</option>`).join("")}</select><input class="glt-v1-input" data-q placeholder="Pumpe, Ventil, RLT…"></div><div class="glt-v1-grid" data-grid style="margin-top:10px"></div>`);
+      const m = editorModal(editor, `${t(editor._config, "symbols")} · ${stats.variants} Varianten`, `<div class="glt-v1-actions"><select class="glt-v1-select" data-style>${VISUAL_STYLES.map((s) => `<option value="${s.id}">${s.label}</option>`).join("")}</select><input class="glt-v1-input" data-q placeholder="Pumpe, Ventil, RLT…"><label class="glt-v1-btn" style="cursor:pointer">↑ ${gltText("legacy.own_image")}<input type="file" accept="image/*" data-image hidden></label></div><div class="glt-v1-grid" data-grid style="margin-top:10px"></div>`);
+      m.querySelector("[data-image]")?.addEventListener("change", async (ev) => {
+        const file = ev.target.files?.[0];
+        if (!file || !current) return;
+        try {
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(new Error("read"));
+            reader.readAsDataURL(file);
+          });
+          editor._remember?.();
+          current.symbol = null;
+          current.symbol_variant = null;
+          current.image = dataUrl;
+          emit(editor);
+          m.remove();
+        } catch (_err) {
+        }
+      });
       const render = () => {
         const q2 = m.querySelector("[data-q]").value.toLowerCase(), style = m.querySelector("[data-style]").value;
         const data = SYMBOL_VARIANTS.filter((s) => s.style === style && (!q2 || `${s.label} ${s.category} ${s.group || ""}`.toLowerCase().includes(q2)));

@@ -6,7 +6,7 @@ import { entityExportPayload, normalizeEntityImport } from "../src/v100/core.mjs
 import { FACTORY_TEMPLATES, factoryTemplates } from "../src/v100/templates.mjs";
 
 test("fifteen factory templates ship, each with a unique identity", () => {
-  assert.equal(FACTORY_TEMPLATES.length, 15);
+  assert.equal(FACTORY_TEMPLATES.length, 20);
   const ids = new Set(FACTORY_TEMPLATES.map((tp) => tp.id));
   assert.equal(ids.size, FACTORY_TEMPLATES.length, "template ids must be unique");
 });

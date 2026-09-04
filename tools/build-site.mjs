@@ -13,7 +13,7 @@ writeFileSync(join(out, "site.css"), siteCss);
 
 const rail = `<aside class="rail"><a class="rail-logo" href="/glt-flow-card/">G</a><nav class="rail-nav"><a class="active" href="/glt-flow-card/">⌂<span>Übersicht</span></a><a href="/glt-flow-card/editor/">✎<span>Designer</span></a><a href="#features">◫<span>Funktionen</span></a><a href="#analytics">⌁<span>Trends</span></a><a href="/glt-flow-card/wiki/Home.html">≡<span>Wiki</span></a></nav><div class="rail-foot"><a class="rail-logo" style="width:40px;height:40px;font-size:15px" href="https://github.com/Xerolux/glt-flow-card">GH</a></div></aside>`;
 const langSwitch = `<div class="mode-switch lang-switch" data-lang-switch><button data-lang-btn="de">DE</button><button data-lang-btn="en">EN</button></div>`;
-const topbar = `<header class="topbar"><a class="brand" href="/glt-flow-card/"><span class="brand-mark">G</span><span><strong>GLT Flow Card</strong><small>Professional GLT / BMS Engineering for Home Assistant</small></span></a><div class="top-actions"><div class="status-pill"><i></i> v1.1.0-b4 · Online</div>${langSwitch}<div class="mode-switch"><button data-theme-btn="neo" class="active">Neo 2030</button><button data-theme-btn="clean">Clean</button><button data-theme-btn="classic">Classic SCADA</button></div></div></header>`;
+const topbar = `<header class="topbar"><a class="brand" href="/glt-flow-card/"><span class="brand-mark">G</span><span><strong>GLT Flow Card</strong><small>Professional GLT / BMS Engineering for Home Assistant</small></span></a><div class="top-actions"><div class="status-pill"><i></i> v1.1.0-b5 · Online</div>${langSwitch}<div class="mode-switch"><button data-theme-btn="neo" class="active">Neo 2030</button><button data-theme-btn="clean">Clean</button><button data-theme-btn="classic">Classic SCADA</button></div></div></header>`;
 const nav = `${rail}<div class="main">${topbar}`;
 /* The English rail keeps the same geometry; only labels and the wiki entry
  * point move, so EN pages never dead-link into the German wiki. */
@@ -184,12 +184,12 @@ writeFileSync(join(out, "impressum.en.html"), legalPage(imprintEn, "en", "Legal 
 
 const wikiDir = join(root, "docs", "wiki");
 const wikiEnDir = join(root, "docs", "wiki-en");
-const wikiFiles = ["Home.md","Installation.md","Designer.md","YAML-Projects.md","Symbols-Routing.md","Alarms-Controls.md","Trends-Reports.md","Assets-Maintenance.md","Permissions-Audit.md","Multi-Site.md","Companion-Backend.md","Configuration.md","Examples.md","FAQ.md"];
+const wikiFiles = ["Home.md","Getting-Started.md","Installation.md","Designer.md","YAML-Projects.md","Symbols-Routing.md","Alarms-Controls.md","Trends-Reports.md","Assets-Maintenance.md","Permissions-Audit.md","Multi-Site.md","Companion-Backend.md","Configuration.md","Examples.md","FAQ.md"];
 const side = wikiFiles.map((f) => `<a href="${basename(f,".md")}.html">${basename(f,".md").replaceAll("-"," ")}</a>`).join("");
 /* The English wiki keeps the same page set; a missing translation falls back
  * to the German original behind a visible notice rather than a dead link. */
 const WIKI_TITLES_EN = {
-  "Home": "Home", "Installation": "Installation", "Designer": "Designer", "YAML-Projects": "YAML Projects",
+  "Home": "Home", "Getting-Started": "Getting Started", "Installation": "Installation", "Designer": "Designer", "YAML-Projects": "YAML Projects",
   "Symbols-Routing": "Symbols & Routing", "Alarms-Controls": "Alarms & Controls", "Trends-Reports": "Trends & Reports",
   "Assets-Maintenance": "Assets & Maintenance", "Permissions-Audit": "Permissions & Audit", "Multi-Site": "Multi-Site",
   "Companion-Backend": "Companion Backend", "Configuration": "Configuration", "Examples": "Examples", "FAQ": "FAQ",

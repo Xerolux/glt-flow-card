@@ -619,7 +619,7 @@ The designer also includes a **live preview** and a **Lovelace YAML drawer with 
 
 ## Extended symbol library
 
-**600 variants** from **100 base symbols** in **6 styles**, across heating,
+**720 variants** from **120 base symbols** in **6 styles**, across heating,
 hydraulics, air handling, refrigeration, energy, instrumentation, electrical and
 fire safety.
 

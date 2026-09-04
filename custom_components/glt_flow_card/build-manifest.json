@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "0533dbea2d5c09826e8377d672d6e450c78e607831add7a74b752539623a5874",
-      "size": 3177562
+      "sha256": "41e8fc139dea4d8a5aa53c0f804c5f4478f5ea8926ba8e157c20b0b3159c0f05",
+      "size": 3191660
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "0533dbea2d5c09826e8377d672d6e450c78e607831add7a74b752539623a5874",
-      "size": 3177562
+      "sha256": "41e8fc139dea4d8a5aa53c0f804c5f4478f5ea8926ba8e157c20b0b3159c0f05",
+      "size": 3191660
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -132,13 +132,13 @@
     },
     {
       "path": "docs/editor/app.js",
-      "sha256": "c77d6cf33b7ff14357572d8e7006f4c44777b8b286cdc9d01e0709431b894401",
-      "size": 164731
+      "sha256": "c6b2310f8312c7178f857d2efe1d708af3a4e1b1048c84052834370e3c98eb64",
+      "size": 172730
     }
   ],
   "build": {
     "commit": "4ec4eb4e1be64dd30fa735d0a82a5c5c5ba3b630",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -159,7 +159,7 @@
   "sources": [
     {
       "path": "custom_components/glt_flow_card/manifest.json",
-      "sha256": "6a20d9e06320ef4115ab5eec6a982b3afbe401b7caa0f4510dc9eaa43486697f",
+      "sha256": "6396c87de5046dccd3ac569ce9a6038c98e65cc819a1f2434f6c46ae0516c587",
       "size": 350
     },
     {
@@ -169,7 +169,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "9536ec848e897e62b91420c75aed876525585beac4edad9116f792ca0abb11ee",
+      "sha256": "07af129a06039f37dc0dd95529586c2f510bba9f818d06121e9ea2bc6a528d6e",
       "size": 5368
     },
     {
@@ -209,7 +209,7 @@
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "9d451422c28307449204a3ea96452d1ccf877b6a8db0bd6ab25ab05118da2d44",
+      "sha256": "dbde3d97e170044bbdcee37352f022c615835a929860e9105eaf0f1d67ad39df",
       "size": 297856
     },
     {
@@ -219,13 +219,13 @@
     },
     {
       "path": "src/v100/catalog-de.mjs",
-      "sha256": "d9ec320dc1d0ca2cb30c2453f66a815a4678942c77ea2e5caed082bc8f507000",
-      "size": 50200
+      "sha256": "2e5a8af26069739558d74b676ea347ce06d0fd6a7ad8b97523812e676c87c769",
+      "size": 51241
     },
     {
       "path": "src/v100/catalog-en.mjs",
-      "sha256": "c84ad7eadc7cdc851ddb835ae48d9ab0ac539724d727b46b99b13078a84b51f2",
-      "size": 47001
+      "sha256": "24ff1554d181ec214700b28e41b35011249f07ef893830ae8f92ce18b8f9d60f",
+      "size": 48024
     },
     {
       "path": "src/v100/catalog-lookup.mjs",
@@ -234,8 +234,8 @@
     },
     {
       "path": "src/v100/catalog.mjs",
-      "sha256": "f71fbdf373bcbd57a2ba6b3eb25da00d463189012f14a2a2ae4520144c099a76",
-      "size": 50967
+      "sha256": "9540f00e937981a1c2c4fa26a8c9a8c4f7dc3eb65c613c30e0eaab39084d4904",
+      "size": 56200
     },
     {
       "path": "src/v100/command-outcome.mjs",
@@ -299,8 +299,8 @@
     },
     {
       "path": "src/v100/index.js",
-      "sha256": "cb5a2b6867c148f2b259351a13adbdc621f5a3bb20cf52db1a05f3ad39d980e7",
-      "size": 68622
+      "sha256": "e21100a92b250d0b904745e92b34465dc0009e20614bd8f4d4fd04e6d256d7c9",
+      "size": 69283
     },
     {
       "path": "src/v100/locale-format.mjs",
@@ -464,8 +464,8 @@
     },
     {
       "path": "src/v100/templates.mjs",
-      "sha256": "d038d5ac5097d6e676e0ab84de0e179b74ff9078f29d7febeaaf8c6e613ac42e",
-      "size": 14194
+      "sha256": "e9681f9aae300ffc2647b3d4a01e986480f1511f92a6021a47840f016ee265b0",
+      "size": 19534
     },
     {
       "path": "src/v100/v1-addons.js",
@@ -503,9 +503,9 @@
     "size": 1532613
   },
   "versions": {
-    "card": "1.1.0-b4",
-    "companion": "1.1.0-b4",
-    "package": "1.1.0-b4",
+    "card": "1.1.0-b5",
+    "companion": "1.1.0-b5",
+    "package": "1.1.0-b5",
     "project_schema": [
       0,
       1,
