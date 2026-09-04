@@ -47,7 +47,9 @@ function gltText(key) {
   if (!sdk?.text) return key;
   try {
     const hass = sdk.currentHass?.() ?? null;
-    const language = hass?.locale?.language;
+    // Without Home Assistant — the standalone designer — the browser language
+    // decides, the same rule the documentation site uses.
+    const language = hass?.locale?.language ?? (typeof navigator === "undefined" ? "de" : navigator.language);
     return sdk.text(key, String(language ?? "de").toLowerCase().startsWith("en") ? "en" : "de");
   } catch (_err) {
     return key;
@@ -119,9 +121,9 @@ function gltText(key) {
     }
   }
 
-  /** The language the card renders in, from Home Assistant rather than the browser. */
+  /** The language the card renders in: Home Assistant first, then the browser. */
   function cardLanguage(hass) {
-    const language = hass?.locale?.language;
+    const language = hass?.locale?.language ?? (typeof navigator === "undefined" ? null : navigator.language);
     return typeof language === "string" && language.toLowerCase().startsWith("en") ? "en" : "de";
   }
 
@@ -648,7 +650,11 @@ function gltText(key) {
       this._config.paths.filter((path) => this._visibleInView(path)).forEach((path) => {
         const points = this._pointsFor(path);
         if (points.length < 2) return;
-        const active = path.flow ? this._isActive(path.flow) : path.active !== false;
+        // A pipe without a flow entity is unmeasured, not flowing: it renders
+        // at full strength but never animates. Dimming is reserved for a pipe
+        // whose flow entity says off (or that is explicitly `active: false`).
+        const active = path.flow ? this._isActive(path.flow) : path.active === true;
+        const dimmed = (path.flow && !active) || path.active === false;
         const medium = this._medium(path);
         const group = document.createElementNS(SVG_NS, "g");
         group.setAttribute("class", `glt-pipe-group ${active ? "is-active" : "is-idle"}`);
@@ -665,7 +671,7 @@ function gltText(key) {
         line.setAttribute("stroke", medium.color);
         line.setAttribute("stroke-width", String(path.width || 8));
         line.style.setProperty("--glt-flow-speed", `${path.speed || 1.3}s`);
-        if (!active) line.style.opacity = String(path.idle_opacity ?? 0.28);
+        if (dimmed) line.style.opacity = String(path.idle_opacity ?? 0.55);
         group.appendChild(line);
 
         const labelField = path.temperature || path.value;
@@ -954,7 +960,18 @@ function gltText(key) {
 
     _render() {
       if (!this.shadowRoot) return;
+      if (!this._gltFsBound) {
+        this._gltFsBound = true;
+        document.addEventListener("fullscreenchange", () => {
+          this._fullscreen = !!document.fullscreenElement;
+          this._hasFit = false;
+          this._queueRender();
+        });
+      }
       const view = this._currentView();
+      const viewportHeight = this._config.canvas.viewport_height;
+      const viewportStyle = typeof viewportHeight === "number" ? `height:${viewportHeight}px` : "";
+      const viewportClass = viewportHeight === "auto" ? "glt-viewport glt-viewport-auto" : "glt-viewport";
       this.shadowRoot.innerHTML = `<style>${CARD_STYLES}${APPEARANCE_STYLES}</style>
         <ha-card class="glt-card glt-style-${esc(this._styleMode || this._config.appearance?.mode || "neo2030")}">
           <header class="glt-header">
@@ -970,10 +987,10 @@ function gltText(key) {
             <div class="glt-tool-actions">
               ${this._config.appearance?.show_switch !== false ? `<div class="glt-style-switch"><button type="button" data-style="neo2030" class="${(this._styleMode || this._config.appearance?.mode || "neo2030") === "neo2030" ? "active" : ""}">Neo 2030</button><button type="button" data-style="clean" class="${(this._styleMode || this._config.appearance?.mode) === "clean" ? "active" : ""}">Clean</button><button type="button" data-style="classic_scada" class="${(this._styleMode || this._config.appearance?.mode) === "classic_scada" ? "active" : ""}">Classic SCADA</button></div>` : ""}
               ${this._config.trend.enabled ? `<button type="button" class="glt-tool-btn ${this._trendOpen ? "active" : ""}" data-action="trend"><ha-icon icon="mdi:chart-line"></ha-icon>Trend</button>` : ""}
-              ${this._config.zoom.controls ? `<button type="button" class="glt-icon-btn" data-action="zoom-out" title="Verkleinern"><ha-icon icon="mdi:magnify-minus-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="fit" title=gltText("legacy.fit_view")><ha-icon icon="mdi:fit-to-screen-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="zoom-in" title=gltText("legacy.zoom_in")><ha-icon icon="mdi:magnify-plus-outline"></ha-icon></button>` : ""}
+              ${this._config.zoom.controls ? `<button type="button" class="glt-icon-btn" data-action="zoom-out" title="${esc(gltText("legacy.zoom_out"))}"><ha-icon icon="mdi:magnify-minus-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="fit" title="${esc(gltText("legacy.fit_view"))}"><ha-icon icon="mdi:fit-to-screen-outline"></ha-icon></button><button type="button" class="glt-icon-btn" data-action="zoom-in" title="${esc(gltText("legacy.zoom_in"))}"><ha-icon icon="mdi:magnify-plus-outline"></ha-icon></button>` : ""}<button type="button" class="glt-icon-btn" data-action="fullscreen" title="${esc(gltText("legacy.fullscreen"))}"><ha-icon icon="${this._fullscreen ? "mdi:fullscreen-exit" : "mdi:fullscreen"}"></ha-icon></button>
             </div>
           </div>
-          <div class="glt-viewport" style="height:${this._config.canvas.viewport_height}px" data-kind="${esc(view.kind || "schematic")}"></div>
+          <div class="${viewportClass}" style="${viewportStyle}" data-kind="${esc(view.kind || "schematic")}"></div>
           ${this._renderReplay()}
           ${this._renderTrendChart()}
         </ha-card>`;
@@ -1003,6 +1020,7 @@ function gltText(key) {
       this.shadowRoot.querySelector("[data-action='zoom-in']")?.addEventListener("click", () => this._zoomBy(1.2));
       this.shadowRoot.querySelector("[data-action='zoom-out']")?.addEventListener("click", () => this._zoomBy(1 / 1.2));
       this.shadowRoot.querySelector("[data-action='fit']")?.addEventListener("click", () => this._fitCanvas(true));
+      this.shadowRoot.querySelector("[data-action='fullscreen']")?.addEventListener("click", () => this._toggleFullscreen());
       this.shadowRoot.querySelector("[data-action='trend']")?.addEventListener("click", () => {
         this._trendOpen = !this._trendOpen;
         if (this._trendOpen) this._ensureHistory();
@@ -1120,6 +1138,16 @@ function gltText(key) {
       }
     }
 
+    _toggleFullscreen() {
+      const card = this.shadowRoot?.querySelector("ha-card");
+      if (!card?.requestFullscreen) return;
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.();
+      } else {
+        card.requestFullscreen().catch(() => {});
+      }
+    }
+
     _zoomBy(factor) {
       const viewport = this.shadowRoot?.querySelector(".glt-viewport");
       const canvas = this.shadowRoot?.querySelector(".glt-canvas");
@@ -1209,6 +1237,10 @@ function gltText(key) {
     .glt-icon-btn ha-icon { --mdc-icon-size:19px; }
     .glt-icon-btn:disabled { opacity:.34; cursor:default; }
     .glt-viewport { position:relative; overflow:hidden; background:color-mix(in srgb, var(--card-background-color) 92%, #64748b 8%); touch-action:none; cursor:grab; }
+    .glt-viewport-auto { height:calc(100dvh - 250px); min-height:340px; }
+    ha-card.glt-card:fullscreen { height:100dvh; display:flex; flex-direction:column; border-radius:0; }
+    ha-card.glt-card:fullscreen .glt-viewport, ha-card.glt-card:fullscreen .glt-viewport-auto { flex:1 1 auto; height:auto !important; min-height:0; }
+    ha-card.glt-card:fullscreen .glt-trend-panel { flex:none; }
     .glt-viewport:active { cursor:grabbing; }
     .glt-canvas { position:absolute; left:0; top:0; background-color:color-mix(in srgb, var(--card-background-color) 97%, #94a3b8 3%); background-image:var(--glt-grid); background-size:40px 40px; box-shadow:0 0 0 1px var(--glt-border), var(--glt-shadow); overflow:hidden; }
     .glt-canvas.no-grid { background-image:none; }
@@ -1223,7 +1255,7 @@ function gltText(key) {
     .glt-equipment.is-clickable { cursor:pointer; }
     .glt-equipment:hover { border-color:color-mix(in srgb, var(--glt-accent) 42%, var(--glt-border)); }
     .glt-eq-head { display:flex; align-items:center; gap:10px; }
-    .glt-eq-symbol { width:42px; height:42px; flex:0 0 42px; display:grid; place-items:center; border-radius:12px; background:var(--glt-accent-soft); color:var(--glt-accent); overflow:hidden; }
+    .glt-eq-symbol { width:54px; height:54px; flex:0 0 54px; display:grid; place-items:center; border-radius:12px; background:var(--glt-accent-soft); color:var(--glt-accent); overflow:hidden; }
     .glt-eq-icon { --mdc-icon-size:24px; }
     .glt-eq-image { width:100%; height:100%; object-fit:contain; }
     .glt-eq-title { min-width:0; flex:1; }
@@ -1387,12 +1419,12 @@ function gltText(key) {
     _ef(l,v,p,domains=[]){return`<div class="f"><label>${esc(l)}</label><ha-entity-picker data-ep data-e="${p}" data-v="${esc(v||'')}" data-domains="${esc(domains.join(','))}"></ha-entity-picker></div>`}
     _equipmentDomains(o){let t=o?.type||'';if(['fan','ahu'].includes(t))return['fan','switch','binary_sensor','sensor'];if(['room','heating_circuit','radiator','underfloor','fancoil'].includes(t))return['climate','sensor','switch','binary_sensor'];if(['valve','damper'].includes(t))return['valve','cover','switch','binary_sensor','sensor'];if(['pump'].includes(t))return['switch','binary_sensor','sensor','number'];return['switch','binary_sensor','sensor','climate','water_heater','fan','valve','number']}
     _insp(){let v=this._view(),o=this._obj(),m=this._config.appearance?.mode||'neo2030',base=`<div class="sec"><div class="st">Ansicht <span class="chip">${esc(v.kind||'schematic')}</span></div>${this._f('Name',v.name,'@v.name')}${this._s('Typ',v.kind||'schematic','@v.kind',[['schematic','Anlagenschema'],['image','Anlagenbild']])}${this._f('Hintergrundbild (optional)',v.background||'','@v.background')}</div><div class="sec"><div class="st">Optik <span class="chip">${esc(m)}</span></div>${this._s('Design',m,'@c.appearance.mode',[['neo2030',gltText("symbols.style_neo2030")],['clean',gltText("legacy.style_clean_light")],['classic_scada',gltText("symbols.style_classic_scada")]])}</div>`;if(!o)return base+`<div class="sec"><div class="st">Karte <span class="chip">Global</span></div>${this._f('Titel',this._config.title,'@c.title')}<div class="g2">${this._f('Breite',this._config.canvas.width,'@a.width','number')}${this._f(gltText("legacy.height"),this._config.canvas.height,'@a.height','number')}</div></div><div class="help">Bauteile, Leitungen und Datenpunkte links auf die Zeichenfläche ziehen. Entitäten werden direkt aus Home Assistant über den nativen Entity-Picker ausgewählt.</div>`;let p=this._pos(o),body='';if(this._sel.k==='equipment'){o.fields=o.fields||[];while(o.fields.length<2)o.fields.push({label:'',entity:''});body=this._f('Name',o.name,'name')+this._s('Symbol',o.symbol||symbolById(null,o.type).id,'symbol',SYMBOL_LIBRARY.map(x=>[x.id,`${x.category} · ${symbolLabel(x,cardLanguage(this._hass))}`]))+this._s('Typ',o.type,'type',[...new Set(SYMBOL_LIBRARY.map(x=>x.type))].map(x=>[x,x.replaceAll('_',' ')]))+this._ef(gltText("legacy.main_entity"),entityField(o.entity)?.entity||o.entity||'','entity',this._equipmentDomains(o))+this._ef(gltText("legacy.state_entity"),entityField(o.state_entity)?.entity||o.state_entity||'','state_entity',['binary_sensor','switch','sensor'])+this._f(gltText("legacy.custom_image_optional"),o.image||'','image')+`<div class="g2">${this._f('X',p.x,'x','number')}${this._f('Y',p.y,'y','number')}${this._f('Breite',p.width||o.width,'width','number')}${this._f(gltText("legacy.height"),p.height||o.height,'height','number')}</div>`+this._f(gltText("legacy.value1_label"),o.fields[0].label,'fields.0.label')+this._ef(gltText("legacy.value1_entity"),entityField(o.fields[0].entity)?.entity||o.fields[0].entity||'','fields.0.entity',['sensor','number','climate','water_heater'])+this._f(gltText("legacy.value2_label"),o.fields[1].label,'fields.1.label')+this._ef(gltText("legacy.value2_entity"),entityField(o.fields[1].entity)?.entity||o.fields[1].entity||'','fields.1.entity',['sensor','number','climate','water_heater'])}else if(this._sel.k==='datapoint')body=this._f('Label',o.label,'label')+this._ef(gltText("legacy.entity"),entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number','climate','water_heater'])+`<div class="g2">${this._f(gltText("legacy.x_in_view"),p.x,'x','number')}${this._f(gltText("legacy.y_in_view"),p.y,'y','number')}</div><div class="help">Der Datenpunkt kann im Schema und im Anlagenfoto separat positioniert werden.</div>`;else if(this._sel.k==='path')body=this._s('Medium',o.medium||'neutral','medium',Object.entries(MEDIUMS).map(([k,x])=>[k,mediumLabel(x,cardLanguage(this._hass))]))+this._ef('Aktiv / Fluss',entityField(o.flow)?.entity||o.flow||'','flow',['binary_sensor','switch','fan','sensor','number','valve'])+this._ef('Temperatur / Wert',entityField(o.temperature)?.entity||o.temperature||'','temperature',['sensor','number','climate'])+`<div class="g2">${this._f('Breite',o.width||8,'width','number')}${this._f('Geschwindigkeit',o.speed||1.3,'speed','number')}</div><div class="acts"><button class="act" data-act="addpoint">Punkt hinzufügen</button></div>`;else body=this._f('KPI Name',o.name,'name')+this._ef(gltText("legacy.entity"),entityField(o.entity)?.entity||o.entity||'','entity',['sensor','binary_sensor','number']);return base+`<div class="sec"><div class="st">${this._sel.k} <span class="chip">${o.id}</span></div>${body}</div><div class="acts"><button class="act" data-act="dup">Duplizieren</button><button class="act" data-act="del">Löschen</button></div>`}
-    _render(){if(!this.shadowRoot)return;let v=this._view(),mode=this._config.appearance?.mode||'neo2030',entityCount=Object.keys(this._hass?.states||{}).length;this.shadowRoot.innerHTML=`<style>${EDITOR_STYLES}</style><div class="de"><div class="dt"><div class="brand"><i><ha-icon icon="mdi:vector-square-edit"></ha-icon></i><span><b>GLT Flow Card Designer</b><small>Neo 2030 · Drag & Drop · ${esc(v?.name||'Anlage')}</small></span></div><div class="tools"><div class="seg"><button data-style="neo2030" class="${mode==='neo2030'?'on':''}">Neo 2030</button><button data-style="clean" class="${mode==='clean'?'on':''}">Clean</button><button data-style="classic_scada" class="${mode==='classic_scada'?'on':''}">Classic SCADA</button></div><button class="tb" data-act="undo" ${this._undoS.length?'':'disabled'}>↶ Undo</button><button class="tb" data-act="redo" ${this._redoS.length?'':'disabled'}>↷ Redo</button><button class="tb ${this._snap?'on':''}" data-act="snap">Snap</button><button class="tb ${this._grid?'on':''}" data-act="grid">Raster</button><button class="tb ${this._preview?'on':''}" data-act="preview">Vorschau</button><button class="tb ${this._yamlOpen?'on':''}" data-act="yaml">YAML</button></div></div><div class="work"><aside class="left"><div class="ph">Bausteine <span class="chip">${SYMBOL_LIBRARY.length}+ Symbole</span></div><div class="search"><input data-search placeholder=gltText("legacy.search_component") value="${esc(this._search)}"></div><div class="pal">${this._palette()}</div></aside><main class="center"><div class="vb"><div class="views">${this._config.views.map(x=>`<button class="tab ${x.id===this._viewId?'on':''}" data-view="${x.id}">${esc(x.name||x.id)}</button>`).join('')}<button class="mini" data-act="addview">＋</button></div><div class="tools"><span class="entity-stat">${entityCount?`${entityCount} HA-Entities verfügbar`:gltText("legacy.loading_entities")}</span><button class="mini" data-act="zout">−</button><button class="mini" data-act="fit">Fit</button><button class="mini" data-act="zin">＋</button></div></div><div class="stage" data-stage>${this._canvas()}</div></main><aside class="right"><div class="ph">Eigenschaften <span class="chip">${this._sel?this._sel.k:'Ansicht'}</span></div><div class="insp">${this._insp()}</div></aside></div>${this._yamlOpen?`<div class="drawer"><div class="drawer-head"><b>Lovelace YAML</b><div class="tools"><span class="notice">Direkt in eine manuelle Dashboard-Karte kopierbar</span><button class="act" data-act="copyyaml">${this._copied?'Kopiert ✓':'YAML kopieren'}</button></div></div><pre class="yaml">${esc(configToYaml(this._config))}</pre></div>`:''}<div class="bottom"><span>Änderungen werden direkt in die Kartenkonfiguration übernommen · Entity-Auswahl aus Home Assistant</span><span>${Math.round(this._zoom*100)} %</span></div></div>`;this._bind();requestAnimationFrame(()=>{this._wireEntityPickers();this._live();this._wirePreview()})}
+    _render(){if(!this.shadowRoot)return;let v=this._view(),mode=this._config.appearance?.mode||'neo2030',entityCount=Object.keys(this._hass?.states||{}).length;this.shadowRoot.innerHTML=`<style>${EDITOR_STYLES}</style><div class="de"><div class="dt"><div class="brand"><i><ha-icon icon="mdi:vector-square-edit"></ha-icon></i><span><b>GLT Flow Card Designer</b><small>Neo 2030 · Drag & Drop · ${esc(v?.name||'Anlage')}</small></span></div><div class="tools"><div class="seg"><button data-style="neo2030" class="${mode==='neo2030'?'on':''}">Neo 2030</button><button data-style="clean" class="${mode==='clean'?'on':''}">Clean</button><button data-style="classic_scada" class="${mode==='classic_scada'?'on':''}">Classic SCADA</button></div><button class="tb" data-act="undo" ${this._undoS.length?'':'disabled'}>↶ Undo</button><button class="tb" data-act="redo" ${this._redoS.length?'':'disabled'}>↷ Redo</button><button class="tb ${this._snap?'on':''}" data-act="snap">Snap</button><button class="tb ${this._grid?'on':''}" data-act="grid">Raster</button><button class="tb ${this._preview?'on':''}" data-act="preview">Vorschau</button><button class="tb ${this._yamlOpen?'on':''}" data-act="yaml">YAML</button></div></div><div class="work"><aside class="left"><div class="ph">Bausteine <span class="chip">${SYMBOL_LIBRARY.length}+ Symbole</span></div><div class="search"><input data-search placeholder=gltText("legacy.search_component") value="${esc(this._search)}"></div><div class="pal">${this._palette()}</div></aside><main class="center"><div class="vb"><div class="views">${this._config.views.map(x=>`<button class="tab ${x.id===this._viewId?'on':''}" data-view="${x.id}">${esc(x.name||x.id)}</button>`).join('')}<button class="mini" data-act="addview">＋</button></div><div class="tools"><span class="entity-stat">${entityCount?`${entityCount} HA-Entities verfügbar`:gltText("legacy.loading_entities")}</span><button class="mini" data-act="zout">−</button><button class="mini" data-act="fit">Fit</button><button class="mini" data-act="zin">＋</button></div></div><div class="stage" data-stage>${this._canvas()}</div></main><aside class="right"><div class="ph">Eigenschaften <span class="chip">${this._sel?this._sel.k:'Ansicht'}</span></div><div class="insp">${this._insp()}</div></aside></div>${this._yamlOpen?`<div class="drawer"><div class="drawer-head"><b>Lovelace YAML</b><div class="tools"><span class="notice">Direkt in eine manuelle Dashboard-Karte kopierbar</span><button class="act" data-act="copyyaml">${this._copied?'Kopiert ✓':'YAML kopieren'}</button><button class="act" data-act="downloadyaml">${gltText("legacy.download_yaml")}</button></div></div><pre class="yaml">${esc(configToYaml(this._config))}</pre></div>`:''}<div class="bottom"><span>Änderungen werden direkt in die Kartenkonfiguration übernommen · Entity-Auswahl aus Home Assistant · <a href="https://github.com/sponsors/Xerolux" target="_blank" rel="noopener" style="color:inherit">♥ ${gltText("legacy.sponsor")}</a></span><span>${Math.round(this._zoom*100)} %</span></div></div>`;this._bind();requestAnimationFrame(()=>{this._wireEntityPickers();this._live();this._wirePreview()})}
     _wirePreview(){let p=this.shadowRoot?.querySelector('[data-preview]');if(p){p.hass=this._hass;p.setConfig?.(deepClone(this._config))}}
     _wireEntityPickers(){this.shadowRoot?.querySelectorAll('[data-ep]').forEach(p=>{p.hass=this._hass;p.value=p.dataset.v||'';p.allowCustomEntity=true;let d=(p.dataset.domains||'').split(',').filter(Boolean);if(d.length)p.includeDomains=d;if(!p.dataset.bound){p.dataset.bound='1';p.addEventListener('value-changed',e=>{let value=e.detail?.value??'';this._entityEdit(p.dataset.e,value)})}})}
     _entityEdit(path,value){this._remember();if(path.startsWith('@'))return;let o=this._obj();if(!o)return;this._set(o,path,value);this._emit();this._render()}
     _bind(){let r=this.shadowRoot,st=r.querySelector('[data-stage]'),c=r.querySelector('[data-can]');r.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>this._act(b.dataset.act));r.querySelectorAll('[data-style]').forEach(b=>b.onclick=()=>{this._remember();this._config.appearance={...(this._config.appearance||{}),mode:b.dataset.style};this._emit();this._render()});r.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{this._viewId=b.dataset.view;this._sel=null;this._render()});let search=r.querySelector('[data-search]');if(search)search.oninput=e=>{this._search=e.target.value;this._render()};r.querySelectorAll('[data-e]').forEach(i=>i.onchange=()=>this._edit(i));r.querySelectorAll('[data-pk]').forEach(i=>i.ondragstart=e=>e.dataTransfer.setData('text/glt',JSON.stringify({k:i.dataset.pk,t:i.dataset.pt,s:i.dataset.ps||''})));if(c&&!this._preview){st.ondragover=e=>{e.preventDefault();st.classList.add('over')};st.ondragleave=()=>st.classList.remove('over');st.ondrop=e=>this._drop(e,c);r.querySelectorAll('[data-k="equipment"],[data-k="datapoint"]').forEach(n=>{n.onpointerdown=e=>{if(e.target.closest('[data-rs]'))return;e.stopPropagation();this._start(e,n.dataset.k,n.dataset.id,'move')};n.onclick=e=>{e.stopPropagation();this._sel={k:n.dataset.k,id:n.dataset.id};this._render()}});r.querySelectorAll('[data-rs]').forEach(h=>h.onpointerdown=e=>{e.stopPropagation();let n=h.closest('[data-k]');this._start(e,'equipment',n.dataset.id,'resize')});r.querySelectorAll('[data-k="path"]').forEach(p=>p.onclick=e=>{e.stopPropagation();this._sel={k:'path',id:p.dataset.id};this._render()});r.querySelectorAll('[data-hi]').forEach(h=>h.onpointerdown=e=>{e.stopPropagation();this._start(e,'path',h.dataset.id,'point',+h.dataset.hi)})}}
-    _act(a){if(a==='undo')return this._undo();if(a==='redo')return this._redo();if(a==='snap'){this._snap=!this._snap;return this._render()}if(a==='grid'){this._grid=!this._grid;this._config.canvas.grid=this._grid;this._emit();return this._render()}if(a==='preview'){this._preview=!this._preview;return this._render()}if(a==='yaml'){this._yamlOpen=!this._yamlOpen;this._copied=false;return this._render()}if(a==='copyyaml'){navigator.clipboard?.writeText(configToYaml(this._config));this._copied=true;return this._render()}if(a==='zin'){this._zoom=clamp(this._zoom*1.15,.25,2);return this._render()}if(a==='zout'){this._zoom=clamp(this._zoom/1.15,.25,2);return this._render()}if(a==='fit'){let s=this.shadowRoot.querySelector('[data-stage]');if(!s)return;this._zoom=clamp(Math.min((s.clientWidth-40)/this._config.canvas.width,(s.clientHeight-40)/this._config.canvas.height),.25,1.4);return this._render()}if(a==='addview'){this._remember();let n=1,id=`view_${n}`,ids=new Set(this._config.views.map(v=>v.id));while(ids.has(id))id=`view_${++n}`;this._config.views.push({id,name:'Anlagenbild',kind:'image',background:''});this._viewId=id;this._emit();return this._render()}if(a==='del')return this._del();if(a==='dup')return this._dup();if(a==='addpoint'){let o=this._obj(),p=Array.isArray(o?.points)?o.points:null;if(p?.length){this._remember();let z=p.at(-1);p.push([this._sv(z[0]+120),z[1]]);this._emit();this._render()}}}
+    _act(a){if(a==='undo')return this._undo();if(a==='redo')return this._redo();if(a==='snap'){this._snap=!this._snap;return this._render()}if(a==='grid'){this._grid=!this._grid;this._config.canvas.grid=this._grid;this._emit();return this._render()}if(a==='preview'){this._preview=!this._preview;return this._render()}if(a==='yaml'){this._yamlOpen=!this._yamlOpen;this._copied=false;return this._render()}if(a==='copyyaml'){navigator.clipboard?.writeText(configToYaml(this._config));this._copied=true;return this._render()}if(a==='downloadyaml'){const y=configToYaml(this._config);const blob=new Blob([y],{type:'application/yaml'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`${this._config.title||'glt-project'}.yaml`;link.click();URL.revokeObjectURL(link.href);return}if(a==='zin'){this._zoom=clamp(this._zoom*1.15,.25,2);return this._render()}if(a==='zout'){this._zoom=clamp(this._zoom/1.15,.25,2);return this._render()}if(a==='fit'){let s=this.shadowRoot.querySelector('[data-stage]');if(!s)return;this._zoom=clamp(Math.min((s.clientWidth-40)/this._config.canvas.width,(s.clientHeight-40)/this._config.canvas.height),.25,1.4);return this._render()}if(a==='addview'){this._remember();let n=1,id=`view_${n}`,ids=new Set(this._config.views.map(v=>v.id));while(ids.has(id))id=`view_${++n}`;this._config.views.push({id,name:'Anlagenbild',kind:'image',background:''});this._viewId=id;this._emit();return this._render()}if(a==='del')return this._del();if(a==='dup')return this._dup();if(a==='addpoint'){let o=this._obj(),p=Array.isArray(o?.points)?o.points:null;if(p?.length){this._remember();let z=p.at(-1);p.push([this._sv(z[0]+120),z[1]]);this._emit();this._render()}}}
     _drop(e,c){e.preventDefault();let d;try{d=JSON.parse(e.dataTransfer.getData('text/glt'))}catch{return}let q=c.getBoundingClientRect(),x=this._sv((e.clientX-q.left)/this._zoom),y=this._sv((e.clientY-q.top)/this._zoom);this._remember();if(d.k==='equipment'){let sd=symbolById(d.s,d.t),id=this._id(sd.type||d.t),small=['pump','fan','valve','damper','meter','sensor'].includes(sd.type);this._config.equipment.push({id,type:sd.type||d.t,symbol:sd.id,name:symbolLabel(sd,cardLanguage(this._hass))||d.t.replaceAll('_',' '),x:x-(small?70:110),y:y-50,width:small?140:220,height:small?100:135,fields:[]});this._sel={k:'equipment',id}}else if(d.k==='datapoint'){let id=this._id('dp');this._config.datapoints.push({id,kind:d.t,label:d.t==='temperature'?'Temperatur':d.t==='pressure'?'Druck':d.t==='flow'?'Volumenstrom':'Datenpunkt',entity:'',positions:{[this._viewId]:{x,y}}});this._sel={k:'datapoint',id}}else if(d.k==='path'){let id=this._id('path');this._config.paths.push({id,medium:d.t,width:8,points:[[x-150,y],[x,y],[x+150,y]]});this._sel={k:'path',id}}else{let id=this._id('kpi');this._config.kpis.push({id,name:'KPI',entity:''});this._sel={k:'kpi',id}}this._emit();this._render()}
     _start(e,k,id,m,hi=null){let o=(k==='equipment'?this._config.equipment:k==='datapoint'?this._config.datapoints:this._config.paths).find(x=>x.id===id);if(!o)return;this._remember();this._sel={k,id};let p=k==='datapoint'?(o.positions?.[this._viewId]||{x:o.x||0,y:o.y||0}):o,pts=k==='path'?o.points:null;this._drag={k,id,m,hi,sx:e.clientX,sy:e.clientY,x:+p.x||0,y:+p.y||0,w:+(p.width||o.width||220),h:+(p.height||o.height||130),pt:hi!==null&&pts?[...pts[hi]]:null};let mv=v=>this._move(v),up=()=>{window.removeEventListener('pointermove',mv);this._drag=null;this._emit();this._render()};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up,{once:true})}
     _move(e){let d=this._drag;if(!d)return;let dx=(e.clientX-d.sx)/this._zoom,dy=(e.clientY-d.sy)/this._zoom;if(d.k==='equipment'){let o=this._config.equipment.find(x=>x.id===d.id);if(d.m==='move'){o.x=this._sv(d.x+dx);o.y=this._sv(d.y+dy)}else{o.width=Math.max(90,this._sv(d.w+dx));o.height=Math.max(70,this._sv(d.h+dy))}}else if(d.k==='datapoint'){let o=this._config.datapoints.find(x=>x.id===d.id);o.positions=o.positions||{};o.positions[this._viewId]={x:this._sv(d.x+dx),y:this._sv(d.y+dy)}}else{let o=this._config.paths.find(x=>x.id===d.id);if(o?.points?.[d.hi])o.points[d.hi]=[this._sv(d.pt[0]+dx),this._sv(d.pt[1]+dy)]}this._render()}
@@ -6003,10 +6035,19 @@ function gltText(key) {
     "legacy.confirm_delete_project": "Projekt wirklich löschen?",
     "legacy.controls_via_server": "Bedienung läuft über die vom Server zusammengestellte Objektbedienung.",
     "legacy.custom_image_optional": "Eigenes Bild / SVG (optional)",
+    "legacy.download_yaml": "YAML herunterladen",
+    "legacy.entities_export": "Entities aus Home Assistant exportieren",
+    "legacy.entities_hint": "Ohne Home-Assistant-Verbindung: in HA exportieren, hier importieren — Entity-Felder bieten danach Vorschläge.",
+    "legacy.entities_import": "Entities importieren (.json)",
+    "legacy.entities_imported": "Importierte Entities",
+    "legacy.entities_invalid": "Datei nicht lesbar — erwartete Form: glt-flow-card-entities JSON.",
+    "legacy.entities_offline": "Kein Home Assistant verbunden — der Import nutzt die gespeicherte Liste.",
+    "legacy.entities_rejected": "abgelehnt",
     "legacy.entity": "Entität",
     "legacy.entity_missing": "Entity fehlt",
     "legacy.fault": "Störung",
     "legacy.fit_view": "Ansicht einpassen",
+    "legacy.fullscreen": "Vollbild",
     "legacy.height": "Höhe",
     "legacy.loading_entities": "HA-Entities werden geladen",
     "legacy.lock_released": "Lock gelöst.",
@@ -6032,6 +6073,7 @@ function gltText(key) {
     "legacy.nav_cad": "CAD",
     "legacy.nav_diagnostics": "Diagnose",
     "legacy.nav_energy": "Energie",
+    "legacy.nav_entities": "Entities",
     "legacy.nav_maintenance": "Wartung",
     "legacy.nav_operations": "Betrieb",
     "legacy.nav_project": "Projekt v1",
@@ -6039,6 +6081,7 @@ function gltText(key) {
     "legacy.nav_semantics": "Semantik",
     "legacy.nav_simulation": "Simulation",
     "legacy.nav_symbols": "Symbole 300+",
+    "legacy.nav_templates": "Vorlagen",
     "legacy.nav_trends": "Trends",
     "legacy.new_project_name": "Name für das neue Projekt",
     "legacy.no_date": "Kein Datum",
@@ -6056,15 +6099,20 @@ function gltText(key) {
     "legacy.prompt_report_name": "Reportname",
     "legacy.prompt_task": "Aufgabe",
     "legacy.prompt_template_name": "Vorlagenname",
+    "legacy.redo": "Wiederherstellen",
     "legacy.report_designer": "Report Designer",
     "legacy.report_format_hint": "Report: 'csv' für CSV oder 'pdf' für Druck/PDF",
     "legacy.running": "Läuft",
+    "legacy.save_as": "Speichern unter",
     "legacy.schedule_hint": "Automatik (z.B. 1 07:00) oder leer",
     "legacy.search_component": "Bauteil oder Symbol suchen…",
     "legacy.select_equipment_first": "Zuerst ein Anlagenobjekt auswählen.",
     "legacy.select_something_first": "Zuerst ein Bauteil, Datenpunkt, Pfad oder KPI auswählen.",
     "legacy.select_two_first": "Mindestens zwei Elemente per Strg/Shift auswählen.",
     "legacy.simulated_value": "Simulierter Wert",
+    "legacy.sponsor": "Sponsor",
+    "legacy.sponsor_free": "Alles kostenlos — Sponsoring ist freiwillig.",
+    "legacy.sponsor_hint": "alles kostenlos · ♥ Sponsoring freiwillig",
     "legacy.state_entity": "Status-Entität",
     "legacy.style_clean_light": "Clean / Modern Light",
     "legacy.subplant_saved": "Unteranlage als Vorlage gespeichert.",
@@ -6122,6 +6170,12 @@ function gltText(key) {
     "legacy.symbol_valve_2way": "2-Wege-Ventil",
     "legacy.symbol_valve_3way": "3-Wege-Ventil",
     "legacy.symbol_wallbox": "Wallbox",
+    "legacy.templates_factory": "Werks-Vorlagen",
+    "legacy.templates_hint": "Laden ersetzt die aktuelle Konfiguration — Undo steht bereit. Entities bleiben leer und werden anschließend zugewiesen.",
+    "legacy.templates_load": "Laden",
+    "legacy.templates_none": "Noch keine eigenen Vorlagen gespeichert.",
+    "legacy.templates_own": "Eigene Vorlagen",
+    "legacy.undo": "Rückgängig",
     "legacy.value1_entity": "Wert 1 Entität",
     "legacy.value1_label": "Wert 1 Label",
     "legacy.value2_entity": "Wert 2 Entität",
@@ -6131,6 +6185,7 @@ function gltText(key) {
     "legacy.x_in_view": "X in Ansicht",
     "legacy.y_in_view": "Y in Ansicht",
     "legacy.zoom_in": "Vergrößern",
+    "legacy.zoom_out": "Verkleinern",
     "operations.affordance_audit": "Vertrauenswürdiges Protokoll öffnen",
     "operations.affordance_cancel": "Abbrechen",
     "operations.affordance_dismiss": "Schließen",
@@ -6504,12 +6559,56 @@ function gltText(key) {
     "symbols.style_operations_light": "Operations Light",
     "symbols.style_pid_dark": "P&ID Dark",
     "symbols.style_standard_2d": "Standard 2D",
+    "symbols.group_waermepumpen": "Wärmepumpen",
+    "symbols.group_kessel_erzeuger": "Kessel & Erzeuger",
+    "symbols.group_puffer_speicher": "Puffer & Speicher",
+    "symbols.group_heizflaechen": "Heizflächen",
+    "symbols.group_solar": "Solar",
+    "symbols.group_stationen": "Stationen",
+    "symbols.group_pumpen": "Pumpen",
+    "symbols.group_ventile": "Ventile",
+    "symbols.group_waermetauscher": "Wärmetauscher",
+    "symbols.group_verteilung": "Verteilung",
+    "symbols.group_schmutzfaenger": "Schmutzfänger",
+    "symbols.group_ausdehnung": "Ausdehnung",
+    "symbols.group_geraete": "Geräte",
+    "symbols.group_ventilatoren": "Ventilatoren",
+    "symbols.group_klappen_regelung": "Klappen & Regelung",
+    "symbols.group_filter": "Filter",
+    "symbols.group_register": "Register",
+    "symbols.group_waermerueckgewinnung": "Wärmerückgewinnung",
+    "symbols.group_befeuchtung": "Befeuchtung",
+    "symbols.group_schalldaempfer": "Schalldämpfer",
+    "symbols.group_kaeltemaschinen": "Kältemaschinen",
+    "symbols.group_komponenten": "Komponenten",
+    "symbols.group_kuehler": "Kühler",
+    "symbols.group_speicher": "Speicher",
+    "symbols.group_sole": "Sole",
+    "symbols.group_photovoltaik": "Photovoltaik",
+    "symbols.group_umwandlung": "Umwandlung",
+    "symbols.group_netz_zaehler": "Netz & Zähler",
+    "symbols.group_laden": "Laden",
+    "symbols.group_erzeuger": "Erzeuger",
+    "symbols.group_temperatur": "Temperatur",
+    "symbols.group_druck": "Druck",
+    "symbols.group_durchfluss": "Durchfluss",
+    "symbols.group_feuchte": "Feuchte",
+    "symbols.group_luftqualitaet": "Luftqualität",
+    "symbols.group_raum": "Raum",
+    "symbols.group_versorgung": "Versorgung",
+    "symbols.group_schutz_schaltung": "Schutz & Schaltung",
+    "symbols.group_antriebe": "Antriebe",
+    "symbols.group_meldetechnik": "Meldetechnik",
+    "symbols.group_loeschanlagen": "Löschanlagen",
+    "symbols.group_abschottung": "Abschottung",
     "symbols.symbol_ahu": "RLT-Zentrale",
     "symbols.symbol_air_filter": "Luftfilter",
     "symbols.symbol_aspirating_detector": "Ansaugrauchmelder",
+    "symbols.symbol_backflow_preventer": "Rückflussverhinderer",
     "symbols.symbol_balancing_valve": "Strangregulierventil",
     "symbols.symbol_battery": "Batteriespeicher",
     "symbols.symbol_boiler": "Heizkessel",
+    "symbols.symbol_brine_station": "Solestation",
     "symbols.symbol_buffer_layered": "Schichtspeicher",
     "symbols.symbol_burner": "Brenner",
     "symbols.symbol_busbar": "Sammelschiene",
@@ -6517,14 +6616,21 @@ function gltText(key) {
     "symbols.symbol_chiller": "Kältemaschine",
     "symbols.symbol_circuit_breaker": "Leitungsschutzschalter",
     "symbols.symbol_co2_sensor": "CO₂-Sensor",
+    "symbols.symbol_co2_voc_sensor": "CO₂-VOC-Sensor",
+    "symbols.symbol_cogen_unit": "BHKW",
+    "symbols.symbol_compact_ahu": "Kompakt-RLT",
     "symbols.symbol_compressor": "Verdichter",
+    "symbols.symbol_condensing_unit": "Kondensatorkältesatz",
     "symbols.symbol_cooling_buffer": "Kältepuffer",
     "symbols.symbol_cooling_coil": "Kühlregister",
     "symbols.symbol_cooling_tower": "Kühlturm",
     "symbols.symbol_damper": "Luftklappe",
+    "symbols.symbol_dhw_freshwater_station": "Frischwasserstation",
     "symbols.symbol_dhw_tank": "Warmwasserspeicher",
     "symbols.symbol_dirt_separator": "Schlammabscheider",
     "symbols.symbol_dp_sensor": "Differenzdrucksensor",
+    "symbols.symbol_dry_cooler": "Trockenkühler",
+    "symbols.symbol_ec_fan": "EC-Ventilator",
     "symbols.symbol_expansion_vessel": "Ausdehnungsgefäß",
     "symbols.symbol_extinguishing_system": "Löschanlage",
     "symbols.symbol_fan_extract": "Abluftventilator",
@@ -6534,20 +6640,29 @@ function gltText(key) {
     "symbols.symbol_fire_barrier": "Brandabschottung",
     "symbols.symbol_fire_damper": "Brandschutzklappe",
     "symbols.symbol_fire_door": "Brandschutztür",
+    "symbols.symbol_flat_collector": "Flachkollektor",
+    "symbols.symbol_flexible_compensator": "Kompensator",
     "symbols.symbol_flow_sensor": "Volumenstromsensor",
+    "symbols.symbol_flow_switch": "Strömungswächter",
+    "symbols.symbol_frequency_drive": "Frequenzumrichter",
     "symbols.symbol_frost_thermostat": "Frostschutzthermostat",
+    "symbols.symbol_fuel_cell": "Brennstoffzelle",
     "symbols.symbol_generator_set": "Netzersatzanlage",
     "symbols.symbol_grid": "Stromnetz",
     "symbols.symbol_heat_detector": "Wärmemelder",
     "symbols.symbol_heat_exchanger_plate": "Plattenwärmetauscher",
+    "symbols.symbol_heat_meter": "Wärmemengenzähler",
     "symbols.symbol_heat_pump_compact": "Wärmepumpe Kompakt",
+    "symbols.symbol_heat_pump_duo": "Wärmepumpe Duo",
     "symbols.symbol_heat_pump_neo": "Wärmepumpe Neo",
     "symbols.symbol_heat_recovery_plate": "Platten-WRG",
     "symbols.symbol_heat_recovery_rotary": "Rotations-WRG",
     "symbols.symbol_heating_coil": "Heizregister",
     "symbols.symbol_humidifier": "Befeuchter",
     "symbols.symbol_humidity_sensor": "Feuchtefühler",
+    "symbols.symbol_hybrid_inverter": "Hybrid-Wechselrichter",
     "symbols.symbol_hydraulic_separator": "Hydraulische Weiche",
+    "symbols.symbol_ice_storage": "Eisspeicher",
     "symbols.symbol_immersion_heater": "Heizstab",
     "symbols.symbol_inverter": "Wechselrichter",
     "symbols.symbol_isolator_switch": "Lasttrennschalter",
@@ -6555,8 +6670,10 @@ function gltText(key) {
     "symbols.symbol_manual_call_point": "Handfeuermelder",
     "symbols.symbol_meter": "Energiezähler",
     "symbols.symbol_mixing_valve": "3-Wege-Mischer",
+    "symbols.symbol_pressure_reducing_valve": "Druckminderer",
     "symbols.symbol_pressure_sensor": "Drucksensor",
     "symbols.symbol_pump_dhw": "Zirkulationspumpe",
+    "symbols.symbol_pump_group": "Pumpengruppe",
     "symbols.symbol_pump_inline": "Pumpe Inline",
     "symbols.symbol_pump_twin": "Doppelpumpe",
     "symbols.symbol_pump_variable": "Pumpe FU",
@@ -6568,8 +6685,10 @@ function gltText(key) {
     "symbols.symbol_shutoff_valve": "Absperrventil",
     "symbols.symbol_silencer": "Schalldämpfer",
     "symbols.symbol_smoke_detector": "Rauchmelder",
+    "symbols.symbol_solar_station": "Solarstation",
     "symbols.symbol_sprinkler_head": "Sprinklerkopf",
     "symbols.symbol_sprinkler_valve_station": "Nassalarmventil",
+    "symbols.symbol_steam_humidifier": "Dampfluftbefeuchter",
     "symbols.symbol_sub_distribution_board": "Unterverteilung",
     "symbols.symbol_surge_arrester": "Überspannungsableiter",
     "symbols.symbol_switchgear": "Niederspannungsverteilung",
@@ -6577,8 +6696,10 @@ function gltText(key) {
     "symbols.symbol_transformer": "Transformator",
     "symbols.symbol_underfloor": "Fußbodenheizung",
     "symbols.symbol_ups": "USV-Anlage",
+    "symbols.symbol_vacuum_tube_collector": "Vakuumröhrenkollektor",
     "symbols.symbol_valve_2way": "2-Wege-Ventil",
     "symbols.symbol_valve_3way": "3-Wege-Ventil",
+    "symbols.symbol_vav_box": "VAV-Regler",
     "symbols.symbol_wallbox": "Wallbox",
     "trends.coverage": "Abdeckung {percent} %",
     "trends.coverage_gaps": "Abdeckung {percent} % · {gaps} {gapWord}",
@@ -6787,10 +6908,19 @@ function gltText(key) {
     "legacy.confirm_delete_project": "Really delete this project?",
     "legacy.controls_via_server": "Operation runs through the object controls the server assembles.",
     "legacy.custom_image_optional": "Custom image / SVG (optional)",
+    "legacy.download_yaml": "Download YAML",
+    "legacy.entities_export": "Export entities from Home Assistant",
+    "legacy.entities_hint": "Without a Home Assistant connection: export in HA, import here — entity fields then offer suggestions.",
+    "legacy.entities_import": "Import entities (.json)",
+    "legacy.entities_imported": "Imported entities",
+    "legacy.entities_invalid": "File unreadable — expected shape: glt-flow-card-entities JSON.",
+    "legacy.entities_offline": "No Home Assistant connected — the import uses the stored list.",
+    "legacy.entities_rejected": "rejected",
     "legacy.entity": "Entity",
     "legacy.entity_missing": "Entity missing",
     "legacy.fault": "Fault",
     "legacy.fit_view": "Fit view",
+    "legacy.fullscreen": "Fullscreen",
     "legacy.height": "Height",
     "legacy.loading_entities": "Loading Home Assistant entities",
     "legacy.lock_released": "Lock released.",
@@ -6816,6 +6946,7 @@ function gltText(key) {
     "legacy.nav_cad": "CAD",
     "legacy.nav_diagnostics": "Diagnostics",
     "legacy.nav_energy": "Energy",
+    "legacy.nav_entities": "Entities",
     "legacy.nav_maintenance": "Maintenance",
     "legacy.nav_operations": "Operations",
     "legacy.nav_project": "Project v1",
@@ -6823,6 +6954,7 @@ function gltText(key) {
     "legacy.nav_semantics": "Semantics",
     "legacy.nav_simulation": "Simulation",
     "legacy.nav_symbols": "Symbols 300+",
+    "legacy.nav_templates": "Templates",
     "legacy.nav_trends": "Trends",
     "legacy.new_project_name": "Name for the new project",
     "legacy.no_date": "No date",
@@ -6840,15 +6972,20 @@ function gltText(key) {
     "legacy.prompt_report_name": "Report name",
     "legacy.prompt_task": "Task",
     "legacy.prompt_template_name": "Template name",
+    "legacy.redo": "Redo",
     "legacy.report_designer": "Report designer",
     "legacy.report_format_hint": "Report: 'csv' for CSV or 'pdf' for print/PDF",
     "legacy.running": "Running",
+    "legacy.save_as": "Save as",
     "legacy.schedule_hint": "Automatic (e.g. 1 07:00) or empty",
     "legacy.search_component": "Search component or symbol…",
     "legacy.select_equipment_first": "Select a plant object first.",
     "legacy.select_something_first": "Select a component, data point, path or KPI first.",
     "legacy.select_two_first": "Select at least two elements with Ctrl/Shift.",
     "legacy.simulated_value": "Simulated value",
+    "legacy.sponsor": "Sponsor",
+    "legacy.sponsor_free": "Everything is free — sponsoring is voluntary.",
+    "legacy.sponsor_hint": "everything is free · ♥ sponsoring is voluntary",
     "legacy.state_entity": "State entity",
     "legacy.style_clean_light": "Clean / Modern Light",
     "legacy.subplant_saved": "Sub-plant saved as a template.",
@@ -6906,6 +7043,12 @@ function gltText(key) {
     "legacy.symbol_valve_2way": "Two-way valve",
     "legacy.symbol_valve_3way": "Three-way valve",
     "legacy.symbol_wallbox": "Wallbox",
+    "legacy.templates_factory": "Factory templates",
+    "legacy.templates_hint": "Loading replaces the current configuration — undo is available. Entities stay empty and are assigned afterwards.",
+    "legacy.templates_load": "Load",
+    "legacy.templates_none": "No own templates saved yet.",
+    "legacy.templates_own": "Your templates",
+    "legacy.undo": "Undo",
     "legacy.value1_entity": "Value 1 entity",
     "legacy.value1_label": "Value 1 label",
     "legacy.value2_entity": "Value 2 entity",
@@ -6915,6 +7058,7 @@ function gltText(key) {
     "legacy.x_in_view": "X in view",
     "legacy.y_in_view": "Y in view",
     "legacy.zoom_in": "Zoom in",
+    "legacy.zoom_out": "Zoom out",
     "operations.affordance_audit": "Open trusted audit",
     "operations.affordance_cancel": "Cancel",
     "operations.affordance_dismiss": "Dismiss",
@@ -7288,12 +7432,56 @@ function gltText(key) {
     "symbols.style_operations_light": "Operations Light",
     "symbols.style_pid_dark": "P&ID Dark",
     "symbols.style_standard_2d": "Standard 2D",
+    "symbols.group_waermepumpen": "Heat pumps",
+    "symbols.group_kessel_erzeuger": "Boilers & generators",
+    "symbols.group_puffer_speicher": "Buffer storage",
+    "symbols.group_heizflaechen": "Heat emitters",
+    "symbols.group_solar": "Solar",
+    "symbols.group_stationen": "Stations",
+    "symbols.group_pumpen": "Pumps",
+    "symbols.group_ventile": "Valves",
+    "symbols.group_waermetauscher": "Heat exchangers",
+    "symbols.group_verteilung": "Distribution",
+    "symbols.group_schmutzfaenger": "Strainers",
+    "symbols.group_ausdehnung": "Expansion",
+    "symbols.group_geraete": "AHU units",
+    "symbols.group_ventilatoren": "Fans",
+    "symbols.group_klappen_regelung": "Dampers & control",
+    "symbols.group_filter": "Filters",
+    "symbols.group_register": "Coils",
+    "symbols.group_waermerueckgewinnung": "Heat recovery",
+    "symbols.group_befeuchtung": "Humidification",
+    "symbols.group_schalldaempfer": "Silencers",
+    "symbols.group_kaeltemaschinen": "Chillers",
+    "symbols.group_komponenten": "Components",
+    "symbols.group_kuehler": "Heat rejectors",
+    "symbols.group_speicher": "Storage",
+    "symbols.group_sole": "Brine",
+    "symbols.group_photovoltaik": "Photovoltaics",
+    "symbols.group_umwandlung": "Conversion",
+    "symbols.group_netz_zaehler": "Grid & metering",
+    "symbols.group_laden": "Charging",
+    "symbols.group_erzeuger": "Generators",
+    "symbols.group_temperatur": "Temperature",
+    "symbols.group_druck": "Pressure",
+    "symbols.group_durchfluss": "Flow",
+    "symbols.group_feuchte": "Humidity",
+    "symbols.group_luftqualitaet": "Air quality",
+    "symbols.group_raum": "Room",
+    "symbols.group_versorgung": "Power supply",
+    "symbols.group_schutz_schaltung": "Protection & switching",
+    "symbols.group_antriebe": "Drives",
+    "symbols.group_meldetechnik": "Fire detection",
+    "symbols.group_loeschanlagen": "Suppression",
+    "symbols.group_abschottung": "Fire compartment",
     "symbols.symbol_ahu": "Air handling unit",
     "symbols.symbol_air_filter": "Air filter",
     "symbols.symbol_aspirating_detector": "Aspirating smoke detector",
+    "symbols.symbol_backflow_preventer": "Backflow preventer",
     "symbols.symbol_balancing_valve": "Balancing valve",
     "symbols.symbol_battery": "Battery storage",
     "symbols.symbol_boiler": "Boiler",
+    "symbols.symbol_brine_station": "Brine station",
     "symbols.symbol_buffer_layered": "Stratified buffer tank",
     "symbols.symbol_burner": "Burner",
     "symbols.symbol_busbar": "Busbar",
@@ -7301,14 +7489,21 @@ function gltText(key) {
     "symbols.symbol_chiller": "Chiller",
     "symbols.symbol_circuit_breaker": "Circuit breaker",
     "symbols.symbol_co2_sensor": "CO₂ sensor",
+    "symbols.symbol_co2_voc_sensor": "CO₂-VOC sensor",
+    "symbols.symbol_cogen_unit": "CHP unit",
+    "symbols.symbol_compact_ahu": "Compact AHU",
     "symbols.symbol_compressor": "Compressor",
+    "symbols.symbol_condensing_unit": "Condensing unit",
     "symbols.symbol_cooling_buffer": "Chilled water buffer",
     "symbols.symbol_cooling_coil": "Cooling coil",
     "symbols.symbol_cooling_tower": "Cooling tower",
     "symbols.symbol_damper": "Damper",
+    "symbols.symbol_dhw_freshwater_station": "Freshwater station",
     "symbols.symbol_dhw_tank": "Domestic hot water tank",
     "symbols.symbol_dirt_separator": "Dirt separator",
     "symbols.symbol_dp_sensor": "Differential pressure sensor",
+    "symbols.symbol_dry_cooler": "Dry cooler",
+    "symbols.symbol_ec_fan": "EC fan",
     "symbols.symbol_expansion_vessel": "Expansion vessel",
     "symbols.symbol_extinguishing_system": "Extinguishing system",
     "symbols.symbol_fan_extract": "Extract air fan",
@@ -7318,20 +7513,29 @@ function gltText(key) {
     "symbols.symbol_fire_barrier": "Fire barrier",
     "symbols.symbol_fire_damper": "Fire damper",
     "symbols.symbol_fire_door": "Fire door",
+    "symbols.symbol_flat_collector": "Flat plate collector",
+    "symbols.symbol_flexible_compensator": "Expansion compensator",
     "symbols.symbol_flow_sensor": "Flow sensor",
+    "symbols.symbol_flow_switch": "Flow switch",
+    "symbols.symbol_frequency_drive": "Frequency drive",
     "symbols.symbol_frost_thermostat": "Frost thermostat",
+    "symbols.symbol_fuel_cell": "Fuel cell",
     "symbols.symbol_generator_set": "Standby generator",
     "symbols.symbol_grid": "Grid",
     "symbols.symbol_heat_detector": "Heat detector",
     "symbols.symbol_heat_exchanger_plate": "Plate heat exchanger",
+    "symbols.symbol_heat_meter": "Heat meter",
     "symbols.symbol_heat_pump_compact": "Heat pump Compact",
+    "symbols.symbol_heat_pump_duo": "Dual heat pump",
     "symbols.symbol_heat_pump_neo": "Heat pump Neo",
     "symbols.symbol_heat_recovery_plate": "Plate heat recovery",
     "symbols.symbol_heat_recovery_rotary": "Rotary heat recovery",
     "symbols.symbol_heating_coil": "Heating coil",
     "symbols.symbol_humidifier": "Humidifier",
     "symbols.symbol_humidity_sensor": "Humidity sensor",
+    "symbols.symbol_hybrid_inverter": "Hybrid inverter",
     "symbols.symbol_hydraulic_separator": "Hydraulic separator",
+    "symbols.symbol_ice_storage": "Ice storage",
     "symbols.symbol_immersion_heater": "Immersion heater",
     "symbols.symbol_inverter": "Inverter",
     "symbols.symbol_isolator_switch": "Isolator switch",
@@ -7339,8 +7543,10 @@ function gltText(key) {
     "symbols.symbol_manual_call_point": "Manual call point",
     "symbols.symbol_meter": "Energy meter",
     "symbols.symbol_mixing_valve": "Three-way mixing valve",
+    "symbols.symbol_pressure_reducing_valve": "Pressure reducing valve",
     "symbols.symbol_pressure_sensor": "Pressure sensor",
     "symbols.symbol_pump_dhw": "Circulation pump",
+    "symbols.symbol_pump_group": "Pump group",
     "symbols.symbol_pump_inline": "Inline pump",
     "symbols.symbol_pump_twin": "Twin pump",
     "symbols.symbol_pump_variable": "Variable-speed pump",
@@ -7352,8 +7558,10 @@ function gltText(key) {
     "symbols.symbol_shutoff_valve": "Shut-off valve",
     "symbols.symbol_silencer": "Silencer",
     "symbols.symbol_smoke_detector": "Smoke detector",
+    "symbols.symbol_solar_station": "Solar station",
     "symbols.symbol_sprinkler_head": "Sprinkler head",
     "symbols.symbol_sprinkler_valve_station": "Wet alarm valve station",
+    "symbols.symbol_steam_humidifier": "Steam humidifier",
     "symbols.symbol_sub_distribution_board": "Sub-distribution board",
     "symbols.symbol_surge_arrester": "Surge arrester",
     "symbols.symbol_switchgear": "Low-voltage switchgear",
@@ -7361,8 +7569,10 @@ function gltText(key) {
     "symbols.symbol_transformer": "Transformer",
     "symbols.symbol_underfloor": "Underfloor heating",
     "symbols.symbol_ups": "UPS",
+    "symbols.symbol_vacuum_tube_collector": "Evacuated tube collector",
     "symbols.symbol_valve_2way": "Two-way valve",
     "symbols.symbol_valve_3way": "Three-way valve",
+    "symbols.symbol_vav_box": "VAV box",
     "symbols.symbol_wallbox": "Wallbox",
     "trends.coverage": "Coverage {percent} %",
     "trends.coverage_gaps": "Coverage {percent} % · {gaps} {gapWord}",
@@ -7573,83 +7783,107 @@ function gltText(key) {
     P("generic", pair("symbols.profile_generic"), "Allgemein", "generic", [port("left", "neutral", "left"), port("right", "neutral", "right")], [slot("value", pair("symbols.slot_value"), ["sensor"])])
   ];
   var BASE_SYMBOLS = [
-    ["heat_pump_neo", pair("symbols.symbol_heat_pump_neo"), "Heizung", "heat_pump"],
-    ["heat_pump_compact", pair("symbols.symbol_heat_pump_compact"), "Heizung", "heat_pump"],
-    ["boiler", pair("symbols.symbol_boiler"), "Heizung", "boiler"],
-    ["burner", pair("symbols.symbol_burner"), "Heizung", "generic"],
-    ["immersion_heater", pair("symbols.symbol_immersion_heater"), "Heizung", "generic"],
-    ["buffer_layered", pair("symbols.symbol_buffer_layered"), "Heizung", "tank"],
-    ["dhw_tank", pair("symbols.symbol_dhw_tank"), "Heizung", "dhw_tank"],
-    ["underfloor", pair("symbols.symbol_underfloor"), "Heizung", "room"],
-    ["radiator", pair("symbols.symbol_radiator"), "Heizung", "room"],
-    ["pump_inline", pair("symbols.symbol_pump_inline"), "Hydraulik", "pump"],
-    ["pump_variable", pair("symbols.symbol_pump_variable"), "Hydraulik", "pump"],
-    ["pump_twin", pair("symbols.symbol_pump_twin"), "Hydraulik", "pump"],
-    ["pump_dhw", pair("symbols.symbol_pump_dhw"), "Hydraulik", "pump"],
-    ["valve_2way", pair("symbols.symbol_valve_2way"), "Hydraulik", "valve"],
-    ["valve_3way", pair("symbols.symbol_valve_3way"), "Hydraulik", "valve"],
-    ["mixing_valve", pair("symbols.symbol_mixing_valve"), "Hydraulik", "mixing_valve"],
-    ["shutoff_valve", pair("symbols.symbol_shutoff_valve"), "Hydraulik", "valve"],
-    ["check_valve", pair("symbols.symbol_check_valve"), "Hydraulik", "valve"],
-    ["safety_valve", pair("symbols.symbol_safety_valve"), "Hydraulik", "valve"],
-    ["balancing_valve", pair("symbols.symbol_balancing_valve"), "Hydraulik", "valve"],
-    ["hydraulic_separator", pair("symbols.symbol_hydraulic_separator"), "Hydraulik", "heat_exchanger"],
-    ["heat_exchanger_plate", pair("symbols.symbol_heat_exchanger_plate"), "Hydraulik", "heat_exchanger"],
-    ["manifold", pair("symbols.symbol_manifold"), "Hydraulik", "generic"],
-    ["filter_water", pair("symbols.symbol_filter_water"), "Hydraulik", "generic"],
-    ["dirt_separator", pair("symbols.symbol_dirt_separator"), "Hydraulik", "generic"],
-    ["expansion_vessel", pair("symbols.symbol_expansion_vessel"), "Hydraulik", "tank"],
-    ["ahu", pair("symbols.symbol_ahu"), "RLT", "ahu"],
-    ["fan_supply", pair("symbols.symbol_fan_supply"), "RLT", "fan"],
-    ["fan_extract", pair("symbols.symbol_fan_extract"), "RLT", "fan"],
-    ["damper", pair("symbols.symbol_damper"), "RLT", "damper"],
-    ["fire_damper", pair("symbols.symbol_fire_damper"), "RLT", "damper"],
-    ["air_filter", pair("symbols.symbol_air_filter"), "RLT", "generic"],
-    ["heating_coil", pair("symbols.symbol_heating_coil"), "RLT", "heat_exchanger"],
-    ["cooling_coil", pair("symbols.symbol_cooling_coil"), "RLT", "heat_exchanger"],
-    ["heat_recovery_rotary", pair("symbols.symbol_heat_recovery_rotary"), "RLT", "heat_exchanger"],
-    ["heat_recovery_plate", pair("symbols.symbol_heat_recovery_plate"), "RLT", "heat_exchanger"],
-    ["humidifier", pair("symbols.symbol_humidifier"), "RLT", "generic"],
-    ["silencer", pair("symbols.symbol_silencer"), "RLT", "generic"],
-    ["chiller", pair("symbols.symbol_chiller"), "Kälte", "chiller"],
-    ["compressor", pair("symbols.symbol_compressor"), "Kälte", "generic"],
-    ["cooling_tower", pair("symbols.symbol_cooling_tower"), "Kälte", "generic"],
-    ["cooling_buffer", pair("symbols.symbol_cooling_buffer"), "Kälte", "tank"],
-    ["pv_array", pair("symbols.symbol_pv_array"), "Energie", "generic"],
-    ["inverter", pair("symbols.symbol_inverter"), "Energie", "generic"],
-    ["battery", pair("symbols.symbol_battery"), "Energie", "generic"],
-    ["grid", pair("symbols.symbol_grid"), "Energie", "generic"],
-    ["meter", pair("symbols.symbol_meter"), "Energie", "meter"],
-    ["wallbox", pair("symbols.symbol_wallbox"), "Energie", "generic"],
-    ["temp_sensor", pair("symbols.symbol_temp_sensor"), "Sensorik", "meter"],
-    ["pressure_sensor", pair("symbols.symbol_pressure_sensor"), "Sensorik", "meter"],
-    ["dp_sensor", pair("symbols.symbol_dp_sensor"), "Sensorik", "meter"],
-    ["flow_sensor", pair("symbols.symbol_flow_sensor"), "Sensorik", "meter"],
-    ["humidity_sensor", pair("symbols.symbol_humidity_sensor"), "Sensorik", "meter"],
-    ["co2_sensor", pair("symbols.symbol_co2_sensor"), "Sensorik", "meter"],
-    ["frost_thermostat", pair("symbols.symbol_frost_thermostat"), "Sensorik", "meter"],
-    ["room_sensor", pair("symbols.symbol_room_sensor"), "Sensorik", "room"],
-    ["switchgear", pair("symbols.symbol_switchgear"), "Elektro", "generic"],
-    ["busbar", pair("symbols.symbol_busbar"), "Elektro", "generic"],
-    ["sub_distribution_board", pair("symbols.symbol_sub_distribution_board"), "Elektro", "generic"],
-    ["transformer", pair("symbols.symbol_transformer"), "Elektro", "generic"],
-    ["ups", pair("symbols.symbol_ups"), "Elektro", "generic"],
-    ["generator_set", pair("symbols.symbol_generator_set"), "Elektro", "generic"],
-    ["circuit_breaker", pair("symbols.symbol_circuit_breaker"), "Elektro", "generic"],
-    ["rcd", pair("symbols.symbol_rcd"), "Elektro", "generic"],
-    ["surge_arrester", pair("symbols.symbol_surge_arrester"), "Elektro", "generic"],
-    ["isolator_switch", pair("symbols.symbol_isolator_switch"), "Elektro", "generic"],
-    ["fire_alarm_panel", pair("symbols.symbol_fire_alarm_panel"), "Brandschutz", "generic"],
-    ["smoke_detector", pair("symbols.symbol_smoke_detector"), "Brandschutz", "meter"],
-    ["heat_detector", pair("symbols.symbol_heat_detector"), "Brandschutz", "meter"],
-    ["manual_call_point", pair("symbols.symbol_manual_call_point"), "Brandschutz", "generic"],
-    ["aspirating_detector", pair("symbols.symbol_aspirating_detector"), "Brandschutz", "meter"],
-    ["sprinkler_head", pair("symbols.symbol_sprinkler_head"), "Brandschutz", "generic"],
-    ["sprinkler_valve_station", pair("symbols.symbol_sprinkler_valve_station"), "Brandschutz", "valve"],
-    ["extinguishing_system", pair("symbols.symbol_extinguishing_system"), "Brandschutz", "generic"],
-    ["fire_barrier", pair("symbols.symbol_fire_barrier"), "Brandschutz", "generic"],
-    ["fire_door", pair("symbols.symbol_fire_door"), "Brandschutz", "generic"]
-  ].map(([id, label, category, profile]) => ({ id, label, category, profile }));
+    ["heat_pump_neo", pair("symbols.symbol_heat_pump_neo"), "Heizung", "heat_pump", "waermepumpen"],
+    ["heat_pump_compact", pair("symbols.symbol_heat_pump_compact"), "Heizung", "heat_pump", "waermepumpen"],
+    ["boiler", pair("symbols.symbol_boiler"), "Heizung", "boiler", "kessel_erzeuger"],
+    ["burner", pair("symbols.symbol_burner"), "Heizung", "generic", "kessel_erzeuger"],
+    ["immersion_heater", pair("symbols.symbol_immersion_heater"), "Heizung", "generic", "kessel_erzeuger"],
+    ["buffer_layered", pair("symbols.symbol_buffer_layered"), "Heizung", "tank", "puffer_speicher"],
+    ["dhw_tank", pair("symbols.symbol_dhw_tank"), "Heizung", "dhw_tank", "puffer_speicher"],
+    ["underfloor", pair("symbols.symbol_underfloor"), "Heizung", "room", "heizflaechen"],
+    ["radiator", pair("symbols.symbol_radiator"), "Heizung", "room", "heizflaechen"],
+    ["pump_inline", pair("symbols.symbol_pump_inline"), "Hydraulik", "pump", "pumpen"],
+    ["pump_variable", pair("symbols.symbol_pump_variable"), "Hydraulik", "pump", "pumpen"],
+    ["pump_twin", pair("symbols.symbol_pump_twin"), "Hydraulik", "pump", "pumpen"],
+    ["pump_dhw", pair("symbols.symbol_pump_dhw"), "Hydraulik", "pump", "pumpen"],
+    ["valve_2way", pair("symbols.symbol_valve_2way"), "Hydraulik", "valve", "ventile"],
+    ["valve_3way", pair("symbols.symbol_valve_3way"), "Hydraulik", "valve", "ventile"],
+    ["mixing_valve", pair("symbols.symbol_mixing_valve"), "Hydraulik", "mixing_valve", "ventile"],
+    ["shutoff_valve", pair("symbols.symbol_shutoff_valve"), "Hydraulik", "valve", "ventile"],
+    ["check_valve", pair("symbols.symbol_check_valve"), "Hydraulik", "valve", "ventile"],
+    ["safety_valve", pair("symbols.symbol_safety_valve"), "Hydraulik", "valve", "ventile"],
+    ["balancing_valve", pair("symbols.symbol_balancing_valve"), "Hydraulik", "valve", "ventile"],
+    ["hydraulic_separator", pair("symbols.symbol_hydraulic_separator"), "Hydraulik", "heat_exchanger", "waermetauscher"],
+    ["heat_exchanger_plate", pair("symbols.symbol_heat_exchanger_plate"), "Hydraulik", "heat_exchanger", "waermetauscher"],
+    ["manifold", pair("symbols.symbol_manifold"), "Hydraulik", "generic", "verteilung"],
+    ["filter_water", pair("symbols.symbol_filter_water"), "Hydraulik", "generic", "schmutzfaenger"],
+    ["dirt_separator", pair("symbols.symbol_dirt_separator"), "Hydraulik", "generic", "schmutzfaenger"],
+    ["expansion_vessel", pair("symbols.symbol_expansion_vessel"), "Hydraulik", "tank", "ausdehnung"],
+    ["ahu", pair("symbols.symbol_ahu"), "RLT", "ahu", "geraete"],
+    ["fan_supply", pair("symbols.symbol_fan_supply"), "RLT", "fan", "ventilatoren"],
+    ["fan_extract", pair("symbols.symbol_fan_extract"), "RLT", "fan", "ventilatoren"],
+    ["damper", pair("symbols.symbol_damper"), "RLT", "damper", "klappen_regelung"],
+    ["fire_damper", pair("symbols.symbol_fire_damper"), "RLT", "damper", "klappen_regelung"],
+    ["air_filter", pair("symbols.symbol_air_filter"), "RLT", "generic", "filter"],
+    ["heating_coil", pair("symbols.symbol_heating_coil"), "RLT", "heat_exchanger", "register"],
+    ["cooling_coil", pair("symbols.symbol_cooling_coil"), "RLT", "heat_exchanger", "register"],
+    ["heat_recovery_rotary", pair("symbols.symbol_heat_recovery_rotary"), "RLT", "heat_exchanger", "waermerueckgewinnung"],
+    ["heat_recovery_plate", pair("symbols.symbol_heat_recovery_plate"), "RLT", "heat_exchanger", "waermerueckgewinnung"],
+    ["humidifier", pair("symbols.symbol_humidifier"), "RLT", "generic", "befeuchtung"],
+    ["silencer", pair("symbols.symbol_silencer"), "RLT", "generic", "schalldaempfer"],
+    ["chiller", pair("symbols.symbol_chiller"), "Kälte", "chiller", "kaeltemaschinen"],
+    ["compressor", pair("symbols.symbol_compressor"), "Kälte", "generic", "komponenten"],
+    ["cooling_tower", pair("symbols.symbol_cooling_tower"), "Kälte", "generic", "kuehler"],
+    ["cooling_buffer", pair("symbols.symbol_cooling_buffer"), "Kälte", "tank", "speicher"],
+    ["pv_array", pair("symbols.symbol_pv_array"), "Energie", "generic", "photovoltaik"],
+    ["inverter", pair("symbols.symbol_inverter"), "Energie", "generic", "umwandlung"],
+    ["battery", pair("symbols.symbol_battery"), "Energie", "generic", "speicher"],
+    ["grid", pair("symbols.symbol_grid"), "Energie", "generic", "netz_zaehler"],
+    ["meter", pair("symbols.symbol_meter"), "Energie", "meter", "netz_zaehler"],
+    ["wallbox", pair("symbols.symbol_wallbox"), "Energie", "generic", "laden"],
+    ["temp_sensor", pair("symbols.symbol_temp_sensor"), "Sensorik", "meter", "temperatur"],
+    ["pressure_sensor", pair("symbols.symbol_pressure_sensor"), "Sensorik", "meter", "druck"],
+    ["dp_sensor", pair("symbols.symbol_dp_sensor"), "Sensorik", "meter", "druck"],
+    ["flow_sensor", pair("symbols.symbol_flow_sensor"), "Sensorik", "meter", "durchfluss"],
+    ["humidity_sensor", pair("symbols.symbol_humidity_sensor"), "Sensorik", "meter", "feuchte"],
+    ["co2_sensor", pair("symbols.symbol_co2_sensor"), "Sensorik", "meter", "luftqualitaet"],
+    ["frost_thermostat", pair("symbols.symbol_frost_thermostat"), "Sensorik", "meter", "temperatur"],
+    ["room_sensor", pair("symbols.symbol_room_sensor"), "Sensorik", "room", "raum"],
+    ["switchgear", pair("symbols.symbol_switchgear"), "Elektro", "generic", "verteilung"],
+    ["busbar", pair("symbols.symbol_busbar"), "Elektro", "generic", "verteilung"],
+    ["sub_distribution_board", pair("symbols.symbol_sub_distribution_board"), "Elektro", "generic", "verteilung"],
+    ["transformer", pair("symbols.symbol_transformer"), "Elektro", "generic", "versorgung"],
+    ["ups", pair("symbols.symbol_ups"), "Elektro", "generic", "versorgung"],
+    ["generator_set", pair("symbols.symbol_generator_set"), "Elektro", "generic", "versorgung"],
+    ["circuit_breaker", pair("symbols.symbol_circuit_breaker"), "Elektro", "generic", "schutz_schaltung"],
+    ["rcd", pair("symbols.symbol_rcd"), "Elektro", "generic", "schutz_schaltung"],
+    ["surge_arrester", pair("symbols.symbol_surge_arrester"), "Elektro", "generic", "schutz_schaltung"],
+    ["isolator_switch", pair("symbols.symbol_isolator_switch"), "Elektro", "generic", "schutz_schaltung"],
+    ["fire_alarm_panel", pair("symbols.symbol_fire_alarm_panel"), "Brandschutz", "generic", "meldetechnik"],
+    ["smoke_detector", pair("symbols.symbol_smoke_detector"), "Brandschutz", "meter", "meldetechnik"],
+    ["heat_detector", pair("symbols.symbol_heat_detector"), "Brandschutz", "meter", "meldetechnik"],
+    ["manual_call_point", pair("symbols.symbol_manual_call_point"), "Brandschutz", "generic", "meldetechnik"],
+    ["aspirating_detector", pair("symbols.symbol_aspirating_detector"), "Brandschutz", "meter", "meldetechnik"],
+    ["sprinkler_head", pair("symbols.symbol_sprinkler_head"), "Brandschutz", "generic", "loeschanlagen"],
+    ["sprinkler_valve_station", pair("symbols.symbol_sprinkler_valve_station"), "Brandschutz", "valve", "loeschanlagen"],
+    ["extinguishing_system", pair("symbols.symbol_extinguishing_system"), "Brandschutz", "generic", "loeschanlagen"],
+    ["fire_barrier", pair("symbols.symbol_fire_barrier"), "Brandschutz", "generic", "abschottung"],
+    ["fire_door", pair("symbols.symbol_fire_door"), "Brandschutz", "generic", "abschottung"],
+    ["heat_pump_duo", pair("symbols.symbol_heat_pump_duo"), "Heizung", "heat_pump", "waermepumpen"],
+    ["cogen_unit", pair("symbols.symbol_cogen_unit"), "Heizung", "boiler", "kessel_erzeuger"],
+    ["solar_station", pair("symbols.symbol_solar_station"), "Heizung", "heat_exchanger", "solar"],
+    ["flat_collector", pair("symbols.symbol_flat_collector"), "Heizung", "generic", "solar"],
+    ["vacuum_tube_collector", pair("symbols.symbol_vacuum_tube_collector"), "Heizung", "generic", "solar"],
+    ["dhw_freshwater_station", pair("symbols.symbol_dhw_freshwater_station"), "Heizung", "heat_exchanger", "stationen"],
+    ["pump_group", pair("symbols.symbol_pump_group"), "Hydraulik", "pump", "pumpen"],
+    ["flexible_compensator", pair("symbols.symbol_flexible_compensator"), "Hydraulik", "generic", "ausdehnung"],
+    ["pressure_reducing_valve", pair("symbols.symbol_pressure_reducing_valve"), "Hydraulik", "valve", "ventile"],
+    ["backflow_preventer", pair("symbols.symbol_backflow_preventer"), "Hydraulik", "valve", "ventile"],
+    ["compact_ahu", pair("symbols.symbol_compact_ahu"), "RLT", "ahu", "geraete"],
+    ["vav_box", pair("symbols.symbol_vav_box"), "RLT", "damper", "klappen_regelung"],
+    ["ec_fan", pair("symbols.symbol_ec_fan"), "RLT", "fan", "ventilatoren"],
+    ["steam_humidifier", pair("symbols.symbol_steam_humidifier"), "RLT", "generic", "befeuchtung"],
+    ["dry_cooler", pair("symbols.symbol_dry_cooler"), "Kälte", "chiller", "kuehler"],
+    ["brine_station", pair("symbols.symbol_brine_station"), "Kälte", "heat_exchanger", "sole"],
+    ["ice_storage", pair("symbols.symbol_ice_storage"), "Kälte", "tank", "speicher"],
+    ["condensing_unit", pair("symbols.symbol_condensing_unit"), "Kälte", "chiller", "kaeltemaschinen"],
+    ["hybrid_inverter", pair("symbols.symbol_hybrid_inverter"), "Energie", "generic", "umwandlung"],
+    ["fuel_cell", pair("symbols.symbol_fuel_cell"), "Energie", "boiler", "erzeuger"],
+    ["heat_meter", pair("symbols.symbol_heat_meter"), "Energie", "meter", "netz_zaehler"],
+    ["co2_voc_sensor", pair("symbols.symbol_co2_voc_sensor"), "Sensorik", "meter", "luftqualitaet"],
+    ["flow_switch", pair("symbols.symbol_flow_switch"), "Sensorik", "meter", "durchfluss"],
+    ["frequency_drive", pair("symbols.symbol_frequency_drive"), "Elektro", "generic", "antriebe"]
+  ].map(([id, label, category, profile, group]) => ({ id, label, category, profile, group: group || category }));
   var joinLabels = (first, second) => Object.freeze(Object.fromEntries(
     Object.keys(first).map((language) => [language, `${first[language]} · ${second[language]}`])
   ));
@@ -7658,9 +7892,54 @@ function gltText(key) {
     base_symbol: base.id,
     label: joinLabels(base.label, style.label),
     category: base.category,
+    group: base.group,
     profile: base.profile,
     style: style.id
   })));
+  var SYMBOL_GROUPS = Object.freeze({
+    "waermepumpen": pair("symbols.group_waermepumpen"),
+    "kessel_erzeuger": pair("symbols.group_kessel_erzeuger"),
+    "puffer_speicher": pair("symbols.group_puffer_speicher"),
+    "heizflaechen": pair("symbols.group_heizflaechen"),
+    "solar": pair("symbols.group_solar"),
+    "stationen": pair("symbols.group_stationen"),
+    "pumpen": pair("symbols.group_pumpen"),
+    "ventile": pair("symbols.group_ventile"),
+    "waermetauscher": pair("symbols.group_waermetauscher"),
+    "verteilung": pair("symbols.group_verteilung"),
+    "schmutzfaenger": pair("symbols.group_schmutzfaenger"),
+    "ausdehnung": pair("symbols.group_ausdehnung"),
+    "geraete": pair("symbols.group_geraete"),
+    "ventilatoren": pair("symbols.group_ventilatoren"),
+    "klappen_regelung": pair("symbols.group_klappen_regelung"),
+    "filter": pair("symbols.group_filter"),
+    "register": pair("symbols.group_register"),
+    "waermerueckgewinnung": pair("symbols.group_waermerueckgewinnung"),
+    "befeuchtung": pair("symbols.group_befeuchtung"),
+    "schalldaempfer": pair("symbols.group_schalldaempfer"),
+    "kaeltemaschinen": pair("symbols.group_kaeltemaschinen"),
+    "komponenten": pair("symbols.group_komponenten"),
+    "kuehler": pair("symbols.group_kuehler"),
+    "speicher": pair("symbols.group_speicher"),
+    "sole": pair("symbols.group_sole"),
+    "photovoltaik": pair("symbols.group_photovoltaik"),
+    "umwandlung": pair("symbols.group_umwandlung"),
+    "netz_zaehler": pair("symbols.group_netz_zaehler"),
+    "laden": pair("symbols.group_laden"),
+    "erzeuger": pair("symbols.group_erzeuger"),
+    "temperatur": pair("symbols.group_temperatur"),
+    "druck": pair("symbols.group_druck"),
+    "durchfluss": pair("symbols.group_durchfluss"),
+    "feuchte": pair("symbols.group_feuchte"),
+    "luftqualitaet": pair("symbols.group_luftqualitaet"),
+    "raum": pair("symbols.group_raum"),
+    "versorgung": pair("symbols.group_versorgung"),
+    "schutz_schaltung": pair("symbols.group_schutz_schaltung"),
+    "antriebe": pair("symbols.group_antriebe"),
+    "meldetechnik": pair("symbols.group_meldetechnik"),
+    "loeschanlagen": pair("symbols.group_loeschanlagen"),
+    "abschottung": pair("symbols.group_abschottung")
+  });
   function labelText(label, language = "de") {
     if (typeof label === "string") return label;
     if (label && typeof label === "object") return label[language] ?? label.de ?? label.en ?? "";
@@ -7778,7 +8057,33 @@ function gltText(key) {
     ["sprinkler_valve_station", [ln(32, 2, 32, 16, "cold"), pa("M20 16 L32 26 L20 36 Z", "body"), pa("M44 16 L32 26 L44 36 Z", "body"), ln(32, 36, 32, 48, "cold"), ci(48, 26, 7, "alarm"), tx(48, 30, "A", "txt"), rc(20, 48, 24, 10, 2, "body")]],
     ["extinguishing_system", [rc(16, 14, 14, 40, 6, "body"), rc(34, 14, 14, 40, 6, "body"), ln(23, 6, 23, 14, "alarm"), ln(41, 6, 41, 14, "alarm"), ln(14, 6, 50, 6, "alarm"), tx(32, 40, "LÖ", "txt accent-text")]],
     ["fire_barrier", [rc(4, 22, 56, 20, 1, "alarm"), pa("M10 22 L10 42 M18 22 L18 42 M26 22 L26 42 M34 22 L34 42 M42 22 L42 42 M50 22 L50 42", "thin"), ln(4, 12, 60, 12, "body"), ln(4, 52, 60, 52, "body"), tx(32, 36, "EI90", "txt")]],
-    ["fire_door", [rc(14, 6, 36, 52, 2, "body"), ci(43, 34, 3, "accent"), pa("M20 12 L20 52", "thin"), tx(32, 26, "T30", "alarm txt"), pa("M8 6 L8 58 M56 6 L56 58", "thin")]]
+    ["fire_door", [rc(14, 6, 36, 52, 2, "body"), ci(43, 34, 3, "accent"), pa("M20 12 L20 52", "thin"), tx(32, 26, "T30", "alarm txt"), pa("M8 6 L8 58 M56 6 L56 58", "thin")]],
+    // -- Erweiterung: Erzeuger, Solar, Stationen, Hydraulik, RLT, Kälte, Energie,
+    //    Sensorik, Elektro — jede Geometrie eigenständig, geprüft durch Evidence.
+    ["heat_pump_duo", [rc(4, 14, 26, 36, 4, "body"), rc(34, 14, 26, 36, 4, "body"), ci(17, 32, 8, "accent"), ci(47, 32, 8, "accent"), pa("M13 34 C15 27 21 27 23 34", "thin"), pa("M43 34 C45 27 51 27 53 34", "thin"), ln(30, 32, 34, 32, "thin"), ln(2, 22, 4, 22, "cold"), ln(60, 22, 62, 22, "hot")]],
+    ["cogen_unit", [rc(8, 18, 48, 28, 4, "body"), pa("M14 40 L14 26 L20 26 L20 40 L26 40 L26 26 L32 26 L32 40", "thin"), pa("M40 40 C37 34 41 30 44 26 C47 30 51 34 48 40 Z", "flame"), ln(32, 8, 32, 18, "power"), ln(3, 30, 8, 30, "hot"), ln(56, 30, 61, 30, "hot")]],
+    ["solar_station", [rc(6, 14, 28, 36, 4, "body"), ci(20, 32, 8, "body"), pa("M16 36 L16 28 L26 32 Z", "accent rotor"), pa("M40 16 L52 16 L52 48 L40 48 Z", "body"), pa("M43 20 L49 20 M43 26 L49 26 M43 32 L49 32 M43 38 L49 38 M43 44 L49 44", "thin"), ln(34, 32, 40, 32, "hot"), ln(52, 22, 60, 22, "hot"), ln(52, 42, 60, 42, "cold")]],
+    ["flat_collector", [pa("M12 48 L48 20 L56 28 L20 56 Z", "body"), ln(22, 42, 30, 50, "thin"), ci(18, 14, 5, "accent"), ln(18, 5, 18, 8, "accent"), ln(9, 14, 12, 14, "accent"), ln(25, 8, 23, 11, "accent"), ln(48, 60, 48, 56, "hot")]],
+    ["vacuum_tube_collector", [rc(8, 12, 8, 40, 4, "body"), rc(20, 12, 8, 40, 4, "body"), rc(32, 12, 8, 40, 4, "body"), rc(44, 12, 8, 40, 4, "body"), rc(6, 6, 50, 6, 2, "body"), ln(56, 9, 60, 9, "hot"), ln(56, 12, 60, 12, "cold")]],
+    ["dhw_freshwater_station", [rc(8, 10, 20, 44, 2, "body"), pa("M12 16 L24 16 M12 22 L24 22 M12 28 L24 28 M12 34 L24 34 M12 40 L24 40 M12 46 L24 46", "thin"), ci(42, 22, 9, "body"), pa("M38 26 L38 18 L48 22 Z", "accent rotor"), ci(42, 46, 9, "body"), pa("M38 50 L38 42 L48 46 Z", "accent rotor"), ln(28, 22, 33, 22, "hot"), ln(28, 46, 33, 46, "cold"), ln(3, 32, 8, 32, "cold")]],
+    ["pump_group", [rc(8, 10, 48, 8, 2, "body"), ci(20, 36, 11, "body"), ci(44, 36, 11, "body"), pa("M15 40 L15 30 L27 36 Z", "accent rotor"), pa("M39 40 L39 30 L51 36 Z", "accent rotor"), ln(20, 18, 20, 25, "thin"), ln(44, 18, 44, 25, "thin"), ln(3, 14, 8, 14, "hot"), ln(56, 14, 61, 14, "hot")]],
+    ["flexible_compensator", [ln(3, 32, 16, 32), ln(48, 32, 61, 32), pa("M16 32 Q20 22 24 32 Q28 42 32 32 Q36 22 40 32 Q44 42 48 32", "body"), ln(16, 20, 48, 20, "thin"), ln(16, 44, 48, 44, "thin")]],
+    ["pressure_reducing_valve", [rc(10, 22, 44, 20, 3, "body"), pa("M22 26 L42 26 L32 40 Z", "accent"), pa("M32 22 L32 10 M26 14 L32 8 L38 14", "thin"), ln(3, 32, 10, 32, "hot"), ln(54, 32, 61, 32, "cold")]],
+    ["backflow_preventer", [rc(8, 22, 48, 20, 3, "body"), pa("M14 26 L14 38 L26 32 Z", "accent"), pa("M38 26 L38 38 L50 32 Z", "accent"), ln(3, 32, 8, 32, "hot"), ln(56, 32, 61, 32, "hot")]],
+    ["compact_ahu", [rc(6, 16, 52, 32, 3, "body"), ci(17, 32, 8, "accent"), pa("M13 34 C15 28 21 28 23 34", "thin"), pa("M30 20 L30 44 M30 24 L36 24 M30 30 L36 30 M30 36 L36 36 M30 42 L36 42", "thin"), ln(44, 20, 44, 44, "thin"), ln(44, 20, 52, 20, "hot"), ln(44, 44, 52, 44, "cold"), ln(3, 32, 6, 32, "body")]],
+    ["vav_box", [rc(4, 24, 56, 16, 2, "body"), ln(12, 26, 12, 38, "accent"), ln(12, 26, 52, 38, "accent"), rc(24, 44, 16, 12, 2, "accent"), ln(3, 32, 4, 32, "body"), ln(60, 32, 61, 32, "body")]],
+    ["ec_fan", [ci(24, 36, 15, "body"), pa("M16 41 L16 29 L34 36 Z", "accent rotor"), rc(42, 10, 16, 16, 3, "accent"), tx(50, 20, "FU", "txt")]],
+    ["steam_humidifier", [rc(18, 26, 28, 30, 4, "body"), pa("M24 20 C22 14 26 12 24 6 M32 20 C30 14 34 12 32 6 M40 20 C38 14 42 12 40 6", "thin"), ln(24, 56, 24, 60, "hot"), ln(40, 56, 40, 60, "hot")]],
+    ["dry_cooler", [pa("M8 40 L32 20 L56 40", "body"), pa("M8 40 L32 28 L56 40", "body"), ci(20, 40, 7, "accent"), ci(44, 40, 7, "accent"), ln(8, 46, 56, 46, "thin")]],
+    ["brine_station", [rc(8, 12, 22, 40, 3, "body"), pa("M12 18 L26 18 M12 24 L26 24 M12 30 L26 30 M12 36 L26 36 M12 42 L26 42 M12 48 L26 48", "thin"), ci(44, 24, 9, "body"), pa("M40 28 L40 20 L50 24 Z", "accent rotor"), rc(40, 40, 8, 14, 4, "body"), ln(30, 24, 35, 24, "hot"), ln(3, 32, 8, 32, "cold")]],
+    ["ice_storage", [pa(TANK_SHELL, "tank"), pa("M24 40 L40 40 M32 32 L32 48 M26 36 L38 44 M38 36 L26 44", "coldfill"), ln(8, 18, 18, 18, "hot"), ln(46, 18, 56, 18, "cold")]],
+    ["condensing_unit", [rc(8, 14, 32, 26, 3, "body"), pa("M12 20 L36 20 M12 26 L36 26 M12 32 L36 32", "thin"), ci(50, 27, 9, "accent"), pa("M46 31 L46 23 L56 27 Z", "accent rotor"), ln(3, 27, 8, 27, "hot"), rc(20, 44, 10, 10, 3, "body"), ln(24, 40, 24, 44, "thin")]],
+    ["hybrid_inverter", [rc(12, 18, 40, 28, 3, "body"), pa("M18 40 L28 24 L38 40 Z", "accent"), ln(32, 10, 32, 18, "power"), pa("M44 46 L52 54 M52 46 L44 54", "power"), ln(3, 32, 12, 32, "hot")]],
+    ["fuel_cell", [rc(16, 24, 32, 24, 3, "body"), pa("M20 30 L44 30 M20 36 L44 36 M20 42 L44 42", "thin"), rc(6, 10, 12, 22, 5, "body"), tx(12, 24, "H2", "txt"), ln(48, 36, 61, 36, "power"), ln(32, 48, 32, 60, "hot")]],
+    ["heat_meter", [rc(20, 14, 24, 20, 3, "body"), tx(32, 26, "kWh", "txt"), ci(32, 46, 9, "body"), pa("M28 50 L28 42 L38 46 Z", "accent rotor"), ln(3, 46, 23, 46, "hot"), ln(41, 46, 61, 46, "cold"), ln(32, 34, 32, 37, "thin")]],
+    ["co2_voc_sensor", [ci(32, 34, 18, "body"), tx(32, 38, "CO2", "accent txt"), pa("M22 12 Q27 8 32 12 Q37 16 42 12", "thin"), ci(46, 46, 4, "accent")]],
+    ["flow_switch", [ln(3, 32, 61, 32, "body"), pa("M28 32 L28 18 L40 24 L28 30", "accent"), ci(34, 32, 3, "accent"), ln(28, 18, 22, 10, "thin")]],
+    ["frequency_drive", [rc(12, 16, 40, 32, 3, "body"), pa("M18 42 L30 42 L46 22", "accent"), tx(32, 14, "FU", "txt"), ln(3, 32, 12, 32, "power"), ln(52, 32, 61, 32, "power")]]
   ]);
   var DOMAINS = Object.freeze([
     { id: "heating", category: "Heizung", label: pair("symbols.category_heizung") },
@@ -61603,6 +61908,43 @@ function gltText(key) {
     }
   }
 
+  // src/v100/entity-bridge.mjs
+  var ENTITY_ID_PATTERN = /^[a-z0-9_]+\.[a-z0-9_]+$/u;
+  var ENTITY_IMPORT_LIMIT = 5e3;
+  function entityExportPayload(hassStates = {}) {
+    const entities = Object.values(hassStates).filter((state) => state && typeof state.entity_id === "string" && ENTITY_ID_PATTERN.test(state.entity_id)).map((state) => ({
+      entity_id: state.entity_id,
+      name: typeof state.attributes?.friendly_name === "string" ? state.attributes.friendly_name : state.entity_id,
+      domain: state.entity_id.split(".")[0],
+      unit: typeof state.attributes?.unit_of_measurement === "string" ? state.attributes.unit_of_measurement : ""
+    })).sort((a, b) => a.entity_id.localeCompare(b.entity_id));
+    return { format: "glt-flow-card-entities", version: 1, count: entities.length, entities };
+  }
+  function normalizeEntityImport(data, options = {}) {
+    const limit = options.limit ?? ENTITY_IMPORT_LIMIT;
+    const rows = Array.isArray(data) ? data : Array.isArray(data?.entities) ? data.entities : [];
+    const seen = /* @__PURE__ */ new Set();
+    const entities = [];
+    let rejected = 0;
+    for (const row of rows) {
+      const id = typeof row?.entity_id === "string" ? row.entity_id : "";
+      if (!ENTITY_ID_PATTERN.test(id) || seen.has(id)) {
+        rejected += 1;
+        continue;
+      }
+      seen.add(id);
+      entities.push({
+        entity_id: id,
+        name: typeof row.name === "string" && row.name.trim() ? row.name : id,
+        domain: id.split(".")[0],
+        unit: typeof row.unit === "string" ? row.unit : ""
+      });
+      if (entities.length >= limit) break;
+    }
+    entities.sort((a, b) => a.entity_id.localeCompare(b.entity_id));
+    return { format: "glt-flow-card-entities", version: 1, count: entities.length, rejected, entities };
+  }
+
   // src/v100/core.mjs
   var SCHEMA_VERSION = 1;
   var OPERATIONAL_STATES = {
@@ -61819,8 +62161,8 @@ function gltText(key) {
     return [x2 + w / 2, y + h];
   }
   function smartRoute(config2, path, viewId = null) {
-    const eq = arr(config2?.equipment);
-    const a = eq.find((x2) => x2.id === path?.from_equipment), b = eq.find((x2) => x2.id === path?.to_equipment);
+    const eq2 = arr(config2?.equipment);
+    const a = eq2.find((x2) => x2.id === path?.from_equipment), b = eq2.find((x2) => x2.id === path?.to_equipment);
     if (!a || !b) return path?.points || [];
     const padding = Number(config2?.routing?.padding ?? 28);
     const aPorts = portsForEquipment(a), bPorts = portsForEquipment(b);
@@ -61828,7 +62170,7 @@ function gltText(key) {
     const choose = (ports, fallback) => ports.find((p) => p.id === path?.[fallback === "right" ? "from_port" : "to_port"]) || ports.find((p) => p.medium === medium) || { side: fallback };
     const ap = choose(aPorts, "right"), bp = choose(bPorts, "left");
     const s = endpoint(a.positions?.[viewId] || a, ap.side || "right"), t = endpoint(b.positions?.[viewId] || b, bp.side || "left");
-    const obstacles = eq.filter((x2) => x2.id !== a.id && x2.id !== b.id).map((x2) => rectFor(x2.positions?.[viewId] || x2, padding));
+    const obstacles = eq2.filter((x2) => x2.id !== a.id && x2.id !== b.id).map((x2) => rectFor(x2.positions?.[viewId] || x2, padding));
     const midX = Math.round((s[0] + t[0]) / 2);
     const midY = Math.round((s[1] + t[1]) / 2);
     const candidates = [
@@ -61976,6 +62318,322 @@ function gltText(key) {
     };
   }
 
+  // src/v100/templates.mjs
+  var eq = (id, type, name, subtitle, x2, y, w, h, fields = []) => ({
+    id,
+    type,
+    name,
+    subtitle,
+    x: x2,
+    y,
+    width: w,
+    height: h,
+    fields: fields.map((label) => ({ label, entity: "" }))
+  });
+  var pipe = (id, medium, points) => ({ id, medium, points });
+  var kpi = (name, icon) => ({ name, icon, entity: { entity: "" } });
+  var tpl = (id, name, description, title, subtitle, equipment, paths, kpis = []) => ({
+    id,
+    name,
+    description,
+    config: {
+      type: "custom:glt-flow-card",
+      title,
+      subtitle,
+      canvas: { width: 1600, height: 900, viewport_height: "auto", grid: true, grid_size: 40 },
+      zoom: { enabled: true, min: 0.25, max: 4, wheel: true, controls: true },
+      views: [{ id: "schematic", name, kind: "schematic", icon: "mdi:sitemap-outline" }],
+      default_view: "schematic",
+      replay: { enabled: true, hours: 168, step_minutes: 15, autoplay_ms: 850 },
+      trend: { enabled: true, hours: 168, max_series: 8, height: 270 },
+      kpis,
+      equipment,
+      paths,
+      datapoints: []
+    }
+  });
+  var FACTORY_TEMPLATES = Object.freeze([
+    tpl(
+      "wp-basic",
+      "Wärmepumpe einfach",
+      "WP, Puffer, ein Heizkreis — der Einstieg.",
+      "Wärmepumpe",
+      "Grundschema · Wärmepumpe mit Puffer",
+      [
+        eq("wp", "heat_pump", "Wärmepumpe", "Erzeuger", 130, 305, 285, 185, ["Vorlauf", "Rücklauf", "Leistung"]),
+        eq("puffer", "tank", "Pufferspeicher", "Hydraulik", 640, 255, 260, 230, ["Oben", "Unten"]),
+        eq("hk", "room", "Heizkreis", "Verteilung", 1160, 255, 285, 225, ["Vorlauf", "Raum", "Soll"])
+      ],
+      [
+        pipe("wp_puffer", "heating_supply", [[415, 355], [535, 355], [535, 315], [640, 315]]),
+        pipe("puffer_hk", "heating_supply", [[900, 315], [1040, 315], [1040, 300], [1160, 300]]),
+        pipe("hk_ret", "heating_return", [[1160, 400], [1010, 400], [1010, 450], [900, 450], [900, 520], [415, 520], [415, 435]])
+      ],
+      [kpi("Außentemperatur", "mdi:weather-partly-rainy"), kpi("Vorlauf", "mdi:thermometer-chevron-up"), kpi("Leistung", "mdi:fire")]
+    ),
+    tpl(
+      "wp-dhw",
+      "WP mit Warmwasser",
+      "WP, Puffer, Trinkwarmwasser, Heizkreis.",
+      "Wärmepumpe",
+      "Heizen und Trinkwarmwasser",
+      [
+        eq("wp", "heat_pump", "Wärmepumpe", "Erzeuger", 130, 305, 285, 185, ["Vorlauf", "Rücklauf"]),
+        eq("puffer", "tank", "Pufferspeicher", "Heizung", 640, 200, 260, 230, ["Oben", "Unten"]),
+        eq("twe", "dhw_tank", "Trinkwarmwasser", "Speicher", 640, 560, 260, 230, ["Oben", "Unten", "Soll"]),
+        eq("hk", "room", "Heizkreis", "Verteilung", 1160, 255, 285, 225, ["Vorlauf", "Raum"])
+      ],
+      [
+        pipe("wp_puffer", "heating_supply", [[415, 330], [535, 330], [535, 290], [640, 290]]),
+        pipe("puffer_hk", "heating_supply", [[900, 290], [1040, 290], [1040, 300], [1160, 300]]),
+        pipe("hk_ret", "heating_return", [[1160, 400], [900, 400], [900, 430], [415, 430]]),
+        pipe("wp_twe", "dhw", [[415, 390], [500, 390], [500, 660], [640, 660]])
+      ],
+      [kpi("Warmwasser", "mdi:water-boiler"), kpi("Vorlauf", "mdi:thermometer-chevron-up")]
+    ),
+    tpl(
+      "wp-solar",
+      "WP mit Solar",
+      "Wärmepumpe, Puffer, Warmwasser, Solarstation.",
+      "Wärmepumpe & Solar",
+      "Heizen, Warmwasser, Solarthermie",
+      [
+        eq("wp", "heat_pump", "Wärmepumpe", "Erzeuger", 130, 305, 285, 185, ["Vorlauf", "Rücklauf"]),
+        eq("puffer", "tank", "Pufferspeicher", "Heizung", 640, 180, 260, 230, ["Oben", "Unten"]),
+        eq("twe", "dhw_tank", "Trinkwarmwasser", "Speicher", 980, 180, 260, 230, ["Oben", "Soll"]),
+        eq("solar", "heat_exchanger", "Solarstation", "Kollektorkreis", 980, 540, 260, 230, ["Kollektor", "Rücklauf"]),
+        eq("hk", "room", "Heizkreis", "Verteilung", 1160, 500, 285, 225, ["Vorlauf", "Raum"])
+      ],
+      [
+        pipe("wp_puffer", "heating_supply", [[415, 330], [535, 330], [535, 290], [640, 290]]),
+        pipe("puffer_twe", "heating_supply", [[900, 290], [980, 290]]),
+        pipe("solar_twe", "heating_supply", [[1110, 540], [1110, 410]]),
+        pipe("puffer_hk", "heating_supply", [[770, 410], [770, 560], [1160, 560]])
+      ],
+      [kpi("Kollektor", "mdi:weather-sunny"), kpi("Warmwasser", "mdi:water-boiler")]
+    ),
+    tpl(
+      "chp",
+      "BHKW-Anlage",
+      "Blockheizkraftwerk, Puffer, Heizkreis, Warmwasser.",
+      "BHKW",
+      "Kraft-Wärme-Kopplung",
+      [
+        eq("chp", "boiler", "BHKW", "Erzeuger", 130, 305, 285, 185, ["Leistung", "Laufzeit", "Erzeugung"]),
+        eq("puffer", "tank", "Pufferspeicher", "Hydraulik", 640, 255, 260, 230, ["Oben", "Unten"]),
+        eq("twe", "dhw_tank", "Trinkwarmwasser", "Speicher", 640, 560, 260, 230, ["Oben", "Soll"]),
+        eq("hk", "room", "Heizkreis", "Verteilung", 1160, 255, 285, 225, ["Vorlauf", "Raum"])
+      ],
+      [
+        pipe("chp_puffer", "heating_supply", [[415, 355], [535, 355], [535, 315], [640, 315]]),
+        pipe("puffer_hk", "heating_supply", [[900, 315], [1040, 315], [1040, 300], [1160, 300]]),
+        pipe("wp_twe", "dhw", [[415, 390], [500, 390], [500, 660], [640, 660]])
+      ],
+      [kpi("Elektrisch", "mdi:lightning-bolt"), kpi("Thermisch", "mdi:fire"), kpi("Laufzeit", "mdi:clock-outline")]
+    ),
+    tpl(
+      "boiler-classic",
+      "Kessel klassisch",
+      "Gas-/Ölkessel, Puffer, zwei Heizkreise.",
+      "Heizkessel",
+      "Konventioneller Kessel mit Puffer",
+      [
+        eq("kessel", "boiler", "Heizkessel", "Erzeuger", 130, 305, 285, 185, ["Kesseltemperatur", "Leistung"]),
+        eq("puffer", "tank", "Pufferspeicher", "Hydraulik", 640, 255, 260, 230, ["Oben", "Unten"]),
+        eq("hk1", "room", "Heizkreis 1", "Radiatoren", 1160, 180, 285, 225, ["Vorlauf", "Raum"]),
+        eq("hk2", "room", "Heizkreis 2", "Fußboden", 1160, 500, 285, 225, ["Vorlauf", "Raum"])
+      ],
+      [
+        pipe("k_puffer", "heating_supply", [[415, 355], [535, 355], [535, 315], [640, 315]]),
+        pipe("puffer_hk1", "heating_supply", [[900, 315], [1040, 315], [1040, 240], [1160, 240]]),
+        pipe("puffer_hk2", "heating_supply", [[900, 400], [1040, 400], [1040, 560], [1160, 560]])
+      ],
+      [kpi("Kessel", "mdi:thermometer"), kpi("Außen", "mdi:weather-partly-rainy")]
+    ),
+    tpl(
+      "underfloor-manifold",
+      "FBH-Verteiler",
+      "Wärmepumpe, Puffer, Verteiler, zwei Heizkreise.",
+      "Fußbodenheizung",
+      "Verteiler mit Heizkreisen",
+      [
+        eq("wp", "heat_pump", "Wärmepumpe", "Erzeuger", 130, 305, 285, 185, ["Vorlauf", "Rücklauf"]),
+        eq("puffer", "tank", "Pufferspeicher", "Hydraulik", 480, 255, 260, 230, ["Oben", "Unten"]),
+        eq("verteiler", "generic", "Heizkreisverteiler", "Verteilung", 900, 255, 240, 230, ["Vorlauf", "Rücklauf"]),
+        eq("hk1", "underfloor", "Heizkreis 1", "Wohnen", 1300, 180, 260, 225, ["Vorlauf", "Raum"]),
+        eq("hk2", "underfloor", "Heizkreis 2", "Schlafen", 1300, 500, 260, 225, ["Vorlauf", "Raum"])
+      ],
+      [
+        pipe("wp_puffer", "heating_supply", [[415, 355], [480, 355]]),
+        pipe("puffer_vert", "heating_supply", [[740, 315], [900, 315]]),
+        pipe("vert_hk1", "heating_supply", [[1140, 300], [1220, 300], [1220, 260], [1300, 260]]),
+        pipe("vert_hk2", "heating_supply", [[1140, 380], [1220, 380], [1220, 580], [1300, 580]])
+      ],
+      [kpi("Vorlauf", "mdi:thermometer-chevron-up"), kpi("Rücklauf", "mdi:thermometer-chevron-down")]
+    ),
+    tpl(
+      "chiller",
+      "Kaltwassersatz",
+      "Chiller, Kaltwasserpuffer, Verbraucherkreis.",
+      "Kälteanlage",
+      "Kaltwassersatz mit Puffer",
+      [
+        eq("chiller", "chiller", "Kaltwassersatz", "Kälteerzeugung", 130, 305, 285, 185, ["Vorlauf", "Rücklauf", "Leistung"]),
+        eq("puffer", "tank", "Kaltwasserpuffer", "Speicher", 640, 255, 260, 230, ["Oben", "Unten"]),
+        eq("verbraucher", "room", "Kälteverbraucher", "Kühldecken / Umluft", 1160, 255, 285, 225, ["Vorlauf", "Raum"])
+      ],
+      [
+        pipe("cw_vor", "cooling_supply", [[415, 355], [535, 355], [535, 315], [640, 315]]),
+        pipe("cw_verbraucher", "cooling_supply", [[900, 315], [1040, 315], [1040, 300], [1160, 300]]),
+        pipe("cw_ret", "cooling_return", [[1160, 400], [1010, 400], [1010, 450], [900, 450], [900, 520], [415, 520], [415, 435]])
+      ],
+      [kpi("Kaltwasser", "mdi:snowflake"), kpi("Außen", "mdi:weather-partly-rainy")]
+    ),
+    tpl(
+      "dry-cooler",
+      "Rückkühlung",
+      "Kältemaschine, Rückkühler, Kaltwasserpuffer.",
+      "Rückkühlwerk",
+      "Freie Kühlung und Rückkühler",
+      [
+        eq("chiller", "chiller", "Kältemaschine", "Kälteerzeugung", 130, 500, 285, 185, ["Vorlauf", "Rücklauf"]),
+        eq("cooler", "generic", "Rückkühler", "Wärmeabfuhr", 640, 200, 260, 230, ["Außentemperatur", "Medium"]),
+        eq("puffer", "cooling_buffer", "Kaltwasserpuffer", "Speicher", 1160, 400, 260, 230, ["Oben", "Unten"])
+      ],
+      [
+        pipe("chiller_puffer", "cooling_supply", [[415, 555], [535, 555], [535, 470], [1160, 470]]),
+        pipe("chiller_cooler", "cooling_return", [[415, 610], [535, 610], [535, 315], [640, 315]])
+      ],
+      [kpi("Außen", "mdi:weather-partly-rainy"), kpi("Kaltwasser", "mdi:snowflake")]
+    ),
+    tpl(
+      "free-cooling",
+      "Free Cooling",
+      "RLT-Gerät mit Kühlregister und Nachheizregister.",
+      "Free Cooling",
+      "Luftseitige freie Kühlung",
+      [
+        eq("rlt", "ahu", "RLT-Gerät", "Lüftung", 480, 255, 320, 230, ["Zuluft", "Abluft"]),
+        eq("kuehl", "heat_exchanger", "Kühlregister", "Free Cooling", 980, 255, 260, 230, ["Eintritt", "Austritt"]),
+        eq("heiz", "heat_exchanger", "Nachheizregister", "Komfort", 980, 560, 260, 230, ["Vorlauf", "Rücklauf"])
+      ],
+      [
+        pipe("luft_zu", "air_supply", [[480, 200], [980, 200]]),
+        pipe("luft_ab", "air_supply", [[480, 540], [980, 540], [980, 540]])
+      ],
+      [kpi("Außenluft", "mdi:weather-windy"), kpi("Zuluft", "mdi:fan")]
+    ),
+    tpl(
+      "ahu-compact",
+      "Kompakt-RLT",
+      "Kompaktgerät mit WRG, Filter, Heiz-/Kühlregister.",
+      "RLT-Kompaktgerät",
+      "Lüftung mit Wärmerückgewinnung",
+      [
+        eq("ahu", "ahu", "Kompakt-RLT", "Lüftung", 640, 255, 320, 230, ["Zuluft", "Abluft", "WRG-Wirkgrad"]),
+        eq("filter", "generic", "Filter", "Luftseite", 1120, 180, 220, 180, ["Differenzdruck"]),
+        eq("heiz", "heat_exchanger", "Heizregister", "Wasserseitig", 1120, 500, 220, 180, ["Vorlauf", "Rücklauf"]),
+        eq("kuehl", "cooling_coil", "Kühlregister", "Wasserseitig", 300, 500, 220, 180, ["Vorlauf", "Rücklauf"])
+      ],
+      [
+        pipe("zu", "air_supply", [[960, 290], [1120, 290]]),
+        pipe("heiz_ahu", "heating_supply", [[1120, 560], [1050, 560], [1050, 485], [960, 485]]),
+        pipe("kuehl_ahu", "cooling_supply", [[520, 560], [600, 560], [600, 485], [640, 485]])
+      ],
+      [kpi("Zuluft", "mdi:fan"), kpi("WRG", "mdi:recycle")]
+    ),
+    tpl(
+      "ahu-hp",
+      "RLT mit Luft-WP",
+      "Lüftungsgerät mit integrierter Luft-Wärmepumpe.",
+      "RLT mit Wärmepumpe",
+      "Lüftung und Nachheizung",
+      [
+        eq("rlt", "ahu", "RLT-Gerät", "Lüftung", 480, 305, 320, 230, ["Zuluft", "Abluft"]),
+        eq("wp", "heat_pump", "Luft-Wärmepumpe", "Nachheizung", 1e3, 305, 285, 185, ["Vorlauf", "Rücklauf", "Leistung"])
+      ],
+      [pipe("rlt_wp", "heating_supply", [[800, 380], [1e3, 380]])],
+      [kpi("Zuluft", "mdi:fan"), kpi("Leistung", "mdi:fire")]
+    ),
+    tpl(
+      "pv-storage",
+      "PV mit Speicher",
+      "PV, Hybrid-Wechselrichter, Batterie, Netzanschluss.",
+      "PV-Anlage",
+      "Erzeugung, Speicher, Netz",
+      [
+        eq("pv", "generic", "PV-Anlage", "Generator", 130, 255, 285, 185, ["Leistung", "Ertrag heute"]),
+        eq("wr", "generic", "Hybrid-Wechselrichter", "Umwandlung", 640, 255, 260, 185, ["AC-Leistung"]),
+        eq("bat", "tank", "Batteriespeicher", "DC-Seitig", 640, 540, 260, 230, ["Ladestand", "Laden"]),
+        eq("netz", "generic", "Netzanschluss", "Übergabepunkt", 1160, 255, 260, 185, ["Leistung", "Zählerstand"])
+      ],
+      [
+        pipe("pv_wr", "neutral", [[415, 330], [640, 330]]),
+        pipe("wr_bat", "neutral", [[770, 340], [770, 620], [900, 620]]),
+        pipe("wr_netz", "neutral", [[900, 330], [1160, 330]])
+      ],
+      [kpi("PV", "mdi:solar-power"), kpi("Speicher", "mdi:battery"), kpi("Netz", "mdi:transmission-tower")]
+    ),
+    tpl(
+      "energy-flow",
+      "Energiefluss",
+      "PV, Batterie, Netz, Hausverbrauch, Wärmepumpe.",
+      "Energieflüsse",
+      "Erzeuger, Speicher, Verbraucher",
+      [
+        eq("pv", "generic", "PV", "Erzeuger", 130, 255, 260, 185, ["Leistung"]),
+        eq("bat", "tank", "Batterie", "Speicher", 640, 200, 260, 185, ["Ladestand"]),
+        eq("netz", "generic", "Netz", "Bezug/Einspeisung", 1150, 200, 260, 185, ["Leistung"]),
+        eq("haus", "room", "Hausverbrauch", "Verbraucher", 640, 560, 260, 200, ["Leistung"]),
+        eq("wp", "heat_pump", "Wärmepumpe", "Verbraucher", 1120, 560, 280, 200, ["Leistung"])
+      ],
+      [
+        pipe("pv_bat", "neutral", [[390, 330], [640, 330]]),
+        pipe("bat_haus", "neutral", [[770, 290], [770, 640], [900, 640]]),
+        pipe("bat_netz", "neutral", [[900, 290], [1150, 290]]),
+        pipe("netz_wp", "neutral", [[1280, 385], [1280, 640], [1120, 640]])
+      ],
+      [kpi("Erzeugung", "mdi:solar-power"), kpi("Verbrauch", "mdi:home-lightning-bolt")]
+    ),
+    tpl(
+      "pool",
+      "Poolschwimmbad",
+      "Pool-Wärmepumpe, Solar, Becken.",
+      "Schwimmbad",
+      "Poolheizung mit Solar",
+      [
+        eq("wp", "heat_pump", "Pool-Wärmepumpe", "Erzeuger", 130, 305, 285, 185, ["Vorlauf", "Rücklauf"]),
+        eq("solar", "heat_exchanger", "Absorber", "Dach", 640, 200, 260, 230, ["Austritt", "Eintritt"]),
+        eq("becken", "tank", "Schwimmbecken", "Water", 1e3, 480, 400, 280, ["Wassertemperatur", "Soll"])
+      ],
+      [
+        pipe("wp_becken", "heating_supply", [[415, 380], [700, 380], [700, 560], [1e3, 560]]),
+        pipe("solar_wp", "heating_supply", [[640, 315], [500, 315], [500, 350], [415, 350]])
+      ],
+      [kpi("Wasser", "mdi:pool"), kpi("Solar", "mdi:weather-sunny")]
+    ),
+    tpl(
+      "district-transfer",
+      "Fernwärme-Übergabe",
+      "Übergabestation, Warmwasser, Heizkreis.",
+      "Fernwärme",
+      "Hausanschlussstation",
+      [
+        eq("station", "heat_exchanger", "Übergabestation", "Hausanschluss", 130, 305, 285, 185, ["Primär Vorlauf", "Primär Rücklauf", "Leistung"]),
+        eq("twe", "dhw_tank", "Trinkwarmwasser", "Speicher", 640, 255, 260, 230, ["Oben", "Soll"]),
+        eq("hk", "room", "Heizkreis", "Verteilung", 1160, 255, 285, 225, ["Vorlauf", "Raum"])
+      ],
+      [
+        pipe("st_twe", "dhw", [[415, 355], [535, 355], [535, 340], [640, 340]]),
+        pipe("st_hk", "heating_supply", [[415, 390], [535, 390], [535, 420], [1040, 420], [1040, 300], [1160, 300]])
+      ],
+      [kpi("Leistung", "mdi:fire"), kpi("Warmwasser", "mdi:water-boiler")]
+    )
+  ]);
+  function factoryTemplates() {
+    return JSON.parse(JSON.stringify(FACTORY_TEMPLATES));
+  }
+
   // src/v100/index.js
   function gltText(key) {
     const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
@@ -62032,7 +62690,9 @@ function gltText(key) {
       semantics: "legacy.nav_semantics",
       simulation: "legacy.nav_simulation",
       symbols: "legacy.nav_symbols",
-      trends: "legacy.nav_trends"
+      templates: "legacy.nav_templates",
+      trends: "legacy.nav_trends",
+      entities: "legacy.nav_entities"
     });
     const t = (config2, key) => {
       const catalogKey = NAV_KEYS[key];
@@ -62058,6 +62718,9 @@ function gltText(key) {
     sdk.UNREADABLE = UNREADABLE;
     sdk.version = "1.0.0";
     sdk.ensureV1 = ensureV1;
+    sdk.factoryTemplates = factoryTemplates;
+    sdk.entityExportPayload = entityExportPayload;
+    sdk.normalizeEntityImport = normalizeEntityImport;
     sdk.deriveOperationalState = deriveOperationalState;
     sdk.autoMapEquipment = autoMapEquipment;
     sdk.smartRoute = smartRoute;
@@ -62072,13 +62735,115 @@ function gltText(key) {
   .glt-v1-notice{margin-top:10px;padding:10px 12px;border:1px solid currentColor;border-radius:10px;min-height:44px;display:flex;align-items:center;gap:8px}
   .glt-v1-modal{position:fixed;inset:0;z-index:12000;background:#020617bd;display:grid;place-items:center;padding:20px}.glt-v1-dialog{width:min(1080px,97vw);max-height:92vh;overflow:auto;border:1px solid var(--glt-border,var(--divider-color));border-radius:16px;background:var(--card-background-color,#fff);color:var(--primary-text-color);box-shadow:0 30px 90px #0008}.glt-v1-head{position:sticky;top:0;z-index:4;display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid var(--glt-border,var(--divider-color));background:var(--card-background-color,#fff)}.glt-v1-body{padding:14px}.glt-v1-close,.glt-v1-btn{border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:transparent;color:var(--primary-text-color);padding:7px 9px;font-size:9px;font-weight:750;cursor:pointer}.glt-v1-close{border:0;font-size:15px}.glt-v1-btn.primary{color:#fff;background:#0b83cc;border-color:#1fb4ff}.glt-v1-btn.warn{color:#dc2626}.glt-v1-actions{display:flex;gap:6px;flex-wrap:wrap}.glt-v1-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.glt-v1-card{border:1px solid var(--glt-border,var(--divider-color));border-radius:11px;padding:10px;background:color-mix(in srgb,var(--card-background-color) 96%,#64748b 4%)}.glt-v1-card b{display:block;font-size:11px}.glt-v1-card small{display:block;color:var(--secondary-text-color);margin-top:3px;font-size:8px}.glt-v1-table{width:100%;border-collapse:collapse;font-size:9px}.glt-v1-table th,.glt-v1-table td{padding:7px;border-bottom:1px solid var(--glt-border,var(--divider-color));text-align:left;vertical-align:top}.glt-v1-input,.glt-v1-select,.glt-v1-text{width:100%;padding:7px;border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:var(--card-background-color);color:var(--primary-text-color);font-size:9px}.glt-v1-text{min-height:100px}.glt-v1-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:5px 8px;border-bottom:1px solid var(--b,var(--divider-color));background:color-mix(in srgb,var(--bg,var(--card-background-color)) 96%,#0ea5e9 4%)}.glt-v1-toolbar button{height:29px;border:1px solid var(--b,var(--divider-color));border-radius:7px;background:transparent;color:var(--mut,var(--secondary-text-color));font-size:8px;font-weight:760;padding:0 8px;cursor:pointer}.glt-v1-toolbar button:hover{color:var(--e,#0ea5e9);border-color:#0ea5e966}.glt-v1-minimap{position:absolute;right:12px;bottom:12px;width:180px;height:110px;border:1px solid var(--b);border-radius:9px;background:#07131fe6;z-index:50;overflow:hidden;pointer-events:none}.glt-v1-miniitem{position:absolute;background:#2aaeff66;border:1px solid #4bc6ff88;border-radius:2px}.glt-v1-layer-hidden{display:none!important}.glt-v1-layer-locked{pointer-events:none!important;opacity:.65}.glt-v1-breadcrumbs{display:flex;gap:5px;align-items:center;padding:5px 14px;font-size:9px;color:var(--secondary-text-color);border-bottom:1px solid var(--glt-border)}.glt-v1-breadcrumbs button{border:0;background:transparent;color:var(--glt-accent);cursor:pointer;font-size:9px}.glt-v1-quality.good{color:#22c55e}.glt-v1-quality.uncertain{color:#f59e0b}.glt-v1-quality.bad{color:#ef4444}
   body.glt-v1-kiosk .header,body.glt-v1-kiosk app-toolbar{display:none!important}@media(min-width:1800px){.glt-v1-dialog{width:min(1320px,96vw)}}`;
+    const SYMBOL_STYLES = `
+  .glt-eq-symbol .glt-sym{width:100%;height:100%;display:block}
+  .glt-sym line,.glt-sym path,.glt-sym rect,.glt-sym circle{stroke-linecap:round;stroke-linejoin:round}
+  .glt-sym-body{fill:color-mix(in srgb,var(--glt-panel) 55%,var(--glt-accent) 10%);stroke:color-mix(in srgb,var(--primary-text-color) 42%,transparent);stroke-width:2.4}
+  .glt-sym-accent{fill:var(--glt-accent)}
+  .glt-sym-thin{fill:none;stroke:color-mix(in srgb,var(--primary-text-color) 45%,transparent);stroke-width:1.6}
+  .glt-sym-hot{fill:none;stroke:#ef4444;stroke-width:3.4}
+  .glt-sym-cold{fill:none;stroke:#3b82f6;stroke-width:3.4}
+  .glt-sym-power{fill:none;stroke:#f59e0b;stroke-width:2.2}
+  .glt-sym-coil{fill:none;stroke:#f97316;stroke-width:2.2}
+  .glt-sym-rotor{fill:var(--glt-accent);stroke:none}
+  .glt-sym-tank{fill:color-mix(in srgb,var(--glt-panel) 72%,var(--glt-accent) 7%);stroke:color-mix(in srgb,var(--primary-text-color) 45%,transparent);stroke-width:2.4}
+  .glt-sym-hotfill{fill:color-mix(in srgb,#ef4444 42%,transparent);stroke:none}
+  .glt-sym-coldfill{fill:color-mix(in srgb,#3b82f6 42%,transparent);stroke:none}
+  .glt-sym-flame{fill:#f97316;stroke:none}
+  .glt-sym-txt{fill:var(--primary-text-color);font-size:9px;font-weight:800;text-anchor:middle;stroke:none}
+  .glt-sym-accent-text{fill:var(--glt-accent)}
+  .glt-sym-alarm{fill:#ef4444;stroke:#7f1d1d;stroke-width:1.6}
+  .glt-style-clean .glt-sym-body{fill:#fff;stroke:#475569;stroke-width:2}
+  .glt-style-clean .glt-sym-accent{fill:#0ea5e9}
+  .glt-style-clean .glt-sym-tank{fill:#fff;stroke:#475569;stroke-width:2}
+  .glt-style-clean .glt-sym-hotfill{fill:none;stroke:#ef4444;stroke-width:1.8}
+  .glt-style-clean .glt-sym-coldfill{fill:none;stroke:#3b82f6;stroke-width:1.8}
+  .glt-style-clean .glt-sym-flame{fill:#ef4444}
+  .glt-style-clean .glt-sym-rotor{fill:#0ea5e9}
+  .glt-style-clean .glt-sym-coil{stroke:#ef4444}
+  .glt-style-clean .glt-sym-txt{fill:#334155}
+  .glt-style-classic_scada .glt-sym-body{fill:#d8dee9;stroke:#111827;stroke-width:3}
+  .glt-style-classic_scada .glt-sym-accent{fill:#111827}
+  .glt-style-classic_scada .glt-sym-thin{stroke:#111827;stroke-width:1.8}
+  .glt-style-classic_scada .glt-sym-hot,.glt-style-classic_scada .glt-sym-cold{stroke:#111827;stroke-width:3.6}
+  .glt-style-classic_scada .glt-sym-power{stroke:#111827}
+  .glt-style-classic_scada .glt-sym-tank{fill:#cbd5e1;stroke:#111827;stroke-width:3}
+  .glt-style-classic_scada .glt-sym-hotfill{fill:#94a3b8;stroke:#111827;stroke-width:1}
+  .glt-style-classic_scada .glt-sym-coldfill{fill:#e8edf3;stroke:#111827;stroke-width:1}
+  .glt-style-classic_scada .glt-sym-flame{fill:#374151}
+  .glt-style-classic_scada .glt-sym-rotor{fill:#111827}
+  .glt-style-classic_scada .glt-sym-coil{stroke:#111827}
+  .glt-style-classic_scada .glt-sym-txt{fill:#111827}
+  .glt-style-standard_2d .glt-sym-body{fill:#dbeafe;stroke:#1d4ed8;stroke-width:2.2}
+  .glt-style-standard_2d .glt-sym-accent{fill:#1d4ed8}
+  .glt-style-standard_2d .glt-sym-tank{fill:#bfdbfe;stroke:#1d4ed8;stroke-width:2.2}
+  .glt-style-standard_2d .glt-sym-hotfill{fill:#93c5fd;stroke:#1d4ed8;stroke-width:1}
+  .glt-style-standard_2d .glt-sym-coldfill{fill:#dbeafe;stroke:#1d4ed8;stroke-width:1}
+  .glt-style-standard_2d .glt-sym-rotor{fill:#1d4ed8}
+  .glt-style-standard_2d .glt-sym-coil{stroke:#1d4ed8}
+  .glt-style-standard_2d .glt-sym-txt{fill:#1e3a8a}
+  .glt-style-operations_light .glt-sym-body{fill:#ecfdf5;stroke:#047857;stroke-width:2.2}
+  .glt-style-operations_light .glt-sym-accent{fill:#047857}
+  .glt-style-operations_light .glt-sym-tank{fill:#d1fae5;stroke:#047857;stroke-width:2.2}
+  .glt-style-operations_light .glt-sym-hotfill{fill:#fca5a5;stroke:#047857;stroke-width:1}
+  .glt-style-operations_light .glt-sym-coldfill{fill:#a7f3d0;stroke:#047857;stroke-width:1}
+  .glt-style-operations_light .glt-sym-rotor{fill:#047857}
+  .glt-style-operations_light .glt-sym-coil{stroke:#047857}
+  .glt-style-operations_light .glt-sym-txt{fill:#064e3b}
+  .glt-style-pid_dark .glt-sym-body{fill:none;stroke:#67e8f9;stroke-width:1.8}
+  .glt-style-pid_dark .glt-sym-accent{fill:#fbbf24}
+  .glt-style-pid_dark .glt-sym-thin{stroke:#94a3b8}
+  .glt-style-pid_dark .glt-sym-hot{stroke:#f87171}
+  .glt-style-pid_dark .glt-sym-cold{stroke:#60a5fa}
+  .glt-style-pid_dark .glt-sym-tank{fill:#0f172a80;stroke:#67e8f9;stroke-width:1.8}
+  .glt-style-pid_dark .glt-sym-hotfill{fill:#f8717166;stroke:#f87171;stroke-width:1}
+  .glt-style-pid_dark .glt-sym-coldfill{fill:#60a5fa66;stroke:#60a5fa;stroke-width:1}
+  .glt-style-pid_dark .glt-sym-flame{fill:#fbbf24}
+  .glt-style-pid_dark .glt-sym-rotor{fill:#fbbf24}
+  .glt-style-pid_dark .glt-sym-coil{stroke:#fbbf24}
+  .glt-style-pid_dark .glt-sym-txt{fill:#a5f3fc}
+  .glt-sym-running{filter:drop-shadow(0 0 5px var(--glt-accent)) saturate(1.25)}
+  .glt-sym-running .glt-sym-body,.glt-sym-running .glt-sym-tank{stroke:var(--glt-accent)}
+  .glt-sym-fault{filter:drop-shadow(0 0 6px #ef4444)}
+  .glt-sym-fault .glt-sym-body,.glt-sym-fault .glt-sym-tank{stroke:#ef4444;stroke-width:3.2}
+  .glt-v1-grid .glt-sym{width:100%;height:100%}`;
     function addStyle(root) {
       if (root?.querySelector("style[data-glt-v1]")) return;
       const st2 = document.createElement("style");
       st2.dataset.gltV1 = "1";
-      st2.textContent = STYLES;
+      st2.textContent = STYLES + SYMBOL_STYLES;
       root?.appendChild(st2);
     }
+    const TYPE_SYMBOLS = { heat_pump: "heat_pump_neo", boiler: "boiler", tank: "buffer_layered", dhw_tank: "dhw_tank", room: "underfloor", pump: "pump_inline", valve: "valve_2way", fan: "fan_supply", ahu: "ahu", chiller: "chiller", meter: "meter" };
+    const symClass = (value) => String(value || "").split(/\s+/).filter(Boolean).map((name) => `glt-sym-${name}`).join(" ");
+    function symbolGeometryFor(item = {}) {
+      const base = String(item.symbol_variant || item.symbol || "").split("@")[0] || TYPE_SYMBOLS[item.type] || "";
+      return SYMBOL_GEOMETRY.get(base) || null;
+    }
+    function symbolSvg(geometry) {
+      const parts2 = geometry.map((p) => {
+        if (p[0] === "line") return `<line x1="${p[1]}" y1="${p[2]}" x2="${p[3]}" y2="${p[4]}" class="${symClass(p[5])}"/>`;
+        if (p[0] === "rect") return `<rect x="${p[1]}" y="${p[2]}" width="${p[3]}" height="${p[4]}" rx="${p[5] || 0}" class="${symClass(p[6])}"/>`;
+        if (p[0] === "circle") return `<circle cx="${p[1]}" cy="${p[2]}" r="${p[3]}" class="${symClass(p[4])}"/>`;
+        if (p[0] === "path") return `<path d="${p[1]}" class="${symClass(p[2])}"/>`;
+        if (p[0] === "text") return `<text x="${p[1]}" y="${p[2]}" class="${symClass(p[4])}">${esc(p[3])}</text>`;
+        return "";
+      }).join("");
+      return `<svg class="glt-sym" viewBox="0 0 64 64" aria-hidden="true">${parts2}</svg>`;
+    }
+    const oldEquipmentMarkup = Card.prototype._equipmentMarkup;
+    Card.prototype._equipmentMarkup = function(item) {
+      const markup = oldEquipmentMarkup.call(this, item);
+      const geometry = symbolGeometryFor(item);
+      if (!geometry) return markup;
+      let svg = symbolSvg(geometry);
+      const running = item.state_entity ? this._isActive(item.state_entity) : item.entity ? this._isActive(item.entity) : false;
+      const alarmField = this._config?.status?.alarm;
+      const faulted = alarmField ? this._isActive(alarmField) : false;
+      const symbolClass = faulted ? "glt-sym-fault" : running ? "glt-sym-running" : "";
+      if (symbolClass) svg = svg.replace('class="glt-sym"', `class="glt-sym ${symbolClass}"`);
+      return markup.replace(/<ha-icon class="glt-eq-icon"[^>]*><\/ha-icon>/, svg);
+    };
     function notice(owner, message) {
       const root = owner.shadowRoot || owner;
       root.querySelector("[data-glt-notice]")?.remove();
@@ -62355,13 +63120,20 @@ function gltText(key) {
       const refs = selectedRefs(editor).filter((r) => r.kind === "equipment");
       return refs.map((r) => editor._config.equipment.find((x2) => x2.id === r.id)).filter(Boolean);
     }
+    const groupText = (group) => group && SYMBOL_GROUPS[group] ? labelText(SYMBOL_GROUPS[group]) : group || "";
     function showSymbolLibrary(editor) {
       const stats = symbolCatalogStats(), current = selectedEquipment(editor)[0];
       const m = editorModal(editor, `${t(editor._config, "symbols")} · ${stats.variants} Varianten`, `<div class="glt-v1-actions"><select class="glt-v1-select" data-style>${VISUAL_STYLES.map((s) => `<option value="${s.id}">${s.label}</option>`).join("")}</select><input class="glt-v1-input" data-q placeholder="Pumpe, Ventil, RLT…"></div><div class="glt-v1-grid" data-grid style="margin-top:10px"></div>`);
       const render = () => {
         const q2 = m.querySelector("[data-q]").value.toLowerCase(), style = m.querySelector("[data-style]").value;
-        const data = SYMBOL_VARIANTS.filter((s) => s.style === style && (!q2 || `${s.label} ${s.category}`.toLowerCase().includes(q2)));
-        m.querySelector("[data-grid]").innerHTML = data.map((s) => `<div class="glt-v1-card"><b>${esc(s.label)}</b><small>${esc(s.category)} · ${esc(s.profile)}</small>${current ? `<button class="glt-v1-btn" data-use="${esc(s.id)}">Übernehmen</button>` : ""}</div>`).join("");
+        const data = SYMBOL_VARIANTS.filter((s) => s.style === style && (!q2 || `${s.label} ${s.category} ${s.group || ""}`.toLowerCase().includes(q2)));
+        const grid = m.querySelector("[data-grid]");
+        grid.className = `glt-v1-grid glt-style-${style}`;
+        grid.innerHTML = data.map((s) => {
+          const geometry = SYMBOL_GEOMETRY.get(s.base_symbol);
+          const preview = geometry ? `<div style="width:44px;height:44px;margin-bottom:6px">${symbolSvg(geometry)}</div>` : "";
+          return `<div class="glt-v1-card" style="display:flex;gap:9px;align-items:center">${preview}<div style="min-width:0;flex:1"><b>${esc(s.label)}</b><small>${esc(s.category)} · ${esc(groupText(s.group))}</small></div>${current ? `<button class="glt-v1-btn" data-use="${esc(s.id)}">Übernehmen</button>` : ""}</div>`;
+        }).join("");
         m.querySelectorAll("[data-use]").forEach((b) => b.onclick = () => {
           const s = SYMBOL_VARIANTS.find((x2) => x2.id === b.dataset.use);
           editor._remember?.();
@@ -62611,6 +63383,112 @@ function gltText(key) {
       host.style.position = host.style.position || "relative";
       host.appendChild(m);
     }
+    function entityCatalog(editor) {
+      if (Array.isArray(editor._entityCatalog) && editor._entityCatalog.length) return editor._entityCatalog;
+      try {
+        const parsed = JSON.parse(localStorage.getItem("glt-flow-card.entities") || "null");
+        if (Array.isArray(parsed?.entities)) return parsed.entities;
+      } catch (_err) {
+      }
+      return [];
+    }
+    function wireEntityFields(editor) {
+      if (customElements.get("ha-entity-picker")) return;
+      const root = editor.shadowRoot;
+      if (!root) return;
+      const catalog = entityCatalog(editor);
+      let list = root.querySelector("datalist#glt-entities");
+      if (!list) {
+        list = document.createElement("datalist");
+        list.id = "glt-entities";
+        root.appendChild(list);
+      }
+      list.innerHTML = catalog.slice(0, 2e3).map((e) => `<option value="${esc(e.entity_id)}">${esc(e.name)}</option>`).join("");
+      root.querySelectorAll("ha-entity-picker[data-ep]").forEach((picker) => {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "glt-v1-input";
+        input.setAttribute("list", "glt-entities");
+        input.value = picker.dataset.v || "";
+        input.dataset.e = picker.dataset.e || "";
+        input.addEventListener("change", () => editor._entityEdit?.(input.dataset.e, input.value.trim()));
+        picker.replaceWith(input);
+      });
+    }
+    function applyTemplate(editor, config2) {
+      editor._remember?.();
+      editor._config = ensureV1(JSON.parse(JSON.stringify(config2)));
+      editor._emit?.();
+      editor._render();
+      wireEntityFields(editor);
+    }
+    function showTemplates(editor) {
+      const factory = factoryTemplates();
+      let own = [];
+      try {
+        own = JSON.parse(localStorage.getItem("glt-flow-card.templates") || "[]");
+      } catch (_err) {
+        own = [];
+      }
+      const ownRows = own.filter((tp) => tp && tp.config).map((tp, i) => `<div class="glt-v1-card"><b>${esc(tp.name || tp.id || gltText("legacy.templates_own"))}</b><small>${esc(tp.description || "")}</small><button class="glt-v1-btn" data-otpl="${i}">${gltText("legacy.templates_load")}</button></div>`).join("");
+      const m = editorModal(editor, `${t(editor._config, "templates")}`, `
+      <div class="glt-v1-notice">${gltText("legacy.templates_hint")}</div>
+      <h4 style="margin:12px 0 6px;font-size:11px">${gltText("legacy.templates_factory")}</h4>
+      <div class="glt-v1-grid">${factory.map((tp) => `<div class="glt-v1-card"><b>${esc(tp.name)}</b><small>${esc(tp.description)}</small><button class="glt-v1-btn" data-tpl="${esc(tp.id)}">${gltText("legacy.templates_load")}</button></div>`).join("")}</div>
+      <h4 style="margin:14px 0 6px;font-size:11px">${gltText("legacy.templates_own")}</h4>
+      ${ownRows ? `<div class="glt-v1-grid">${ownRows}</div>` : `<small style="color:var(--secondary-text-color)">${gltText("legacy.templates_none")}</small>`}`);
+      m.querySelectorAll("[data-tpl]").forEach((b) => b.onclick = () => {
+        const tp = factory.find((x2) => x2.id === b.dataset.tpl);
+        if (!tp) return;
+        applyTemplate(editor, tp.config);
+        m.remove();
+      });
+      m.querySelectorAll("[data-otpl]").forEach((b) => b.onclick = () => {
+        const tp = own[Number(b.dataset.otpl)];
+        if (!tp?.config) return;
+        applyTemplate(editor, tp.config);
+        m.remove();
+      });
+    }
+    function showEntities(editor) {
+      const hass = sdk.currentHass?.();
+      const hasStates = !!(hass?.states && Object.keys(hass.states).length);
+      const imported = entityCatalog(editor);
+      const row = (e) => `<tr><td>${esc(e.entity_id)}</td><td>${esc(e.name)}</td><td>${esc(e.unit || "")}</td></tr>`;
+      const m = editorModal(editor, `${t(editor._config, "entities")}`, `
+      <div class="glt-v1-actions">
+        <button class="glt-v1-btn primary" data-exp ${hasStates ? "" : "disabled"}>⇩ ${gltText("legacy.entities_export")}</button>
+        <label class="glt-v1-btn" style="display:inline-flex;align-items:center;cursor:pointer">⇧ ${gltText("legacy.entities_import")}<input type="file" accept=".json,application/json" data-imp hidden></label>
+      </div>
+      <div class="glt-v1-notice" style="margin-top:10px" data-notice>${gltText("legacy.entities_hint")}</div>
+      <div style="margin-top:10px;font-size:10px">${gltText("legacy.entities_imported")}: <b data-count>${imported.length}</b>${hasStates ? "" : ` · <span style="color:var(--secondary-text-color)">${gltText("legacy.entities_offline")}</span>`}</div>
+      <div style="max-height:320px;overflow:auto;margin-top:8px"><table class="glt-v1-table"><tbody data-rows>${imported.slice(0, 200).map(row).join("")}</tbody></table></div>`);
+      m.querySelector("[data-exp]")?.addEventListener("click", () => {
+        const payload = entityExportPayload(hass?.states || {});
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "glt-entities.json";
+        link.click();
+        URL.revokeObjectURL(link.href);
+      });
+      m.querySelector("[data-imp]")?.addEventListener("change", async (ev) => {
+        const file = ev.target.files?.[0];
+        const notice2 = m.querySelector("[data-notice]");
+        if (!file || !notice2) return;
+        try {
+          const result2 = normalizeEntityImport(JSON.parse(await file.text()));
+          localStorage.setItem("glt-flow-card.entities", JSON.stringify(result2));
+          editor._entityCatalog = result2.entities;
+          m.querySelector("[data-count]").textContent = String(result2.count);
+          m.querySelector("[data-rows]").innerHTML = result2.entities.slice(0, 200).map(row).join("");
+          notice2.textContent = `${gltText("legacy.entities_imported")}: ${result2.count} · ${gltText("legacy.entities_rejected")}: ${result2.rejected}`;
+          wireEntityFields(editor);
+        } catch (_err) {
+          notice2.textContent = gltText("legacy.entities_invalid");
+        }
+      });
+    }
     function editorToolbar(editor) {
       const root = editor.shadowRoot;
       if (root.querySelector("[data-glt-v1-toolbar]")) return;
@@ -62619,10 +63497,10 @@ function gltText(key) {
       const bar = document.createElement("div");
       bar.className = "glt-v1-toolbar";
       bar.dataset.gltV1Toolbar = "1";
-      const buttons = [["symbols", "🧩"], ["semantics", "⌘"], ["automap", "↯"], ["cad", "⌗"], ["diagnostics", "✓"], ["simulation", "◉"], ["schedule", "◷"], ["energy", "⚡"], ["maintenance", "🔧"], ["project", "▣"]];
+      const buttons = [["symbols", "🧩"], ["templates", "▤"], ["semantics", "⌘"], ["automap", "↯"], ["cad", "⌗"], ["diagnostics", "✓"], ["simulation", "◉"], ["schedule", "◷"], ["energy", "⚡"], ["entities", "⇋"], ["maintenance", "🔧"], ["project", "▣"]];
       bar.innerHTML = buttons.map(([k2, ic]) => `<button data-v1="${k2}">${ic} ${esc(t(editor._config, k2))}</button>`).join("");
       base.after(bar);
-      const act = { symbols: showSymbolLibrary, semantics: showSemantics, automap: showAutoMapping, cad: showCAD, diagnostics: showDiagnostics, simulation: showSimulation, schedule: showSchedules, energy: showEnergy, maintenance: showMaintenance, project: showProjectV1 };
+      const act = { symbols: showSymbolLibrary, templates: showTemplates, entities: showEntities, semantics: showSemantics, automap: showAutoMapping, cad: showCAD, diagnostics: showDiagnostics, simulation: showSimulation, schedule: showSchedules, energy: showEnergy, maintenance: showMaintenance, project: showProjectV1 };
       bar.querySelectorAll("[data-v1]").forEach((b) => b.onclick = () => act[b.dataset.v1]?.(editor));
     }
     const oldEditorRender = Editor2.prototype._render;
@@ -62633,6 +63511,7 @@ function gltText(key) {
       editorToolbar(this);
       applyLayers(this);
       minimap(this);
+      wireEntityFields(this);
       return r;
     };
     const oldSeries = Card.prototype._seriesFor;

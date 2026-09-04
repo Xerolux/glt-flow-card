@@ -1,51 +1,51 @@
 {
   "format": "glt-flow-card-catalog-evidence",
   "report_version": 1,
-  "base_symbol_count": 76,
+  "base_symbol_count": 100,
   "style_count": 6,
-  "variant_count": 456,
+  "variant_count": 600,
   "domains": [
     {
       "id": "heating",
       "category": "Heizung",
-      "base_symbols": 9,
-      "variants": 54
+      "base_symbols": 15,
+      "variants": 90
     },
     {
       "id": "hydraulics",
       "category": "Hydraulik",
-      "base_symbols": 17,
-      "variants": 102
+      "base_symbols": 21,
+      "variants": 126
     },
     {
       "id": "air",
       "category": "RLT",
-      "base_symbols": 12,
-      "variants": 72
+      "base_symbols": 16,
+      "variants": 96
     },
     {
       "id": "refrigeration",
       "category": "Kälte",
-      "base_symbols": 4,
-      "variants": 24
-    },
-    {
-      "id": "energy",
-      "category": "Energie",
-      "base_symbols": 6,
-      "variants": 36
-    },
-    {
-      "id": "instrumentation",
-      "category": "Sensorik",
       "base_symbols": 8,
       "variants": 48
     },
     {
-      "id": "electrical",
-      "category": "Elektro",
+      "id": "energy",
+      "category": "Energie",
+      "base_symbols": 9,
+      "variants": 54
+    },
+    {
+      "id": "instrumentation",
+      "category": "Sensorik",
       "base_symbols": 10,
       "variants": 60
+    },
+    {
+      "id": "electrical",
+      "category": "Elektro",
+      "base_symbols": 11,
+      "variants": 66
     },
     {
       "id": "fire",
@@ -77,6 +77,13 @@
       "primitives": 7
     },
     {
+      "id": "backflow_preventer",
+      "category": "Hydraulik",
+      "domain": "hydraulics",
+      "geometry_sha256": "bf3453d40fc1c780f5a8948d6a6fbf4262027c818ee65cf325351087bad3ad28",
+      "primitives": 5
+    },
+    {
       "id": "balancing_valve",
       "category": "Hydraulik",
       "domain": "hydraulics",
@@ -96,6 +103,13 @@
       "domain": "heating",
       "geometry_sha256": "0a63570b10bf76055e9f8e0c615ddc76de32067e6d7d91fd485d41e121e5b81c",
       "primitives": 4
+    },
+    {
+      "id": "brine_station",
+      "category": "Kälte",
+      "domain": "refrigeration",
+      "geometry_sha256": "6bc2bab954791a8dd1f7224858a50c42c945efddba1449fe59d3c40e3e48ec11",
+      "primitives": 7
     },
     {
       "id": "buffer_layered",
@@ -147,11 +161,39 @@
       "primitives": 4
     },
     {
+      "id": "co2_voc_sensor",
+      "category": "Sensorik",
+      "domain": "instrumentation",
+      "geometry_sha256": "7acb93a19938c182c29191f32335d8f4eafd2e5ffaa082f42a769d93f6bd3616",
+      "primitives": 4
+    },
+    {
+      "id": "cogen_unit",
+      "category": "Heizung",
+      "domain": "heating",
+      "geometry_sha256": "0de8d51d2b3f0157af407f55722d22fe23762d0eba9e3ba26cf11221de5604f6",
+      "primitives": 6
+    },
+    {
+      "id": "compact_ahu",
+      "category": "RLT",
+      "domain": "air",
+      "geometry_sha256": "bb745c01c66b001cd1c47899ff0748bae7792a3442b6ae2ea2e62d0a6c727d26",
+      "primitives": 8
+    },
+    {
       "id": "compressor",
       "category": "Kälte",
       "domain": "refrigeration",
       "geometry_sha256": "7cb8b8b16de0dcb89c91d0a7adfc060aba991d0c44ec1b1944bd9e5cd0867e0a",
       "primitives": 2
+    },
+    {
+      "id": "condensing_unit",
+      "category": "Kälte",
+      "domain": "refrigeration",
+      "geometry_sha256": "1af46fc52fd9a1eafdf59652f05bd49b7380f002cd568e128144505ff5504242",
+      "primitives": 7
     },
     {
       "id": "cooling_buffer",
@@ -182,6 +224,13 @@
       "primitives": 3
     },
     {
+      "id": "dhw_freshwater_station",
+      "category": "Heizung",
+      "domain": "heating",
+      "geometry_sha256": "edd8f3466ef543f3d85ba379b5e9478bb257e7933422ca3e73b960033cf9fd70",
+      "primitives": 9
+    },
+    {
       "id": "dhw_tank",
       "category": "Heizung",
       "domain": "heating",
@@ -200,6 +249,20 @@
       "category": "Sensorik",
       "domain": "instrumentation",
       "geometry_sha256": "855210a5cfde69b273ba841d8c1202a56fb6f1f9742686a21b043f17c50c5d07",
+      "primitives": 4
+    },
+    {
+      "id": "dry_cooler",
+      "category": "Kälte",
+      "domain": "refrigeration",
+      "geometry_sha256": "cdc6c6544dcfe66379c439d320f98ba5eb49b170abaa18d00ece80fabeeb7a72",
+      "primitives": 5
+    },
+    {
+      "id": "ec_fan",
+      "category": "RLT",
+      "domain": "air",
+      "geometry_sha256": "ad8f36e83d4c2484a914f35b438a15f37a192992956b7b62a9bba52d5817adb6",
       "primitives": 4
     },
     {
@@ -266,6 +329,20 @@
       "primitives": 5
     },
     {
+      "id": "flat_collector",
+      "category": "Heizung",
+      "domain": "heating",
+      "geometry_sha256": "09b463782ac2187118210d34e47c578801d24490dc1fb45bf26e15c454b434ae",
+      "primitives": 7
+    },
+    {
+      "id": "flexible_compensator",
+      "category": "Hydraulik",
+      "domain": "hydraulics",
+      "geometry_sha256": "6fa7021601fe7e0503f86dc9b3ca0d2803543160501d13eb334504dac719b738",
+      "primitives": 5
+    },
+    {
       "id": "flow_sensor",
       "category": "Sensorik",
       "domain": "instrumentation",
@@ -273,11 +350,32 @@
       "primitives": 4
     },
     {
+      "id": "flow_switch",
+      "category": "Sensorik",
+      "domain": "instrumentation",
+      "geometry_sha256": "18410c7d0899d75eb226624834d4e6fb159979a2c68d1d4f8e2bb9eb400c6b7f",
+      "primitives": 4
+    },
+    {
+      "id": "frequency_drive",
+      "category": "Elektro",
+      "domain": "electrical",
+      "geometry_sha256": "180a142ae70bab1d4c22850aa8dcd2d82349cc4638ec209ee92a0ab383a274d6",
+      "primitives": 5
+    },
+    {
       "id": "frost_thermostat",
       "category": "Sensorik",
       "domain": "instrumentation",
       "geometry_sha256": "29150f7cd8ec2b228b48d9a436a4ad58f41c45ae66131f9fd58ce7d9e4da0ff1",
       "primitives": 4
+    },
+    {
+      "id": "fuel_cell",
+      "category": "Energie",
+      "domain": "energy",
+      "geometry_sha256": "5224ed3e47a92ea6a26c65c7e578a71424c9aa0f76963f2c3b1a8495749d7513",
+      "primitives": 6
     },
     {
       "id": "generator_set",
@@ -308,11 +406,25 @@
       "primitives": 6
     },
     {
+      "id": "heat_meter",
+      "category": "Energie",
+      "domain": "energy",
+      "geometry_sha256": "15f97c7b5f88cedfa939b7f9d08395b80bf1509365e8f54ffd84373b6bcf6c7b",
+      "primitives": 7
+    },
+    {
       "id": "heat_pump_compact",
       "category": "Heizung",
       "domain": "heating",
       "geometry_sha256": "4c46962dc5d0b06fbab225005056827438049f496b32baa4afce86fc3768cfe8",
       "primitives": 6
+    },
+    {
+      "id": "heat_pump_duo",
+      "category": "Heizung",
+      "domain": "heating",
+      "geometry_sha256": "5b1fd46ed98717717d93a28207f877140ab64ec9bd34c049717783649ebb8688",
+      "primitives": 9
     },
     {
       "id": "heat_pump_neo",
@@ -357,11 +469,25 @@
       "primitives": 4
     },
     {
+      "id": "hybrid_inverter",
+      "category": "Energie",
+      "domain": "energy",
+      "geometry_sha256": "80d9fec2485629278206f3bbde43c4de6d340c3ecbb79994e88480b0aae1604b",
+      "primitives": 5
+    },
+    {
       "id": "hydraulic_separator",
       "category": "Hydraulik",
       "domain": "hydraulics",
       "geometry_sha256": "594dfb5539c43a50c9d612e50e3f646b1a967898d5776c1c0a22c504d732fd45",
       "primitives": 6
+    },
+    {
+      "id": "ice_storage",
+      "category": "Kälte",
+      "domain": "refrigeration",
+      "geometry_sha256": "06b0d20ae65588ea72fbb58ff110a26f9acce5f66f27dff0938048e800cd8ceb",
+      "primitives": 4
     },
     {
       "id": "immersion_heater",
@@ -413,6 +539,13 @@
       "primitives": 8
     },
     {
+      "id": "pressure_reducing_valve",
+      "category": "Hydraulik",
+      "domain": "hydraulics",
+      "geometry_sha256": "2151f2048cecb809ec2eb037eeedc58ac15bc7331b1e3820cc0e3339bf15930a",
+      "primitives": 5
+    },
+    {
       "id": "pressure_sensor",
       "category": "Sensorik",
       "domain": "instrumentation",
@@ -425,6 +558,13 @@
       "domain": "hydraulics",
       "geometry_sha256": "13352d5a69ecc53b5b50d549a104e28ad4947844b34006d7917390262b0d4595",
       "primitives": 4
+    },
+    {
+      "id": "pump_group",
+      "category": "Hydraulik",
+      "domain": "hydraulics",
+      "geometry_sha256": "105c2ea8a2529f4fa3273868e1c797a948a61df3b4d7f2e9166e0ed4650bb39b",
+      "primitives": 9
     },
     {
       "id": "pump_inline",
@@ -504,6 +644,13 @@
       "primitives": 4
     },
     {
+      "id": "solar_station",
+      "category": "Heizung",
+      "domain": "heating",
+      "geometry_sha256": "764c29c64f85ee17fcd5c732cd152e16e68afa9206b991ae22c9e172845d8bc0",
+      "primitives": 8
+    },
+    {
       "id": "sprinkler_head",
       "category": "Brandschutz",
       "domain": "fire",
@@ -516,6 +663,13 @@
       "domain": "fire",
       "geometry_sha256": "e70b3b55421f9791fa22db90f8d25692255796a265ba372c245101086a80b702",
       "primitives": 7
+    },
+    {
+      "id": "steam_humidifier",
+      "category": "RLT",
+      "domain": "air",
+      "geometry_sha256": "c7f56b2bd681a68a9aafcd88dcadfe2ef970a4875f8e5dadb2bd03e5c3ec95de",
+      "primitives": 4
     },
     {
       "id": "sub_distribution_board",
@@ -567,6 +721,13 @@
       "primitives": 5
     },
     {
+      "id": "vacuum_tube_collector",
+      "category": "Heizung",
+      "domain": "heating",
+      "geometry_sha256": "e6588f751fffe8742406f3b1608cf3e197da7622154578b65cbf63a6cb24e9f3",
+      "primitives": 7
+    },
+    {
       "id": "valve_2way",
       "category": "Hydraulik",
       "domain": "hydraulics",
@@ -578,6 +739,13 @@
       "category": "Hydraulik",
       "domain": "hydraulics",
       "geometry_sha256": "279a6f4ccc767fb5349ff7a2650cc95f46eda70c07b040a0aaa082e141d3dd59",
+      "primitives": 6
+    },
+    {
+      "id": "vav_box",
+      "category": "RLT",
+      "domain": "air",
+      "geometry_sha256": "9a64920655ca2835a1143814843b28412f49d8f4bbff0eda3d34217fbc68a723",
       "primitives": 6
     },
     {
@@ -724,6 +892,42 @@
       "geometry_sha256": "683e497f6f7afb9e81d00d4f26c824082235a23aa5ad31926d19b671389a0ab6"
     },
     {
+      "id": "backflow_preventer@classic_scada",
+      "base_symbol": "backflow_preventer",
+      "style": "classic_scada",
+      "geometry_sha256": "336490f67c72e5b636e455cdd71f1ccf661d8dfeaa0e059de20076dc45daea02"
+    },
+    {
+      "id": "backflow_preventer@clean",
+      "base_symbol": "backflow_preventer",
+      "style": "clean",
+      "geometry_sha256": "85274e6d5b698d7a912ef4b73185c6c0e197dc9a90af74fafcf536e4fe6112c0"
+    },
+    {
+      "id": "backflow_preventer@neo2030",
+      "base_symbol": "backflow_preventer",
+      "style": "neo2030",
+      "geometry_sha256": "21a4aa692e5395ddb828d08113532014d5f1a44164f4a4a45d0c88a4dc556a5a"
+    },
+    {
+      "id": "backflow_preventer@operations_light",
+      "base_symbol": "backflow_preventer",
+      "style": "operations_light",
+      "geometry_sha256": "06c1c6147148b91243f7fb02f5c73157666af37212d38dcc02deabe2b4c8f020"
+    },
+    {
+      "id": "backflow_preventer@pid_dark",
+      "base_symbol": "backflow_preventer",
+      "style": "pid_dark",
+      "geometry_sha256": "3eb6e166550345385da2523e5c3cd31fbbb612b8489beb56a5c0c45c3e164248"
+    },
+    {
+      "id": "backflow_preventer@standard_2d",
+      "base_symbol": "backflow_preventer",
+      "style": "standard_2d",
+      "geometry_sha256": "104c21c0f6b0fd3aad10d383d3a06950cf5813693729b5b32e114de0e1e090f2"
+    },
+    {
       "id": "balancing_valve@classic_scada",
       "base_symbol": "balancing_valve",
       "style": "classic_scada",
@@ -830,6 +1034,42 @@
       "base_symbol": "boiler",
       "style": "standard_2d",
       "geometry_sha256": "b53043b97d50f75c9e21e638a00504e3e031d69080dd71e1de2217c03eaad40d"
+    },
+    {
+      "id": "brine_station@classic_scada",
+      "base_symbol": "brine_station",
+      "style": "classic_scada",
+      "geometry_sha256": "fe44ddccec62b36b5c677b8c722bf95a1c9bc4101456c55f3f15680e5b74ae00"
+    },
+    {
+      "id": "brine_station@clean",
+      "base_symbol": "brine_station",
+      "style": "clean",
+      "geometry_sha256": "f3a16298aa836419167c2ce75a0f8fc4a3d8201d8de85d44ee20b2ded3dee778"
+    },
+    {
+      "id": "brine_station@neo2030",
+      "base_symbol": "brine_station",
+      "style": "neo2030",
+      "geometry_sha256": "3e41f0205915cccd457e61ed7739442e20e733012580bd72651004e872718baf"
+    },
+    {
+      "id": "brine_station@operations_light",
+      "base_symbol": "brine_station",
+      "style": "operations_light",
+      "geometry_sha256": "30ff001669551eba9b8a8a5113ac04ecf5326035dd1bde31f9d8a350f13e2010"
+    },
+    {
+      "id": "brine_station@pid_dark",
+      "base_symbol": "brine_station",
+      "style": "pid_dark",
+      "geometry_sha256": "85063aafb9d105d72f8c8ad5c49796a53eee23f56073799e6cf11af6041ad346"
+    },
+    {
+      "id": "brine_station@standard_2d",
+      "base_symbol": "brine_station",
+      "style": "standard_2d",
+      "geometry_sha256": "b2a80781634da8f7d117d0869a2a0f3a84a73240a21f3720a34d4dc20c6b5ceb"
     },
     {
       "id": "buffer_layered@classic_scada",
@@ -1084,6 +1324,114 @@
       "geometry_sha256": "0c155190375b2c59c01ebe7045c08aeb1eb6f9af86709182ee6e47645f1a6ae8"
     },
     {
+      "id": "co2_voc_sensor@classic_scada",
+      "base_symbol": "co2_voc_sensor",
+      "style": "classic_scada",
+      "geometry_sha256": "0adb707d4f5ee742ffc4eb4e08c9bb2c81fe39b03f0b16dd7c02884c078bf393"
+    },
+    {
+      "id": "co2_voc_sensor@clean",
+      "base_symbol": "co2_voc_sensor",
+      "style": "clean",
+      "geometry_sha256": "6e014246719b5752c75b7f4191afdd4b1b1bea2e05249a92be4a9835e5b16779"
+    },
+    {
+      "id": "co2_voc_sensor@neo2030",
+      "base_symbol": "co2_voc_sensor",
+      "style": "neo2030",
+      "geometry_sha256": "f7f55ed5d57d14745521ba582f3a802d59e3b94617d74b72cd8c51280e9c967b"
+    },
+    {
+      "id": "co2_voc_sensor@operations_light",
+      "base_symbol": "co2_voc_sensor",
+      "style": "operations_light",
+      "geometry_sha256": "a56438a4e50f1eb8cb35f0de7117594c2643e4c8c335d3cce55f2f8fe18a7005"
+    },
+    {
+      "id": "co2_voc_sensor@pid_dark",
+      "base_symbol": "co2_voc_sensor",
+      "style": "pid_dark",
+      "geometry_sha256": "78e20a37a890dc92eeeee71bf9c9a8f65199149598979ccd7a010d623fab18c6"
+    },
+    {
+      "id": "co2_voc_sensor@standard_2d",
+      "base_symbol": "co2_voc_sensor",
+      "style": "standard_2d",
+      "geometry_sha256": "b622f1203fd0c726007576ac25df56d41dea75b7407595784f43321cc861f589"
+    },
+    {
+      "id": "cogen_unit@classic_scada",
+      "base_symbol": "cogen_unit",
+      "style": "classic_scada",
+      "geometry_sha256": "885666dc36221887a5a2db7d3fb490d25b6a78fbe370a5646dd45096e4207c2c"
+    },
+    {
+      "id": "cogen_unit@clean",
+      "base_symbol": "cogen_unit",
+      "style": "clean",
+      "geometry_sha256": "a35866aa0a24bef03e8bb792c0daa6a24b8f0e642ee888daee1553ca7bc35896"
+    },
+    {
+      "id": "cogen_unit@neo2030",
+      "base_symbol": "cogen_unit",
+      "style": "neo2030",
+      "geometry_sha256": "deb1bdbb6f59b21a66289ce654c22f8628c2dc2de274c49528ffbb500c882d6f"
+    },
+    {
+      "id": "cogen_unit@operations_light",
+      "base_symbol": "cogen_unit",
+      "style": "operations_light",
+      "geometry_sha256": "43df064e89d70a6f9dd35a401ff5837bffd25e2beec6297f8b04cfe5edea764d"
+    },
+    {
+      "id": "cogen_unit@pid_dark",
+      "base_symbol": "cogen_unit",
+      "style": "pid_dark",
+      "geometry_sha256": "012d3e0910d925fa5bc7b99d658c4c19251e658a48f9cacd0a346d9b82937591"
+    },
+    {
+      "id": "cogen_unit@standard_2d",
+      "base_symbol": "cogen_unit",
+      "style": "standard_2d",
+      "geometry_sha256": "5d14a8489d8f675008f22403c5e21a5779aaa341de606f2a023501a14a58c798"
+    },
+    {
+      "id": "compact_ahu@classic_scada",
+      "base_symbol": "compact_ahu",
+      "style": "classic_scada",
+      "geometry_sha256": "2f60fb47e0dad7d1d4560dd9999296bb6be9a55189b981e85e58f8154a4d26f3"
+    },
+    {
+      "id": "compact_ahu@clean",
+      "base_symbol": "compact_ahu",
+      "style": "clean",
+      "geometry_sha256": "12654cdeeb70e56770d3d92605dd2fdd5b1a5f65ea23f91a0ada58592d8ce394"
+    },
+    {
+      "id": "compact_ahu@neo2030",
+      "base_symbol": "compact_ahu",
+      "style": "neo2030",
+      "geometry_sha256": "0852dc6e6557d0ac0305921b59045cc322201a4f5b9e8ba28d77f6f1273deffb"
+    },
+    {
+      "id": "compact_ahu@operations_light",
+      "base_symbol": "compact_ahu",
+      "style": "operations_light",
+      "geometry_sha256": "99840dc4d70390687605eaca19695b8f73a915584f5ee6844bb3afacc206ce2f"
+    },
+    {
+      "id": "compact_ahu@pid_dark",
+      "base_symbol": "compact_ahu",
+      "style": "pid_dark",
+      "geometry_sha256": "5c6a240fc95f4af06fdc25e3b7a6a35c31395558372a545a404bfce1d1fab6b9"
+    },
+    {
+      "id": "compact_ahu@standard_2d",
+      "base_symbol": "compact_ahu",
+      "style": "standard_2d",
+      "geometry_sha256": "614a6f79196b7e5698cb135f2f229725c8d81eade6e92a318e0ac980426f2d43"
+    },
+    {
       "id": "compressor@classic_scada",
       "base_symbol": "compressor",
       "style": "classic_scada",
@@ -1118,6 +1466,42 @@
       "base_symbol": "compressor",
       "style": "standard_2d",
       "geometry_sha256": "e37bb399fe65a80c2b0318fe72c0659b3cac2e2fdefc44148db6b315b3a96722"
+    },
+    {
+      "id": "condensing_unit@classic_scada",
+      "base_symbol": "condensing_unit",
+      "style": "classic_scada",
+      "geometry_sha256": "37efc1cfdd1f60db80a10d143c784c0d7a3b75c66c13f439c59600ceb093a159"
+    },
+    {
+      "id": "condensing_unit@clean",
+      "base_symbol": "condensing_unit",
+      "style": "clean",
+      "geometry_sha256": "01b0f982d9351d89ab0201263abbbb9d9328898f1a0b8149a1cb5a9ce6e0e5fd"
+    },
+    {
+      "id": "condensing_unit@neo2030",
+      "base_symbol": "condensing_unit",
+      "style": "neo2030",
+      "geometry_sha256": "6796e0cdd1b7f59370d8931b00bc0023baf1a9437a2456345bdd0cb1e4093079"
+    },
+    {
+      "id": "condensing_unit@operations_light",
+      "base_symbol": "condensing_unit",
+      "style": "operations_light",
+      "geometry_sha256": "d01c9d04f22d737137379b1c47b65fc11ec2cac22897d69f9b9af634f22122a0"
+    },
+    {
+      "id": "condensing_unit@pid_dark",
+      "base_symbol": "condensing_unit",
+      "style": "pid_dark",
+      "geometry_sha256": "dcf8aff1d171bb3d68002ff2a08412bcce4eefffdf905c407e2bb8561b563b76"
+    },
+    {
+      "id": "condensing_unit@standard_2d",
+      "base_symbol": "condensing_unit",
+      "style": "standard_2d",
+      "geometry_sha256": "790df8366bcafbf17f406a98f4c875b05bcbed59850503940ad693a1d8d0219c"
     },
     {
       "id": "cooling_buffer@classic_scada",
@@ -1264,6 +1648,42 @@
       "geometry_sha256": "0a0d41643f349d49064204e1dd42531f7361b569784aa89fd8158470b42b596a"
     },
     {
+      "id": "dhw_freshwater_station@classic_scada",
+      "base_symbol": "dhw_freshwater_station",
+      "style": "classic_scada",
+      "geometry_sha256": "ed6b74e6a0069001b69fa1c97af0cb8111fb6cd4d551dfe171d18bddf703250f"
+    },
+    {
+      "id": "dhw_freshwater_station@clean",
+      "base_symbol": "dhw_freshwater_station",
+      "style": "clean",
+      "geometry_sha256": "e428248699787af89b7a0f66bc0e26e83f0492c0300035ee995ea96b1a86d2b5"
+    },
+    {
+      "id": "dhw_freshwater_station@neo2030",
+      "base_symbol": "dhw_freshwater_station",
+      "style": "neo2030",
+      "geometry_sha256": "178999cc42f14bf8989b104b21d2cb2aa6c06b96f0445a98cafd18fb57cbd5e8"
+    },
+    {
+      "id": "dhw_freshwater_station@operations_light",
+      "base_symbol": "dhw_freshwater_station",
+      "style": "operations_light",
+      "geometry_sha256": "78490844f3f4a6002add11d734e20d511f97bcefac1adb15500320887949da13"
+    },
+    {
+      "id": "dhw_freshwater_station@pid_dark",
+      "base_symbol": "dhw_freshwater_station",
+      "style": "pid_dark",
+      "geometry_sha256": "60346c5b6f142127c03b128e346e865a567eeedca47e02221cbc3dbf61607843"
+    },
+    {
+      "id": "dhw_freshwater_station@standard_2d",
+      "base_symbol": "dhw_freshwater_station",
+      "style": "standard_2d",
+      "geometry_sha256": "f4b2264afc3cae52854b8a17846e9117ab43554783a9738360aff816725276ec"
+    },
+    {
       "id": "dhw_tank@classic_scada",
       "base_symbol": "dhw_tank",
       "style": "classic_scada",
@@ -1370,6 +1790,78 @@
       "base_symbol": "dp_sensor",
       "style": "standard_2d",
       "geometry_sha256": "4a8480faa6c744585cd58bd086badb48ec8562f91356881a1a5ea44179424767"
+    },
+    {
+      "id": "dry_cooler@classic_scada",
+      "base_symbol": "dry_cooler",
+      "style": "classic_scada",
+      "geometry_sha256": "9b0ed77833e8011d6c3a770067b910f0ec7dd92935c5782fa62ab90a0b932a17"
+    },
+    {
+      "id": "dry_cooler@clean",
+      "base_symbol": "dry_cooler",
+      "style": "clean",
+      "geometry_sha256": "9f46d27876194fae1e1527d87eed765294e9d1870f8db7614f71cf1aa4e9a60a"
+    },
+    {
+      "id": "dry_cooler@neo2030",
+      "base_symbol": "dry_cooler",
+      "style": "neo2030",
+      "geometry_sha256": "a7fb332c3d6fbe78db67e2646b2e6ea6ff1aa46131de5932ea5dd95c7dd03170"
+    },
+    {
+      "id": "dry_cooler@operations_light",
+      "base_symbol": "dry_cooler",
+      "style": "operations_light",
+      "geometry_sha256": "ddaeb90b47fbb307253c6f765f950437129214ab320ca8a6ce7d211da2220197"
+    },
+    {
+      "id": "dry_cooler@pid_dark",
+      "base_symbol": "dry_cooler",
+      "style": "pid_dark",
+      "geometry_sha256": "29b75d86c06f1d1728d8ca56c4fc84c9e3e6c89a4037b7cadf84cc486fa9329b"
+    },
+    {
+      "id": "dry_cooler@standard_2d",
+      "base_symbol": "dry_cooler",
+      "style": "standard_2d",
+      "geometry_sha256": "aceb0465281ae9224093e76cea381b15d7d530b7894d5020af3d6592e0a0f29f"
+    },
+    {
+      "id": "ec_fan@classic_scada",
+      "base_symbol": "ec_fan",
+      "style": "classic_scada",
+      "geometry_sha256": "48907ac5c91829fef97e6de840dffb085e27cd07af219c5b28b5a07c2e26abcc"
+    },
+    {
+      "id": "ec_fan@clean",
+      "base_symbol": "ec_fan",
+      "style": "clean",
+      "geometry_sha256": "1f547b74e6cf1cbacdc095fe40bfcf3d679dc68b155a86074a07fbd1c4126ad4"
+    },
+    {
+      "id": "ec_fan@neo2030",
+      "base_symbol": "ec_fan",
+      "style": "neo2030",
+      "geometry_sha256": "4cef3ff9dcc5da8e3b2f226ba3ce8282c6beaed803354f217b599e5a27d11666"
+    },
+    {
+      "id": "ec_fan@operations_light",
+      "base_symbol": "ec_fan",
+      "style": "operations_light",
+      "geometry_sha256": "1aad80bcf2ba0659db06ee11c78c6e6eab5edd9d8c9a9c8dffdd94741981aa91"
+    },
+    {
+      "id": "ec_fan@pid_dark",
+      "base_symbol": "ec_fan",
+      "style": "pid_dark",
+      "geometry_sha256": "db7f5a5dde1cc4c0d8ec76df9214c01e2f29e82f20040d78fc2efd07b960f50e"
+    },
+    {
+      "id": "ec_fan@standard_2d",
+      "base_symbol": "ec_fan",
+      "style": "standard_2d",
+      "geometry_sha256": "505e841ecff7e429ad63ebccf790bc11352540cc191edf3b0525605fb1257bbc"
     },
     {
       "id": "expansion_vessel@classic_scada",
@@ -1696,6 +2188,78 @@
       "geometry_sha256": "8e0cf466eb25cb2d5dd8b387ff7c5d8ca5575b4bfa935186487d3bcc00a9136b"
     },
     {
+      "id": "flat_collector@classic_scada",
+      "base_symbol": "flat_collector",
+      "style": "classic_scada",
+      "geometry_sha256": "0f8b22e2edc60af63c0b222504c2252a5b7c19341776ef34c9dffe1479eb5517"
+    },
+    {
+      "id": "flat_collector@clean",
+      "base_symbol": "flat_collector",
+      "style": "clean",
+      "geometry_sha256": "3c312cd202b6697ce6cbb47cc664dd7af087c9a01556f6c9aaa86083c6d582a2"
+    },
+    {
+      "id": "flat_collector@neo2030",
+      "base_symbol": "flat_collector",
+      "style": "neo2030",
+      "geometry_sha256": "db72666312f0895696fae198a8f10a66fcb6af2062b470783255211c8b73fb18"
+    },
+    {
+      "id": "flat_collector@operations_light",
+      "base_symbol": "flat_collector",
+      "style": "operations_light",
+      "geometry_sha256": "1eeccaab8231474682650cc29cebf36675d9a7a744683bc8d1a699a2f923c74b"
+    },
+    {
+      "id": "flat_collector@pid_dark",
+      "base_symbol": "flat_collector",
+      "style": "pid_dark",
+      "geometry_sha256": "a1010df75daaa359f9cf2172c25c8edb45aa9aeed2d1957a2c85475c414c9573"
+    },
+    {
+      "id": "flat_collector@standard_2d",
+      "base_symbol": "flat_collector",
+      "style": "standard_2d",
+      "geometry_sha256": "dccbf251593e9706b7019e348e80e3b66e880cfad2f7aefcf927c8335d1d2b3a"
+    },
+    {
+      "id": "flexible_compensator@classic_scada",
+      "base_symbol": "flexible_compensator",
+      "style": "classic_scada",
+      "geometry_sha256": "af4171f2db6a469f1a339e81c9990159b022e2f0df42a86dc513d243f79c11ad"
+    },
+    {
+      "id": "flexible_compensator@clean",
+      "base_symbol": "flexible_compensator",
+      "style": "clean",
+      "geometry_sha256": "da81228930cc1384249eb8f9869228e8e439beec10d4cfdd3169330d43b64f9c"
+    },
+    {
+      "id": "flexible_compensator@neo2030",
+      "base_symbol": "flexible_compensator",
+      "style": "neo2030",
+      "geometry_sha256": "53ac3950fc17fda20eed06ebac48edaaa6deaf783a1a456474d4978839c1be58"
+    },
+    {
+      "id": "flexible_compensator@operations_light",
+      "base_symbol": "flexible_compensator",
+      "style": "operations_light",
+      "geometry_sha256": "ca9b3df01e3223fcd69b5c1047c81dc003d859754c32e296671e5e98673cf37a"
+    },
+    {
+      "id": "flexible_compensator@pid_dark",
+      "base_symbol": "flexible_compensator",
+      "style": "pid_dark",
+      "geometry_sha256": "da977a50462d96237b0904cfe2ba16b81630c292a557e76237b12cae49aae3d3"
+    },
+    {
+      "id": "flexible_compensator@standard_2d",
+      "base_symbol": "flexible_compensator",
+      "style": "standard_2d",
+      "geometry_sha256": "4d60f93eaaeab4d98700e459c9017c0e4a9bbaf2899c722ba60dfe3662eafa3d"
+    },
+    {
       "id": "flow_sensor@classic_scada",
       "base_symbol": "flow_sensor",
       "style": "classic_scada",
@@ -1732,6 +2296,78 @@
       "geometry_sha256": "cabc29bc84574f6f0c60aff035d6131c38198a9b03362941a89d250f92480c57"
     },
     {
+      "id": "flow_switch@classic_scada",
+      "base_symbol": "flow_switch",
+      "style": "classic_scada",
+      "geometry_sha256": "01cbaef79103a7db20153f16b2cb03c751549ba5a9f774d50cf87e187f10c5df"
+    },
+    {
+      "id": "flow_switch@clean",
+      "base_symbol": "flow_switch",
+      "style": "clean",
+      "geometry_sha256": "2262c0e8606f9deb335d3b04eca015004dd3d78948aebc133923795284ad5d41"
+    },
+    {
+      "id": "flow_switch@neo2030",
+      "base_symbol": "flow_switch",
+      "style": "neo2030",
+      "geometry_sha256": "f35f55d4b39c6b35c5dbe21befe5a765f649ab7fdf0e6ba1821d742688f8e21b"
+    },
+    {
+      "id": "flow_switch@operations_light",
+      "base_symbol": "flow_switch",
+      "style": "operations_light",
+      "geometry_sha256": "32c7a569edd83c12bd3a149009f89c4e8e9c64815aa59e6f29258f5e9e032fdc"
+    },
+    {
+      "id": "flow_switch@pid_dark",
+      "base_symbol": "flow_switch",
+      "style": "pid_dark",
+      "geometry_sha256": "b53ceefca60a7fe394b0f7e1852d7137d08d743ac39600de14d9c69e2e9b6619"
+    },
+    {
+      "id": "flow_switch@standard_2d",
+      "base_symbol": "flow_switch",
+      "style": "standard_2d",
+      "geometry_sha256": "2824bcce77d5ac7d0793f284cb364553a36af109edb949c66623721bb7039b1f"
+    },
+    {
+      "id": "frequency_drive@classic_scada",
+      "base_symbol": "frequency_drive",
+      "style": "classic_scada",
+      "geometry_sha256": "a9b5e0e606d6171b91c26fe0adb014b5f75168c3abf6dd17ae70d1ef244f4c18"
+    },
+    {
+      "id": "frequency_drive@clean",
+      "base_symbol": "frequency_drive",
+      "style": "clean",
+      "geometry_sha256": "5c30729ef3c3ebb3969d1f956c00577eaea3ab348ec735b2b08eee30558cd261"
+    },
+    {
+      "id": "frequency_drive@neo2030",
+      "base_symbol": "frequency_drive",
+      "style": "neo2030",
+      "geometry_sha256": "e17a19697dae3cd497622ade5dfeb1010254cf8c6251901b097964e26f725dfa"
+    },
+    {
+      "id": "frequency_drive@operations_light",
+      "base_symbol": "frequency_drive",
+      "style": "operations_light",
+      "geometry_sha256": "a60d2c9f5dd0ac274967922832143e31b7ed4d26659afd2ede5f9a0cc6be773c"
+    },
+    {
+      "id": "frequency_drive@pid_dark",
+      "base_symbol": "frequency_drive",
+      "style": "pid_dark",
+      "geometry_sha256": "cff1e4f5f6775201e30e9b90cd1e495b1ec0d53db0546916f88041ac4ac8c30a"
+    },
+    {
+      "id": "frequency_drive@standard_2d",
+      "base_symbol": "frequency_drive",
+      "style": "standard_2d",
+      "geometry_sha256": "c9bf8586409e39e522293f3c9cf77f965d98dccfe5a688ba36b205739ef44c4b"
+    },
+    {
       "id": "frost_thermostat@classic_scada",
       "base_symbol": "frost_thermostat",
       "style": "classic_scada",
@@ -1766,6 +2402,42 @@
       "base_symbol": "frost_thermostat",
       "style": "standard_2d",
       "geometry_sha256": "d85df85a6b3adf09403b8ae4317be8a4e2d480ec3c92bbe7ef0a2ea5a0d0bc32"
+    },
+    {
+      "id": "fuel_cell@classic_scada",
+      "base_symbol": "fuel_cell",
+      "style": "classic_scada",
+      "geometry_sha256": "48c5a4c2faa59dd3d394baecb3aa67852ed9cabe0891fec7c53c69d2e579f732"
+    },
+    {
+      "id": "fuel_cell@clean",
+      "base_symbol": "fuel_cell",
+      "style": "clean",
+      "geometry_sha256": "a9dfa455f5f58e766df0ebbfef880fc992ae365fd03336102b93f5b00dc0b7c8"
+    },
+    {
+      "id": "fuel_cell@neo2030",
+      "base_symbol": "fuel_cell",
+      "style": "neo2030",
+      "geometry_sha256": "3b00424190f6db0709546c5f9cbf0ea20ee7e51e244a7a2bf94e96b08b02ec67"
+    },
+    {
+      "id": "fuel_cell@operations_light",
+      "base_symbol": "fuel_cell",
+      "style": "operations_light",
+      "geometry_sha256": "969074cb0438e126d546dd92db4358de18ffe636e3c2f56ba3363ae618981c22"
+    },
+    {
+      "id": "fuel_cell@pid_dark",
+      "base_symbol": "fuel_cell",
+      "style": "pid_dark",
+      "geometry_sha256": "61f5fe812be16b7629057e5332ce92a65cf18e66c0e76fc16bdff0fa0e47fd2f"
+    },
+    {
+      "id": "fuel_cell@standard_2d",
+      "base_symbol": "fuel_cell",
+      "style": "standard_2d",
+      "geometry_sha256": "9f6ad485398ad50139acbff054ce2b8a6476a682bbac91d49569d1fb99fb967a"
     },
     {
       "id": "generator_set@classic_scada",
@@ -1912,6 +2584,42 @@
       "geometry_sha256": "a37bc6a17362856da2e75bc0ce33192cc3d354b5543811ffc4523ee10a27aa14"
     },
     {
+      "id": "heat_meter@classic_scada",
+      "base_symbol": "heat_meter",
+      "style": "classic_scada",
+      "geometry_sha256": "d35cddb151076831343568483e573f48ac53a5ee2b302c444ac0d8a41e1528c8"
+    },
+    {
+      "id": "heat_meter@clean",
+      "base_symbol": "heat_meter",
+      "style": "clean",
+      "geometry_sha256": "bceea37ab971facab9377fc7e1f882eb97b93cd3e6d7a5a17aa3b3e02b5cdfcd"
+    },
+    {
+      "id": "heat_meter@neo2030",
+      "base_symbol": "heat_meter",
+      "style": "neo2030",
+      "geometry_sha256": "fe828f813f11677a5e5d35c63e6f276868297a699ccab28c66fe8934ac35f130"
+    },
+    {
+      "id": "heat_meter@operations_light",
+      "base_symbol": "heat_meter",
+      "style": "operations_light",
+      "geometry_sha256": "95c0a9c9d35042e34b5eded5fb3c8548483c6329ef7f208c0c3fd7d404b1b8d2"
+    },
+    {
+      "id": "heat_meter@pid_dark",
+      "base_symbol": "heat_meter",
+      "style": "pid_dark",
+      "geometry_sha256": "d4b90495597760a81c4187120b73bf2703d538b02ab32f022c40855a014bf805"
+    },
+    {
+      "id": "heat_meter@standard_2d",
+      "base_symbol": "heat_meter",
+      "style": "standard_2d",
+      "geometry_sha256": "a15c8932ea9f27958dab383479c1fcaf3021427fa357844549b2c873a3547e39"
+    },
+    {
       "id": "heat_pump_compact@classic_scada",
       "base_symbol": "heat_pump_compact",
       "style": "classic_scada",
@@ -1946,6 +2654,42 @@
       "base_symbol": "heat_pump_compact",
       "style": "standard_2d",
       "geometry_sha256": "903568c1d7ce6cf0ae4ca8a510958e38ea1b96f557b75702e055ca85a20309c4"
+    },
+    {
+      "id": "heat_pump_duo@classic_scada",
+      "base_symbol": "heat_pump_duo",
+      "style": "classic_scada",
+      "geometry_sha256": "221a52b79f134aec2e83528fca9cbb68f6b115e426d1ad28a650b956d53525fd"
+    },
+    {
+      "id": "heat_pump_duo@clean",
+      "base_symbol": "heat_pump_duo",
+      "style": "clean",
+      "geometry_sha256": "a42f0fce3d8cbd6239ccb887f3d68926c7a680dfa909a95f6bf890dbf7a3e489"
+    },
+    {
+      "id": "heat_pump_duo@neo2030",
+      "base_symbol": "heat_pump_duo",
+      "style": "neo2030",
+      "geometry_sha256": "0ae1b484b57d649f0aa4ed6dc87c616d22fdee94ae3e6f0012620246a1d21fad"
+    },
+    {
+      "id": "heat_pump_duo@operations_light",
+      "base_symbol": "heat_pump_duo",
+      "style": "operations_light",
+      "geometry_sha256": "5a05415c02a1e012449f435b1edf377f3146ea237bb4760ef2063eaaae86597d"
+    },
+    {
+      "id": "heat_pump_duo@pid_dark",
+      "base_symbol": "heat_pump_duo",
+      "style": "pid_dark",
+      "geometry_sha256": "6022b2eb78ad3add6215939bd0e6910922d4c82b757a8055d1863254203175da"
+    },
+    {
+      "id": "heat_pump_duo@standard_2d",
+      "base_symbol": "heat_pump_duo",
+      "style": "standard_2d",
+      "geometry_sha256": "ba0e41a96b92b74b00af3013b36c56f7a45f86c28497450e9f7d7e03c22ba79c"
     },
     {
       "id": "heat_pump_neo@classic_scada",
@@ -2164,6 +2908,42 @@
       "geometry_sha256": "bca0a20ec961ce04fa99e55e83d07866b2eb844d87d8a8009684face2b67bec1"
     },
     {
+      "id": "hybrid_inverter@classic_scada",
+      "base_symbol": "hybrid_inverter",
+      "style": "classic_scada",
+      "geometry_sha256": "cca4fae0662f0657d8dd7dcd1ef8cbd7d00a3e087df80ef1e6762c671361c248"
+    },
+    {
+      "id": "hybrid_inverter@clean",
+      "base_symbol": "hybrid_inverter",
+      "style": "clean",
+      "geometry_sha256": "df132389234933a7864329641a567051c86035ae179c56c770c84f40311d6720"
+    },
+    {
+      "id": "hybrid_inverter@neo2030",
+      "base_symbol": "hybrid_inverter",
+      "style": "neo2030",
+      "geometry_sha256": "9f82f00dd1ce607a48b2dc4e523c5f1558e27306db7884e7cc775a700ba0e1b5"
+    },
+    {
+      "id": "hybrid_inverter@operations_light",
+      "base_symbol": "hybrid_inverter",
+      "style": "operations_light",
+      "geometry_sha256": "fdb36450eccfc43df358bf248a1942111931ae6464a88c0bc46a38fccc46c5bc"
+    },
+    {
+      "id": "hybrid_inverter@pid_dark",
+      "base_symbol": "hybrid_inverter",
+      "style": "pid_dark",
+      "geometry_sha256": "820ce412823fce466ec2921dd359b84450ac822ea5611d336870ddfe1728a02a"
+    },
+    {
+      "id": "hybrid_inverter@standard_2d",
+      "base_symbol": "hybrid_inverter",
+      "style": "standard_2d",
+      "geometry_sha256": "2399154a78932dcde7bedce200c656ea4ba698541ddb9e21003aada4ba50c51d"
+    },
+    {
       "id": "hydraulic_separator@classic_scada",
       "base_symbol": "hydraulic_separator",
       "style": "classic_scada",
@@ -2198,6 +2978,42 @@
       "base_symbol": "hydraulic_separator",
       "style": "standard_2d",
       "geometry_sha256": "62171503e56f15c2c2fb51aa990a920f761055b2ee42d8c6240a1e74e7498c7f"
+    },
+    {
+      "id": "ice_storage@classic_scada",
+      "base_symbol": "ice_storage",
+      "style": "classic_scada",
+      "geometry_sha256": "4992334184837724d821270347adb739d504149805e20ae6482822b6b7f80ba5"
+    },
+    {
+      "id": "ice_storage@clean",
+      "base_symbol": "ice_storage",
+      "style": "clean",
+      "geometry_sha256": "621234831e1043da13bf736c2e13f31dbf078b0894fa50f93a6eb899deb9b60e"
+    },
+    {
+      "id": "ice_storage@neo2030",
+      "base_symbol": "ice_storage",
+      "style": "neo2030",
+      "geometry_sha256": "18c14151188a90d7246f4ba5b4df4f5d998758845b66fa0e1976421c4be1d5c4"
+    },
+    {
+      "id": "ice_storage@operations_light",
+      "base_symbol": "ice_storage",
+      "style": "operations_light",
+      "geometry_sha256": "cb12f8e9bc8669f4b032a1bf3dade09d4725c0a5c1e28e72563536a18616cc20"
+    },
+    {
+      "id": "ice_storage@pid_dark",
+      "base_symbol": "ice_storage",
+      "style": "pid_dark",
+      "geometry_sha256": "ae541c81d4d29424f3942c094591fbbe93b1f5161f0cde4050670937df4de205"
+    },
+    {
+      "id": "ice_storage@standard_2d",
+      "base_symbol": "ice_storage",
+      "style": "standard_2d",
+      "geometry_sha256": "38d139b8c76d64302ab5f7f6cf227f9d0576b63c61beaa7f4ad8ffe1879f4d10"
     },
     {
       "id": "immersion_heater@classic_scada",
@@ -2452,6 +3268,42 @@
       "geometry_sha256": "feedf8cf497ef9eaedc231a1420b26c0afdd53f7e6084776506b88cb6dcfd133"
     },
     {
+      "id": "pressure_reducing_valve@classic_scada",
+      "base_symbol": "pressure_reducing_valve",
+      "style": "classic_scada",
+      "geometry_sha256": "b1ccedbf910841f0367edceb52192270252e903df27edf42fb935816bb1eec70"
+    },
+    {
+      "id": "pressure_reducing_valve@clean",
+      "base_symbol": "pressure_reducing_valve",
+      "style": "clean",
+      "geometry_sha256": "b908885c9e662c74a5f5dce51f672da9416f39083acfc0e9a7a90ca108e0b13e"
+    },
+    {
+      "id": "pressure_reducing_valve@neo2030",
+      "base_symbol": "pressure_reducing_valve",
+      "style": "neo2030",
+      "geometry_sha256": "f227dd94db099ca00fa84e9af7abe0d38e3baecce2b04e44112d7cfd89a44670"
+    },
+    {
+      "id": "pressure_reducing_valve@operations_light",
+      "base_symbol": "pressure_reducing_valve",
+      "style": "operations_light",
+      "geometry_sha256": "90cf064be0a80d82b664a00ca7e4ffb9c8153d5d83e933ce27d1b8a08cf1c419"
+    },
+    {
+      "id": "pressure_reducing_valve@pid_dark",
+      "base_symbol": "pressure_reducing_valve",
+      "style": "pid_dark",
+      "geometry_sha256": "7561024b6246db9f786444e5254b2ccb7508e7146e15791776e45c8ffc790604"
+    },
+    {
+      "id": "pressure_reducing_valve@standard_2d",
+      "base_symbol": "pressure_reducing_valve",
+      "style": "standard_2d",
+      "geometry_sha256": "b1b224f03e810e853a218933e6a9ae445778ad247de5e679d3781ae908599148"
+    },
+    {
       "id": "pressure_sensor@classic_scada",
       "base_symbol": "pressure_sensor",
       "style": "classic_scada",
@@ -2522,6 +3374,42 @@
       "base_symbol": "pump_dhw",
       "style": "standard_2d",
       "geometry_sha256": "23e9a8d282aab388c61304af77b8fe80bef176bc91c197fd97dc5da31aee1619"
+    },
+    {
+      "id": "pump_group@classic_scada",
+      "base_symbol": "pump_group",
+      "style": "classic_scada",
+      "geometry_sha256": "540a117fe7dbaf809c228ffdbe215dd0fc7fb49afcc6bfa86f60045ae50aa007"
+    },
+    {
+      "id": "pump_group@clean",
+      "base_symbol": "pump_group",
+      "style": "clean",
+      "geometry_sha256": "92e0bb74ff06577cf837884171a88d809a4760b651a2dea1d8cd49db7812e3ad"
+    },
+    {
+      "id": "pump_group@neo2030",
+      "base_symbol": "pump_group",
+      "style": "neo2030",
+      "geometry_sha256": "1d48d6cf7bf698e0332fd40ac5de8374b4b0d1c65d3e04cf09726e593200ba14"
+    },
+    {
+      "id": "pump_group@operations_light",
+      "base_symbol": "pump_group",
+      "style": "operations_light",
+      "geometry_sha256": "001c1e09918f9529bccf179cb4464937992d09fd04caedae69528b54ecbea606"
+    },
+    {
+      "id": "pump_group@pid_dark",
+      "base_symbol": "pump_group",
+      "style": "pid_dark",
+      "geometry_sha256": "fc40435f0bba75ea97c65ff6bf644a75ce4b8130293dd2689158b2d2db3a5140"
+    },
+    {
+      "id": "pump_group@standard_2d",
+      "base_symbol": "pump_group",
+      "style": "standard_2d",
+      "geometry_sha256": "c82d792ffbeb89bf4a9c4bef8cebdd3871873ce2c7c417bc2d3c503277bb9ca6"
     },
     {
       "id": "pump_inline@classic_scada",
@@ -2920,6 +3808,42 @@
       "geometry_sha256": "73d2858db24d8d918e4e8175c6798d5b458180cbf448d1c477d2fa3b91362df8"
     },
     {
+      "id": "solar_station@classic_scada",
+      "base_symbol": "solar_station",
+      "style": "classic_scada",
+      "geometry_sha256": "fc8136bd42eda2b6ba699441b394fd5d24c0705583b4de40e15646ce200c6297"
+    },
+    {
+      "id": "solar_station@clean",
+      "base_symbol": "solar_station",
+      "style": "clean",
+      "geometry_sha256": "27ceee6cce33bf03d13d38688cecedb4b0a1fe00b5a8281b05091bdf78f4794c"
+    },
+    {
+      "id": "solar_station@neo2030",
+      "base_symbol": "solar_station",
+      "style": "neo2030",
+      "geometry_sha256": "a5b8f4688e6cc26eca755c11997e29f653930905f54b296ba15f6f3f3a27b397"
+    },
+    {
+      "id": "solar_station@operations_light",
+      "base_symbol": "solar_station",
+      "style": "operations_light",
+      "geometry_sha256": "7176a95238b234357e0cf3cd113206c8bcc218b44fbd2b3bc9c6220dd318b82b"
+    },
+    {
+      "id": "solar_station@pid_dark",
+      "base_symbol": "solar_station",
+      "style": "pid_dark",
+      "geometry_sha256": "b7c350b071627c28d92454742525d8f8cbf5accf3b39224ee1480642135833a9"
+    },
+    {
+      "id": "solar_station@standard_2d",
+      "base_symbol": "solar_station",
+      "style": "standard_2d",
+      "geometry_sha256": "cb3c62d520bab4432527367f776e5907ef2bbb0dd7f80d6c82d9529fa97a772e"
+    },
+    {
       "id": "sprinkler_head@classic_scada",
       "base_symbol": "sprinkler_head",
       "style": "classic_scada",
@@ -2990,6 +3914,42 @@
       "base_symbol": "sprinkler_valve_station",
       "style": "standard_2d",
       "geometry_sha256": "67c7baad0c444313f03a39b952b51218a75b5b0ab2c01dff10679a379db2a92c"
+    },
+    {
+      "id": "steam_humidifier@classic_scada",
+      "base_symbol": "steam_humidifier",
+      "style": "classic_scada",
+      "geometry_sha256": "7dd29ec67912c05488de3b659011f158d2c5c31f4c07ac61e0a71faed06a1d41"
+    },
+    {
+      "id": "steam_humidifier@clean",
+      "base_symbol": "steam_humidifier",
+      "style": "clean",
+      "geometry_sha256": "6c0f03a976ab68b7025847aea0ed80df6956ff5dff8ea4e80c06f90c8835339e"
+    },
+    {
+      "id": "steam_humidifier@neo2030",
+      "base_symbol": "steam_humidifier",
+      "style": "neo2030",
+      "geometry_sha256": "f1e83cf609e59cb15f797154017d5a165e5b7fe4ccf533c40e503eae2259e70c"
+    },
+    {
+      "id": "steam_humidifier@operations_light",
+      "base_symbol": "steam_humidifier",
+      "style": "operations_light",
+      "geometry_sha256": "1c506b5ca7249165e8d445035093c8d390b0bf0444e85af35126bcb00418791a"
+    },
+    {
+      "id": "steam_humidifier@pid_dark",
+      "base_symbol": "steam_humidifier",
+      "style": "pid_dark",
+      "geometry_sha256": "80e3930e5f197fe384d6acd78d8bbb2714ece5dbb87390f0be5579acea300f58"
+    },
+    {
+      "id": "steam_humidifier@standard_2d",
+      "base_symbol": "steam_humidifier",
+      "style": "standard_2d",
+      "geometry_sha256": "408f72e82b6bf90bee248288269c784b7c1edf4f6caa2c8ce3043b9e58e2d510"
     },
     {
       "id": "sub_distribution_board@classic_scada",
@@ -3244,6 +4204,42 @@
       "geometry_sha256": "0becb67ac91acdfe5914b34b69898668f28e39b687be3a42d8fdb38ffe193132"
     },
     {
+      "id": "vacuum_tube_collector@classic_scada",
+      "base_symbol": "vacuum_tube_collector",
+      "style": "classic_scada",
+      "geometry_sha256": "5df91aa544e1320e4b06c40394dea7777bd3845b4254a5e22c662c0238fe5e04"
+    },
+    {
+      "id": "vacuum_tube_collector@clean",
+      "base_symbol": "vacuum_tube_collector",
+      "style": "clean",
+      "geometry_sha256": "32cfa6e363d9745401e58b5e3766dffca1b5d30fec4f3273a605c8d0b5faae5b"
+    },
+    {
+      "id": "vacuum_tube_collector@neo2030",
+      "base_symbol": "vacuum_tube_collector",
+      "style": "neo2030",
+      "geometry_sha256": "5c49e61dbe7b9244a68959be074cc8608f208f748f7ba33d3ca03677518666b3"
+    },
+    {
+      "id": "vacuum_tube_collector@operations_light",
+      "base_symbol": "vacuum_tube_collector",
+      "style": "operations_light",
+      "geometry_sha256": "ee9c87f128329697446cfeb1cc0f42fd122bb56c08877c6991b2884287866fa9"
+    },
+    {
+      "id": "vacuum_tube_collector@pid_dark",
+      "base_symbol": "vacuum_tube_collector",
+      "style": "pid_dark",
+      "geometry_sha256": "dc7eb89f3251da8625f4b00b0bf9f68b784612fdee82ba4e4ea1c36d673f8309"
+    },
+    {
+      "id": "vacuum_tube_collector@standard_2d",
+      "base_symbol": "vacuum_tube_collector",
+      "style": "standard_2d",
+      "geometry_sha256": "92f614826db6aac62998fd11c52538566e19b852b166936d138a1e6f6acc90d4"
+    },
+    {
       "id": "valve_2way@classic_scada",
       "base_symbol": "valve_2way",
       "style": "classic_scada",
@@ -3314,6 +4310,42 @@
       "base_symbol": "valve_3way",
       "style": "standard_2d",
       "geometry_sha256": "e957a91372fd7bd7709c305c4e01ee2f529c72088c77229f1c746a868a24f142"
+    },
+    {
+      "id": "vav_box@classic_scada",
+      "base_symbol": "vav_box",
+      "style": "classic_scada",
+      "geometry_sha256": "fbdd61da8339cf47baeb0595fc836f5d03b584e6d2195bd4dbf77e21d379d818"
+    },
+    {
+      "id": "vav_box@clean",
+      "base_symbol": "vav_box",
+      "style": "clean",
+      "geometry_sha256": "3cdb2d0bc7d7db632cd8edd82b6210d30dbe3a6010144b2b124d95a35f5af750"
+    },
+    {
+      "id": "vav_box@neo2030",
+      "base_symbol": "vav_box",
+      "style": "neo2030",
+      "geometry_sha256": "519e8a2888a83b261c9839b740ab051b0fd07833d5da340acf69d1acb7960202"
+    },
+    {
+      "id": "vav_box@operations_light",
+      "base_symbol": "vav_box",
+      "style": "operations_light",
+      "geometry_sha256": "4a9790cccbd30219692403265ad1074ff537696816659463b36119564b926216"
+    },
+    {
+      "id": "vav_box@pid_dark",
+      "base_symbol": "vav_box",
+      "style": "pid_dark",
+      "geometry_sha256": "f0ae26748cb87ad049e527308be510957a17e51ce750fe54cebeaefe5757fcb2"
+    },
+    {
+      "id": "vav_box@standard_2d",
+      "base_symbol": "vav_box",
+      "style": "standard_2d",
+      "geometry_sha256": "3b6de590f25a6049b1ec41b965b0dfb996f56fc06f521688ccecc942146c450a"
     },
     {
       "id": "wallbox@classic_scada",

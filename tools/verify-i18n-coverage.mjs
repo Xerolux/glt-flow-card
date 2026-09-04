@@ -38,6 +38,7 @@
  * `Aufgabe`; the sink catches it because of where it goes, not what it says.
  */
 import { readFile } from "node:fs/promises";
+import { FACTORY_TEMPLATES } from "../src/v100/templates.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -60,6 +61,23 @@ const GERMAN = /[äöüßÄÖÜ]|\b(?:der|die|das|und|nicht|wird|wurde|kann|für
  * A reason of "not UI" is not a reason: say what the string *is*, so a later
  * reader can check the claim rather than inherit it.
  */
+/* Factory template payloads are example plant data, not interface wording.
+ * Every string in them -- a plant title like "Fernwaerme", a field label like
+ * "Vorlauf" -- becomes part of the project the user loads and edits, exactly
+ * like examples/*.yaml. Translating them through the catalog would tie a
+ * user-editable project file to interface wording it is not. The set is built
+ * from the module itself, so a template added without this reasoning still
+ * passes only because its strings are payload, never chrome. */
+const TEMPLATE_PAYLOAD = new Set();
+for (const template of FACTORY_TEMPLATES) {
+  const collect = (value) => {
+    if (typeof value === "string") TEMPLATE_PAYLOAD.add(value);
+    else if (Array.isArray(value)) value.forEach(collect);
+    else if (value && typeof value === "object") Object.values(value).forEach(collect);
+  };
+  collect(template);
+}
+
 const ALLOWED = new Map(Object.entries({
   "text/css": "a MIME type passed to a Blob constructor",
   "text/plain": "a MIME type passed to a Blob constructor",
@@ -201,6 +219,7 @@ function decode(raw) {
 export function looksUserFacing(value) {
   if (value.length < 4 || value.length > 400) return false;
   if (ALLOWED.has(value)) return false;
+  if (TEMPLATE_PAYLOAD.has(value)) return false; // factory template payload: example plant data, see above
   if (/^[a-z0-9_-]+$/u.test(value)) return false;          // an identifier or a key
   if (/^[A-Za-z-]+\/[A-Za-z0-9.+-]+$/u.test(value)) return false; // a MIME type or a path
   if (/^[a-z]+\.[a-z_]+$/u.test(value)) return false;      // a catalog key itself

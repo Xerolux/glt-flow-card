@@ -442,3 +442,5 @@ export function symbolCatalogStats() {
     profiles: COMPONENT_PROFILES.length,
   };
 }
+
+export { entityExportPayload, normalizeEntityImport } from "./entity-bridge.mjs";

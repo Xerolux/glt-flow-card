@@ -31,3 +31,5 @@ Die Screenshots werden automatisch aus dem aktuellen Stand erzeugt. Sie zeigen d
 - Optionaler **Companion-Backend** für geräteübergreifende Projekt- und Audit-Speicherung in Home Assistant.
 
 Start: [Installation](Installation) · [Designer](Designer) · [Beispiele](Examples) · [YAML & Projekte](YAML-Projects) · [Konfiguration](Configuration)
+
+**Alles kostenlos.** Wenn das Projekt Zeit spart: [GitHub Sponsors](https://github.com/sponsors/Xerolux) — Sponsoring ist freiwillig, kein Feature hängt daran.

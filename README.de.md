@@ -360,6 +360,15 @@ kommt, was die letzte offene Zeile dieser Phase war.
 - **Hell-/Dunkelmodus**, responsive Darstellung und reduzierte Animationen bei entsprechender Systemeinstellung.
 - **Vollständiger Drag-&-Drop-Anlageneditor** für Bauteile, Medienleitungen, Datenpunkte, KPIs und Bildansichten; YAML bleibt für Spezialfälle verfügbar.
 
+## Sponsoring
+
+Alles hier ist kostenlos und bleibt kostenlos: Karte, Designer, Wiki und
+jeder Download, Export und jede Vorlage. Wenn das Projekt dir Zeit spart und
+du es unterstützen möchtest, helfen Beiträge über
+[GitHub Sponsors](https://github.com/sponsors/Xerolux), Entwicklung und
+Releases am Laufen zu halten. Sponsoring ist rein freiwillig — nichts ist
+darank gekoppelt, und nichts wird es je sein.
+
 ## Installation
 
 Erfordert Home Assistant 2024.8.0 oder neuer. Die Release-Prüfung installiert
@@ -659,7 +668,7 @@ Der Designer bietet außerdem **Live-Vorschau** sowie eine **Lovelace-YAML-Ansic
 
 ## Erweiterte Symbolbibliothek
 
-**456 Varianten** aus **76 Basissymbolen** in **6 Stilen**, über Heizung,
+**600 Varianten** aus **100 Basissymbolen** in **6 Stilen**, über Heizung,
 Hydraulik, RLT, Kälte, Energie, Sensorik, Elektro und Brandschutz.
 
 Diese Zahl ist gemessen, nicht behauptet. `catalog-evidence.json` entsteht,

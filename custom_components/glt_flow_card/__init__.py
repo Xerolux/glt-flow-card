@@ -14,6 +14,7 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 from functools import wraps
+from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
@@ -1251,6 +1252,7 @@ def _component_data(hass: HomeAssistant) -> dict[str, Any]:
     data = hass.data.setdefault(DOMAIN, {})
     data.setdefault("runtimes", {})
     data.setdefault("commands_registered", False)
+    data.setdefault("frontend_served", False)
     data.setdefault("yaml_config", {})
     data.setdefault("pending_options", {})
     data.setdefault("suppress_option_updates", set())
@@ -3454,6 +3456,35 @@ def _register_commands_once(hass: HomeAssistant) -> None:
     data["commands_registered"] = True
 
 
+async def _serve_bundled_frontend_once(hass: HomeAssistant) -> None:
+    """Serve the bundled card so an integration install stays self-sufficient.
+
+    HACS installs a repository in exactly one category. An integration-category
+    install delivers this package including ``www/glt-flow-card.js``, but no
+    Lovelace resource and no URL to load the card from, so the dashboard side
+    fails closed with nothing to render. Registering the bundled ``www``
+    directory gives that install the stable URL ``/{DOMAIN}/www/glt-flow-card.js``
+    (with ``{DOMAIN}`` literally ``glt_flow_card``) next to the Dashboard and
+    manual-copy installation paths.
+    """
+    data = _component_data(hass)
+    if data["frontend_served"]:
+        return
+    data["frontend_served"] = True
+    www_dir = Path(__file__).parent / "www"
+    if not www_dir.is_dir():
+        return
+    # Imported here, not at module scope: the parity gates import this package
+    # against minimal Home Assistant test lanes that do not ship the
+    # static-path HTTP API, and the serving path never runs there.
+    from homeassistant.components.http import StaticPathConfig, async_register_static_paths
+
+    await async_register_static_paths(
+        hass,
+        [StaticPathConfig(f"/{DOMAIN}/www", str(www_dir), False)],
+    )
+
+
 async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload validated options and restore the effective runtime on failure."""
     data = _component_data(hass)
@@ -3500,12 +3531,14 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     data = _component_data(hass)
     data["yaml_config"] = deepcopy(yaml_config)
     _register_commands_once(hass)
+    await _serve_bundled_frontend_once(hass)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data = _component_data(hass)
     _register_commands_once(hass)
+    await _serve_bundled_frontend_once(hass)
     if _runtime_for(hass, entry.entry_id) is not None:
         return True
 

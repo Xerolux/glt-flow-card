@@ -5,7 +5,7 @@ Seite herkommt.
 
 ## Der veröffentlichte Katalog
 
-**456 Varianten** aus **76 Basissymbolen** in **6 Stilen**, über 8 Gewerke.
+**600 Varianten** aus **100 Basissymbolen** in **6 Stilen**, über 8 Gewerke. Jedes Symbol gehört zu einer Hauptgruppe (Gewerk) und einer Untergruppe (z. B. Heizung → Wärmepumpen, RLT → Wärmerückgewinnung); der Symbol-Browser im Designer zeigt und durchsucht beide Ebenen.
 
 Diese Zahl ist keine Behauptung, sondern eine gemessene Größe. `catalog-evidence.json`
 entsteht, indem jede Variante tatsächlich gezeichnet und das Ergebnis
@@ -22,13 +22,13 @@ neun weitere teilten sich die Zeichnung eines anderen Symbols.
 
 | Gewerk | Basissymbole | Varianten |
 |---|---:|---:|
-| Heizung | 9 | 54 |
-| Hydraulik | 17 | 102 |
-| RLT | 12 | 72 |
-| Kälte | 4 | 24 |
-| Energie | 6 | 36 |
-| Sensorik | 8 | 48 |
-| Elektro | 10 | 60 |
+| Heizung | 15 | 90 |
+| Hydraulik | 21 | 126 |
+| RLT | 16 | 96 |
+| Kälte | 8 | 48 |
+| Energie | 9 | 54 |
+| Sensorik | 10 | 60 |
+| Elektro | 11 | 66 |
 | Brandschutz | 10 | 60 |
 
 Elektro deckt Verteilung, Schutz und Trennung ab (Niederspannungsverteilung,

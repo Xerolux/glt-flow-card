@@ -29,8 +29,9 @@ import { text as catalogText } from "./catalog-lookup.mjs";
 import "./catalog-de.mjs";
 import "./catalog-en.mjs";
 import { UNREADABLE, formatDateTime, formatMeasurement, resolveLocale } from "./locale-format.mjs";
-import { VISUAL_STYLES, COMPONENT_PROFILES, SYMBOL_VARIANTS, profileForEquipment, portsForEquipment } from "./catalog.mjs";
-import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignObjects, diagnoseConfig,  energySummary, projectDiff, makeProjectBundle, readProjectBundle, symbolCatalogStats, semanticPath } from "./core.mjs";
+import { VISUAL_STYLES, COMPONENT_PROFILES, SYMBOL_VARIANTS, SYMBOL_GEOMETRY, SYMBOL_GROUPS, labelText, profileForEquipment, portsForEquipment } from "./catalog.mjs";
+import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignObjects, diagnoseConfig,  energySummary, projectDiff, makeProjectBundle, readProjectBundle, symbolCatalogStats, semanticPath, entityExportPayload, normalizeEntityImport } from "./core.mjs";
+import { factoryTemplates } from "./templates.mjs";
 
 (() => {
   "use strict";
@@ -60,7 +61,8 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
     maintenance: "legacy.nav_maintenance", operations: "legacy.nav_operations",
     project: "legacy.nav_project", schedule: "legacy.nav_schedule",
     semantics: "legacy.nav_semantics", simulation: "legacy.nav_simulation",
-    symbols: "legacy.nav_symbols", trends: "legacy.nav_trends",
+    symbols: "legacy.nav_symbols", templates: "legacy.nav_templates", trends: "legacy.nav_trends",
+    entities: "legacy.nav_entities",
   });
   const t = (config, key) => {
     const catalogKey = NAV_KEYS[key];
@@ -88,7 +90,7 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
   // one source for a string.
   sdk.askText=askText;
   sdk.resolveLocale=resolveLocale; sdk.UNREADABLE=UNREADABLE;
-  sdk.version="1.0.0"; sdk.ensureV1=ensureV1; sdk.deriveOperationalState=deriveOperationalState; sdk.autoMapEquipment=autoMapEquipment; sdk.smartRoute=smartRoute; sdk.projectDiff=projectDiff; sdk.makeProjectBundle=makeProjectBundle; sdk.readProjectBundle=readProjectBundle; window.GLTFlowCardSDK=sdk;
+  sdk.version="1.0.0"; sdk.ensureV1=ensureV1; sdk.factoryTemplates=factoryTemplates; sdk.entityExportPayload=entityExportPayload; sdk.normalizeEntityImport=normalizeEntityImport; sdk.deriveOperationalState=deriveOperationalState; sdk.autoMapEquipment=autoMapEquipment; sdk.smartRoute=smartRoute; sdk.projectDiff=projectDiff; sdk.makeProjectBundle=makeProjectBundle; sdk.readProjectBundle=readProjectBundle; window.GLTFlowCardSDK=sdk;
 
   const STYLES = `
   .glt-v1-state{position:absolute;right:7px;top:7px;z-index:5;padding:3px 6px;border-radius:999px;font-size:8px;font-weight:850;border:1px solid var(--glt-border);background:color-mix(in srgb,var(--card-background-color) 92%,transparent);text-transform:uppercase;letter-spacing:.04em}
@@ -97,7 +99,115 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
   .glt-v1-notice{margin-top:10px;padding:10px 12px;border:1px solid currentColor;border-radius:10px;min-height:44px;display:flex;align-items:center;gap:8px}
   .glt-v1-modal{position:fixed;inset:0;z-index:12000;background:#020617bd;display:grid;place-items:center;padding:20px}.glt-v1-dialog{width:min(1080px,97vw);max-height:92vh;overflow:auto;border:1px solid var(--glt-border,var(--divider-color));border-radius:16px;background:var(--card-background-color,#fff);color:var(--primary-text-color);box-shadow:0 30px 90px #0008}.glt-v1-head{position:sticky;top:0;z-index:4;display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid var(--glt-border,var(--divider-color));background:var(--card-background-color,#fff)}.glt-v1-body{padding:14px}.glt-v1-close,.glt-v1-btn{border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:transparent;color:var(--primary-text-color);padding:7px 9px;font-size:9px;font-weight:750;cursor:pointer}.glt-v1-close{border:0;font-size:15px}.glt-v1-btn.primary{color:#fff;background:#0b83cc;border-color:#1fb4ff}.glt-v1-btn.warn{color:#dc2626}.glt-v1-actions{display:flex;gap:6px;flex-wrap:wrap}.glt-v1-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.glt-v1-card{border:1px solid var(--glt-border,var(--divider-color));border-radius:11px;padding:10px;background:color-mix(in srgb,var(--card-background-color) 96%,#64748b 4%)}.glt-v1-card b{display:block;font-size:11px}.glt-v1-card small{display:block;color:var(--secondary-text-color);margin-top:3px;font-size:8px}.glt-v1-table{width:100%;border-collapse:collapse;font-size:9px}.glt-v1-table th,.glt-v1-table td{padding:7px;border-bottom:1px solid var(--glt-border,var(--divider-color));text-align:left;vertical-align:top}.glt-v1-input,.glt-v1-select,.glt-v1-text{width:100%;padding:7px;border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:var(--card-background-color);color:var(--primary-text-color);font-size:9px}.glt-v1-text{min-height:100px}.glt-v1-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:5px 8px;border-bottom:1px solid var(--b,var(--divider-color));background:color-mix(in srgb,var(--bg,var(--card-background-color)) 96%,#0ea5e9 4%)}.glt-v1-toolbar button{height:29px;border:1px solid var(--b,var(--divider-color));border-radius:7px;background:transparent;color:var(--mut,var(--secondary-text-color));font-size:8px;font-weight:760;padding:0 8px;cursor:pointer}.glt-v1-toolbar button:hover{color:var(--e,#0ea5e9);border-color:#0ea5e966}.glt-v1-minimap{position:absolute;right:12px;bottom:12px;width:180px;height:110px;border:1px solid var(--b);border-radius:9px;background:#07131fe6;z-index:50;overflow:hidden;pointer-events:none}.glt-v1-miniitem{position:absolute;background:#2aaeff66;border:1px solid #4bc6ff88;border-radius:2px}.glt-v1-layer-hidden{display:none!important}.glt-v1-layer-locked{pointer-events:none!important;opacity:.65}.glt-v1-breadcrumbs{display:flex;gap:5px;align-items:center;padding:5px 14px;font-size:9px;color:var(--secondary-text-color);border-bottom:1px solid var(--glt-border)}.glt-v1-breadcrumbs button{border:0;background:transparent;color:var(--glt-accent);cursor:pointer;font-size:9px}.glt-v1-quality.good{color:#22c55e}.glt-v1-quality.uncertain{color:#f59e0b}.glt-v1-quality.bad{color:#ef4444}
   body.glt-v1-kiosk .header,body.glt-v1-kiosk app-toolbar{display:none!important}@media(min-width:1800px){.glt-v1-dialog{width:min(1320px,96vw)}}`;
-  function addStyle(root){if(root?.querySelector("style[data-glt-v1]"))return;const st=document.createElement("style");st.dataset.gltV1="1";st.textContent=STYLES;root?.appendChild(st);}
+  const SYMBOL_STYLES = `
+  .glt-eq-symbol .glt-sym{width:100%;height:100%;display:block}
+  .glt-sym line,.glt-sym path,.glt-sym rect,.glt-sym circle{stroke-linecap:round;stroke-linejoin:round}
+  .glt-sym-body{fill:color-mix(in srgb,var(--glt-panel) 55%,var(--glt-accent) 10%);stroke:color-mix(in srgb,var(--primary-text-color) 42%,transparent);stroke-width:2.4}
+  .glt-sym-accent{fill:var(--glt-accent)}
+  .glt-sym-thin{fill:none;stroke:color-mix(in srgb,var(--primary-text-color) 45%,transparent);stroke-width:1.6}
+  .glt-sym-hot{fill:none;stroke:#ef4444;stroke-width:3.4}
+  .glt-sym-cold{fill:none;stroke:#3b82f6;stroke-width:3.4}
+  .glt-sym-power{fill:none;stroke:#f59e0b;stroke-width:2.2}
+  .glt-sym-coil{fill:none;stroke:#f97316;stroke-width:2.2}
+  .glt-sym-rotor{fill:var(--glt-accent);stroke:none}
+  .glt-sym-tank{fill:color-mix(in srgb,var(--glt-panel) 72%,var(--glt-accent) 7%);stroke:color-mix(in srgb,var(--primary-text-color) 45%,transparent);stroke-width:2.4}
+  .glt-sym-hotfill{fill:color-mix(in srgb,#ef4444 42%,transparent);stroke:none}
+  .glt-sym-coldfill{fill:color-mix(in srgb,#3b82f6 42%,transparent);stroke:none}
+  .glt-sym-flame{fill:#f97316;stroke:none}
+  .glt-sym-txt{fill:var(--primary-text-color);font-size:9px;font-weight:800;text-anchor:middle;stroke:none}
+  .glt-sym-accent-text{fill:var(--glt-accent)}
+  .glt-sym-alarm{fill:#ef4444;stroke:#7f1d1d;stroke-width:1.6}
+  .glt-style-clean .glt-sym-body{fill:#fff;stroke:#475569;stroke-width:2}
+  .glt-style-clean .glt-sym-accent{fill:#0ea5e9}
+  .glt-style-clean .glt-sym-tank{fill:#fff;stroke:#475569;stroke-width:2}
+  .glt-style-clean .glt-sym-hotfill{fill:none;stroke:#ef4444;stroke-width:1.8}
+  .glt-style-clean .glt-sym-coldfill{fill:none;stroke:#3b82f6;stroke-width:1.8}
+  .glt-style-clean .glt-sym-flame{fill:#ef4444}
+  .glt-style-clean .glt-sym-rotor{fill:#0ea5e9}
+  .glt-style-clean .glt-sym-coil{stroke:#ef4444}
+  .glt-style-clean .glt-sym-txt{fill:#334155}
+  .glt-style-classic_scada .glt-sym-body{fill:#d8dee9;stroke:#111827;stroke-width:3}
+  .glt-style-classic_scada .glt-sym-accent{fill:#111827}
+  .glt-style-classic_scada .glt-sym-thin{stroke:#111827;stroke-width:1.8}
+  .glt-style-classic_scada .glt-sym-hot,.glt-style-classic_scada .glt-sym-cold{stroke:#111827;stroke-width:3.6}
+  .glt-style-classic_scada .glt-sym-power{stroke:#111827}
+  .glt-style-classic_scada .glt-sym-tank{fill:#cbd5e1;stroke:#111827;stroke-width:3}
+  .glt-style-classic_scada .glt-sym-hotfill{fill:#94a3b8;stroke:#111827;stroke-width:1}
+  .glt-style-classic_scada .glt-sym-coldfill{fill:#e8edf3;stroke:#111827;stroke-width:1}
+  .glt-style-classic_scada .glt-sym-flame{fill:#374151}
+  .glt-style-classic_scada .glt-sym-rotor{fill:#111827}
+  .glt-style-classic_scada .glt-sym-coil{stroke:#111827}
+  .glt-style-classic_scada .glt-sym-txt{fill:#111827}
+  .glt-style-standard_2d .glt-sym-body{fill:#dbeafe;stroke:#1d4ed8;stroke-width:2.2}
+  .glt-style-standard_2d .glt-sym-accent{fill:#1d4ed8}
+  .glt-style-standard_2d .glt-sym-tank{fill:#bfdbfe;stroke:#1d4ed8;stroke-width:2.2}
+  .glt-style-standard_2d .glt-sym-hotfill{fill:#93c5fd;stroke:#1d4ed8;stroke-width:1}
+  .glt-style-standard_2d .glt-sym-coldfill{fill:#dbeafe;stroke:#1d4ed8;stroke-width:1}
+  .glt-style-standard_2d .glt-sym-rotor{fill:#1d4ed8}
+  .glt-style-standard_2d .glt-sym-coil{stroke:#1d4ed8}
+  .glt-style-standard_2d .glt-sym-txt{fill:#1e3a8a}
+  .glt-style-operations_light .glt-sym-body{fill:#ecfdf5;stroke:#047857;stroke-width:2.2}
+  .glt-style-operations_light .glt-sym-accent{fill:#047857}
+  .glt-style-operations_light .glt-sym-tank{fill:#d1fae5;stroke:#047857;stroke-width:2.2}
+  .glt-style-operations_light .glt-sym-hotfill{fill:#fca5a5;stroke:#047857;stroke-width:1}
+  .glt-style-operations_light .glt-sym-coldfill{fill:#a7f3d0;stroke:#047857;stroke-width:1}
+  .glt-style-operations_light .glt-sym-rotor{fill:#047857}
+  .glt-style-operations_light .glt-sym-coil{stroke:#047857}
+  .glt-style-operations_light .glt-sym-txt{fill:#064e3b}
+  .glt-style-pid_dark .glt-sym-body{fill:none;stroke:#67e8f9;stroke-width:1.8}
+  .glt-style-pid_dark .glt-sym-accent{fill:#fbbf24}
+  .glt-style-pid_dark .glt-sym-thin{stroke:#94a3b8}
+  .glt-style-pid_dark .glt-sym-hot{stroke:#f87171}
+  .glt-style-pid_dark .glt-sym-cold{stroke:#60a5fa}
+  .glt-style-pid_dark .glt-sym-tank{fill:#0f172a80;stroke:#67e8f9;stroke-width:1.8}
+  .glt-style-pid_dark .glt-sym-hotfill{fill:#f8717166;stroke:#f87171;stroke-width:1}
+  .glt-style-pid_dark .glt-sym-coldfill{fill:#60a5fa66;stroke:#60a5fa;stroke-width:1}
+  .glt-style-pid_dark .glt-sym-flame{fill:#fbbf24}
+  .glt-style-pid_dark .glt-sym-rotor{fill:#fbbf24}
+  .glt-style-pid_dark .glt-sym-coil{stroke:#fbbf24}
+  .glt-style-pid_dark .glt-sym-txt{fill:#a5f3fc}
+  .glt-sym-running{filter:drop-shadow(0 0 5px var(--glt-accent)) saturate(1.25)}
+  .glt-sym-running .glt-sym-body,.glt-sym-running .glt-sym-tank{stroke:var(--glt-accent)}
+  .glt-sym-fault{filter:drop-shadow(0 0 6px #ef4444)}
+  .glt-sym-fault .glt-sym-body,.glt-sym-fault .glt-sym-tank{stroke:#ef4444;stroke-width:3.2}
+  .glt-v1-grid .glt-sym{width:100%;height:100%}`;
+  function addStyle(root){if(root?.querySelector("style[data-glt-v1]"))return;const st=document.createElement("style");st.dataset.gltV1="1";st.textContent=STYLES+SYMBOL_STYLES;root?.appendChild(st);}
+
+  // Rendered equipment symbols. The catalog carries one geometry entry per
+  // base symbol, but the card's own markup only ever showed a generic mdi
+  // icon, so the built symbols never reached the canvas. This decorator swaps
+  // that icon for the catalog geometry and falls back to the unchanged
+  // markup whenever a type has no drawing.
+  const TYPE_SYMBOLS = { heat_pump: "heat_pump_neo", boiler: "boiler", tank: "buffer_layered", dhw_tank: "dhw_tank", room: "underfloor", pump: "pump_inline", valve: "valve_2way", fan: "fan_supply", ahu: "ahu", chiller: "chiller", meter: "meter" };
+  const symClass = (value) => String(value || "").split(/\s+/).filter(Boolean).map((name) => `glt-sym-${name}`).join(" ");
+  function symbolGeometryFor(item = {}) {
+    const base = String(item.symbol_variant || item.symbol || "").split("@")[0] || TYPE_SYMBOLS[item.type] || "";
+    return SYMBOL_GEOMETRY.get(base) || null;
+  }
+  function symbolSvg(geometry) {
+    const parts = geometry.map((p) => {
+      if (p[0] === "line") return `<line x1="${p[1]}" y1="${p[2]}" x2="${p[3]}" y2="${p[4]}" class="${symClass(p[5])}"/>`;
+      if (p[0] === "rect") return `<rect x="${p[1]}" y="${p[2]}" width="${p[3]}" height="${p[4]}" rx="${p[5] || 0}" class="${symClass(p[6])}"/>`;
+      if (p[0] === "circle") return `<circle cx="${p[1]}" cy="${p[2]}" r="${p[3]}" class="${symClass(p[4])}"/>`;
+      if (p[0] === "path") return `<path d="${p[1]}" class="${symClass(p[2])}"/>`;
+      if (p[0] === "text") return `<text x="${p[1]}" y="${p[2]}" class="${symClass(p[4])}">${esc(p[3])}</text>`;
+      return "";
+    }).join("");
+    return `<svg class="glt-sym" viewBox="0 0 64 64" aria-hidden="true">${parts}</svg>`;
+  }
+  const oldEquipmentMarkup = Card.prototype._equipmentMarkup;
+  Card.prototype._equipmentMarkup = function (item) {
+    const markup = oldEquipmentMarkup.call(this, item);
+    const geometry = symbolGeometryFor(item);
+    if (!geometry) return markup;
+    let svg = symbolSvg(geometry);
+    const running = item.state_entity ? this._isActive(item.state_entity) : (item.entity ? this._isActive(item.entity) : false);
+    const alarmField = this._config?.status?.alarm;
+    const faulted = alarmField ? this._isActive(alarmField) : false;
+    const symbolClass = faulted ? "glt-sym-fault" : (running ? "glt-sym-running" : "");
+    if (symbolClass) svg = svg.replace('class="glt-sym"', `class="glt-sym ${symbolClass}"`);
+    return markup.replace(/<ha-icon class="glt-eq-icon"[^>]*><\/ha-icon>/, svg);
+  };
   /**
    * Say something in the card, rather than in a browser dialog.
    *
@@ -287,7 +397,8 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
   function selectedRefs(editor){const multi=[...(editor._glt4Multi||[])].map(k=>{const [kind,id]=k.split(":");return{kind,id}});if(multi.length)return multi;return editor._sel?[{kind:editor._sel.k,id:editor._sel.id}]:[];}
   function selectedEquipment(editor){const refs=selectedRefs(editor).filter(r=>r.kind==="equipment");return refs.map(r=>editor._config.equipment.find(x=>x.id===r.id)).filter(Boolean);}
 
-  function showSymbolLibrary(editor){const stats=symbolCatalogStats(),current=selectedEquipment(editor)[0];const m=editorModal(editor,`${t(editor._config,"symbols")} · ${stats.variants} Varianten`,`<div class="glt-v1-actions"><select class="glt-v1-select" data-style>${VISUAL_STYLES.map(s=>`<option value="${s.id}">${s.label}</option>`).join("")}</select><input class="glt-v1-input" data-q placeholder="Pumpe, Ventil, RLT…"></div><div class="glt-v1-grid" data-grid style="margin-top:10px"></div>`);const render=()=>{const q=m.querySelector("[data-q]").value.toLowerCase(),style=m.querySelector("[data-style]").value;const data=SYMBOL_VARIANTS.filter(s=>s.style===style&&(!q||`${s.label} ${s.category}`.toLowerCase().includes(q)));m.querySelector("[data-grid]").innerHTML=data.map(s=>`<div class="glt-v1-card"><b>${esc(s.label)}</b><small>${esc(s.category)} · ${esc(s.profile)}</small>${current?`<button class="glt-v1-btn" data-use="${esc(s.id)}">Übernehmen</button>`:""}</div>`).join("");m.querySelectorAll("[data-use]").forEach(b=>b.onclick=()=>{const s=SYMBOL_VARIANTS.find(x=>x.id===b.dataset.use);editor._remember?.();current.symbol=s.base_symbol;current.symbol_variant=s.id;current.profile=s.profile;editor._config.appearance=editor._config.appearance||{};editor._config.appearance.mode=s.style;emit(editor);m.remove();});};m.querySelector("[data-q]").oninput=render;m.querySelector("[data-style]").onchange=render;render();}
+  const groupText = (group) => (group && SYMBOL_GROUPS[group] ? labelText(SYMBOL_GROUPS[group]) : (group || ""));
+  function showSymbolLibrary(editor){const stats=symbolCatalogStats(),current=selectedEquipment(editor)[0];const m=editorModal(editor,`${t(editor._config,"symbols")} · ${stats.variants} Varianten`,`<div class="glt-v1-actions"><select class="glt-v1-select" data-style>${VISUAL_STYLES.map(s=>`<option value="${s.id}">${s.label}</option>`).join("")}</select><input class="glt-v1-input" data-q placeholder="Pumpe, Ventil, RLT…"></div><div class="glt-v1-grid" data-grid style="margin-top:10px"></div>`);const render=()=>{const q=m.querySelector("[data-q]").value.toLowerCase(),style=m.querySelector("[data-style]").value;const data=SYMBOL_VARIANTS.filter(s=>s.style===style&&(!q||`${s.label} ${s.category} ${s.group||""}`.toLowerCase().includes(q)));const grid=m.querySelector("[data-grid]");grid.className=`glt-v1-grid glt-style-${style}`;grid.innerHTML=data.map(s=>{const geometry=SYMBOL_GEOMETRY.get(s.base_symbol);const preview=geometry?`<div style="width:44px;height:44px;margin-bottom:6px">${symbolSvg(geometry)}</div>`:"";return `<div class="glt-v1-card" style="display:flex;gap:9px;align-items:center">${preview}<div style="min-width:0;flex:1"><b>${esc(s.label)}</b><small>${esc(s.category)} · ${esc(groupText(s.group))}</small></div>${current?`<button class="glt-v1-btn" data-use="${esc(s.id)}">Übernehmen</button>`:""}</div>`}).join("");m.querySelectorAll("[data-use]").forEach(b=>b.onclick=()=>{const s=SYMBOL_VARIANTS.find(x=>x.id===b.dataset.use);editor._remember?.();current.symbol=s.base_symbol;current.symbol_variant=s.id;current.profile=s.profile;editor._config.appearance=editor._config.appearance||{};editor._config.appearance.mode=s.style;emit(editor);m.remove();});};m.querySelector("[data-q]").oninput=render;m.querySelector("[data-style]").onchange=render;render();}
 
   function showSemantics(editor){const items=editor._config.equipment||[];const m=editorModal(editor,t(editor._config,"semantics"),`<p style="font-size:9px;color:var(--mut)">Standort → Gebäude → Etage → System → Teilanlage → Aggregat → Datenpunkt</p><table class="glt-v1-table"><thead><tr><th>Aggregat</th><th>Site</th><th>Gebäude</th><th>Etage</th><th>System</th><th>Tags</th></tr></thead><tbody>${items.map((i,n)=>`<tr data-i="${n}"><td>${esc(i.name||i.id)}</td><td><input class="glt-v1-input" data-f="site" value="${esc(i.site||"")}"></td><td><input class="glt-v1-input" data-f="building" value="${esc(i.building||"")}"></td><td><input class="glt-v1-input" data-f="floor" value="${esc(i.floor||"")}"></td><td><input class="glt-v1-input" data-f="system" value="${esc(i.system||"")}"></td><td><input class="glt-v1-input" data-f="tags" value="${esc((i.tags||[]).join(", "))}"></td></tr>`).join("")}</tbody></table><div class="glt-v1-actions"><button class="glt-v1-btn primary" data-save>Übernehmen</button></div>`);m.querySelector("[data-save]").onclick=()=>{editor._remember?.();m.querySelectorAll("[data-i]").forEach(r=>{const i=items[+r.dataset.i];r.querySelectorAll("[data-f]").forEach(inp=>{if(inp.dataset.f==="tags")i.tags=inp.value.split(",").map(x=>x.trim()).filter(Boolean);else i[inp.dataset.f]=inp.value||undefined;});i.semantic_path=semanticPath(i,editor._config);});emit(editor);m.remove();};}
 
@@ -310,8 +421,119 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
   function applyLayers(editor){const cfg=editor._config,layers=new Map(cfg.layers.map(l=>[l.id,l]));editor.shadowRoot.querySelectorAll("[data-k][data-id]").forEach(n=>{const kind=n.dataset.k,id=n.dataset.id;const list=kind==="equipment"?cfg.equipment:kind==="datapoint"?cfg.datapoints:kind==="path"?cfg.paths:[];const obj=list.find(x=>x.id===id),l=layers.get(obj?.layer||"default");n.classList.toggle("glt-v1-layer-hidden",l?.visible===false);n.classList.toggle("glt-v1-layer-locked",l?.locked===true);});}
   function minimap(editor){const root=editor.shadowRoot;if(editor._config.ui?.minimap===false){root.querySelector(".glt-v1-minimap")?.remove();return}const host=root.querySelector(".canvas,.stage,[data-canvas],.draw");if(!host||root.querySelector(".glt-v1-minimap"))return;const m=document.createElement("div");m.className="glt-v1-minimap";const cw=editor._config.canvas?.width||1600,ch=editor._config.canvas?.height||900;for(const e of editor._config.equipment||[]){const d=document.createElement("div");d.className="glt-v1-miniitem";d.style.left=`${(e.x||0)/cw*180}px`;d.style.top=`${(e.y||0)/ch*110}px`;d.style.width=`${Math.max(3,(e.width||180)/cw*180)}px`;d.style.height=`${Math.max(3,(e.height||100)/ch*110)}px`;m.appendChild(d)}host.style.position=host.style.position||"relative";host.appendChild(m);}
 
-  function editorToolbar(editor){const root=editor.shadowRoot;if(root.querySelector("[data-glt-v1-toolbar]"))return;const base=root.querySelector(".glt4-bar,.toolbar,.bar,.tb")||root.firstElementChild;if(!base)return;const bar=document.createElement("div");bar.className="glt-v1-toolbar";bar.dataset.gltV1Toolbar="1";const buttons=[["symbols","🧩"],["semantics","⌘"],["automap","↯"],["cad","⌗"],["diagnostics","✓"],["simulation","◉"],["schedule","◷"],["energy","⚡"],["maintenance","🔧"],["project","▣"]];bar.innerHTML=buttons.map(([k,ic])=>`<button data-v1="${k}">${ic} ${esc(t(editor._config,k))}</button>`).join("");base.after(bar);const act={symbols:showSymbolLibrary,semantics:showSemantics,automap:showAutoMapping,cad:showCAD,diagnostics:showDiagnostics,simulation:showSimulation,schedule:showSchedules,energy:showEnergy,maintenance:showMaintenance,project:showProjectV1};bar.querySelectorAll("[data-v1]").forEach(b=>b.onclick=()=>act[b.dataset.v1]?.(editor));}
-  const oldEditorRender=Editor.prototype._render;Editor.prototype._render=function(){this._config=ensureV1(this._config);const r=oldEditorRender.call(this);addStyle(this.shadowRoot);editorToolbar(this);applyLayers(this);minimap(this);return r;};
+  /** Imported entity catalog: persisted next to the editor's own templates. */
+  function entityCatalog(editor) {
+    if (Array.isArray(editor._entityCatalog) && editor._entityCatalog.length) return editor._entityCatalog;
+    try {
+      const parsed = JSON.parse(localStorage.getItem("glt-flow-card.entities") || "null");
+      if (Array.isArray(parsed?.entities)) return parsed.entities;
+    } catch (_err) { /* unreadable storage behaves like no import */ }
+    return [];
+  }
+
+  /* Without a live Home Assistant the native entity picker does not exist as
+   * an element. Imported entities then power a plain input with a datalist,
+   * so the standalone designer keeps working entity fields after an import. */
+  function wireEntityFields(editor) {
+    if (customElements.get("ha-entity-picker")) return;
+    const root = editor.shadowRoot;
+    if (!root) return;
+    const catalog = entityCatalog(editor);
+    let list = root.querySelector("datalist#glt-entities");
+    if (!list) {
+      list = document.createElement("datalist");
+      list.id = "glt-entities";
+      root.appendChild(list);
+    }
+    list.innerHTML = catalog.slice(0, 2000).map((e) => `<option value="${esc(e.entity_id)}">${esc(e.name)}</option>`).join("");
+    root.querySelectorAll("ha-entity-picker[data-ep]").forEach((picker) => {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "glt-v1-input";
+      input.setAttribute("list", "glt-entities");
+      input.value = picker.dataset.v || "";
+      input.dataset.e = picker.dataset.e || "";
+      input.addEventListener("change", () => editor._entityEdit?.(input.dataset.e, input.value.trim()));
+      picker.replaceWith(input);
+    });
+  }
+
+  function applyTemplate(editor, config) {
+    editor._remember?.();
+    editor._config = ensureV1(JSON.parse(JSON.stringify(config)));
+    editor._emit?.();
+    editor._render();
+    wireEntityFields(editor);
+  }
+
+  function showTemplates(editor) {
+    const factory = factoryTemplates();
+    let own = [];
+    try { own = JSON.parse(localStorage.getItem("glt-flow-card.templates") || "[]"); } catch (_err) { own = []; }
+    const ownRows = own.filter((tp) => tp && tp.config)
+      .map((tp, i) => `<div class="glt-v1-card"><b>${esc(tp.name || tp.id || gltText("legacy.templates_own"))}</b><small>${esc(tp.description || "")}</small><button class="glt-v1-btn" data-otpl="${i}">${gltText("legacy.templates_load")}</button></div>`).join("");
+    const m = editorModal(editor, `${t(editor._config, "templates")}`, `
+      <div class="glt-v1-notice">${gltText("legacy.templates_hint")}</div>
+      <h4 style="margin:12px 0 6px;font-size:11px">${gltText("legacy.templates_factory")}</h4>
+      <div class="glt-v1-grid">${factory.map((tp) => `<div class="glt-v1-card"><b>${esc(tp.name)}</b><small>${esc(tp.description)}</small><button class="glt-v1-btn" data-tpl="${esc(tp.id)}">${gltText("legacy.templates_load")}</button></div>`).join("")}</div>
+      <h4 style="margin:14px 0 6px;font-size:11px">${gltText("legacy.templates_own")}</h4>
+      ${ownRows ? `<div class="glt-v1-grid">${ownRows}</div>` : `<small style="color:var(--secondary-text-color)">${gltText("legacy.templates_none")}</small>`}`);
+    m.querySelectorAll("[data-tpl]").forEach((b) => b.onclick = () => {
+      const tp = factory.find((x) => x.id === b.dataset.tpl);
+      if (!tp) return;
+      applyTemplate(editor, tp.config);
+      m.remove();
+    });
+    m.querySelectorAll("[data-otpl]").forEach((b) => b.onclick = () => {
+      const tp = own[Number(b.dataset.otpl)];
+      if (!tp?.config) return;
+      applyTemplate(editor, tp.config);
+      m.remove();
+    });
+  }
+
+  function showEntities(editor) {
+    const hass = sdk.currentHass?.();
+    const hasStates = !!(hass?.states && Object.keys(hass.states).length);
+    const imported = entityCatalog(editor);
+    const row = (e) => `<tr><td>${esc(e.entity_id)}</td><td>${esc(e.name)}</td><td>${esc(e.unit || "")}</td></tr>`;
+    const m = editorModal(editor, `${t(editor._config, "entities")}`, `
+      <div class="glt-v1-actions">
+        <button class="glt-v1-btn primary" data-exp ${hasStates ? "" : "disabled"}>⇩ ${gltText("legacy.entities_export")}</button>
+        <label class="glt-v1-btn" style="display:inline-flex;align-items:center;cursor:pointer">⇧ ${gltText("legacy.entities_import")}<input type="file" accept=".json,application/json" data-imp hidden></label>
+      </div>
+      <div class="glt-v1-notice" style="margin-top:10px" data-notice>${gltText("legacy.entities_hint")}</div>
+      <div style="margin-top:10px;font-size:10px">${gltText("legacy.entities_imported")}: <b data-count>${imported.length}</b>${hasStates ? "" : ` · <span style="color:var(--secondary-text-color)">${gltText("legacy.entities_offline")}</span>`}</div>
+      <div style="max-height:320px;overflow:auto;margin-top:8px"><table class="glt-v1-table"><tbody data-rows>${imported.slice(0, 200).map(row).join("")}</tbody></table></div>`);
+    m.querySelector("[data-exp]")?.addEventListener("click", () => {
+      const payload = entityExportPayload(hass?.states || {});
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "glt-entities.json";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+    m.querySelector("[data-imp]")?.addEventListener("change", async (ev) => {
+      const file = ev.target.files?.[0];
+      const notice = m.querySelector("[data-notice]");
+      if (!file || !notice) return;
+      try {
+        const result = normalizeEntityImport(JSON.parse(await file.text()));
+        localStorage.setItem("glt-flow-card.entities", JSON.stringify(result));
+        editor._entityCatalog = result.entities;
+        m.querySelector("[data-count]").textContent = String(result.count);
+        m.querySelector("[data-rows]").innerHTML = result.entities.slice(0, 200).map(row).join("");
+        notice.textContent = `${gltText("legacy.entities_imported")}: ${result.count} · ${gltText("legacy.entities_rejected")}: ${result.rejected}`;
+        wireEntityFields(editor);
+      } catch (_err) {
+        notice.textContent = gltText("legacy.entities_invalid");
+      }
+    });
+  }
+
+  function editorToolbar(editor){const root=editor.shadowRoot;if(root.querySelector("[data-glt-v1-toolbar]"))return;const base=root.querySelector(".glt4-bar,.toolbar,.bar,.tb")||root.firstElementChild;if(!base)return;const bar=document.createElement("div");bar.className="glt-v1-toolbar";bar.dataset.gltV1Toolbar="1";const buttons=[["symbols","🧩"],["templates","▤"],["semantics","⌘"],["automap","↯"],["cad","⌗"],["diagnostics","✓"],["simulation","◉"],["schedule","◷"],["energy","⚡"],["entities","⇋"],["maintenance","🔧"],["project","▣"]];bar.innerHTML=buttons.map(([k,ic])=>`<button data-v1="${k}">${ic} ${esc(t(editor._config,k))}</button>`).join("");base.after(bar);const act={symbols:showSymbolLibrary,templates:showTemplates,entities:showEntities,semantics:showSemantics,automap:showAutoMapping,cad:showCAD,diagnostics:showDiagnostics,simulation:showSimulation,schedule:showSchedules,energy:showEnergy,maintenance:showMaintenance,project:showProjectV1};bar.querySelectorAll("[data-v1]").forEach(b=>b.onclick=()=>act[b.dataset.v1]?.(editor));}
+  const oldEditorRender=Editor.prototype._render;Editor.prototype._render=function(){this._config=ensureV1(this._config);const r=oldEditorRender.call(this);addStyle(this.shadowRoot);editorToolbar(this);applyLayers(this);minimap(this);wireEntityFields(this);return r;};
 
   // History aggregation hook: preserve original data source, process after retrieval when possible.
   // The Companion's answer where there is one, and the local points otherwise.

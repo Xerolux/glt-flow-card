@@ -25,6 +25,32 @@ Danach kann `custom:glt-flow-card` im Lovelace-Karteneditor gewählt werden. Der
 
 `dist/glt-flow-card.js` nach `/config/www/glt-flow-card.js` kopieren und `/local/glt-flow-card.js` als JavaScript-Modul eintragen.
 
+## Direkt über den Companion (ab 1.1.0)
+
+Der Companion liefert die Card in `custom_components/glt_flow_card/www/` mit und
+serviert sie nach dem Setup unter
+
+`http://<home-assistant>/glt_flow_card/www/glt-flow-card.js`
+
+Diese URL kann als JavaScript-Modul-Ressource eingetragen werden, wenn die Card
+nicht über HACS-Dashboard oder `/config/www` installiert wurde — zum Beispiel
+nach einer Integration-Kategorie-Installation (siehe unten). Sie wird ohne
+lange Cache-Header ausgeliefert; ein `?v=<version>`-Suffix an der Ressourcen-URL
+erzwingt nach einem Companion-Update das Neuladen im Browser.
+
+## Wenn nur Fehler kommen: Card trotz Companion nicht nutzbar
+
+HACS installiert ein Repository in genau **einer** Kategorie. Wird das
+Repository als **Integration** hinzugefügt, erhält man nur den Python-Companion:
+das Backend läuft (Projekte, Alarme, Steuerungen funktionieren serverseitig),
+aber es gibt keine Card-Datei und keine Lovelace-Ressource — `custom:glt-flow-card`
+meldet dann *Custom element doesn't exist*. Abhilfe in dieser Reihenfolge:
+
+1. HACS → Benutzerdefinierte Repositories: das Repository als **Dashboard**
+   hinzufügen (statt Integration) und installieren, oder
+2. die Companion-URL aus dem vorherigen Abschnitt als Ressource eintragen, oder
+3. `dist/glt-flow-card.js` manuell nach `/config/www/` kopieren.
+
 ## GLT Flow Card Companion 1.0
 
 Der Companion ist für produktive GLT-Funktionen empfohlen: serverseitige Rollen

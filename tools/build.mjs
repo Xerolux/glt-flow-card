@@ -301,11 +301,25 @@ async function main() {
       path.join(ROOT, "src/generated-bases/editor-app.base.js"),
       "utf8",
     );
-    const editorExtension = await readFile(path.join(ROOT, "src/v100/online-extension.js"), "utf8");
-    if (!editorExtension.trimStart().startsWith(EDITOR_MARKER)) {
+    const editorExtensionSource = await readFile(path.join(ROOT, "src/v100/online-extension.js"), "utf8");
+    if (!editorExtensionSource.trimStart().startsWith(EDITOR_MARKER)) {
       throw new Error("online editor extension is missing its generated-region marker");
     }
-    const editor = `${editorBase.trimEnd()}\n\n${editorExtension.trim()}\n${EDITOR_END_MARKER}\n`;
+    // The extension is a real ES module now — it imports the factory
+    // templates and the entity bridge rather than re-implementing them — so
+    // the appended region is the deterministic IIFE esbuild produces from it.
+    const editorExtensionBundle = await esbuild({
+      entryPoints: [path.join(ROOT, "src/v100/online-extension.js")],
+      bundle: true,
+      format: "iife",
+      target: "es2022",
+      minify: false,
+      logLevel: "silent",
+      legalComments: "none",
+      write: false,
+    });
+    const editorExtension = editorExtensionBundle.outputFiles[0].text;
+    const editor = `${editorBase.trimEnd()}\n\n${EDITOR_MARKER}\n${editorExtension.trim()}\n${EDITOR_END_MARKER}\n`;
     await writeStage(stageRoot, "docs/editor/app.js", editor);
 
     for (const [sourcePath, distPath] of SCHEMA_COPIES) {

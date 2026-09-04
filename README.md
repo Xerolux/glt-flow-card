@@ -333,6 +333,15 @@ shipped artifact comes from a catalog, which was this phase's last open row.
 - **Light/dark theme aware** and responsive.
 - **Full drag & drop plant designer** for equipment, media paths, data points, KPIs and image views — YAML remains available for advanced setups.
 
+## Sponsoring
+
+Everything here is free and stays free: the card, the designer, the wiki and
+every download, export and template. If the project saves you time and you
+want to support it, contributions through
+[GitHub Sponsors](https://github.com/sponsors/Xerolux) keep development and
+releases going. Sponsoring is strictly voluntary — nothing is locked
+behind it, and nothing ever will be.
+
 ## Installation
 
 Requires Home Assistant 2024.8.0 or newer. Release validation installs the exact
@@ -608,7 +617,7 @@ The designer also includes a **live preview** and a **Lovelace YAML drawer with 
 
 ## Extended symbol library
 
-**456 variants** from **76 base symbols** in **6 styles**, across heating,
+**600 variants** from **100 base symbols** in **6 styles**, across heating,
 hydraulics, air handling, refrigeration, energy, instrumentation, electrical and
 fire safety.
 
