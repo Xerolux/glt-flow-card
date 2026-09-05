@@ -60,7 +60,7 @@ function gltText(key) {
 (() => {
   "use strict";
 
-  const VERSION = "1.1.0-b5";
+  const VERSION = "1.1.0-b6";
   const CARD_TYPE = "glt-flow-card";
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -5642,13 +5642,14 @@ function gltText(key) {
       const style = document.createElement("style");
       style.textContent = RUNTIME_STYLES;
       root.appendChild(style);
-      const tools = root.querySelector(".glt-tool-actions");
+      /* The platform menu owns runtime tools now; the legacy toolbar row duplicated them. */
+      const tools = root.querySelector(".glt-menu-panel [data-menu-group='operation']") || root.querySelector(".glt-tool-actions");
       if (tools && !tools.querySelector(".glt4-tool")) {
         const alarmCount = (this._config.alarms || []).filter((a) => activeAlarm(this, a)).length;
         const siteOptions = (this._config.sites || []).length ? `<select class="glt4-site-select" data-g4site><option value="all">Alle Standorte</option>${this._config.sites.map((s) => `<option value="${esc(s.id)}" ${this._glt4Site === s.id ? "selected" : ""}>${esc(s.name || s.id)}</option>`).join("")}</select>` : "";
         const wrap = document.createElement("div");
-        wrap.className = "glt4-tool";
-        wrap.innerHTML = `${siteOptions}<button class="glt4-pill ${this._glt4Panel === "alarms" ? "on" : ""}" data-g4panel="alarms">Alarme${alarmCount ? ` (${alarmCount})` : ""}</button><button class="glt4-pill ${this._glt4Panel === "assets" ? "on" : ""}" data-g4panel="assets">Wartung</button>${this._config.reports?.enabled !== false ? '<button class="glt4-pill" data-g4report>Report</button>' : ""}${roleFor(this._config, this._hass) === "designer" ? '<button class="glt4-pill" data-g4audit>Audit</button>' : ""}`;
+        wrap.className = tools.classList.contains("glt-menu-group") ? "" : "glt4-tool";
+        wrap.innerHTML = `${siteOptions}<button class="${tools.classList.contains("glt-menu-group") ? "glt-menu-item" : "glt4-pill"} ${this._glt4Panel === "alarms" ? "on" : ""}" data-g4panel="alarms" role="menuitem"><ha-icon icon="mdi:bell-ring-outline"></ha-icon>Alarme${alarmCount ? ` (${alarmCount})` : ""}</button><button class="${tools.classList.contains("glt-menu-group") ? "glt-menu-item" : "glt4-pill"} ${this._glt4Panel === "assets" ? "on" : ""}" data-g4panel="assets" role="menuitem"><ha-icon icon="mdi:wrench-outline"></ha-icon>Wartung</button>${this._config.reports?.enabled !== false ? `<button class="${tools.classList.contains("glt-menu-group") ? "glt-menu-item" : "glt4-pill"}" data-g4report role="menuitem"><ha-icon icon="mdi:file-document-outline"></ha-icon>Report</button>` : ""}${roleFor(this._config, this._hass) === "designer" ? `<button class="${tools.classList.contains("glt-menu-group") ? "glt-menu-item" : "glt4-pill"}" data-g4audit role="menuitem"><ha-icon icon="mdi:shield-check-outline"></ha-icon>Audit</button>` : ""}`;
         tools.prepend(wrap);
         wrap.querySelector("[data-g4site]")?.addEventListener("change", (e) => {
           this._glt4Site = e.target.value;
@@ -5660,7 +5661,7 @@ function gltText(key) {
           this._queueRender();
         });
         wrap.querySelector("[data-g4report]")?.addEventListener("click", async () => {
-          const choice = await gltAsk(card, gltText("legacy.report_format_hint"), "pdf");
+          const choice = await gltAsk(this, gltText("legacy.report_format_hint"), "pdf");
           if (choice?.toLowerCase() === "csv") download(`glt-report-${Date.now()}.csv`, reportCsv(this), "text/csv;charset=utf-8");
           else if (choice) printReport(this);
           runtimeStore(this).audit("report.create", { format: choice || "cancel" });

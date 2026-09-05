@@ -194,6 +194,35 @@ class ProjectAccessRepository:
         await self._persist(project_id)
         return await self.async_get(project_id)
 
+    async def async_seed_first_admin(
+        self, *, project_id: str, user_id: str
+    ) -> AccessState | None:
+        """Seed the saving Home Assistant admin as the first project admin.
+
+        A single-admin installation with no projects could otherwise never
+        bootstrap shared state: membership administration may not self-grant,
+        and an engineering lease needs an assignment. Seeding the first admin
+        on first save is the same once-and-conservative move the legacy
+        permissions bootstrap makes, and it is available exactly when the
+        project has no assignments and no stored content yet.
+        """
+        entry = self._entry(project_id)
+        if entry.get("assignments"):
+            return None
+        receipt = entry.get("bootstrap")
+        if isinstance(receipt, Mapping) and receipt.get("source") == "first_admin":
+            return await self.async_get(project_id)
+        entry["assignments"] = [(str(user_id), "admin")]
+        entry["access_revision"] = int(entry.get("access_revision", 0)) + 1
+        entry["bootstrap"] = {
+            "source": "first_admin",
+            "adopted": 1,
+            "roles": [str(user_id)],
+            "skipped": None,
+        }
+        await self._persist(project_id)
+        return await self.async_get(project_id)
+
     async def async_bootstrap_from_legacy(
         self, project_id: str, head_config: Mapping[str, Any] | None
     ) -> dict[str, Any]:

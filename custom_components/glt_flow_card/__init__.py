@@ -1371,9 +1371,29 @@ def _mutation_guard(hass, connection, msg, *, capability: str) -> MutationGuard:
 @websocket_api.async_response
 async def ws_projects_save(hass, connection, msg):
     try:
-        user_id, user_name, _is_admin = _user(connection)
+        user_id, user_name, is_admin = _user(connection)
         project = msg["project"]
         pid = str(project.get("id") or project.get("config", {}).get("project", {}).get("id") or "")
+        if is_admin and pid and _manager(hass).project(pid) is None:
+            # First save of a project an administrator is creating: seed their
+            # admin membership so the lease and write guards below have an
+            # authority to check. Exactly once, only for Home Assistant admins,
+            # and only while the project has no content and no assignments.
+            runtime = _runtime_for(hass)
+            if runtime.access is not None:
+                seeded = await runtime.access.async_seed_first_admin(
+                    project_id=pid, user_id=user_id
+                )
+                if seeded is not None:
+                    await _manager(hass).add_audit(
+                        {"action": "access.bootstrap", "detail": {"project_id": pid, "source": "first_admin"}},
+                        user_id, user_name,
+                    )
+                    # The decision was computed before this save seeded the
+                    # membership; recompute it so the guard sees the new role.
+                    msg[DECISION_KEY] = _runtime_for(hass).policy.authorize(
+                        connection, msg, route="glt_flow_card/projects/save"
+                    )
         result = await _manager(hass).save_project(
             project,
             msg["autosave"],

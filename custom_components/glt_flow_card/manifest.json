@@ -1,7 +1,7 @@
 {
   "domain": "glt_flow_card",
   "name": "GLT Flow Card Companion",
-  "version": "1.1.0-b5",
+  "version": "1.1.0-b6",
   "documentation": "https://github.com/Xerolux/glt-flow-card",
   "issue_tracker": "https://github.com/Xerolux/glt-flow-card/issues",
   "codeowners": [

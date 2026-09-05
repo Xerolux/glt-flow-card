@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "41e8fc139dea4d8a5aa53c0f804c5f4478f5ea8926ba8e157c20b0b3159c0f05",
-      "size": 3191660
+      "sha256": "e876bdc0c367b2cb8f4b0553cc532ab039178473109f9b7fb7e2343600f0a597",
+      "size": 3192407
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "41e8fc139dea4d8a5aa53c0f804c5f4478f5ea8926ba8e157c20b0b3159c0f05",
-      "size": 3191660
+      "sha256": "e876bdc0c367b2cb8f4b0553cc532ab039178473109f9b7fb7e2343600f0a597",
+      "size": 3192407
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -138,7 +138,7 @@
   ],
   "build": {
     "commit": "0d5c7b8c71149f2d01f8fb937acc1ee98c2e1ce0",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -159,7 +159,7 @@
   "sources": [
     {
       "path": "custom_components/glt_flow_card/manifest.json",
-      "sha256": "6396c87de5046dccd3ac569ce9a6038c98e65cc819a1f2434f6c46ae0516c587",
+      "sha256": "866ca0dfaf7a246c8bbc86fb7c323565aabd0aad0c359e861df7f2e13d48b359",
       "size": 350
     },
     {
@@ -169,7 +169,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "07af129a06039f37dc0dd95529586c2f510bba9f818d06121e9ea2bc6a528d6e",
+      "sha256": "4bd3bbb99f3631324c4ddf72571469fb17428a636cfadb20946e66b6044c89ba",
       "size": 5368
     },
     {
@@ -209,8 +209,8 @@
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "dbde3d97e170044bbdcee37352f022c615835a929860e9105eaf0f1d67ad39df",
-      "size": 297856
+      "sha256": "3848ab361a36ccbc3af3c4b38cb549b58436cd7c7d933b7f41f9f6a20215465f",
+      "size": 298603
     },
     {
       "path": "src/v100/alarm-vocabulary.mjs",
@@ -503,9 +503,9 @@
     "size": 1532613
   },
   "versions": {
-    "card": "1.1.0-b5",
-    "companion": "1.1.0-b5",
-    "package": "1.1.0-b5",
+    "card": "1.1.0-b6",
+    "companion": "1.1.0-b6",
+    "package": "1.1.0-b6",
     "project_schema": [
       0,
       1,
