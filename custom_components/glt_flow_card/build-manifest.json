@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "e876bdc0c367b2cb8f4b0553cc532ab039178473109f9b7fb7e2343600f0a597",
-      "size": 3192407
+      "sha256": "c1e1c7ea2f7acd0880f23270478b1d1a9b88034f80b06fe140fc223e88e59759",
+      "size": 3192404
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "e876bdc0c367b2cb8f4b0553cc532ab039178473109f9b7fb7e2343600f0a597",
-      "size": 3192407
+      "sha256": "c1e1c7ea2f7acd0880f23270478b1d1a9b88034f80b06fe140fc223e88e59759",
+      "size": 3192404
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -138,7 +138,7 @@
   ],
   "build": {
     "commit": "791e88e3666719f122fa391253756e39e442c608",
-    "dirty": false
+    "dirty": true
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -159,8 +159,8 @@
   "sources": [
     {
       "path": "custom_components/glt_flow_card/manifest.json",
-      "sha256": "866ca0dfaf7a246c8bbc86fb7c323565aabd0aad0c359e861df7f2e13d48b359",
-      "size": 350
+      "sha256": "d22a4386983ea8513de21e831109ead77150be8c8225e28d17f3d01425cd2dba",
+      "size": 347
     },
     {
       "path": "package-lock.json",
@@ -169,8 +169,8 @@
     },
     {
       "path": "package.json",
-      "sha256": "4bd3bbb99f3631324c4ddf72571469fb17428a636cfadb20946e66b6044c89ba",
-      "size": 5368
+      "sha256": "8b8bd3c9272477ec676e91ccf09ccf387a8d4cdf22dc578be4dc52ca16109ebe",
+      "size": 5365
     },
     {
       "path": "schemas/bundle-manifest.schema.json",
@@ -209,8 +209,8 @@
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "3848ab361a36ccbc3af3c4b38cb549b58436cd7c7d933b7f41f9f6a20215465f",
-      "size": 298603
+      "sha256": "e745445dd1100c9f7a3b500c618db1f693f1e4236a070d9c7bd34630a48ba063",
+      "size": 298600
     },
     {
       "path": "src/v100/alarm-vocabulary.mjs",
@@ -503,9 +503,9 @@
     "size": 1532613
   },
   "versions": {
-    "card": "1.1.0-b6",
-    "companion": "1.1.0-b6",
-    "package": "1.1.0-b6",
+    "card": "1.1.0",
+    "companion": "1.1.0",
+    "package": "1.1.0",
     "project_schema": [
       0,
       1,
