@@ -62,12 +62,12 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "b3d395b1f1b57c2bf23116c5787cb03f47c8a76de70005f61a1b39faac433454",
+      "sha256": "0387d71f55df5c56584845a9e7222af6aa8aeba21b5675275178a4204861079a",
       "size": 3212359
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "b3d395b1f1b57c2bf23116c5787cb03f47c8a76de70005f61a1b39faac433454",
+      "sha256": "0387d71f55df5c56584845a9e7222af6aa8aeba21b5675275178a4204861079a",
       "size": 3212359
     },
     {
@@ -137,8 +137,8 @@
     }
   ],
   "build": {
-    "commit": "eedc2cf63e40dc36f0aa74cc562e9bb38549860e",
-    "dirty": true
+    "commit": "fad94a83ff7ed9f5aa9db1b53d8bd5a966f2e846",
+    "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
   "manifest_version": 1,
@@ -159,17 +159,17 @@
   "sources": [
     {
       "path": "custom_components/glt_flow_card/manifest.json",
-      "sha256": "d22a4386983ea8513de21e831109ead77150be8c8225e28d17f3d01425cd2dba",
+      "sha256": "0ed42ee3300530cd1cd95c1378f18dbababa6767b4f3c35017e8259aa1e9f1e1",
       "size": 347
     },
     {
       "path": "package-lock.json",
-      "sha256": "5493963f8acdcf53b90b80fdba0ba24077afcc8f89a1fba02cccd6a1536b7363",
+      "sha256": "bce0ece102cf0cc1c2c9c6086c700da438049139768df84253711e5da82bdd48",
       "size": 21085
     },
     {
       "path": "package.json",
-      "sha256": "8b8bd3c9272477ec676e91ccf09ccf387a8d4cdf22dc578be4dc52ca16109ebe",
+      "sha256": "657ab72c3a57a37321b12bc3fb8b08b1f892b4163adf753c6f0d33c8ce27192a",
       "size": 5365
     },
     {
@@ -209,7 +209,7 @@
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "fe8d7b3bb26ab91773cbea8d36a9be58334b268686e295477b3da76cff22fe41",
+      "sha256": "824a0bd017519044f13e4ee71be0930c0fc1ec529b7d231daefa4fdd217f56bc",
       "size": 306346
     },
     {
@@ -518,9 +518,9 @@
     "size": 1532613
   },
   "versions": {
-    "card": "1.1.0",
-    "companion": "1.1.0",
-    "package": "1.1.0",
+    "card": "1.1.1",
+    "companion": "1.1.1",
+    "package": "1.1.1",
     "project_schema": [
       0,
       1,
