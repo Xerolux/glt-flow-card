@@ -60,7 +60,7 @@ function gltText(key) {
 (() => {
   "use strict";
 
-  const VERSION = "1.1.0";
+  const VERSION = "1.1.1";
   const CARD_TYPE = "glt-flow-card";
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -346,6 +346,12 @@ function gltText(key) {
       this._trendSelected = new Set();
       this._renderQueued = false;
       this._resizeObserver = null;
+      this._renderFrame = null;
+      this._onFullscreenChange = () => {
+        this._fullscreen = !!document.fullscreenElement;
+        this._hasFit = false;
+        this._queueRender();
+      };
     }
 
     static getConfigElement() {
@@ -403,10 +409,18 @@ function gltText(key) {
     }
 
     connectedCallback() {
+      document.addEventListener("fullscreenchange", this._onFullscreenChange);
       this._queueRender();
       if (typeof ResizeObserver !== "undefined") {
+        this._resizeObserver?.disconnect();
         this._resizeObserver = new ResizeObserver(() => {
-          if (!this._hasFit) this._fitCanvas();
+          const viewport = this.shadowRoot?.querySelector(".glt-viewport");
+          const width = viewport?.clientWidth || 0;
+          const height = viewport?.clientHeight || 0;
+          if (!width || !height) return;
+          // Refit only when the available space changes, preserving manual zoom
+          // during ordinary state updates and avoiding a resize/render loop.
+          if (!this._hasFit || width !== this._fitWidth || height !== this._fitHeight) this._fitCanvas(true);
         });
         this._resizeObserver.observe(this);
       }
@@ -414,14 +428,20 @@ function gltText(key) {
 
     disconnectedCallback() {
       if (this._resizeObserver) this._resizeObserver.disconnect();
+      document.removeEventListener("fullscreenchange", this._onFullscreenChange);
+      cancelAnimationFrame(this._renderFrame);
+      this._renderFrame = null;
+      this._renderQueued = false;
       this._stopReplay();
     }
 
     _queueRender() {
       if (this._renderQueued || !this.shadowRoot) return;
       this._renderQueued = true;
-      requestAnimationFrame(() => {
+      this._renderFrame = requestAnimationFrame(() => {
         this._renderQueued = false;
+        this._renderFrame = null;
+        if (!this.isConnected) return;
         this._render();
       });
     }
@@ -960,14 +980,6 @@ function gltText(key) {
 
     _render() {
       if (!this.shadowRoot) return;
-      if (!this._gltFsBound) {
-        this._gltFsBound = true;
-        document.addEventListener("fullscreenchange", () => {
-          this._fullscreen = !!document.fullscreenElement;
-          this._hasFit = false;
-          this._queueRender();
-        });
-      }
       const view = this._currentView();
       const viewportHeight = this._config.canvas.viewport_height;
       const viewportStyle = typeof viewportHeight === "number" ? `height:${viewportHeight}px` : "";
@@ -1157,6 +1169,8 @@ function gltText(key) {
       const width = viewport.clientWidth;
       const height = viewport.clientHeight;
       if (!width || !height) return;
+      this._fitWidth = width;
+      this._fitHeight = height;
       const fit = Math.min(width / this._config.canvas.width, height / this._config.canvas.height) * 0.96;
       this._fitScale = clamp(fit, this._config.zoom.min, this._config.zoom.max);
       if (!this._hasFit || force) {
@@ -4663,7 +4677,7 @@ function gltText(key) {
       }
       async getProject(id) {
         try {
-          return await this._ws("projects/get", { project_id: id });
+          return window.GLTFlowCardSDK.restoreSharedProject(await this._ws("projects/get", { project_id: id }));
         } catch (err) {
           if (this.hass?.callWS) throw err;
           return localRead("glt-flow-card.projects", []).find((p) => p.id === id) || null;
@@ -4671,7 +4685,7 @@ function gltText(key) {
       }
       async saveProject(project, options = {}) {
         try {
-          return await this._ws("projects/save", { project, autosave: !!options.autosave });
+          return await window.GLTFlowCardSDK.saveSharedProject(this.hass, project, options);
         } catch (err) {
           if (this.hass?.callWS) throw err;
           const list = localRead("glt-flow-card.projects", []);
@@ -5000,12 +5014,18 @@ function gltText(key) {
       m.querySelector("[data-save]").onclick = async () => {
         const name = editor._config.project?.name || await gltAsk(editor, gltText("legacy.prompt_project_name"), editor._config.title || "GLT Projekt") || "GLT Projekt";
         const id = currentId || slug(name) + "-" + Date.now().toString(36);
-        editor._config.project = { ...editor._config.project || {}, id, name };
-        editor._glt4ProjectId = id;
-        await store.saveProject({ id, name, config: clone(editor._config) });
-        await store.audit("project.save", { id, name });
-        m.remove();
-        editor._render();
+        const candidate = clone(editor._config);
+        candidate.project = { ...candidate.project || {}, id, name };
+        try {
+          const saved = await store.saveProject({ id, name, config: candidate }, { create: !list.some((entry) => entry.id === id) && Number(candidate.project.revision || 0) === 0 });
+          editor._config.project = { ...candidate.project, revision: saved.revision };
+          editor._glt4ProjectId = id;
+          m.remove(); editor._glt4SkipNextAutosave = true; editor._emit(); editor._render();
+        } catch (error) {
+          let status = m.querySelector("[data-save-error]");
+          if (!status) { status = document.createElement("p"); status.dataset.saveError = ""; status.setAttribute("role", "alert"); m.append(status); }
+          status.textContent = error.message || String(error);
+        }
       };
       m.querySelector("[data-copy]").onclick = async () => {
         const name = await gltAsk(editor, gltText("legacy.new_project_name"), `${editor._config.title || "GLT"} Kopie`);
@@ -5023,6 +5043,7 @@ function gltText(key) {
         if (!p?.config) return;
         editor._glt4ProjectId = p.id;
         editor.setConfig(ensureV4Config(clone(p.config)));
+        editor._glt4SkipNextAutosave = true;
         editor._emit();
         await store.audit("project.load", { id: p.id, name: p.name });
         m.remove();
@@ -5357,11 +5378,21 @@ function gltText(key) {
       reroute(this._config, this._viewId);
       const result = originalEmit.call(this);
       clearTimeout(this._glt4AutosaveTimer);
+      if (this._glt4SkipNextAutosave) { this._glt4SkipNextAutosave = false; return result; }
       this._glt4AutosaveTimer = setTimeout(async () => {
+        if (!this.isConnected) return;
         const id = this._glt4ProjectId || this._config.project?.id;
         if (id) {
           const name = this._config.project?.name || this._config.title || id;
-          await editorStore(this).saveProject({ id, name, config: clone(this._config) }, { autosave: true });
+          try {
+            const saved = await editorStore(this).saveProject({ id, name, config: clone(this._config) }, { autosave: true });
+            if (saved?.revision && this._config.project?.id === id) {
+              this._config.project.revision = saved.revision;
+              if (this.isConnected) originalEmit.call(this);
+            }
+          } catch (error) {
+            this._glt4SaveError = error.message || String(error);
+          }
         } else {
           localWrite("glt-flow-card.autosave", { at: nowIso(), config: this._config });
         }

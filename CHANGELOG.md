@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.1 - 2026-09-11
+
+- Improve mobile layouts, readable dialogs, keyboard focus, touch targets and online designer toolbars.
+- Deduplicate concurrent panel reads, bound loading time and clean up rendering when cards disconnect.
+- Restore Recorder trend series with selectable entities, timestamps, units and explicit coverage gaps.
+- Fix first shared project creation, revision tracking and lossless entity-format round trips in the HA designer.
+- Fix Companion frontend resource registration and ship local GLT brand icons for Home Assistant 2026.3+.
+- Clarify card versus Companion installation, resource setup, upgrades and the offline designer's scope in German and English documentation.
+- Add behavioral regressions for panel loading, project saves, mobile YAML editing, Recorder data and release packaging.
+
 ## 1.0.0 - 2026-08-31
 
 - Professional operational-state engine for Auto/Manual/Local/Remote/Fault/Warning/Lock/Interlock/Maintenance/communication/quality/command states.

@@ -346,6 +346,30 @@ behind it, and nothing ever will be.
 
 ## Installation
 
+**Choose your setup:** HACS installs the dashboard card and its integrated
+designer. Shared projects, server-enforced operations and Recorder trends also
+require the Companion. It is a custom integration, not a Supervisor app.
+
+1. Add `https://github.com/Xerolux/glt-flow-card` in HACS as **Dashboard** and install it.
+2. Reload the browser and check **Settings → Dashboards → Resources** for exactly
+   one GLT JavaScript module resource.
+3. For the Companion, extract `glt-flow-card-companion.zip` from the matching
+   release into `/config/custom_components/glt_flow_card/`. The `manifest.json`
+   file must be directly inside that directory. Include all subdirectories.
+4. Restart Home Assistant, then add **GLT Flow Card Companion** under
+   **Settings → Devices & services → Add integration**.
+5. Edit a dashboard → Add card → **GLT Flow Card** → choose a template, assign
+   your entities and save. For shared projects, first save to the designer's
+   project library as an HA administrator, then save the card configuration
+   using Home Assistant's **Save** button as well.
+
+The Companion also serves the card. Without HACS, register
+`/glt_flow_card/www/glt-flow-card.js` once as a JavaScript module instead.
+Do not load multiple GLT resources simultaneously. Installation does not
+automatically map your plant or its entities.
+
+See [Installation](docs/wiki-en/Installation.md) for upgrades and troubleshooting.
+
 Requires Home Assistant 2024.8.0 or newer. Release validation installs the exact
 staged dashboard card and Companion ZIP on immutable minimum/current HA lanes.
 

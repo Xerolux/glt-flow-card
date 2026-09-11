@@ -212,6 +212,8 @@ export const ENTRIES = Object.freeze({
   "legacy.fit_view": "Ansicht einpassen",
   "legacy.fullscreen": "Vollbild",
   "legacy.height": "Höhe",
+  "legacy.panel_loading": "Daten werden geladen …",
+  "legacy.dialog_close": "Schließen",
   "legacy.loading_entities": "HA-Entities werden geladen",
   "legacy.lock_released": "Lock gelöst.",
   "legacy.lovelace_yaml": "Lovelace YAML",

@@ -346,6 +346,12 @@ function gltText(key) {
       this._trendSelected = new Set();
       this._renderQueued = false;
       this._resizeObserver = null;
+      this._renderFrame = null;
+      this._onFullscreenChange = () => {
+        this._fullscreen = !!document.fullscreenElement;
+        this._hasFit = false;
+        this._queueRender();
+      };
     }
 
     static getConfigElement() {
@@ -403,10 +409,18 @@ function gltText(key) {
     }
 
     connectedCallback() {
+      document.addEventListener("fullscreenchange", this._onFullscreenChange);
       this._queueRender();
       if (typeof ResizeObserver !== "undefined") {
+        this._resizeObserver?.disconnect();
         this._resizeObserver = new ResizeObserver(() => {
-          if (!this._hasFit) this._fitCanvas();
+          const viewport = this.shadowRoot?.querySelector(".glt-viewport");
+          const width = viewport?.clientWidth || 0;
+          const height = viewport?.clientHeight || 0;
+          if (!width || !height) return;
+          // Refit only when the available space changes, preserving manual zoom
+          // during ordinary state updates and avoiding a resize/render loop.
+          if (!this._hasFit || width !== this._fitWidth || height !== this._fitHeight) this._fitCanvas(true);
         });
         this._resizeObserver.observe(this);
       }
@@ -414,14 +428,20 @@ function gltText(key) {
 
     disconnectedCallback() {
       if (this._resizeObserver) this._resizeObserver.disconnect();
+      document.removeEventListener("fullscreenchange", this._onFullscreenChange);
+      cancelAnimationFrame(this._renderFrame);
+      this._renderFrame = null;
+      this._renderQueued = false;
       this._stopReplay();
     }
 
     _queueRender() {
       if (this._renderQueued || !this.shadowRoot) return;
       this._renderQueued = true;
-      requestAnimationFrame(() => {
+      this._renderFrame = requestAnimationFrame(() => {
         this._renderQueued = false;
+        this._renderFrame = null;
+        if (!this.isConnected) return;
         this._render();
       });
     }
@@ -960,14 +980,6 @@ function gltText(key) {
 
     _render() {
       if (!this.shadowRoot) return;
-      if (!this._gltFsBound) {
-        this._gltFsBound = true;
-        document.addEventListener("fullscreenchange", () => {
-          this._fullscreen = !!document.fullscreenElement;
-          this._hasFit = false;
-          this._queueRender();
-        });
-      }
       const view = this._currentView();
       const viewportHeight = this._config.canvas.viewport_height;
       const viewportStyle = typeof viewportHeight === "number" ? `height:${viewportHeight}px` : "";
@@ -1157,6 +1169,8 @@ function gltText(key) {
       const width = viewport.clientWidth;
       const height = viewport.clientHeight;
       if (!width || !height) return;
+      this._fitWidth = width;
+      this._fitHeight = height;
       const fit = Math.min(width / this._config.canvas.width, height / this._config.canvas.height) * 0.96;
       this._fitScale = clamp(fit, this._config.zoom.min, this._config.zoom.max);
       if (!this._hasFit || force) {
@@ -4663,7 +4677,7 @@ function gltText(key) {
       }
       async getProject(id) {
         try {
-          return await this._ws("projects/get", { project_id: id });
+          return window.GLTFlowCardSDK.restoreSharedProject(await this._ws("projects/get", { project_id: id }));
         } catch (err) {
           if (this.hass?.callWS) throw err;
           return localRead("glt-flow-card.projects", []).find((p) => p.id === id) || null;
@@ -4671,7 +4685,7 @@ function gltText(key) {
       }
       async saveProject(project, options = {}) {
         try {
-          return await this._ws("projects/save", { project, autosave: !!options.autosave });
+          return await window.GLTFlowCardSDK.saveSharedProject(this.hass, project, options);
         } catch (err) {
           if (this.hass?.callWS) throw err;
           const list = localRead("glt-flow-card.projects", []);
@@ -5000,12 +5014,18 @@ function gltText(key) {
       m.querySelector("[data-save]").onclick = async () => {
         const name = editor._config.project?.name || await gltAsk(editor, gltText("legacy.prompt_project_name"), editor._config.title || "GLT Projekt") || "GLT Projekt";
         const id = currentId || slug(name) + "-" + Date.now().toString(36);
-        editor._config.project = { ...editor._config.project || {}, id, name };
-        editor._glt4ProjectId = id;
-        await store.saveProject({ id, name, config: clone(editor._config) });
-        await store.audit("project.save", { id, name });
-        m.remove();
-        editor._render();
+        const candidate = clone(editor._config);
+        candidate.project = { ...candidate.project || {}, id, name };
+        try {
+          const saved = await store.saveProject({ id, name, config: candidate }, { create: !list.some((entry) => entry.id === id) && Number(candidate.project.revision || 0) === 0 });
+          editor._config.project = { ...candidate.project, revision: saved.revision };
+          editor._glt4ProjectId = id;
+          m.remove(); editor._glt4SkipNextAutosave = true; editor._emit(); editor._render();
+        } catch (error) {
+          let status = m.querySelector("[data-save-error]");
+          if (!status) { status = document.createElement("p"); status.dataset.saveError = ""; status.setAttribute("role", "alert"); m.append(status); }
+          status.textContent = error.message || String(error);
+        }
       };
       m.querySelector("[data-copy]").onclick = async () => {
         const name = await gltAsk(editor, gltText("legacy.new_project_name"), `${editor._config.title || "GLT"} Kopie`);
@@ -5023,6 +5043,7 @@ function gltText(key) {
         if (!p?.config) return;
         editor._glt4ProjectId = p.id;
         editor.setConfig(ensureV4Config(clone(p.config)));
+        editor._glt4SkipNextAutosave = true;
         editor._emit();
         await store.audit("project.load", { id: p.id, name: p.name });
         m.remove();
@@ -5357,11 +5378,21 @@ function gltText(key) {
       reroute(this._config, this._viewId);
       const result = originalEmit.call(this);
       clearTimeout(this._glt4AutosaveTimer);
+      if (this._glt4SkipNextAutosave) { this._glt4SkipNextAutosave = false; return result; }
       this._glt4AutosaveTimer = setTimeout(async () => {
+        if (!this.isConnected) return;
         const id = this._glt4ProjectId || this._config.project?.id;
         if (id) {
           const name = this._config.project?.name || this._config.title || id;
-          await editorStore(this).saveProject({ id, name, config: clone(this._config) }, { autosave: true });
+          try {
+            const saved = await editorStore(this).saveProject({ id, name, config: clone(this._config) }, { autosave: true });
+            if (saved?.revision && this._config.project?.id === id) {
+              this._config.project.revision = saved.revision;
+              if (this.isConnected) originalEmit.call(this);
+            }
+          } catch (error) {
+            this._glt4SaveError = error.message || String(error);
+          }
         } else {
           localWrite("glt-flow-card.autosave", { at: nowIso(), config: this._config });
         }
@@ -6089,6 +6120,8 @@ function gltText(key) {
     "legacy.fit_view": "Ansicht einpassen",
     "legacy.fullscreen": "Vollbild",
     "legacy.height": "Höhe",
+    "legacy.panel_loading": "Daten werden geladen …",
+    "legacy.dialog_close": "Schließen",
     "legacy.loading_entities": "HA-Entities werden geladen",
     "legacy.lock_released": "Lock gelöst.",
     "legacy.lovelace_yaml": "Lovelace YAML",
@@ -6988,6 +7021,8 @@ function gltText(key) {
     "legacy.fit_view": "Fit view",
     "legacy.fullscreen": "Fullscreen",
     "legacy.height": "Height",
+    "legacy.panel_loading": "Loading data …",
+    "legacy.dialog_close": "Close",
     "legacy.loading_entities": "Loading Home Assistant entities",
     "legacy.lock_released": "Lock released.",
     "legacy.lovelace_yaml": "Lovelace YAML",
@@ -53804,13 +53839,13 @@ function gltText(key) {
           const {
             ctr,
             hmac,
-            pending,
+            pending: pending2,
             ready
           } = this;
           if (hmac && ctr) {
             await ready;
-            const chunkToDecrypt = subarray(pending, 0, pending.length - SIGNATURE_LENGTH);
-            const originalSignature = subarray(pending, pending.length - SIGNATURE_LENGTH);
+            const chunkToDecrypt = subarray(pending2, 0, pending2.length - SIGNATURE_LENGTH);
+            const originalSignature = subarray(pending2, pending2.length - SIGNATURE_LENGTH);
             let decryptedChunkArray = new Uint8Array();
             if (chunkToDecrypt.length) {
               const encryptedChunk = toBits(codecBytes, chunkToDecrypt);
@@ -53819,7 +53854,7 @@ function gltText(key) {
               decryptedChunkArray = fromBits(codecBytes, decryptedChunk);
             }
             const signature = subarray(fromBits(codecBytes, hmac.digest()), 0, SIGNATURE_LENGTH);
-            let invalidSignature = pending.length < SIGNATURE_LENGTH ? 1 : 0;
+            let invalidSignature = pending2.length < SIGNATURE_LENGTH ? 1 : 0;
             for (let indexSignature = 0; indexSignature < SIGNATURE_LENGTH; indexSignature++) {
               invalidSignature |= signature[indexSignature] ^ originalSignature[indexSignature];
             }
@@ -53867,14 +53902,14 @@ function gltText(key) {
           const {
             ctr,
             hmac,
-            pending,
+            pending: pending2,
             ready
           } = this;
           if (hmac && ctr) {
             await ready;
             let encryptedChunkArray = new Uint8Array();
-            if (pending.length) {
-              const encryptedChunk = ctr.update(toBits(codecBytes, pending));
+            if (pending2.length) {
+              const encryptedChunk = ctr.update(toBits(codecBytes, pending2));
               hmac.update(encryptedChunk);
               encryptedChunkArray = fromBits(codecBytes, encryptedChunk);
             }
@@ -53890,10 +53925,10 @@ function gltText(key) {
     const {
       ctr,
       hmac,
-      pending
+      pending: pending2
     } = aesCrypto;
-    if (pending.length) {
-      input = concat(pending, input);
+    if (pending2.length) {
+      input = concat(pending2, input);
     }
     const inputLength = input.length - paddingEnd;
     output = expand(output, paddingStart + (inputLength - inputLength % BLOCK_LENGTH));
@@ -54184,10 +54219,10 @@ function gltText(key) {
           }
           const available = tail.length + chunk.length;
           if (available <= GZIP_TRAILER_LENGTH) {
-            const pending = new Uint8Array(available);
-            pending.set(tail);
-            pending.set(chunk, tail.length);
-            tail = pending;
+            const pending2 = new Uint8Array(available);
+            pending2.set(tail);
+            pending2.set(chunk, tail.length);
+            tail = pending2;
             return;
           }
           const emitLength = available - GZIP_TRAILER_LENGTH;
@@ -62867,6 +62902,142 @@ function gltText(key) {
     return JSON.parse(JSON.stringify(FACTORY_TEMPLATES));
   }
 
+  // src/v100/interface-styles.mjs
+  var interfaceStyles = `
+  .glt-v1-modal,.glt-v1-modal *{box-sizing:border-box}
+  .glt-v1-modal{padding:24px;background:rgb(2 6 23 / .68)}
+  .glt-v1-dialog{width:min(1080px,100%);max-height:calc(100dvh - 48px);overscroll-behavior:contain;font:14px/1.55 var(--paper-font-body1_-_font-family,system-ui,sans-serif);color:var(--primary-text-color,#172b3a);border-color:var(--divider-color,#cbd5e1)}
+  .glt-v1-head{gap:16px;padding:16px 20px;min-height:64px}
+  .glt-v1-head>b{font-size:18px;line-height:1.35;overflow-wrap:anywhere}
+  .glt-v1-body{padding:20px;min-width:0;overflow-x:auto}
+  .glt-v1-close,.glt-v1-btn{min-height:44px;min-width:44px;font-size:14px;line-height:1.4;padding:10px 14px;border-color:var(--divider-color,#cbd5e1);touch-action:manipulation}
+  .glt-v1-close{font-size:20px;flex-shrink:0}
+  .glt-v1-btn:hover:not(:disabled),.glt-v1-close:hover{background:color-mix(in srgb,var(--primary-color,#0284c7) 12%,transparent)}
+  .glt-v1-btn.primary:hover:not(:disabled){background:#076aa5}
+  .glt-v1-btn:disabled{cursor:wait;opacity:.65}
+  .glt-v1-modal :focus-visible,.glt-v1-toolbar :focus-visible{outline:3px solid var(--primary-color,#0284c7);outline-offset:3px}
+  .glt-v1-actions{gap:10px;align-items:center}
+  .glt-v1-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px}
+  .glt-v1-card{padding:16px;border-radius:12px;min-width:0;border-color:var(--divider-color,#cbd5e1)}
+  .glt-v1-card b{font-size:15px;line-height:1.4;overflow-wrap:anywhere}
+  .glt-v1-card small,.glt-v1-label{font-size:13px;line-height:1.5;color:var(--secondary-text-color,#526579)}
+  .glt-v1-card .glt-v1-actions{margin-top:12px}
+  .glt-v1-table{font-size:14px;line-height:1.5}
+  .glt-v1-table th,.glt-v1-table td{padding:12px;overflow-wrap:anywhere}
+  .glt-v1-table th{font-weight:650;background:color-mix(in srgb,var(--primary-color,#0284c7) 6%,var(--card-background-color,#fff))}
+  .glt-v1-table tbody tr:hover{background:color-mix(in srgb,var(--primary-color,#0284c7) 5%,transparent)}
+  .glt-v1-input,.glt-v1-select,.glt-v1-text{box-sizing:border-box;min-height:44px;font:inherit;font-size:16px;padding:10px 12px;max-width:100%}
+  .glt-v1-actions>.glt-v1-input,.glt-v1-actions>.glt-v1-select{flex:1 1 200px;width:auto;min-width:0}
+  .glt-v1-toolbar{gap:8px;padding:10px;align-items:center}
+  .glt-v1-toolbar button{height:auto;min-height:44px;font-size:13px;padding:8px 12px}
+  .glt-v1-loading{display:flex;align-items:center;gap:12px;min-height:120px;color:var(--secondary-text-color,#526579)}
+  .glt-v1-loading::before{content:"";width:20px;height:20px;flex-shrink:0;border:2px solid var(--divider-color,#cbd5e1);border-top-color:var(--primary-color,#0284c7);border-radius:50%;animation:glt-loading .8s linear infinite}
+  @keyframes glt-loading{to{transform:rotate(360deg)}}
+  @media(max-width:600px){
+    .glt-v1-modal{padding:8px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+    .glt-v1-dialog{max-height:calc(100dvh - 24px);border-radius:12px}
+    .glt-v1-head,.glt-v1-body{padding:12px}
+    .glt-v1-grid{gap:12px}
+    .glt-v1-table th,.glt-v1-table td{padding:8px}
+    .glt-v1-minimap{display:none}
+  }
+  @media(prefers-reduced-motion:reduce){.glt-v1-loading::before{animation:none}}
+`;
+  var workspaceStyles = `
+  .glt-header{gap:16px;flex-wrap:wrap}
+  .glt-heading,.glt-heading>div{min-width:0}
+  .glt-heading h2{overflow-wrap:anywhere;white-space:normal}
+  .glt-toolbar{position:relative;z-index:70;gap:12px;flex-wrap:wrap}
+  .glt-view-switch{min-width:0;max-width:100%;flex-wrap:wrap;gap:6px}
+  .glt-view-switch button,.glt-tool-btn{min-height:44px;min-width:44px;font-size:13px}
+  .glt-kpi-strip{gap:10px;flex-wrap:wrap}
+  .glt-kpi{min-width:0;flex:1 1 150px;padding:12px}
+  .glt-kpi small{font-size:12px;white-space:normal;overflow-wrap:anywhere}
+  .glt-kpi strong{font-size:20px;font-variant-numeric:tabular-nums}
+  .glt-menu-panel{max-width:calc(100vw - 32px);max-height:70dvh;overflow-y:auto;overscroll-behavior:contain}
+  .glt-menu-item{min-height:44px;font-size:14px}
+  .glt-menu-title{font-size:12px}
+  .dt,.vb,.bottom{height:auto;min-height:44px;flex-wrap:wrap;gap:8px}
+  .tools,.views,.seg{flex-wrap:wrap;min-width:0;gap:6px}
+  .mini{min-width:44px;min-height:44px}
+  .tb,.tab,.act{height:auto;min-height:44px;font-size:13px}
+  .f label,.st,.grp,.help,.bottom,.notice{font-size:12px;line-height:1.5}
+  .f input,.f select,.search input{min-height:44px;font-size:16px;min-width:0;max-width:100%}
+  .pi{font-size:12px;min-height:76px}
+  .left,.right,.center{min-width:0}
+  @media(max-width:700px){
+    .work{grid-template-columns:minmax(0,1fr)}
+    .left,.right{grid-column:1/-1;border:0;border-bottom:1px solid var(--b,#294154)}
+    .pal{max-height:210px}
+    .pg{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+    .center{min-height:420px}
+    .insp{max-height:none}
+    .stage{padding:8px}
+    .glt-header{padding:14px}
+    .glt-toolbar{padding:10px}
+    .glt-heading h2{font-size:18px}
+  }
+  @media(prefers-reduced-motion:reduce){.path,.glt-flow-line,.glt-sym *{animation:none!important}}
+`;
+
+  // src/v100/panel-read.mjs
+  var pending = /* @__PURE__ */ new WeakMap();
+  function readPanel(owner, type, payload, { timeoutMs = 12e3 } = {}) {
+    const transport = owner?._hass?.callWS;
+    if (!transport) return Promise.reject(new Error("Companion unavailable"));
+    let requests = pending.get(owner);
+    if (!requests) pending.set(owner, requests = /* @__PURE__ */ new Map());
+    const key = JSON.stringify([type, payload]);
+    const existing = requests.get(key);
+    if (existing?.transport === transport) return existing.promise;
+    let timer;
+    const record = { transport };
+    record.promise = Promise.race([
+      Promise.resolve().then(() => transport.call(owner._hass, { type, ...payload })),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Companion request timed out")), timeoutMs);
+      })
+    ]).finally(() => {
+      clearTimeout(timer);
+      if (requests.get(key) === record) requests.delete(key);
+    });
+    requests.set(key, record);
+    return record.promise;
+  }
+
+  // src/v100/project-save.mjs
+  function sharedProjectDocument(project, restore = false) {
+    const result2 = structuredClone(project);
+    const visit = (node) => {
+      if (!node || typeof node !== "object") return;
+      if (restore && node.runtime_entity_binding && node.runtime_entity_binding.entity === node.entity) {
+        node.entity = node.runtime_entity_binding;
+        delete node.runtime_entity_binding;
+      } else if (!restore && node.entity && typeof node.entity === "object" && typeof node.entity.entity === "string") {
+        if (node.runtime_entity_binding) throw new Error("Conflicting entity binding metadata");
+        node.runtime_entity_binding = node.entity;
+        node.entity = node.entity.entity;
+      }
+      for (const [key, value] of Object.entries(node)) if (key !== "runtime_entity_binding" && key !== "entity") visit(value);
+    };
+    visit(result2);
+    if (restore && result2?.config?.project && Number.isInteger(result2.revision)) {
+      result2.config.project.revision = result2.revision;
+    }
+    return result2;
+  }
+  async function saveSharedProject(hass, project, { create = false } = {}) {
+    project = sharedProjectDocument(project);
+    const call = (route, payload) => hass.callWS({ type: `glt_flow_card/${route}`, ...payload });
+    if (create) return call("projects/create", { project });
+    const lease = await call("leases/acquire", { project_id: project.id, purpose: "engineering", ttl_seconds: 60 });
+    try {
+      return await call("projects/save", { project, expected_revision: Number(project.config?.project?.revision || 0), lease_token: lease.lease_token });
+    } finally {
+      await call("leases/release", { project_id: project.id, lease_token: lease.lease_token });
+    }
+  }
+
   // src/v100/index.js
   function gltText(key) {
     const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
@@ -62947,6 +63118,9 @@ function gltText(key) {
     sdk.formatDateTime = formatDateTime;
     sdk.formatMeasurement = formatMeasurement;
     sdk.askText = askText;
+    sdk.openDialog = modal;
+    sdk.saveSharedProject = saveSharedProject;
+    sdk.restoreSharedProject = (project) => sharedProjectDocument(project, true);
     sdk.resolveLocale = resolveLocale;
     sdk.UNREADABLE = UNREADABLE;
     sdk.version = "1.0.0";
@@ -63113,7 +63287,7 @@ function gltText(key) {
       if (root?.querySelector("style[data-glt-v1]")) return;
       const st2 = document.createElement("style");
       st2.dataset.gltV1 = "1";
-      st2.textContent = STYLES + SYMBOL_STYLES;
+      st2.textContent = STYLES + SYMBOL_STYLES + interfaceStyles + workspaceStyles;
       root?.appendChild(st2);
     }
     const TYPE_SYMBOLS = { heat_pump: "heat_pump_neo", boiler: "boiler", tank: "buffer_layered", dhw_tank: "dhw_tank", room: "underfloor", pump: "pump_inline", valve: "valve_2way", fan: "fan_supply", ahu: "ahu", chiller: "chiller", meter: "meter" };
@@ -63187,21 +63361,49 @@ function gltText(key) {
       if (document.head.querySelector("style[data-glt-v1-global]")) return;
       const style = document.createElement("style");
       style.dataset.gltV1Global = "1";
-      style.textContent = GLOBAL_MODAL_STYLES;
+      style.textContent = GLOBAL_MODAL_STYLES + interfaceStyles;
       document.head.appendChild(style);
     }
     function modal(owner, title, html) {
       ensureGlobalModalStyles();
       document.querySelector(".glt-v1-modal")?.remove();
+      let previous = document.activeElement;
+      while (previous?.shadowRoot?.activeElement) previous = previous.shadowRoot.activeElement;
       const m = document.createElement("div");
       m.className = "glt-v1-modal";
-      m.innerHTML = `<div class="glt-v1-dialog"><div class="glt-v1-head"><b>${esc(title)}</b><button class="glt-v1-close">✕</button></div><div class="glt-v1-body">${html}</div></div>`;
+      m.innerHTML = `<div class="glt-v1-dialog" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="glt-v1-head"><b>${esc(title)}</b><button type="button" class="glt-v1-close" aria-label="${esc(gltText("legacy.dialog_close"))}">✕</button></div><div class="glt-v1-body">${html}</div></div>`;
+      const remove = m.remove.bind(m);
+      m.remove = () => {
+        remove();
+        if (previous?.isConnected) previous.focus({ preventScroll: true });
+      };
       m.querySelector(".glt-v1-close").onclick = () => m.remove();
       m.onclick = (e) => {
         if (e.target === m) m.remove();
       };
+      m.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          m.remove();
+        }
+        if (e.key !== "Tab") return;
+        const nodes = [...m.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter((n) => n.getClientRects().length);
+        const first = nodes[0], last = nodes.at(-1);
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      });
       document.body.appendChild(m);
+      m.querySelector(".glt-v1-close").focus({ preventScroll: true });
       return m;
+    }
+    function loadingMarkup() {
+      return `<div class="glt-v1-loading" role="status">${esc(gltText("legacy.panel_loading"))}</div>`;
     }
     async function ws(owner, type, payload = {}) {
       if (!owner?._hass?.callWS) throw new Error("Companion nicht verfügbar");
@@ -63254,7 +63456,7 @@ function gltText(key) {
     async function loadAlarms(card2) {
       const cfg = ensureV1(card2._config);
       try {
-        const res = await ws(card2, "alarms/list", { project_id: projectId(cfg), limit: 500 });
+        const res = await readPanel(card2, "glt_flow_card/alarms/list", { project_id: projectId(cfg), limit: 500 });
         const byId = {};
         for (const row of res?.states || []) byId[String(row.alarm_id)] = row;
         card2._alarmState = byId;
@@ -63297,7 +63499,7 @@ function gltText(key) {
       };
       if (contract === "statistics") payload.period = request?.period || "day";
       try {
-        const res = await ws(card2, route, payload);
+        const res = await readPanel(card2, route, payload);
         return {
           capped: Boolean(res?.capped),
           coverage: Number(res?.coverage || 0),
@@ -63329,9 +63531,13 @@ function gltText(key) {
     }
     async function alarmsPanel(card2) {
       const cfg = ensureV1(card2._config);
+      const m = modal(card2, t(cfg, "alarms"), loadingMarkup());
+      m.querySelector(".glt-v1-body").setAttribute("aria-busy", "true");
       const loaded = await loadAlarms(card2);
+      if (!m.isConnected) return;
       const rows = cfg.alarms.map((a) => alarmRow(cfg, a, loaded.byId[String(a.id)]));
-      const m = modal(card2, t(cfg, "alarms"), `<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div>${loaded.unavailable ? `<p data-unavailable style="font-size:9px;color:var(--secondary-text-color)">${gltText("legacy.alarm_state_unavailable")}</p>` : ""}<table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorität</th><th>Meldung</th><th>Unterdrückung</th><th>Zustellung</th><th>Aktion</th></tr></thead><tbody>${rows.join("") || '<tr><td colspan="6">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`);
+      m.querySelector(".glt-v1-body").removeAttribute("aria-busy");
+      m.querySelector(".glt-v1-body").innerHTML = `<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div>${loaded.unavailable ? `<p data-unavailable role="status">${gltText("legacy.alarm_state_unavailable")}</p>` : ""}<table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorität</th><th>Meldung</th><th>Unterdrückung</th><th>Zustellung</th><th>Aktion</th></tr></thead><tbody>${rows.join("") || '<tr><td colspan="6">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`;
       m.querySelector("[data-refresh]").onclick = () => {
         m.remove();
         alarmsPanel(card2);
@@ -63385,6 +63591,11 @@ function gltText(key) {
       wrap.querySelector("[data-alarm]").onclick = () => alarmsPanel(card2);
       wrap.querySelector("[data-trend]").onclick = () => trendsPanel(card2);
       bar.appendChild(wrap);
+      if (group) {
+        group.querySelector("[data-g4panel=alarms]")?.remove();
+        const heading = group.querySelector(".glt-menu-title");
+        if (heading) group.prepend(heading);
+      }
     }
     const HISTORY_REFRESH_MS = 6e4;
     function refreshHistoryState(card2) {
@@ -63407,23 +63618,46 @@ function gltText(key) {
     async function trendsPanel(card2) {
       const cfg = ensureV1(card2._config);
       const entities = cfg.datapoints.map((d) => entityId(d.entity)).filter(Boolean).slice(0, 20);
-      const m = modal(card2, t(cfg, "trends"), `<div data-trend-host></div>`);
+      const m = modal(card2, t(cfg, "trends"), `<div data-trend-host aria-busy="true">${loadingMarkup()}</div>`);
       const host = m.querySelector("[data-trend-host]");
       const loaded = await loadHistory(card2, { contract: "statistics", entity_ids: entities, period: "day" });
+      if (!m.isConnected) return;
+      host.replaceChildren();
+      host.removeAttribute("aria-busy");
       const badge = document.createElement("glt-flow-card-coverage-badge");
       const chart = document.createElement("glt-flow-card-trend-chart");
       const table2 = document.createElement("glt-flow-card-trend-table");
-      host.append(badge, chart, table2);
+      const selector = document.createElement("select");
+      selector.className = "glt-v1-select";
+      selector.setAttribute("aria-label", cfg.ui?.locale === "en" ? "Measurement" : "Messreihe");
+      loaded.series.forEach((entry, index) => {
+        const option2 = document.createElement("option");
+        option2.value = String(index);
+        option2.textContent = entry.label || entry.entity_id || String(index + 1);
+        selector.append(option2);
+      });
+      host.append(selector, chart, table2);
+      if (loaded.source === "unavailable") {
+        const message = document.createElement("p");
+        message.setAttribute("role", "status");
+        message.textContent = cfg.ui?.locale === "en" ? "History unavailable. Check Companion project access and Recorder." : "Historie nicht verfügbar. Companion-Projektzugriff und Recorder prüfen.";
+        host.prepend(message);
+      }
       const props = {
         coverage: loaded.coverage,
         gaps: loaded.gaps,
-        language: "de",
+        language: cfg.ui?.locale === "en" ? "en" : "de",
         series: loaded.series,
         source: loaded.source
       };
-      badge.props = props;
-      chart.props = props;
-      table2.props = props;
+      const renderSeries = () => {
+        const entry = loaded.series[Number(selector.value)];
+        const selected = { ...props, series: entry ? [entry] : [], coverage: entry?.coverage ?? props.coverage, gaps: entry?.gaps ?? props.gaps };
+        chart.props = selected;
+        table2.props = selected;
+      };
+      selector.onchange = renderSeries;
+      renderSeries();
     }
     const oldCardRender = Card.prototype._render;
     Card.prototype._render = function() {
@@ -65723,16 +65957,16 @@ ${declare("dark")}
     );
   }
   function applyAccessChange(editor, state) {
-    const pending = state.access.pending;
+    const pending2 = state.access.pending;
     const inventory = state.access.inventory;
-    if (!pending || !inventory || !state.client) return;
+    if (!pending2 || !inventory || !state.client) return;
     state.access.pending = null;
     state.access.busy = true;
     state.render();
     const client = state.client;
     client.acquireLease("membership_admin", 300).then(() => client.setAccess({
-      userId: pending.userId,
-      role: pending.role,
+      userId: pending2.userId,
+      role: pending2.role,
       expectedAccessRevision: inventory.access_revision
     })).then(
       () => {
@@ -65750,18 +65984,18 @@ ${declare("dark")}
     });
   }
   function accessConfirmation(editor, state) {
-    const pending = state.access.pending;
+    const pending2 = state.access.pending;
     const inventory = state.access.inventory;
     const values = {
-      member: pending.name || pending.userId,
-      role: copyFor(editor, "roleNames")[pending.role] || copyFor(editor, "roleNames").none,
+      member: pending2.name || pending2.userId,
+      role: copyFor(editor, "roleNames")[pending2.role] || copyFor(editor, "roleNames").none,
       revision: inventory.access_revision
     };
     const block = element("section", "glt-safe-confirm");
     block.setAttribute("role", "group");
     block.append(
       element("h4", "", copyFor(editor, "confirmAccessHeading")),
-      element("p", "", copyFor(editor, pending.role === null ? "confirmRemoveBody" : "confirmAccessBody", values))
+      element("p", "", copyFor(editor, pending2.role === null ? "confirmRemoveBody" : "confirmAccessBody", values))
     );
     const actions = element("div", "glt-safe-actions");
     const cancel2 = button(copyFor(editor, "cancelAccessChange"));
@@ -69778,23 +70012,53 @@ ${declare("dark")}
       plot.setAttribute("data-plot", "");
       this.append(plot);
       for (const entry of series) {
-        let segment = null;
-        let previousAt = null;
+        const values = (entry.points ?? []).filter((point) => Number.isFinite(point.value) && Number.isFinite(Date.parse(point.at)));
+        if (!values.length) continue;
+        append2(plot, "p", `${entry.label || entry.entity_id || ""}${entry.unit ? ` · ${entry.unit}` : ""}`);
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", "0 0 720 220");
+        svg.setAttribute("role", "img");
+        svg.setAttribute("aria-label", entry.label || entry.entity_id || "Trend");
+        svg.style.cssText = "display:block;width:100%;min-height:160px;max-height:280px;background:var(--secondary-background-color,#122331);border-radius:10px";
+        plot.append(svg);
+        const times = values.map((point) => Date.parse(point.at));
+        const low = Math.min(...values.map((point) => point.value));
+        const high = Math.max(...values.map((point) => point.value));
+        const first = Math.min(...times), last = Math.max(...times);
+        const x2 = (point) => 48 + 650 * (Date.parse(point.at) - first) / (last - first || 1);
+        const y = (point) => 180 - 150 * (point.value - low) / (high - low || 1);
+        const draw = (tag, attrs) => {
+          const node = document.createElementNS(svg.namespaceURI, tag);
+          for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+          svg.append(node);
+          return node;
+        };
+        for (const [value, position] of [[high, 30], [low, 180]]) {
+          draw("line", { x1: 48, x2: 698, y1: position, y2: position, stroke: "currentColor", opacity: ".15" });
+          draw("text", { x: 4, y: position + 4, fill: "currentColor", "font-size": 12 }).textContent = Number(value.toFixed(2)).toLocaleString(language);
+        }
+        let segment = null, previousAt = null, coordinates = [];
         for (const point of entry.points ?? []) {
-          if (point.value === null || point.value === void 0 || point.state === "indeterminate") {
+          if (!Number.isFinite(point.value) || !Number.isFinite(Date.parse(point.at)) || point.state === "indeterminate") {
             segment = null;
             previousAt = null;
             continue;
           }
-          if (previousAt !== null && crossesGap(previousAt, point.at, gaps)) segment = null;
-          previousAt = point.at ?? null;
+          if (previousAt !== null && crossesGap(previousAt, point.at, entry.gaps ?? gaps)) segment = null;
           if (segment === null) {
-            segment = document.createElement("span");
-            segment.setAttribute("data-segment", entry.label ?? "");
-            segment.setAttribute("data-marker", entry.marker ?? "●");
-            plot.append(segment);
+            coordinates = [];
+            segment = draw("polyline", { "data-segment": entry.label ?? "", fill: "none", stroke: "var(--primary-color,#38bdf8)", "stroke-width": 2.5 });
           }
-          append2(segment, "span", point.value, { "data-point": point.at ?? "" });
+          coordinates.push(`${x2(point)},${y(point)}`);
+          segment.setAttribute("points", coordinates.join(" "));
+          const dot = draw("circle", { cx: x2(point), cy: y(point), r: 3, fill: "var(--primary-color,#38bdf8)", "data-point": point.at });
+          const title = document.createElementNS(svg.namespaceURI, "title");
+          title.textContent = `${new Date(point.at).toLocaleString(language)}: ${point.value.toLocaleString(language, { maximumFractionDigits: 2 })} ${entry.unit || ""}`;
+          dot.append(title);
+          previousAt = point.at;
+        }
+        for (const [at3, position, anchor] of [[first, 48, "start"], [last, 698, "end"]]) {
+          draw("text", { x: position, y: 210, fill: "currentColor", "font-size": 12, "text-anchor": anchor }).textContent = new Date(at3).toLocaleString(language, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
       }
       for (const gap of gaps) {
@@ -69821,6 +70085,8 @@ ${declare("dark")}
       this.setAttribute("aria-label", text2("tableLabel", language));
       this.setAttribute("role", "group");
       const table2 = document.createElement("table");
+      table2.className = "glt-v1-table";
+      table2.style.cssText = "width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;margin-top:16px";
       this.append(table2);
       const head = document.createElement("tr");
       table2.append(head);
@@ -69838,11 +70104,11 @@ ${declare("dark")}
       for (const instant of instants) {
         const row = document.createElement("tr");
         table2.append(row);
-        append2(row, "td", instant);
+        append2(row, "td", Number.isFinite(Date.parse(instant)) ? new Date(instant).toLocaleString(language, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : instant, { title: instant });
         for (const entry of series) {
           const point = (entry.points ?? []).find((candidate) => candidate.at === instant);
           if (point && point.value !== null && point.state !== "indeterminate") {
-            append2(row, "td", point.value);
+            append2(row, "td", Number(point.value).toLocaleString(language, { maximumFractionDigits: 2 }), { title: String(point.value) });
           } else {
             append2(row, "td", text2("unreadable", language), { "data-unreadable": "" });
           }
@@ -70357,18 +70623,8 @@ ${declare("dark")}
     const esc = (v2) => String(v2 ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
     const eid = (v2) => typeof v2 === "string" ? v2 : v2?.entity || "";
     function box(owner, title, html) {
-      if (!document.head.querySelector("style[data-glt-v1-global]")) {
-        const s = document.createElement("style");
-        s.dataset.gltV1Global = "1";
-        s.textContent = `.glt-v1-modal{position:fixed;inset:0;z-index:12000;background:#020617bd;display:grid;place-items:center;padding:20px}.glt-v1-dialog{width:min(1080px,97vw);max-height:92vh;overflow:auto;border:1px solid var(--glt-border,var(--divider-color));border-radius:16px;background:var(--card-background-color,#fff);color:var(--primary-text-color);box-shadow:0 30px 90px #0008}.glt-v1-head{position:sticky;top:0;z-index:4;display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid var(--glt-border,var(--divider-color));background:var(--card-background-color,#fff)}.glt-v1-body{padding:14px}.glt-v1-close,.glt-v1-btn{border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:transparent;color:var(--primary-text-color);padding:7px 9px;font-size:9px;font-weight:750;cursor:pointer}.glt-v1-close{border:0;font-size:15px}.glt-v1-input,.glt-v1-select{width:100%;padding:7px;border:1px solid var(--glt-border,var(--divider-color));border-radius:8px;background:var(--card-background-color);color:var(--primary-text-color);font-size:9px}.glt-v1-actions{display:flex;gap:6px;flex-wrap:wrap}.glt-v1-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.glt-v1-card{border:1px solid var(--glt-border,var(--divider-color));border-radius:11px;padding:10px;background:color-mix(in srgb,var(--card-background-color) 96%,#64748b 4%)}.glt-v1-card b{display:block;font-size:11px}.glt-v1-card small{display:block;color:var(--secondary-text-color);margin-top:3px;font-size:8px}.glt-v1-notice{margin-top:10px;padding:10px 12px;border:1px solid currentColor;border-radius:10px;min-height:44px;display:flex;align-items:center;gap:8px}`;
-        document.head.appendChild(s);
-      }
-      document.querySelector(".glt-v1-addon-modal")?.remove();
-      const m = document.createElement("div");
-      m.className = "glt-v1-modal glt-v1-addon-modal";
-      m.innerHTML = `<div class="glt-v1-dialog"><div class="glt-v1-head"><b>${esc(title)}</b><button class="glt-v1-close">✕</button></div><div class="glt-v1-body">${html}</div></div>`;
-      m.querySelector(".glt-v1-close").onclick = () => m.remove();
-      document.body.appendChild(m);
+      const m = window.GLTFlowCardSDK.openDialog(owner, title, html);
+      m.classList.add("glt-v1-addon-modal");
       return m;
     }
     function energyPanel(card2) {

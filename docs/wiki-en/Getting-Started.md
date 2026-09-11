@@ -11,6 +11,11 @@ as a JavaScript module.
 
 ## 2 · Load a template
 
+The steps above install the card and designer. Shared projects, enforced
+operations and Recorder trends also require the Companion: follow
+[Installation](Installation), verify the resource, and first save the project
+to the library as an HA administrator. Save the card configuration in HA too.
+
 Edit the dashboard → add the GLT Flow Card → in the designer press
 **Templates** and load one of the 20 factory templates (heat pump, PV, solar
 thermal, AHU, cooling, boiler, cascade, district heat …). The template carries

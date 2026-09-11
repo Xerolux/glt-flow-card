@@ -1,5 +1,17 @@
 # FAQ
 
+## Reicht Repository hinzufügen und installieren?
+Für Karte und integrierten Designer: HACS als **Dashboard** installieren und
+Browser neu laden. Für gemeinsame Projekte, serverseitige Bedienung und
+Recorder-Trends zusätzlich den Companion installieren und unter **Geräte &
+Dienste** einrichten. Genau eine GLT-JavaScript-Ressource verwenden, eigene
+Entitäten zuordnen und die Karte speichern. Siehe [Installation](Installation).
+
+## Ist der Online-Designer mit Home Assistant verbunden?
+Nein. Er speichert Entwürfe lokal im Browser, verwendet Demo-Werte und exportiert
+YAML. Live-Daten und Companion-Funktionen werden erst in Home Assistant verfügbar.
+Der HA-Designer ist direkt in der Karteninstallation enthalten.
+
 ## Brauche ich eigene Bilder?
 Nein. Die gesamte Anlage kann aus der integrierten Symbolbibliothek aufgebaut werden.
 

@@ -128,7 +128,7 @@ async def test_a_route_with_no_recorder_states_it_rather_than_returning_empty(
     manager = _manager(hass)
     manager.data["projects"]["history-live"] = {
         "id": "history-live",
-        "config": {"timezone": "Europe/Berlin", "trend": {}},
+        "config": {"timezone": "Europe/Berlin", "trend": {}, "datapoints": [{"entity": "sensor.a"}]},
     }
     runtime = _runtime_for(hass)
     await runtime.access.async_assign(
@@ -222,7 +222,7 @@ async def test_coverage_answers_from_the_period_grid_rather_than_from_the_rows(
     manager = _manager(hass)
     manager.data["projects"]["coverage-live"] = {
         "id": "coverage-live",
-        "config": {"timezone": "Europe/Berlin", "trend": {}},
+        "config": {"timezone": "Europe/Berlin", "trend": {}, "datapoints": [{"entity": "sensor.a"}]},
     }
     runtime = _runtime_for(hass)
     await runtime.access.async_assign(
@@ -262,7 +262,7 @@ async def test_coverage_refuses_an_unknown_period_rather_than_defaulting(
     from custom_components.glt_flow_card import _manager, _runtime_for
 
     _manager(hass).data["projects"]["coverage-live"] = {
-        "id": "coverage-live", "config": {"timezone": "Europe/Berlin", "trend": {}},
+        "id": "coverage-live", "config": {"timezone": "Europe/Berlin", "trend": {}, "datapoints": [{"entity": "sensor.a"}]},
     }
     runtime = _runtime_for(hass)
     await runtime.access.async_assign(
@@ -296,7 +296,7 @@ async def test_export_is_a_separate_capability_from_reading(
     from custom_components.glt_flow_card import _manager, _runtime_for
 
     _manager(hass).data["projects"]["export-live"] = {
-        "id": "export-live", "config": {"timezone": "Europe/Berlin", "trend": {}},
+        "id": "export-live", "config": {"timezone": "Europe/Berlin", "trend": {}, "datapoints": [{"entity": "sensor.a"}]},
     }
     runtime = _runtime_for(hass)
     await runtime.access.async_assign(

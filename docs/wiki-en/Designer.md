@@ -1,5 +1,25 @@
 # Designer
 
+## Which designer?
+
+The **HA card editor** ships with the card: edit a dashboard, edit the card,
+then use the visual editor. It uses the signed-in HA entity list and includes
+the updated dialogs, mobile layout and Companion project saving. Save a shared
+project in **Projects**, then save the card configuration using HA's **Save**.
+The first shared save requires an HA administrator. Loading preserves entity
+formatting and the server's project revision.
+
+The **online designer** at `/editor/` is a separate offline editor. Drafts are
+stored in the browser and exported as Lovelace YAML. It has no live HA connection,
+Recorder trends or Companion authority. Entity suggestions come from an imported
+entity list; previews use demonstration values. Import the YAML into HA and
+verify bindings and project functions there. The technical command and keyboard
+workflows below describe the HA engineering surfaces; the online editor does
+not provide every Companion feature.
+
+Both interfaces adapt toolbars and dialogs to narrow screens. A larger display
+remains more practical for extensive plant engineering.
+
 The designer edits through **commands**. Every gesture produces a value with an
 inverse, and the surface never mutates the project itself.
 

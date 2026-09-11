@@ -19,6 +19,17 @@ as a JavaScript module.
 
 ## 2 · Vorlage laden (DE)
 
+Die Schritte oben installieren Karte und Designer. Für gemeinsame Projekte,
+serverseitige Bedienung und Recorder-Trends zusätzlich den Companion nach
+[Installation](Installation) einrichten. Danach die Ressource prüfen und
+das Projekt als HA-Administrator erstmals in der Projektbibliothek speichern.
+Home Assistants **Speichern** übernimmt anschließend die Kartenkonfiguration.
+
+The steps above install the card and designer. For shared projects, enforced
+operations and Recorder trends, also set up the Companion following
+[Installation](Installation.en), verify the resource, and first save the
+project to the library as an HA administrator. Save the card configuration in HA too.
+
 Dashboard bearbeiten → GLT Flow Card hinzufügen → im Designer den Knopf
 **Vorlagen** wählen und eine der 20 Werks-Vorlagen laden (Wärmepumpe, PV,
 Solarthermie, RLT, Kälte, Kessel, Kaskade, Fernwärme …). Die Vorlage bringt

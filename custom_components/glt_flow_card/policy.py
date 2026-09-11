@@ -254,6 +254,7 @@ _DECLARED: tuple[RoutePolicy, ...] = (
     _route("glt_flow_card/projects/list", "project.list", scope="component",
            enumeration="filter"),
     _route("glt_flow_card/projects/get", "project.read"),
+    _route("glt_flow_card/projects/create", "project.access.write", project_field="project.id", rate_class="mutation"),
     _route("glt_flow_card/projects/save", "project.write", project_field="project.id",
            lease=True, revision=True, rate_class="mutation"),
     _route("glt_flow_card/projects/preview", "project.write", lease=True, revision=True,

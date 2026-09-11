@@ -6,6 +6,45 @@ pinned minimum/current HA lanes.
 
 ## What is publicly available through HACS
 
+**The complete setup needs both the card and the Companion.** HACS Dashboard
+installation includes the integrated designer, but does not configure a
+Companion. The Companion is a custom integration in **Devices & services**,
+not a Supervisor app.
+
+### Complete setup
+
+1. Install the Dashboard card through HACS as described below.
+2. Extract `glt-flow-card-companion.zip` from the matching release into
+   `/config/custom_components/glt_flow_card/`. `manifest.json` must be directly
+   inside this directory; include `brand/`, `schemas/`, `translations/`, `www/`
+   and every Python module. Do not add an extra ZIP directory level.
+3. Restart HA and add **GLT Flow Card Companion** under
+   **Settings → Devices & services → Add integration**.
+4. Under **Settings → Dashboards → Resources**, keep exactly one GLT JavaScript
+   module: the HACS resource or `/glt_flow_card/www/glt-flow-card.js` from the
+   Companion. Remove duplicate GLT registrations. Enable advanced mode in
+   your profile if Resources is hidden; YAML dashboards use Lovelace YAML resources.
+5. Edit a dashboard, add **GLT Flow Card**, choose a template, assign your own
+   entities and save. To create a shared project, use the designer's project
+   library as an HA administrator, then save the card configuration in HA too.
+
+### Update and verify
+
+Back up HA first. Update card and Companion from the same release, replace the
+complete integration directory, preserve configuration and `.storage` project
+data, restart HA and reload the browser. A version query such as `?v=<version>`
+on the Companion resource can be changed after an update.
+
+Check the GLT mark in **Devices & services** (HA 2026.3+), your live entity values
+and the project library. Recorder trends require recorded numeric entities
+with available statistics. The default window covers the last 24 complete hours;
+a new sensor will not yet have full coverage. Choose a series in the trend dialog.
+
+For **Custom element doesn't exist**, check the resource URL and reload the
+browser. If the integration cannot be found, check `manifest.json` placement
+and restart HA. For missing trends, save the project and verify entity bindings
+and Recorder statistics.
+
 This repository is installed as a HACS **Dashboard** custom repository. HACS
 then installs the card, not the Python Companion automatically. The release
 additionally ships `glt-flow-card-companion.zip` for manual installation. The
@@ -29,6 +68,13 @@ Copy `dist/glt-flow-card.js` to `/config/www/glt-flow-card.js` and register
 
 ## Straight from the Companion (from 1.1.0)
 
+Home Assistant 2026.3 and later display the bundled GLT mark under
+**Settings → Devices & services**. Include the `brand/` directory during
+manual installation and restart Home Assistant afterward. It contains PNGs
+for light and dark themes at 256 and 512 pixels. Regenerate them with
+`py -3.13 tools/generate-brand.py` (Pillow). Older HA versions may display
+a generic placeholder.
+
 The Companion ships the card in `custom_components/glt_flow_card/www/` and
 serves it after setup (requires a Home Assistant with the static-path HTTP
 API, roughly 2025.2 and newer; older installations use the HACS dashboard or
@@ -46,8 +92,8 @@ after a Companion update.
 
 HACS installs a repository in exactly **one** category. If the repository was
 added as an **Integration**, you only get the Python Companion: the backend
-runs (projects, alarms and controls work server-side), but there is no card
-file and no Lovelace resource — `custom:glt-flow-card` then reports *Custom
+runs, but the Lovelace resource must also be registered. The card file is
+included under `www/`; without a resource, `custom:glt-flow-card` reports *Custom
 element doesn't exist*. Remedies, in this order:
 
 1. HACS → Custom repositories: add the repository as a **Dashboard**
@@ -60,8 +106,8 @@ element doesn't exist*. Remedies, in this order:
 The Companion is recommended for productive GLT features: server-side roles
 (viewer, operator, engineer, administrator), trusted evidence, project
 versions, exclusive connection-bound edit leases, configured controls, alarm
-lifecycle, time schedules, work orders and reports. Remote Home Assistant is
-declared but fails closed until phase 9.
+lifecycle, time schedules, work orders and reports. Remote Home Assistant
+requires separate site configuration and permissions.
 
 The release workflow builds `glt-flow-card-companion.zip` for this purpose.
 Alternatively, copy the folder `custom_components/glt_flow_card` to

@@ -43,6 +43,7 @@ from . import (
     notifications,
     period_resolution,
     recorder_query,
+    live_trends,
     schedule_time,
     scenarios,
     series_coverage,
@@ -1365,6 +1366,47 @@ def _mutation_guard(hass, connection, msg, *, capability: str) -> MutationGuard:
         digest=msg.get("expected_digest"),
         policy_version=decision.policy_version,
     )
+
+
+@websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/create", vol.Required("project"): dict})
+@websocket_api.async_response
+async def ws_projects_create(hass, connection, msg):
+    """Bootstrap only a new project, then commit through the normal guarded path."""
+    uid, uname, admin = _user(connection)
+    manager = _manager(hass)
+    runtime = _runtime_for(hass)
+    project = msg["project"]
+    pid = str(project.get("id") or "").strip()
+    if not pid or manager.project(pid) is not None or runtime.access.get(pid).assignments:
+        connection.send_error(msg["id"], "invalid_input", "Project creation requires an unused project identifier")
+        return
+    if not admin:
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
+        return
+    try:
+        # Validate before creating membership. Invalid input never gains a role.
+        await manager.project_transactions.preview(user_id=uid, project_id=pid,
+            expected_revision=0, candidate=project.get("config", {}))
+        seeded = await runtime.access.async_seed_first_admin(project_id=pid, user_id=uid)
+        if seeded is None:
+            raise PermissionError()
+        decision = runtime.policy.authorize(connection, msg, route="glt_flow_card/projects/save")
+        context = {"project_id": pid, "user_id": uid,
+                   "session_id": str(decision.actor.session_id or decision.actor.connection_id),
+                   "access_revision": decision.access_revision}
+        lease = runtime.leases.acquire(**context, purpose=PURPOSE_ENGINEERING, ttl_seconds=60)
+        try:
+            guarded = {**msg, DECISION_KEY: decision, "lease_token": lease.token, "expected_revision": 0}
+            result = await manager.save_project(project, False, uid, 0,
+                guard=_mutation_guard(hass, connection, guarded, capability="project.write"))
+        finally:
+            runtime.leases.release(**context, token=lease.token, purpose=PURPOSE_ENGINEERING)
+        await manager.add_audit({"action": "project.create", "detail": {"project_id": pid, "source": "first_admin"}}, uid, uname)
+        connection.send_result(msg["id"], result)
+    except (PermissionError, PolicyDenied):
+        connection.send_error(msg["id"], "capability_denied", "capability_denied")
+    except (ValueError, RuntimeError) as error:
+        connection.send_error(msg["id"], "invalid_project", str(error))
 
 
 @websocket_api.websocket_command({vol.Required("type"): "glt_flow_card/projects/save", vol.Required("project"): dict, vol.Optional("autosave", default=False): bool, vol.Optional("expected_revision"): int, vol.Required("lease_token"): str})
@@ -2740,6 +2782,16 @@ async def ws_history_statistics(hass, connection, msg):
     if not permitted:
         connection.send_result(msg["id"], {"series": [], "coverage": 0, "source": "unavailable"})
         return
+    config = (_manager(hass).data["projects"].get(project_id) or {}).get("config") or {}
+    allowed = _project_entity_ids(config)
+    msg = {**msg, "entity_ids": [entity for entity in msg["entity_ids"] if entity in allowed]}
+    if not msg["entity_ids"]:
+        connection.send_result(msg["id"], {"series": [], "coverage": 0, "gaps": [], "source": "unavailable"})
+        return
+    if not msg["start_time"]:
+        start, end, grid = live_trends.default_window(dt_util.utcnow())
+        msg = {**msg, "start_time": start, "end_time": end,
+               "period": "hour", "expected_instants": grid}
     bounds = _history_bounds_for(hass, project_id)
     decision_on_bounds = history_bounds.decide_query({
         "contract": "statistics",
@@ -2760,30 +2812,24 @@ async def ws_history_statistics(hass, connection, msg):
         entity_ids=msg["entity_ids"],
         period=msg["period"] or "day",
         start=msg["start_time"] or "",
+        types=["mean", "change", "state"],
     )
     answer, query_error = await _ask_recorder(hass, request)
-    shaped = recorder_query.shape_answer(
-        request["contract"], answer, error=query_error, expected_instants=expected,
+    result = live_trends.build_statistics(
+        answer, msg["entity_ids"], expected, error=query_error,
+        limit=min(max(msg["limit"], 1), bounds["max_rows"], bounds["max_points"]),
     )
-    built = series_coverage.build_series(shaped)
-    series = built.get("points") or []
-    capped = history_bounds.cap_rows(series, bounds)
+    for entry in result["series"]:
+        state = hass.states.get(entry["entity_id"])
+        if state:
+            entry["label"] = state.name
+            entry["unit"] = state.attributes.get("unit_of_measurement", "")
     await _audit_history(
         hass, connection, "glt_flow_card/history/statistics",
-        contract=decision_on_bounds["source"] or "statistics", msg=msg,
-        project_id=project_id, rows=len(capped["rows"]),
+        contract="statistics", msg=msg, project_id=project_id,
+        rows=sum(len(entry["points"]) for entry in result["series"]),
     )
-    connection.send_result(msg["id"], {
-        "capped": capped["capped"],
-        "coverage": built.get("coverage", 0),
-        "gaps": built.get("gaps") or [],
-        "series": capped["rows"][: msg["limit"]],
-        "source": (
-            decision_on_bounds["source"]
-            if decision_on_bounds["outcome"] == "downgrade"
-            else built.get("source", "unavailable")
-        ),
-    })
+    connection.send_result(msg["id"], result)
 
 
 @websocket_api.websocket_command({
@@ -3357,7 +3403,7 @@ async def ws_extensions_remove(hass, connection, msg):
 
 
 _COMMAND_HANDLERS = (
-    ws_projects_list, ws_projects_get, ws_projects_save, ws_projects_preview,
+    ws_projects_list, ws_projects_get, ws_projects_create, ws_projects_save, ws_projects_preview,
     ws_projects_apply, ws_projects_rollback, ws_projects_delete,
     ws_access_get, ws_access_set,
     ws_controls_preview, ws_controls_execute,
@@ -3490,7 +3536,6 @@ async def _serve_bundled_frontend_once(hass: HomeAssistant) -> None:
     data = _component_data(hass)
     if data["frontend_served"]:
         return
-    data["frontend_served"] = True
     www_dir = Path(__file__).parent / "www"
     if not www_dir.is_dir():
         return
@@ -3500,14 +3545,17 @@ async def _serve_bundled_frontend_once(hass: HomeAssistant) -> None:
     # working without its own card URL -- the dashboard installs via HACS or a
     # manual /config/www copy cover them.
     try:
-        from homeassistant.components.http import StaticPathConfig, async_register_static_paths
+        from homeassistant.components.http import StaticPathConfig
     except ImportError:
         return
 
-    await async_register_static_paths(
-        hass,
+    http = getattr(hass, "http", None)
+    if http is None:
+        return
+    await http.async_register_static_paths(
         [StaticPathConfig(f"/{DOMAIN}/www", str(www_dir), False)],
     )
+    data["frontend_served"] = True
 
 
 async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:

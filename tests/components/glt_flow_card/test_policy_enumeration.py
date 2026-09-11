@@ -59,6 +59,7 @@ ROUTE_PAYLOADS: dict[str, dict[str, Any]] = {
         "project_id": PROJECT_ID, "lease_token": "probe", "purpose": "engineering",
     },
     "glt_flow_card/leases/status": {"project_id": PROJECT_ID},
+    "glt_flow_card/projects/create": {"project": {"id": PROJECT_ID, "config": {}}},
     "glt_flow_card/projects/save": {
         "lease_token": "probe",
         "project": {"id": PROJECT_ID, "config": {}},

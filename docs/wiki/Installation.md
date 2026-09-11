@@ -6,6 +6,11 @@ Minimum-/Current-HA-Lanes installiert und geprüft.
 
 ## Was öffentlich über HACS verfügbar ist
 
+**Für die vollständige Einrichtung sind Karte und Companion erforderlich.**
+Die HACS-Dashboard-Installation allein enthält bereits den integrierten
+Designer, aber keinen eingerichteten Companion. Der Companion ist eine
+Custom Integration unter **Geräte & Dienste**, keine Supervisor-App.
+
 Dieses Repository ist als HACS-**Dashboard**-Custom-Repository installiert.
 HACS installiert damit die Card, nicht automatisch den Python-Companion. Der
 Release enthält zusätzlich `glt-flow-card-companion.zip` zur manuellen
@@ -27,6 +32,13 @@ Danach kann `custom:glt-flow-card` im Lovelace-Karteneditor gewählt werden. Der
 
 ## Direkt über den Companion (ab 1.1.0)
 
+Ab Home Assistant 2026.3 erscheint das mitgelieferte GLT-Symbol unter
+**Einstellungen → Geräte & Dienste**. Den Ordner `brand/` bei manueller
+Installation mitkopieren und Home Assistant anschließend neu starten.
+Er enthält PNGs für helle und dunkle Oberflächen in 256 und 512 Pixeln.
+Die Quelldarstellung wird mit `py -3.13 tools/generate-brand.py` (Pillow)
+reproduzierbar erzeugt. Ältere HA-Versionen können ein Standardsymbol anzeigen.
+
 Der Companion liefert die Card in `custom_components/glt_flow_card/www/` mit und
 serviert sie nach dem Setup unter (benötigt Home Assistant mit der
 statischen Pfad-API, ab ca. 2025.2; ältere Installationen nutzen HACS-Dashboard
@@ -44,8 +56,8 @@ erzwingt nach einem Companion-Update das Neuladen im Browser.
 
 HACS installiert ein Repository in genau **einer** Kategorie. Wird das
 Repository als **Integration** hinzugefügt, erhält man nur den Python-Companion:
-das Backend läuft (Projekte, Alarme, Steuerungen funktionieren serverseitig),
-aber es gibt keine Card-Datei und keine Lovelace-Ressource — `custom:glt-flow-card`
+das Backend läuft, aber die Lovelace-Ressource muss zusätzlich registriert werden.
+Die Card-Datei liegt im Companion unter `www/`; ohne Ressource meldet `custom:glt-flow-card`
 meldet dann *Custom element doesn't exist*. Abhilfe in dieser Reihenfolge:
 
 1. HACS → Benutzerdefinierte Repositories: das Repository als **Dashboard**
@@ -53,15 +65,52 @@ meldet dann *Custom element doesn't exist*. Abhilfe in dieser Reihenfolge:
 2. die Companion-URL aus dem vorherigen Abschnitt als Ressource eintragen, oder
 3. `dist/glt-flow-card.js` manuell nach `/config/www/` kopieren.
 
-## GLT Flow Card Companion 1.0
+## GLT Flow Card Companion einrichten
 
 Der Companion ist für produktive GLT-Funktionen empfohlen: serverseitige Rollen
 (Betrachter, Bediener, Ingenieur, Administrator), vertrauenswürdige Nachweise,
 Projektversionen, exklusive verbindungsgebundene Bearbeitungsleases,
 konfigurierte Steuerungen, Alarm-Lifecycle, Zeitprogramme, Arbeitsaufträge und
-Reports. Remote-Home-Assistant ist deklariert, aber bis Phase 9 fail-closed.
+Reports. Remote-Standorte benötigen eine gesonderte Konfiguration und Berechtigungen.
 
-Das Release-Workflow erzeugt dafür `glt-flow-card-companion.zip`. Alternativ kann der Ordner `custom_components/glt_flow_card` nach `/config/custom_components/` kopiert werden. Nach dem Neustart wird die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen → GLT Flow Card Companion** über den Config Flow eingerichtet.
+1. `glt-flow-card-companion.zip` aus demselben Release wie die Karte herunterladen.
+2. Den ZIP-Inhalt nach `/config/custom_components/glt_flow_card/` entpacken.
+   Dort müssen `manifest.json`, `__init__.py`, `brand/`, `schemas/`,
+   `translations/` und `www/` liegen. Keinen zusätzlichen ZIP-Unterordner erzeugen.
+   Alternativ den vollständigen Repository-Ordner `custom_components/glt_flow_card` kopieren.
+3. Home Assistant neu starten.
+4. **Einstellungen → Geräte & Dienste → Integration hinzufügen → GLT Flow Card Companion** wählen.
+5. Unter **Einstellungen → Dashboards → Ressourcen** genau eine Kartenquelle
+   als **JavaScript-Modul** verwenden: den HACS-Eintrag beibehalten oder die
+   Companion-URL `/glt_flow_card/www/glt-flow-card.js` hinzufügen. Alte GLT-CDN-
+   oder `/local/`-Einträge nicht parallel laden. Fehlt der Ressourcen-Menüpunkt,
+   den erweiterten Modus im Benutzerprofil aktivieren. YAML-Dashboards verwalten
+   Ressourcen in ihrer Lovelace-YAML-Konfiguration.
+6. Dashboard bearbeiten → **Karte hinzufügen → GLT Flow Card**. Vorlage wählen,
+   eigene Entitäten zuordnen und die Karte speichern.
+7. Für gemeinsame Projekte als HA-Administrator im Designer **Projekte** öffnen
+   und das Projekt erstmals speichern. Danach die Kartenkonfiguration auch mit
+   Home Assistants **Speichern** übernehmen. Weitere Nutzer erhalten projektbezogene Rollen.
+
+## Update und Funktionsprüfung
+
+Vor einem Update Home-Assistant-Backup erstellen. Karte und Companion aus dem
+gleichen Release aktualisieren, den vollständigen Companion-Ordner ersetzen,
+Home Assistant neu starten und den Browser neu laden. Konfiguration und
+`.storage`-Projektdaten behalten. Bei der Companion-Ressource kann
+`?v=<version>` nach einem Update geändert werden.
+
+Die Einrichtung ist fertig, wenn das GLT-Symbol unter **Geräte & Dienste**
+(ab HA 2026.3), die Karte mit eigenen Live-Werten und die Projektbibliothek
+funktionieren. Recorder-Trends benötigen aufgezeichnete numerische Entitäten
+mit verfügbaren Statistiken. Der Standardzeitraum zeigt die letzten 24
+vollständigen Stunden; ein gerade neu angelegter Sensor hat noch keine
+vollständige Historie. Die Reihen lassen sich im Trenddialog auswählen.
+
+Bei **Custom element doesn't exist** die Ressourcen-URL prüfen und den Browser
+neu laden. Bei einer nicht gefundenen Integration zuerst den Pfad zur
+`manifest.json` und den erfolgten HA-Neustart prüfen. Bei fehlenden Trends
+Projekt speichern, Entitätszuordnung und Recorder/Statistiken prüfen.
 
 Die frühere YAML-Variante bleibt für erweiterte Optionen wie Remote Sites möglich:
 

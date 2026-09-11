@@ -18,6 +18,14 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const COMPONENT_ROOT = "custom_components/glt_flow_card";
 const COMPONENT_FILES = [
   "__init__.py",
+  "brand/icon.png",
+  "brand/icon@2x.png",
+  "brand/dark_icon.png",
+  "brand/dark_icon@2x.png",
+  "brand/logo.png",
+  "brand/logo@2x.png",
+  "brand/dark_logo.png",
+  "brand/dark_logo@2x.png",
   "build-manifest.json",
   "catalog.py",
   "config_flow.py",
@@ -63,6 +71,7 @@ const COMPONENT_FILES = [
   "series_coverage.py",
   "panels.py",
   "recorder_query.py",
+  "live_trends.py",
   "remote_fanout.py",
   "site_destinations.py",
   "site_health.py",

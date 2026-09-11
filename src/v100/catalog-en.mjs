@@ -212,6 +212,8 @@ export const ENTRIES = Object.freeze({
   "legacy.fit_view": "Fit view",
   "legacy.fullscreen": "Fullscreen",
   "legacy.height": "Height",
+  "legacy.panel_loading": "Loading data …",
+  "legacy.dialog_close": "Close",
   "legacy.loading_entities": "Loading Home Assistant entities",
   "legacy.lock_released": "Lock released.",
   "legacy.lovelace_yaml": "Lovelace YAML",

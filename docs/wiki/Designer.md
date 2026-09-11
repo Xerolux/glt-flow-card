@@ -1,5 +1,27 @@
 # Designer
 
+## Welcher Designer?
+
+Der **HA-Karteneditor** wird mit der Karte installiert: Dashboard bearbeiten →
+Karte bearbeiten → visueller Editor. Er verwendet die Entitäten des angemeldeten
+Home Assistant und enthält die aktualisierten Dialoge, mobile Anordnung und
+Companion-Projektspeicherung. **Projekte → Aktuelles Projekt speichern** schreibt
+ein gemeinsames Projekt in den Companion; Home Assistants **Speichern** übernimmt
+danach die Kartenkonfiguration. Die erste gemeinsame Speicherung erfolgt als
+HA-Administrator. Messwertformatierung und Projektrevision bleiben beim Laden erhalten.
+
+Der **Online-Designer** unter `/editor/` ist ein eigenständiger Offline-Editor.
+Er speichert Entwürfe im Browser und exportiert Lovelace-YAML. Er hat keine
+Live-Verbindung zu HA, keine Recorder-Trends und keine Companion-Berechtigungen.
+Entitätsvorschläge stammen aus einer importierten Entitätsliste; die Vorschau
+verwendet Demonstrationswerte. YAML anschließend in HA importieren und dort
+Entitäten, Projekte und Funktionen prüfen. Die folgenden technischen
+Kommandos und Tastaturabläufe beziehen sich auf die HA-Engineering-Oberflächen;
+der Online-Designer ist nicht mit allen Companion-Funktionen identisch.
+
+Beide Oberflächen passen Werkzeugleisten und Dialoge an schmale Ansichten an.
+Für umfangreiche Anlagenplanung bleibt ein großer Bildschirm übersichtlicher.
+
 Der Designer bearbeitet über **Kommandos**. Jede Geste erzeugt einen Wert mit
 einer Umkehrung, und die Oberfläche verändert das Projekt nie selbst.
 

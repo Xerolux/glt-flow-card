@@ -1,5 +1,17 @@
 # FAQ
 
+## Is adding the repository and installing enough?
+For the card and integrated designer, install through HACS as **Dashboard**
+and reload the browser. Shared projects, enforced operations and Recorder
+trends also require installing and configuring the Companion in **Devices &
+services**. Keep exactly one GLT JavaScript resource, assign your entities and
+save the card. See [Installation](Installation).
+
+## Is the online designer connected to Home Assistant?
+No. It stores drafts in the browser, previews demonstration values and exports
+YAML. Live data and Companion functions become available in Home Assistant.
+The HA designer is included in the card installation.
+
 ## Do I need my own images?
 No. The entire plant can be built from the integrated symbol library.
 

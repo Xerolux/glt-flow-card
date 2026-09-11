@@ -32,6 +32,9 @@ import { UNREADABLE, formatDateTime, formatMeasurement, resolveLocale } from "./
 import { VISUAL_STYLES, COMPONENT_PROFILES, SYMBOL_VARIANTS, SYMBOL_GEOMETRY, SYMBOL_GROUPS, labelText, profileForEquipment, portsForEquipment } from "./catalog.mjs";
 import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignObjects, diagnoseConfig,  energySummary, projectDiff, makeProjectBundle, readProjectBundle, symbolCatalogStats, semanticPath, entityExportPayload, normalizeEntityImport } from "./core.mjs";
 import { factoryTemplates } from "./templates.mjs";
+import { interfaceStyles, workspaceStyles } from "./interface-styles.mjs";
+import { readPanel } from "./panel-read.mjs";
+import { saveSharedProject, sharedProjectDocument } from "./project-save.mjs";
 
 (() => {
   "use strict";
@@ -88,7 +91,7 @@ import { factoryTemplates } from "./templates.mjs";
   // therefore unable to import -- reaches the same dialog rather than keeping
   // its own `prompt()`. One source for a modal, for the same reason there is
   // one source for a string.
-  sdk.askText=askText;
+  sdk.askText=askText; sdk.openDialog=modal; sdk.saveSharedProject=saveSharedProject; sdk.restoreSharedProject=project=>sharedProjectDocument(project,true);
   sdk.resolveLocale=resolveLocale; sdk.UNREADABLE=UNREADABLE;
   sdk.version="1.0.0"; sdk.ensureV1=ensureV1; sdk.factoryTemplates=factoryTemplates; sdk.entityExportPayload=entityExportPayload; sdk.normalizeEntityImport=normalizeEntityImport; sdk.deriveOperationalState=deriveOperationalState; sdk.autoMapEquipment=autoMapEquipment; sdk.smartRoute=smartRoute; sdk.projectDiff=projectDiff; sdk.makeProjectBundle=makeProjectBundle; sdk.readProjectBundle=readProjectBundle; window.GLTFlowCardSDK=sdk;
 
@@ -245,7 +248,7 @@ import { factoryTemplates } from "./templates.mjs";
   .glt-sym-fault{filter:drop-shadow(0 0 6px #ef4444)}
   .glt-sym-fault .glt-sym-body,.glt-sym-fault .glt-sym-tank{stroke:#ef4444;stroke-width:3.2}
   .glt-v1-grid .glt-sym{width:100%;height:100%}`;
-  function addStyle(root){if(root?.querySelector("style[data-glt-v1]"))return;const st=document.createElement("style");st.dataset.gltV1="1";st.textContent=STYLES+SYMBOL_STYLES;root?.appendChild(st);}
+  function addStyle(root){if(root?.querySelector("style[data-glt-v1]"))return;const st=document.createElement("style");st.dataset.gltV1="1";st.textContent=STYLES+SYMBOL_STYLES+interfaceStyles+workspaceStyles;root?.appendChild(st);}
 
   // Rendered equipment symbols. The catalog carries one geometry entry per
   // base symbol, but the card's own markup only ever showed a generic mdi
@@ -320,18 +323,32 @@ import { factoryTemplates } from "./templates.mjs";
     if (document.head.querySelector("style[data-glt-v1-global]")) return;
     const style=document.createElement("style");
     style.dataset.gltV1Global="1";
-    style.textContent=GLOBAL_MODAL_STYLES;
+    style.textContent=GLOBAL_MODAL_STYLES+interfaceStyles;
     document.head.appendChild(style);
   }
   function modal(owner,title,html){
     ensureGlobalModalStyles();
     document.querySelector(".glt-v1-modal")?.remove();
-    const m=document.createElement("div");m.className="glt-v1-modal";m.innerHTML=`<div class="glt-v1-dialog"><div class="glt-v1-head"><b>${esc(title)}</b><button class="glt-v1-close">✕</button></div><div class="glt-v1-body">${html}</div></div>`;
+    let previous=document.activeElement;
+    while(previous?.shadowRoot?.activeElement)previous=previous.shadowRoot.activeElement;
+    const m=document.createElement("div");m.className="glt-v1-modal";m.innerHTML=`<div class="glt-v1-dialog" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="glt-v1-head"><b>${esc(title)}</b><button type="button" class="glt-v1-close" aria-label="${esc(gltText("legacy.dialog_close"))}">✕</button></div><div class="glt-v1-body">${html}</div></div>`;
+    const remove=m.remove.bind(m);
+    m.remove=()=>{remove();if(previous?.isConnected)previous.focus({preventScroll:true});};
     m.querySelector(".glt-v1-close").onclick=()=>m.remove();
     m.onclick=e=>{if(e.target===m)m.remove()};
+    m.addEventListener("keydown",e=>{
+      if(e.key==="Escape"){e.preventDefault();e.stopPropagation();m.remove();}
+      if(e.key!=="Tab")return;
+      const nodes=[...m.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter(n=>n.getClientRects().length);
+      const first=nodes[0],last=nodes.at(-1);
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
+    });
     document.body.appendChild(m);
+    m.querySelector(".glt-v1-close").focus({preventScroll:true});
     return m;
   }
+  function loadingMarkup(){return `<div class="glt-v1-loading" role="status">${esc(gltText("legacy.panel_loading"))}</div>`;}
   // A fully qualified type is passed through unchanged, so a call site may name
   // the exact wire route it depends on rather than a suffix that reads the same
   // as several unrelated things.
@@ -376,7 +393,7 @@ import { factoryTemplates } from "./templates.mjs";
   // derive `active` from entity states here and never call `alarms/list` at
   // all, so the authoritative alarm state was displayed nowhere in the product
   // -- one of the four disagreeing derivations Phase 6 retired.
-  async function loadAlarms(card){const cfg=ensureV1(card._config);try{const res=await ws(card,"alarms/list",{project_id:projectId(cfg),limit:500});const byId={};for(const row of res?.states||[])byId[String(row.alarm_id)]=row;card._alarmState=byId;return {states:res?.states||[],history:res?.history||[],byId};}catch(_e){card._alarmState=card._alarmState||{};return {states:[],history:[],byId:card._alarmState,unavailable:true};}}
+  async function loadAlarms(card){const cfg=ensureV1(card._config);try{const res=await readPanel(card,"glt_flow_card/alarms/list",{project_id:projectId(cfg),limit:500});const byId={};for(const row of res?.states||[])byId[String(row.alarm_id)]=row;card._alarmState=byId;return {states:res?.states||[],history:res?.history||[],byId};}catch(_e){card._alarmState=card._alarmState||{};return {states:[],history:[],byId:card._alarmState,unavailable:true};}}
   // Fetching the state is the card's job, not the panel's.
   //
   // Retiring the four derivations left `activeAlarm` reading `card._alarmState`,
@@ -430,7 +447,7 @@ import { factoryTemplates } from "./templates.mjs";
       expected_instants:request?.expected_instants||[],limit:request?.limit||500};
     if(contract==="statistics")payload.period=request?.period||"day";
     try{
-      const res=await ws(card,route,payload);
+      const res=await readPanel(card,route,payload);
       return {capped:Boolean(res?.capped),coverage:Number(res?.coverage||0),
         gaps:res?.gaps||[],series:res?.series||[],source:res?.source||"unavailable"};
     }catch(err){
@@ -447,15 +464,15 @@ import { factoryTemplates } from "./templates.mjs";
     const why=suppression?`${esc(String(suppression.reason||""))}${suppression.by?` \u00b7 ${esc(String(suppression.by))}`:""}${suppression.until?` \u00b7 bis ${esc(String(suppression.until))}`:""}`:"";
     const failed=delivery&&delivery.outcome&&delivery.outcome!=="delivered";
     return `<tr data-alarm="${esc(a.id)}"><td><span data-priority-shape>${shape}</span> <span data-state>${esc(state)}</span></td><td data-priority>${priority}</td><td>${esc(a.name||entityId(a.entity))}</td><td data-suppression>${why}</td><td>${failed?`<span data-delivery-failed>Zustellung fehlgeschlagen: ${esc(String(delivery.error||delivery.outcome))}</span>`:""}</td><td>${active&&!suppression?`<button class="glt-v1-btn" data-ack="${esc(a.id)}">Quittieren</button> <button class="glt-v1-btn" data-shelve="${esc(a.id)}">Shelve</button>`:""}</td></tr>`;}
-  async function alarmsPanel(card){const cfg=ensureV1(card._config);const loaded=await loadAlarms(card);const rows=cfg.alarms.map(a=>alarmRow(cfg,a,loaded.byId[String(a.id)]));
-    const m=modal(card,t(cfg,"alarms"),`<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div>${loaded.unavailable?`<p data-unavailable style="font-size:9px;color:var(--secondary-text-color)">${gltText("legacy.alarm_state_unavailable")}</p>`:""}<table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorit\u00e4t</th><th>Meldung</th><th>Unterdr\u00fcckung</th><th>Zustellung</th><th>Aktion</th></tr></thead><tbody>${rows.join("")||'<tr><td colspan="6">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`);
+  async function alarmsPanel(card){const cfg=ensureV1(card._config);const m=modal(card,t(cfg,"alarms"),loadingMarkup());m.querySelector(".glt-v1-body").setAttribute("aria-busy","true");const loaded=await loadAlarms(card);if(!m.isConnected)return;const rows=cfg.alarms.map(a=>alarmRow(cfg,a,loaded.byId[String(a.id)]));
+    m.querySelector(".glt-v1-body").removeAttribute("aria-busy");m.querySelector(".glt-v1-body").innerHTML=`<div class="glt-v1-actions" style="margin-bottom:10px"><button class="glt-v1-btn" data-refresh>Aktualisieren</button></div>${loaded.unavailable?`<p data-unavailable role="status">${gltText("legacy.alarm_state_unavailable")}</p>`:""}<table class="glt-v1-table"><thead><tr><th>Status</th><th>Priorit\u00e4t</th><th>Meldung</th><th>Unterdr\u00fcckung</th><th>Zustellung</th><th>Aktion</th></tr></thead><tbody>${rows.join("")||'<tr><td colspan="6">Keine Alarme konfiguriert.</td></tr>'}</tbody></table>`;
     m.querySelector("[data-refresh]").onclick=()=>{m.remove();alarmsPanel(card)};
     // Post, then re-read. An optimistic paint the server refused is a lie the
     // operator will act on.
     m.querySelectorAll("[data-ack]").forEach(b=>b.onclick=async()=>{const comment=await askText(card,"Quittierkommentar","");if(comment===null)return;try{await ws(card,"alarms/ack",{project_id:projectId(cfg),alarm_id:b.dataset.ack,comment});}catch(err){notice(card,err.message);}await audit(card,"alarm.ack",{alarm_id:b.dataset.ack});m.remove();alarmsPanel(card)});
     m.querySelectorAll("[data-shelve]").forEach(b=>b.onclick=async()=>{const answer=await askText(card,gltText("legacy.suppress_minutes"),"60");if(answer===null)return;const minutes=Number(answer)||60;try{await ws(card,"alarms/shelve",{project_id:projectId(cfg),alarm_id:b.dataset.shelve,minutes});}catch(err){notice(card,err.message);}m.remove();alarmsPanel(card)});}
   function operationsPanel(card){const cfg=ensureV1(card._config);const items=cfg.equipment.map(i=>({i,s:deriveOperationalState(i,card._hass?.states,{stale_minutes:cfg.diagnostics.stale_minutes})})).sort((a,b)=>b.s.severity-a.s.severity);const m=modal(card,t(cfg,"operations"),`<div class="glt-v1-grid">${items.map(({i,s})=>`<div class="glt-v1-card"><b>${esc(i.name||i.id)}</b><small>${esc(s.label)} · ${esc(s.quality)}</small><div class="glt-v1-actions"><button class="glt-v1-btn" data-open="${esc(i.id)}">Bedienen</button></div></div>`).join("")}</div>`);m.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{const i=cfg.equipment.find(x=>x.id===b.dataset.open);m.remove();openOperations(card,i)});}
-  function runtimeButtons(card){const root=card.shadowRoot;/* Operations live in the card menu's operation group; the legacy bar targets stay as a fallback for bases without the menu. */const group=root.querySelector("[data-menu-group='operation']");const bar=group||root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");if(!bar||bar.querySelector("[data-glt-v1-runtime]"))return;const wrap=document.createElement(group?"div":"span");wrap.dataset.gltV1Runtime="1";wrap.className=group?"":"glt-v1-actions";const cls=group?"glt-menu-item":"glt4-pill glt-v1-btn";wrap.innerHTML=`<button class="${cls}" role="menuitem" data-ops><ha-icon icon="mdi:tune-vertical"></ha-icon>${t(card._config,"operations")}</button><button class="${cls}" role="menuitem" data-alarm><ha-icon icon="mdi:bell-ring-outline"></ha-icon>${t(card._config,"alarms")}</button><button class="${cls}" role="menuitem" data-trend><ha-icon icon="mdi:chart-multiple"></ha-icon>${t(card._config,"trends")}</button>`;wrap.querySelector("[data-ops]").onclick=()=>operationsPanel(card);wrap.querySelector("[data-alarm]").onclick=()=>alarmsPanel(card);wrap.querySelector("[data-trend]").onclick=()=>trendsPanel(card);bar.appendChild(wrap);}
+  function runtimeButtons(card){const root=card.shadowRoot;/* Operations live in the card menu's operation group; the legacy bar targets stay as a fallback for bases without the menu. */const group=root.querySelector("[data-menu-group='operation']");const bar=group||root.querySelector(".glt4-tool,.glt-toolbar,.toolbar,.glt-head-actions");if(!bar||bar.querySelector("[data-glt-v1-runtime]"))return;const wrap=document.createElement(group?"div":"span");wrap.dataset.gltV1Runtime="1";wrap.className=group?"":"glt-v1-actions";const cls=group?"glt-menu-item":"glt4-pill glt-v1-btn";wrap.innerHTML=`<button class="${cls}" role="menuitem" data-ops><ha-icon icon="mdi:tune-vertical"></ha-icon>${t(card._config,"operations")}</button><button class="${cls}" role="menuitem" data-alarm><ha-icon icon="mdi:bell-ring-outline"></ha-icon>${t(card._config,"alarms")}</button><button class="${cls}" role="menuitem" data-trend><ha-icon icon="mdi:chart-multiple"></ha-icon>${t(card._config,"trends")}</button>`;wrap.querySelector("[data-ops]").onclick=()=>operationsPanel(card);wrap.querySelector("[data-alarm]").onclick=()=>alarmsPanel(card);wrap.querySelector("[data-trend]").onclick=()=>trendsPanel(card);bar.appendChild(wrap);if(group){group.querySelector("[data-g4panel=alarms]")?.remove();const heading=group.querySelector(".glt-menu-title");if(heading)group.prepend(heading);}}
   // Fetching the trend state is the card's job, not the panel's.
   //
   // This is the Phase-6 defect one phase later, and it is worth naming because
@@ -492,16 +509,29 @@ import { factoryTemplates } from "./templates.mjs";
   async function trendsPanel(card){
     const cfg=ensureV1(card._config);
     const entities=cfg.datapoints.map(d=>entityId(d.entity)).filter(Boolean).slice(0,20);
-    const m=modal(card,t(cfg,"trends"),`<div data-trend-host></div>`);
+    const m=modal(card,t(cfg,"trends"),`<div data-trend-host aria-busy="true">${loadingMarkup()}</div>`);
     const host=m.querySelector("[data-trend-host]");
     const loaded=await loadHistory(card,{contract:"statistics",entity_ids:entities,period:"day"});
+    if(!m.isConnected)return;
+    host.replaceChildren();
+    host.removeAttribute("aria-busy");
     const badge=document.createElement("glt-flow-card-coverage-badge");
     const chart=document.createElement("glt-flow-card-trend-chart");
     const table=document.createElement("glt-flow-card-trend-table");
-    host.append(badge,chart,table);
-    const props={coverage:loaded.coverage,gaps:loaded.gaps,language:"de",
+    const selector=document.createElement("select");
+    selector.className="glt-v1-select";
+    selector.setAttribute("aria-label",cfg.ui?.locale === "en" ? "Measurement" : "Messreihe");
+    loaded.series.forEach((entry,index)=>{const option=document.createElement("option");option.value=String(index);option.textContent=entry.label||entry.entity_id||String(index+1);selector.append(option);});
+    host.append(selector,chart,table);
+    if(loaded.source==="unavailable"){
+      const message=document.createElement("p");message.setAttribute("role","status");
+      message.textContent=cfg.ui?.locale === "en" ? "History unavailable. Check Companion project access and Recorder." : "Historie nicht verfügbar. Companion-Projektzugriff und Recorder prüfen.";
+      host.prepend(message);
+    }
+    const props={coverage:loaded.coverage,gaps:loaded.gaps,language:cfg.ui?.locale === "en" ? "en" : "de",
       series:loaded.series,source:loaded.source};
-    badge.props=props;chart.props=props;table.props=props;
+    const renderSeries=()=>{const entry=loaded.series[Number(selector.value)];const selected={...props,series:entry?[entry]:[],coverage:entry?.coverage??props.coverage,gaps:entry?.gaps??props.gaps};chart.props=selected;table.props=selected;};
+    selector.onchange=renderSeries;renderSeries();
   }
 
   const oldCardRender=Card.prototype._render;Card.prototype._render=function(){this._config=ensureV1(this._config);const r=oldCardRender.call(this);addStyle(this.shadowRoot);runtimeButtons(this);refreshAlarmState(this);refreshHistoryState(this);if(this._config.ui?.kiosk)document.body.classList.add("glt-v1-kiosk");return r;};

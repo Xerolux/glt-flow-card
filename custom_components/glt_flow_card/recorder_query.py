@@ -53,7 +53,7 @@ def build_request(
     Refuses an unknown period rather than defaulting, so a caller cannot ask for
     "sometimes" and receive a day.
     """
-    contract = contract_for(period) if period != "custom" else "raw"
+    contract = "statistics" if period in {"hour", "5minute"} else contract_for(period) if period != "custom" else "raw"
     if contract == "either":
         contract = "statistics"
     ids = [str(entity) for entity in (entity_ids or [])]

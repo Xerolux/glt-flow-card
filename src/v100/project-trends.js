@@ -196,31 +196,49 @@ class TrendChart extends HTMLElement {
     this.append(plot);
 
     for (const entry of series) {
-      // A segment per run of consecutive readings. Absent points end a segment
-      // rather than being skipped over, which is what makes a gap a break.
-      let segment = null;
-      let previousAt = null;
+      const values = (entry.points ?? []).filter(point => Number.isFinite(point.value) && Number.isFinite(Date.parse(point.at)));
+      if (!values.length) continue;
+      append(plot, "p", `${entry.label || entry.entity_id || ""}${entry.unit ? ` · ${entry.unit}` : ""}`);
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 720 220");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", entry.label || entry.entity_id || "Trend");
+      svg.style.cssText = "display:block;width:100%;min-height:160px;max-height:280px;background:var(--secondary-background-color,#122331);border-radius:10px";
+      plot.append(svg);
+      const times = values.map(point => Date.parse(point.at));
+      const low = Math.min(...values.map(point => point.value));
+      const high = Math.max(...values.map(point => point.value));
+      const first = Math.min(...times), last = Math.max(...times);
+      const x = point => 48 + 650 * (Date.parse(point.at) - first) / (last - first || 1);
+      const y = point => 180 - 150 * (point.value - low) / (high - low || 1);
+      const draw = (tag, attrs) => {
+        const node = document.createElementNS(svg.namespaceURI, tag);
+        for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+        svg.append(node); return node;
+      };
+      for (const [value, position] of [[high, 30], [low, 180]]) {
+        draw("line", {x1:48, x2:698, y1:position, y2:position, stroke:"currentColor", opacity:".15"});
+        draw("text", {x:4, y:position + 4, fill:"currentColor", "font-size":12}).textContent = Number(value.toFixed(2)).toLocaleString(language);
+      }
+      let segment = null, previousAt = null, coordinates = [];
       for (const point of entry.points ?? []) {
-        if (point.value === null || point.value === undefined || point.state === "indeterminate") {
-          segment = null;
-          previousAt = null;
-          continue;
+        if (!Number.isFinite(point.value) || !Number.isFinite(Date.parse(point.at)) || point.state === "indeterminate") {
+          segment = null; previousAt = null; continue;
         }
-        // A declared gap ends the segment even when both readings around it are
-        // present. The series is not promised to be padded with nulls across a
-        // hole, so a break that depended on that padding would close the line
-        // over exactly the absence the Companion just reported.
-        if (previousAt !== null && crossesGap(previousAt, point.at, gaps)) segment = null;
-        previousAt = point.at ?? null;
+        if (previousAt !== null && crossesGap(previousAt, point.at, entry.gaps ?? gaps)) segment = null;
         if (segment === null) {
-          segment = document.createElement("span");
-          segment.setAttribute("data-segment", entry.label ?? "");
-          // Shape and label as well as colour: a control room may be
-          // monochrome, and forced colours discard the palette entirely.
-          segment.setAttribute("data-marker", entry.marker ?? "●");
-          plot.append(segment);
+          coordinates = [];
+          segment = draw("polyline", {"data-segment":entry.label ?? "", fill:"none", stroke:"var(--primary-color,#38bdf8)", "stroke-width":2.5});
         }
-        append(segment, "span", point.value, { "data-point": point.at ?? "" });
+        coordinates.push(`${x(point)},${y(point)}`);
+        segment.setAttribute("points", coordinates.join(" "));
+        const dot = draw("circle", {cx:x(point), cy:y(point), r:3, fill:"var(--primary-color,#38bdf8)", "data-point":point.at});
+        const title = document.createElementNS(svg.namespaceURI, "title");
+        title.textContent = `${new Date(point.at).toLocaleString(language)}: ${point.value.toLocaleString(language,{maximumFractionDigits:2})} ${entry.unit || ""}`;
+        dot.append(title); previousAt = point.at;
+      }
+      for (const [at, position, anchor] of [[first,48,"start"],[last,698,"end"]]) {
+        draw("text", {x:position,y:210,fill:"currentColor","font-size":12,"text-anchor":anchor}).textContent = new Date(at).toLocaleString(language,{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
       }
     }
 
@@ -261,6 +279,8 @@ class TrendTable extends HTMLElement {
     this.setAttribute("aria-label", text("tableLabel", language));
     this.setAttribute("role", "group");
     const table = document.createElement("table");
+    table.className = "glt-v1-table";
+    table.style.cssText = "width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;margin-top:16px";
     this.append(table);
     const head = document.createElement("tr");
     table.append(head);
@@ -279,11 +299,11 @@ class TrendTable extends HTMLElement {
     for (const instant of instants) {
       const row = document.createElement("tr");
       table.append(row);
-      append(row, "td", instant);
+      append(row, "td", Number.isFinite(Date.parse(instant)) ? new Date(instant).toLocaleString(language, {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : instant, {title:instant});
       for (const entry of series) {
         const point = (entry.points ?? []).find((candidate) => candidate.at === instant);
         if (point && point.value !== null && point.state !== "indeterminate") {
-          append(row, "td", point.value);
+          append(row, "td", Number(point.value).toLocaleString(language,{maximumFractionDigits:2}), {title:String(point.value)});
         } else {
           append(row, "td", text("unreadable", language), { "data-unreadable": "" });
         }
