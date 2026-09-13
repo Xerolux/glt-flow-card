@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "0387d71f55df5c56584845a9e7222af6aa8aeba21b5675275178a4204861079a",
-      "size": 3212359
+      "sha256": "aa070aa689e4c4e89c4f9246f5a190dd22f1a617d03be874c271588c2ba1151b",
+      "size": 3209841
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "0387d71f55df5c56584845a9e7222af6aa8aeba21b5675275178a4204861079a",
-      "size": 3212359
+      "sha256": "aa070aa689e4c4e89c4f9246f5a190dd22f1a617d03be874c271588c2ba1151b",
+      "size": 3209841
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -137,7 +137,7 @@
     }
   ],
   "build": {
-    "commit": "fad94a83ff7ed9f5aa9db1b53d8bd5a966f2e846",
+    "commit": "8efc31dd77bbebb905a5b4c0df6eb3f52156f240",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -159,17 +159,17 @@
   "sources": [
     {
       "path": "custom_components/glt_flow_card/manifest.json",
-      "sha256": "0ed42ee3300530cd1cd95c1378f18dbababa6767b4f3c35017e8259aa1e9f1e1",
+      "sha256": "61b17b79302a8dae37eb1f2c234f244a8fc4a91f20eccb6740f09a5f6ac60ce1",
       "size": 347
     },
     {
       "path": "package-lock.json",
-      "sha256": "bce0ece102cf0cc1c2c9c6086c700da438049139768df84253711e5da82bdd48",
+      "sha256": "cf132881ecd64db61e9c8e947be349be3a0cb3b0772432e23d49ac9359fc64c3",
       "size": 21085
     },
     {
       "path": "package.json",
-      "sha256": "657ab72c3a57a37321b12bc3fb8b08b1f892b4163adf753c6f0d33c8ce27192a",
+      "sha256": "53a5f48b24810e2d3f2d48a42810d85483bf935b3dbeb4861f45e7344107dd30",
       "size": 5365
     },
     {
@@ -209,8 +209,8 @@
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "824a0bd017519044f13e4ee71be0930c0fc1ec529b7d231daefa4fdd217f56bc",
-      "size": 306346
+      "sha256": "e32082bc0ee5aee817715a317a455dbf2f81f40e87e9260730ac25e03efa5943",
+      "size": 303827
     },
     {
       "path": "src/v100/alarm-vocabulary.mjs",
@@ -518,9 +518,9 @@
     "size": 1532613
   },
   "versions": {
-    "card": "1.1.1",
-    "companion": "1.1.1",
-    "package": "1.1.1",
+    "card": "1.1.2",
+    "companion": "1.1.2",
+    "package": "1.1.2",
     "project_schema": [
       0,
       1,
