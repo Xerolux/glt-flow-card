@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.2 - 2026-09-13
+
+- Prevent misleading heat-flow animation by supporting additional `flow.requires` gates such as compressor state or measured power.
+- Present equipment without an authoritative state signal neutrally instead of marking it active.
+- Fit schematic views to their visible engineering content for larger, more readable plant diagrams.
+- Add browser regressions for combined flow gates, truthful unmeasured status and content-aware fitting.
+
 ## 1.1.1 - 2026-09-11
 
 - Improve mobile layouts, readable dialogs, keyboard focus, touch targets and online designer toolbars.

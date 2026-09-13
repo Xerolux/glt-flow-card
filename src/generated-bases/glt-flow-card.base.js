@@ -60,7 +60,7 @@ function gltText(key) {
 (() => {
   "use strict";
 
-  const VERSION = "1.1.1";
+  const VERSION = "1.1.2";
   const CARD_TYPE = "glt-flow-card";
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -557,6 +557,18 @@ function gltText(key) {
       return field.invert ? !active : active;
     }
 
+    _pathFlowState(path) {
+      const flow = path?.flow;
+      if (!flow) return path?.active === true ? "active" : path?.active === false ? "idle" : "unmeasured";
+      if (!this._isActive(flow)) return "idle";
+      const embedded = flow && typeof flow === "object" ? flow.requires : null;
+      const gates = [
+        ...(Array.isArray(embedded) ? embedded : embedded ? [embedded] : []),
+        ...(Array.isArray(path.flow_requires) ? path.flow_requires : path.flow_requires ? [path.flow_requires] : []),
+      ];
+      return gates.every((gate) => this._isActive(gate)) ? "active" : "idle";
+    }
+
     _entityIds() {
       const ids = new Set();
       const add = (value) => {
@@ -567,6 +579,9 @@ function gltText(key) {
       this._config.datapoints.forEach((point) => add(point.entity || point));
       this._config.paths.forEach((path) => {
         add(path.flow);
+        const embedded = path.flow && typeof path.flow === "object" ? path.flow.requires : null;
+        (Array.isArray(embedded) ? embedded : embedded ? [embedded] : []).forEach(add);
+        (Array.isArray(path.flow_requires) ? path.flow_requires : path.flow_requires ? [path.flow_requires] : []).forEach(add);
         add(path.temperature);
         add(path.value);
       });
@@ -670,14 +685,17 @@ function gltText(key) {
       this._config.paths.filter((path) => this._visibleInView(path)).forEach((path) => {
         const points = this._pointsFor(path);
         if (points.length < 2) return;
-        // A pipe without a flow entity is unmeasured, not flowing: it renders
-        // at full strength but never animates. Dimming is reserved for a pipe
-        // whose flow entity says off (or that is explicitly `active: false`).
-        const active = path.flow ? this._isActive(path.flow) : path.active === true;
-        const dimmed = (path.flow && !active) || path.active === false;
+        // A circulation pump alone does not prove useful plant flow. Optional
+        // `flow.requires` / `flow_requires` gates let a path require the source
+        // equipment, compressor or a measured power/flow threshold as well.
+        const flowState = this._pathFlowState(path);
+        const active = flowState === "active";
+        const dimmed = flowState === "idle";
         const medium = this._medium(path);
         const group = document.createElementNS(SVG_NS, "g");
-        group.setAttribute("class", `glt-pipe-group ${active ? "is-active" : "is-idle"}`);
+        group.setAttribute("class", `glt-pipe-group is-${flowState}`);
+        group.dataset.pathId = path.id || "";
+        group.dataset.flowState = flowState;
 
         const halo = document.createElementNS(SVG_NS, "path");
         halo.setAttribute("d", this._pathD(points));
@@ -722,7 +740,8 @@ function gltText(key) {
     }
 
     _equipmentMarkup(item) {
-      const active = item.state_entity ? this._isActive(item.state_entity) : item.entity ? this._isActive(item.entity) : item.active !== false;
+      const hasStateSignal = Boolean(item.state_entity || item.entity || item.active !== undefined);
+      const active = item.state_entity ? this._isActive(item.state_entity) : item.entity ? this._isActive(item.entity) : item.active === true;
       const icon = item.icon || symbolById(item.symbol, item.type).icon || EQUIPMENT_ICONS[item.type] || EQUIPMENT_ICONS.generic;
       const fields = (item.fields || []).map((field) => {
         const f = typeof field === "string" ? { entity: field } : field;
@@ -732,7 +751,13 @@ function gltText(key) {
           <strong>${esc(this._display(f.entity || f))}</strong>
         </div>`;
       }).join("");
-      const stateText = item.status ? this._display(item.status) : (active ? (item.active_text || "Aktiv") : (item.idle_text || "Bereit"));
+      const stateText = item.status
+        ? this._display(item.status)
+        : active
+          ? (item.active_text || "Aktiv")
+          : hasStateSignal
+            ? (item.idle_text || "Bereit")
+            : (item.unmeasured_text || "Kein Statussignal");
       const image = item.image
         ? `<img class="glt-eq-image" src="${esc(item.image)}" alt="${esc(item.name || "Anlage")}">`
         : `<ha-icon class="glt-eq-icon" icon="${esc(icon)}"></ha-icon>`;
@@ -743,7 +768,7 @@ function gltText(key) {
             <strong>${esc(item.name || item.id || "Anlage")}</strong>
             <span>${esc(item.subtitle || item.type || "")}</span>
           </div>
-          <span class="glt-state ${active ? "active" : "idle"}"><i></i>${esc(stateText)}</span>
+          <span class="glt-state ${active ? "active" : hasStateSignal ? "idle" : "unmeasured"}"><i></i>${esc(stateText)}</span>
         </div>
         ${fields ? `<div class="glt-eq-fields">${fields}</div>` : ""}
       `;
@@ -1162,6 +1187,42 @@ function gltText(key) {
       canvas.style.transform = `translate(${this._pan.x}px, ${this._pan.y}px) scale(${this._zoom})`;
     }
 
+    _contentBounds() {
+      const view = this._currentView();
+      if (view?.kind === "image" || this._config.zoom?.fit === "canvas") {
+        return { x: 0, y: 0, width: this._config.canvas.width, height: this._config.canvas.height };
+      }
+      const xs = [];
+      const ys = [];
+      const include = (x, y) => {
+        if (Number.isFinite(Number(x)) && Number.isFinite(Number(y))) {
+          xs.push(Number(x));
+          ys.push(Number(y));
+        }
+      };
+      this._config.equipment.filter((item) => this._visibleInView(item)).forEach((item) => {
+        const pos = this._positionFor(item);
+        include(pos.x, pos.y);
+        include(Number(pos.x) + Number(pos.width || item.width || 220), Number(pos.y) + Number(pos.height || item.height || 130));
+      });
+      this._config.datapoints.filter((item) => this._visibleInView(item)).forEach((item) => {
+        const pos = this._positionFor(item);
+        include(Number(pos.x) - 70, Number(pos.y) - 30);
+        include(Number(pos.x) + 70, Number(pos.y) + 30);
+      });
+      this._config.paths.filter((path) => this._visibleInView(path)).forEach((path) => {
+        this._pointsFor(path).forEach(([x, y]) => include(x, y));
+      });
+      if (!xs.length || !ys.length) return { x: 0, y: 0, width: this._config.canvas.width, height: this._config.canvas.height };
+      const configuredPadding = Number(this._config.zoom?.fit_padding);
+      const padding = Number.isFinite(configuredPadding) ? Math.max(24, configuredPadding) : 60;
+      const left = Math.max(0, Math.min(...xs) - padding);
+      const top = Math.max(0, Math.min(...ys) - padding);
+      const right = Math.min(this._config.canvas.width, Math.max(...xs) + padding);
+      const bottom = Math.min(this._config.canvas.height, Math.max(...ys) + padding);
+      return { x: left, y: top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) };
+    }
+
     _fitCanvas(force = false) {
       const viewport = this.shadowRoot?.querySelector(".glt-viewport");
       const canvas = this.shadowRoot?.querySelector(".glt-canvas");
@@ -1171,12 +1232,13 @@ function gltText(key) {
       if (!width || !height) return;
       this._fitWidth = width;
       this._fitHeight = height;
-      const fit = Math.min(width / this._config.canvas.width, height / this._config.canvas.height) * 0.96;
+      const bounds = this._contentBounds();
+      const fit = Math.min(width / bounds.width, height / bounds.height) * 0.96;
       this._fitScale = clamp(fit, this._config.zoom.min, this._config.zoom.max);
       if (!this._hasFit || force) {
         this._zoom = this._fitScale;
-        this._pan.x = (width - this._config.canvas.width * this._zoom) / 2;
-        this._pan.y = (height - this._config.canvas.height * this._zoom) / 2;
+        this._pan.x = (width - bounds.width * this._zoom) / 2 - bounds.x * this._zoom;
+        this._pan.y = (height - bounds.height * this._zoom) / 2 - bounds.y * this._zoom;
         this._hasFit = true;
         this._applyTransform(canvas);
       }
@@ -1318,6 +1380,7 @@ function gltText(key) {
     .glt-state i { width:6px; height:6px; border-radius:50%; background:#94a3b8; }
     .glt-state.active { color:#15803d; border-color:rgba(34,197,94,.25); background:rgba(34,197,94,.08); }
     .glt-state.active i { background:#22c55e; }
+    .glt-state.unmeasured { color:var(--secondary-text-color); border-style:dashed; }
     .glt-eq-fields { margin-top:10px; display:grid; gap:4px; }
     .glt-eq-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:5px 6px; border-radius:7px; font-size:10px; color:var(--secondary-text-color); }
     .glt-eq-row strong { color:var(--primary-text-color); font-size:11px; font-variant-numeric:tabular-nums; }

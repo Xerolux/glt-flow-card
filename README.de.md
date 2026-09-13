@@ -846,7 +846,9 @@ equipment:
 paths:
   - id: vl
     medium: heating_supply
-    flow: binary_sensor.waermepumpe_laeuft
+    flow:
+      entity: binary_sensor.senkenpumpe_laeuft
+      requires: binary_sensor.verdichter_laeuft
     temperature: sensor.waermepumpe_vorlauf
     points:
       - [380, 370]
@@ -862,6 +864,11 @@ datapoints:
       schematic: { x: 620, y: 335 }
       plant: { x: 930, y: 240 }
 ```
+
+`flow.entity` ist das primäre Flusssignal. Mit `flow.requires` können ein oder
+mehrere zusätzliche Freigaben angegeben werden; die Leitung animiert nur, wenn
+alle Signale aktiv sind. Das verhindert zum Beispiel einen scheinbaren
+Wärmepumpenfluss, wenn nur die Senkenpumpe läuft, der Verdichter aber steht.
 
 ## Ansichten und eigenes Anlagenbild
 

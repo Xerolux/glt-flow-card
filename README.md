@@ -792,7 +792,9 @@ equipment:
 paths:
   - id: supply
     medium: heating_supply
-    flow: binary_sensor.heat_pump_running
+    flow:
+      entity: binary_sensor.sink_pump_running
+      requires: binary_sensor.compressor_running
     temperature: sensor.heat_pump_flow_temperature
     points:
       - [380, 370]
@@ -815,6 +817,11 @@ kpis:
       entity: sensor.heat_pump_cop
       decimals: 2
 ```
+
+`flow.entity` is the primary flow signal. `flow.requires` accepts one or more
+additional gates; the path animates only while every signal is active. This
+avoids showing heat-pump flow when the sink pump is circulating but the
+compressor is idle.
 
 ## Configuration model
 

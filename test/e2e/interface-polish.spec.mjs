@@ -90,6 +90,89 @@ test("interface-polish card fits after resizing and stops rendering after remova
   expect(renders).toBe(0);
 });
 
+test("interface-polish path animation requires every configured flow gate", async ({ page }) => {
+  await installFakeHomeAssistant(page, { states: {
+    "binary_sensor.sink_pump": { state: "on", attributes: {} },
+    "binary_sensor.compressor": { state: "off", attributes: {} },
+  } });
+  await page.goto(process.env.EXACT_DIST_BASE_URL);
+  await page.evaluate(() => {
+    const card = document.createElement("glt-flow-card");
+    card.setConfig({
+      title: "Combined flow",
+      views: [{ id: "plant", name: "Plant" }],
+      equipment: [],
+      datapoints: [],
+      paths: [{
+        id: "heat-pump-buffer",
+        medium: "heating_supply",
+        points: [[100, 100], [500, 100]],
+        flow: { entity: "binary_sensor.sink_pump", requires: "binary_sensor.compressor" },
+      }],
+    });
+    card.hass = window.__fakeHass;
+    document.body.append(card);
+    window.testCard = card;
+  });
+  const pipe = page.locator('glt-flow-card .glt-pipe-group[data-path-id="heat-pump-buffer"]');
+  await expect(pipe).toHaveAttribute("data-flow-state", "idle");
+  await expect(pipe.locator(".glt-pipe")).not.toHaveClass(/glt-pipe-animated/);
+
+  await page.evaluate(() => {
+    window.__fakeHass.states["binary_sensor.compressor"].state = "on";
+    window.testCard.hass = { ...window.__fakeHass };
+  });
+  await expect(pipe).toHaveAttribute("data-flow-state", "active");
+  await expect(pipe.locator(".glt-pipe")).toHaveClass(/glt-pipe-animated/);
+});
+
+test("interface-polish equipment without a state signal is not presented as active", async ({ page }) => {
+  await installFakeHomeAssistant(page);
+  await page.goto(process.env.EXACT_DIST_BASE_URL);
+  await page.evaluate(() => {
+    const card = document.createElement("glt-flow-card");
+    card.setConfig({
+      title: "Truthful status",
+      views: [{ id: "plant", name: "Plant" }],
+      equipment: [{ id: "buffer", type: "tank", name: "Buffer", x: 100, y: 100 }],
+      datapoints: [],
+      paths: [],
+    });
+    card.hass = window.__fakeHass;
+    document.body.append(card);
+  });
+  const state = page.locator("glt-flow-card .glt-state");
+  await expect(state).toHaveClass(/unmeasured/);
+  await expect(state).toHaveText(/Kein Statussignal/);
+});
+
+test("interface-polish schematic fit uses visible content bounds", async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await installFakeHomeAssistant(page);
+  await page.goto(process.env.EXACT_DIST_BASE_URL);
+  await page.evaluate(() => {
+    const card = document.createElement("glt-flow-card");
+    card.setConfig({
+      title: "Readable schematic",
+      canvas: { width: 2400, height: 1400, viewport_height: 600 },
+      views: [{ id: "plant", name: "Plant", kind: "schematic" }],
+      equipment: [{ id: "pump", type: "pump", x: 900, y: 500, width: 300, height: 180 }],
+      datapoints: [],
+      paths: [],
+    });
+    card.hass = window.__fakeHass;
+    document.body.append(card);
+    window.testCard = card;
+  });
+  await expect.poll(() => page.evaluate(() => window.testCard._fitScale)).toBeGreaterThan(1);
+  const centered = await page.evaluate(() => {
+    const card = window.testCard;
+    const bounds = card._contentBounds();
+    return { bounds, canvasWidth: card._config.canvas.width };
+  });
+  expect(centered.bounds.width).toBeLessThan(centered.canvasWidth);
+});
+
 test("interface-polish energy uses the shared dialog even when opened first", async ({ page }) => {
   await mount(page);
   await page.locator('[data-action="menu"]').click();
