@@ -214,6 +214,11 @@ test("CI transfers one manifest-hashed stage into provenance-gated HA lanes", as
   assert.match(validate, /needs:\s+validate/u);
 
   const hacs = await readFile(path.join(ROOT, ".github/workflows/hacs.yml"), "utf8");
+  assert.doesNotMatch(
+    hacs,
+    /npm run build/u,
+    "the HACS stage must transfer the committed build identity instead of rewriting it",
+  );
   assert.match(hacs, /--category plugin/u);
   assert.match(hacs, /--category integration/u);
   assert.match(hacs, /needs:\s+stage/u);

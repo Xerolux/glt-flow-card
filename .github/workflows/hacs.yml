@@ -35,7 +35,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npm run build
+      # Stage the reviewed, checked-in release bytes. Rebuilding here rewrites
+      # build-manifest.json with this generated-artifact commit as its source
+      # identity, while the independent jobs correctly check out the committed
+      # manifest that identifies the authored-source commit. The resulting
+      # cross-job mismatch made both category validators fail before inspecting
+      # either package.
       - run: npm run stage:hacs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
