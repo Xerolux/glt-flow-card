@@ -219,13 +219,13 @@
     },
     {
       "path": "src/v100/catalog-de.mjs",
-      "sha256": "58606e45a082f7f122b4a7be1f9131a6af36e40cc06082a577e324490acf9e2f",
-      "size": 52247
+      "sha256": "f6201aec52917ed29ce490f6631a4c2e004393717b141d123bc8b95bc05c09e7",
+      "size": 51334
     },
     {
       "path": "src/v100/catalog-en.mjs",
-      "sha256": "836b33c2154ddb3e56e433cee1b39742e5a5044b2442a1c0cb697718c1824632",
-      "size": 49017
+      "sha256": "f47457ac7323645e7f0eb0a720ad81b74150602811c7b3cae975de856cc5efb7",
+      "size": 48104
     },
     {
       "path": "src/v100/catalog-lookup.mjs",
@@ -299,8 +299,8 @@
     },
     {
       "path": "src/v100/index.js",
-      "sha256": "00cd671eee14aa9ea85bbc68353e018046aa68f743c305f4da181a63e5bc94c1",
-      "size": 73025
+      "sha256": "f32bd396bd1d8776042150f5fd56bd71d2fd0cf84a69070ab23ba9f34ac65f6f",
+      "size": 72326
     },
     {
       "path": "src/v100/interface-styles.mjs",
@@ -434,8 +434,8 @@
     },
     {
       "path": "src/v100/project-trends.js",
-      "sha256": "d718c9e1addce0287f2d6d2ba8d2a6eeaae228a40e273a76df987a5ebd4ee581",
-      "size": 20920
+      "sha256": "8c9e1b1807ec2e463462b738764dbfad618316f29e0690372ae3fa17c4c5ce70",
+      "size": 20458
     },
     {
       "path": "src/v100/replay-truth.mjs",
@@ -484,8 +484,8 @@
     },
     {
       "path": "src/v100/v1-addons.js",
-      "sha256": "96cb0e3f7d4bb1fe37d6a33b27a7875c3563c669d42eeacc39f2505aa9f76025",
-      "size": 10092
+      "sha256": "e69c4e8faf35e336d48ecef303ede4eb20315016c74ef7fa7d16472a121e8992",
+      "size": 10018
     },
     {
       "path": "src/v100/view-resync.mjs",
