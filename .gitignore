@@ -11,3 +11,6 @@ __pycache__/
 
 # Generated documentation site (built by tools/build-site.mjs)
 _site/
+
+# Playwright MCP session artifacts (screenshots, snapshots)
+.playwright-mcp/

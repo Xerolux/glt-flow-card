@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.3 - 2026-09-27
+
+- Resolve overlapping canvas overlays: pipe value labels and datapoint chips now relocate out of collisions with equipment boxes, slots and each other (measured live: 12 collisions → 0 on a production iDM dashboard).
+- Stop cropped equipment content: boxes grow with header plus field rows, keeping the configured height as a minimum.
+- Keep overlay text readable when the canvas is zoomed out with an optional counter-scale (`ui.label_scale`, default auto, capped 1.15x).
+- Add `canvas.viewport_height: "fit"` so the viewport follows the plant content instead of the browser window (measured 0.59x → 0.85x zoom on a 1270px dashboard).
+- New layout logic lives in a pure, unit-tested module (`src/v100/label-layout.mjs`); placement is render-only and never rewrites project configuration.
+
 ## 1.1.2 - 2026-09-13
 
 - Prevent misleading heat-flow animation by supporting additional `flow.requires` gates such as compressor state or measured power.

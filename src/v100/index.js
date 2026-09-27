@@ -35,6 +35,7 @@ import { factoryTemplates } from "./templates.mjs";
 import { interfaceStyles, workspaceStyles } from "./interface-styles.mjs";
 import { readPanel } from "./panel-read.mjs";
 import { saveSharedProject, sharedProjectDocument } from "./project-save.mjs";
+import { resolveOverlayLayout, labelScaleFactor } from "./label-layout.mjs";
 
 (() => {
   "use strict";
@@ -534,7 +535,184 @@ import { saveSharedProject, sharedProjectDocument } from "./project-save.mjs";
     selector.onchange=renderSeries;renderSeries();
   }
 
-  const oldCardRender=Card.prototype._render;Card.prototype._render=function(){this._config=ensureV1(this._config);const r=oldCardRender.call(this);addStyle(this.shadowRoot);runtimeButtons(this);refreshAlarmState(this);refreshHistoryState(this);if(this._config.ui?.kiosk)document.body.classList.add("glt-v1-kiosk");return r;};
+  /* Canvas clarity pass: after the base card painted the schematic, lift the
+   * overlay labels out of each other's way, unclip crowded equipment boxes and
+   * keep label text readable when the whole canvas is scaled down. Every rule
+   * here is derived from measurements on live dashboards, where pipe value
+   * tags rendered on the path midpoint collided with datapoint chips that sit
+   * beside the same pipe, and fixed-height equipment boxes cropped their last
+   * field row. The pass is visual only — it never rewrites the configuration. */
+  const CLARITY_STYLES = `
+    .glt-canvas .glt-datapoint, .glt-canvas .glt-value-slot { transform: translate(-50%,-50%) scale(var(--glt-label-scale,1)); }
+    .glt-canvas .glt-equipment .glt-eq-head { gap: 6px; }
+    .glt-canvas .glt-equipment .glt-eq-title { min-width: 0; }
+    .glt-canvas .glt-equipment .glt-eq-title span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .glt-canvas .glt-equipment .glt-state { flex: none; }
+  `;
+  function canvasClarityStyles(root) {
+    if (!root || root.querySelector("style[data-glt-clarity]")) return;
+    const style = document.createElement("style");
+    style.dataset.gltClarity = "1";
+    style.textContent = CLARITY_STYLES;
+    root.appendChild(style);
+  }
+
+  function canvasBoxInCanvasUnits(el, canvasRect, zoom) {
+    const rect = el.getBoundingClientRect();
+    return {
+      x: (rect.left - canvasRect.left) / zoom,
+      y: (rect.top - canvasRect.top) / zoom,
+      w: rect.width / zoom,
+      h: rect.height / zoom,
+    };
+  }
+
+  const insetBox = (box, inset) => ({
+    x: box.x + inset,
+    y: box.y + inset,
+    w: Math.max(1, box.w - inset * 2),
+    h: Math.max(1, box.h - inset * 2),
+  });
+
+  function canvasClarity(card) {
+    const root = card.shadowRoot;
+    const canvas = root?.querySelector(".glt-canvas");
+    if (!canvas) return;
+    canvasClarityStyles(root);
+    const cfg = card._config || {};
+    applyFitViewport(card, root.querySelector(".glt-viewport"));
+    const zoom = Number(card._zoom) > 0 ? Number(card._zoom) : 1;
+    const factor = labelScaleFactor(zoom, cfg.ui?.label_scale);
+    canvas.style.setProperty("--glt-label-scale", String(factor));
+
+    // Pipe value tags live inside fixed-size foreignObject viewports, so
+    // scaling them needs the viewport grown by the same factor or the larger
+    // label clips. The tag stays centred on its path point. Guarded: this is
+    // an absolute resize, and the pass may run twice per render.
+    if (factor > 1) {
+      canvas.querySelectorAll(".glt-pipe-group foreignObject").forEach((fo) => {
+        if (fo.dataset.gltScaled === "1") return;
+        const div = fo.querySelector(".glt-pipe-value");
+        if (!div) return;
+        fo.dataset.gltScaled = "1";
+        const w = 116 * factor;
+        const h = 34 * factor;
+        fo.setAttribute("x", String(Number(fo.getAttribute("x")) - (w - 116) / 2));
+        fo.setAttribute("y", String(Number(fo.getAttribute("y")) - (h - 34) / 2));
+        fo.setAttribute("width", String(w));
+        fo.setAttribute("height", String(h));
+        div.style.transform = `scale(${factor})`;
+        div.style.transformOrigin = "center";
+      });
+    }
+
+    // Fixed-height equipment boxes crop their own content when the configured
+    // height is smaller than header plus field rows need. Let the content
+    // drive the rendered height, with the configured height as the floor —
+    // measuring scrollHeight instead races web fonts and icon swaps, while
+    // auto height is correct at paint time and stays correct after.
+    if (cfg.ui?.auto_height !== false) {
+      canvas.querySelectorAll(".glt-equipment").forEach((node) => {
+        if (node.style.height && node.style.height !== "auto" && !node.style.minHeight) {
+          node.style.minHeight = node.style.height;
+        }
+        node.style.height = "auto";
+      });
+    }
+
+    if (cfg.ui?.collision_avoidance === false) return;
+    const canvasRect = canvas.getBoundingClientRect();
+    // Equipment interiors are hard obstacles; a chip grazing a box border
+    // reads as deliberate in a plant diagram, so chips compare against an
+    // inset box instead of the full frame.
+    const equipment = [...canvas.querySelectorAll(".glt-equipment")].map((el) => canvasBoxInCanvasUnits(el, canvasRect, zoom));
+    const slots = [...canvas.querySelectorAll(".glt-value-slot")].map((el) => canvasBoxInCanvasUnits(el, canvasRect, zoom));
+
+    // Pipe value tags first: they belong to the pipe, so they may move the
+    // most. Placement is a delta on the current position, so a repeated pass
+    // (fonts and icons settle after the first paint) converges instead of
+    // drifting: a free position stays where it is.
+    const pipeTags = [...canvas.querySelectorAll(".glt-pipe-group foreignObject")];
+    const placedPipes = resolveOverlayLayout({
+      labels: pipeTags.map((fo, index) => ({ id: `pipe-${index}`, ...canvasBoxInCanvasUnits(fo, canvasRect, zoom) })),
+      obstacles: [...equipment, ...slots],
+      step: 16,
+      margin: 4,
+      maxShift: 96,
+    });
+    placedPipes.forEach((placed, index) => {
+      const fo = pipeTags[index];
+      const measured = canvasBoxInCanvasUnits(fo, canvasRect, zoom);
+      fo.setAttribute("x", String(Number(fo.getAttribute("x")) + (placed.x - measured.x)));
+      fo.setAttribute("y", String(Number(fo.getAttribute("y")) + (placed.y - measured.y)));
+    });
+
+    const chips = [...canvas.querySelectorAll(".glt-datapoint")];
+    const placedChips = resolveOverlayLayout({
+      labels: chips.map((el, index) => ({ id: `chip-${index}`, ...canvasBoxInCanvasUnits(el, canvasRect, zoom) })),
+      obstacles: [
+        ...equipment.map((box) => insetBox(box, 10)),
+        ...slots,
+        ...placedPipes.map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h })),
+      ],
+      step: 12,
+      margin: 4,
+      maxShift: 72,
+    });
+    placedChips.forEach((placed, index) => {
+      const el = chips[index];
+      const measured = canvasBoxInCanvasUnits(el, canvasRect, zoom);
+      el.style.left = `${Number.parseFloat(el.style.left) + (placed.x - measured.x)}px`;
+      el.style.top = `${Number.parseFloat(el.style.top) + (placed.y - measured.y)}px`;
+    });
+  }
+
+  /* `canvas.viewport_height: "fit"` sizes the viewport from the content
+   * instead of the browser window, so a fitted schematic neither scrolls the
+   * dashboard nor wastes vertical space around a small plant. The height is
+   * an inline style, and the base card rebuilds its whole shadow root on
+   * every state update — so this must run after every render, not once on
+   * first fit. */
+  function applyFitViewport(card, viewport) {
+    const cfg = card._config || {};
+    if (cfg.canvas?.viewport_height !== "fit" || !viewport) return;
+    const bounds = card._contentBounds();
+    const width = viewport.clientWidth || 0;
+    if (width <= 0 || bounds.width <= 0) {
+      // No layout yet (background tab): keep the card open until a real
+      // fit is possible, instead of collapsing to zero height.
+      viewport.style.minHeight = "340px";
+      return;
+    }
+    const min = Number(cfg.zoom?.min) > 0 ? Number(cfg.zoom.min) : 0.25;
+    const max = Number(cfg.zoom?.max) > 0 ? Number(cfg.zoom.max) : 4;
+    const fit = Math.min(max, Math.max(min, (width / bounds.width) * 0.96));
+    viewport.style.minHeight = "";
+    viewport.style.height = `${Math.round(bounds.height * fit + 24)}px`;
+  }
+
+  const oldFitCanvas = Card.prototype._fitCanvas;
+  if (oldFitCanvas) Card.prototype._fitCanvas = function (force = false) {
+    applyFitViewport(this, this.shadowRoot?.querySelector(".glt-viewport"));
+    return oldFitCanvas.call(this, force);
+  };
+
+  /* Icons and web fonts settle after the card painted, and Home Assistant
+   * state updates rebuild the canvas every few seconds. One immediate pass
+   * plus a handful of deferred re-runs per render keeps placement correct
+   * without ever drifting: every pass recomputes from the current DOM, and a
+   * free position always wins candidate (0,0). */
+  function scheduleClarityRerun(card) {
+    if (card._gltClarityRerun) return;
+    card._gltClarityRerun = true;
+    const done = () => { card._gltClarityRerun = false; };
+    const rerun = () => { if (card.isConnected) canvasClarity(card); };
+    requestAnimationFrame(() => requestAnimationFrame(() => { rerun(); }));
+    document.fonts?.ready?.then(() => rerun()).catch(() => {});
+    setTimeout(() => { rerun(); done(); }, 500);
+  }
+
+  const oldCardRender=Card.prototype._render;Card.prototype._render=function(){this._config=ensureV1(this._config);const r=oldCardRender.call(this);addStyle(this.shadowRoot);runtimeButtons(this);refreshAlarmState(this);refreshHistoryState(this);canvasClarity(this);scheduleClarityRerun(this);if(this._config.ui?.kiosk)document.body.classList.add("glt-v1-kiosk");return r;};
 
   function editorRoot(editor){return editor.shadowRoot;} function editorModal(editor,title,html){return modal(editor,title,html);} function emit(editor){editor._emit?.();editor._render?.();}
   function selectedRefs(editor){const multi=[...(editor._glt4Multi||[])].map(k=>{const [kind,id]=k.split(":");return{kind,id}});if(multi.length)return multi;return editor._sel?[{kind:editor._sel.k,id:editor._sel.id}]:[];}

@@ -64,7 +64,7 @@ export function ensureV1(raw = {}) {
   c.routing = { automatic: true, orthogonal: true, padding: 28, obstacle_avoidance: true, ...(c.routing || {}) };
   c.historian = { aggregate: "none", deadband: 0, max_points: 4000, ...(c.historian || {}) };
   c.simulation = { enabled: false, states: {}, ...(c.simulation || {}) };
-  c.ui = { kiosk: false, widescreen: false, minimap: true, locale: "de", ...(c.ui || {}) };
+  c.ui = { kiosk: false, widescreen: false, minimap: true, locale: "de", collision_avoidance: true, label_scale: "auto", auto_height: true, ...(c.ui || {}) };
   return c;
 }
 
