@@ -60,7 +60,7 @@ function gltText(key) {
 (() => {
   "use strict";
 
-  const VERSION = "1.1.2";
+  const VERSION = "1.1.3";
   const CARD_TYPE = "glt-flow-card";
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -62229,7 +62229,7 @@ function gltText(key) {
     c.routing = { automatic: true, orthogonal: true, padding: 28, obstacle_avoidance: true, ...c.routing || {} };
     c.historian = { aggregate: "none", deadband: 0, max_points: 4e3, ...c.historian || {} };
     c.simulation = { enabled: false, states: {}, ...c.simulation || {} };
-    c.ui = { kiosk: false, widescreen: false, minimap: true, locale: "de", ...c.ui || {} };
+    c.ui = { kiosk: false, widescreen: false, minimap: true, locale: "de", collision_avoidance: true, label_scale: "auto", auto_height: true, ...c.ui || {} };
     return c;
   }
   function stateObj(states, id) {
@@ -63101,6 +63101,52 @@ function gltText(key) {
     }
   }
 
+  // src/v100/label-layout.mjs
+  function rectsOverlap(a, b, margin = 0) {
+    return a.x - margin < b.x + b.w && b.x - margin < a.x + a.w && a.y - margin < b.y + b.h && b.y - margin < a.y + a.h;
+  }
+  var DEFAULT_MAX_LABEL_SCALE = 1.15;
+  function labelScaleFactor(zoom, mode2 = "auto", options = {}) {
+    const max = Number.isFinite(options.max) && options.max > 0 ? options.max : DEFAULT_MAX_LABEL_SCALE;
+    if (mode2 === false || mode2 === "fixed") return 1;
+    if (typeof mode2 === "number" && Number.isFinite(mode2)) return Math.min(max, Math.max(1, mode2));
+    const factor = Number(zoom) > 0 ? 1 / Number(zoom) : 1;
+    return Math.min(max, Math.max(1, factor));
+  }
+  function shiftCandidates(step, maxShift) {
+    const units = Math.max(1, Math.floor(maxShift / step));
+    const list = [];
+    for (let dy = -units; dy <= units; dy += 1) {
+      for (let dx = -units; dx <= units; dx += 1) {
+        list.push({ dx, dy });
+      }
+    }
+    list.sort((a, b) => a.dx * a.dx + a.dy * a.dy - (b.dx * b.dx + b.dy * b.dy) || a.dy - b.dy || a.dx - b.dx);
+    return list;
+  }
+  var overlapsAny = (rect, others, margin) => others.some((other) => rectsOverlap(rect, other, margin));
+  function resolveOverlayLayout({ labels = [], obstacles = [], step = 18, margin = 6, maxShift = 72 } = {}) {
+    const candidates = shiftCandidates(step, maxShift);
+    const placed = [];
+    for (const label of labels) {
+      if (!Number.isFinite(label.x) || !Number.isFinite(label.y)) {
+        placed.push({ id: label.id, x: label.x, y: label.y, w: label.w, h: label.h, moved: false });
+        continue;
+      }
+      let chosen = null;
+      for (const { dx, dy } of candidates) {
+        const rect = { x: label.x + dx * step, y: label.y + dy * step, w: label.w, h: label.h };
+        if (!overlapsAny(rect, obstacles, margin) && !overlapsAny(rect, placed, margin)) {
+          chosen = rect;
+          break;
+        }
+      }
+      const settled = chosen || { x: label.x, y: label.y, w: label.w, h: label.h };
+      placed.push({ id: label.id, x: settled.x, y: settled.y, w: settled.w, h: settled.h, moved: Boolean(chosen) && (chosen.x !== label.x || chosen.y !== label.y) });
+    }
+    return placed;
+  }
+
   // src/v100/index.js
   function gltText(key) {
     const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
@@ -63722,6 +63768,145 @@ function gltText(key) {
       selector.onchange = renderSeries;
       renderSeries();
     }
+    const CLARITY_STYLES = `
+    .glt-canvas .glt-datapoint, .glt-canvas .glt-value-slot { transform: translate(-50%,-50%) scale(var(--glt-label-scale,1)); }
+    .glt-canvas .glt-equipment .glt-eq-head { gap: 6px; }
+    .glt-canvas .glt-equipment .glt-eq-title { min-width: 0; }
+    .glt-canvas .glt-equipment .glt-eq-title span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .glt-canvas .glt-equipment .glt-state { flex: none; }
+  `;
+    function canvasClarityStyles(root) {
+      if (!root || root.querySelector("style[data-glt-clarity]")) return;
+      const style = document.createElement("style");
+      style.dataset.gltClarity = "1";
+      style.textContent = CLARITY_STYLES;
+      root.appendChild(style);
+    }
+    function canvasBoxInCanvasUnits(el, canvasRect, zoom) {
+      const rect = el.getBoundingClientRect();
+      return {
+        x: (rect.left - canvasRect.left) / zoom,
+        y: (rect.top - canvasRect.top) / zoom,
+        w: rect.width / zoom,
+        h: rect.height / zoom
+      };
+    }
+    const insetBox = (box, inset) => ({
+      x: box.x + inset,
+      y: box.y + inset,
+      w: Math.max(1, box.w - inset * 2),
+      h: Math.max(1, box.h - inset * 2)
+    });
+    function canvasClarity(card2) {
+      const root = card2.shadowRoot;
+      const canvas = root?.querySelector(".glt-canvas");
+      if (!canvas) return;
+      canvasClarityStyles(root);
+      const cfg = card2._config || {};
+      applyFitViewport(card2, root.querySelector(".glt-viewport"));
+      const zoom = Number(card2._zoom) > 0 ? Number(card2._zoom) : 1;
+      const factor = labelScaleFactor(zoom, cfg.ui?.label_scale);
+      canvas.style.setProperty("--glt-label-scale", String(factor));
+      if (factor > 1) {
+        canvas.querySelectorAll(".glt-pipe-group foreignObject").forEach((fo) => {
+          if (fo.dataset.gltScaled === "1") return;
+          const div = fo.querySelector(".glt-pipe-value");
+          if (!div) return;
+          fo.dataset.gltScaled = "1";
+          const w = 116 * factor;
+          const h = 34 * factor;
+          fo.setAttribute("x", String(Number(fo.getAttribute("x")) - (w - 116) / 2));
+          fo.setAttribute("y", String(Number(fo.getAttribute("y")) - (h - 34) / 2));
+          fo.setAttribute("width", String(w));
+          fo.setAttribute("height", String(h));
+          div.style.transform = `scale(${factor})`;
+          div.style.transformOrigin = "center";
+        });
+      }
+      if (cfg.ui?.auto_height !== false) {
+        canvas.querySelectorAll(".glt-equipment").forEach((node) => {
+          if (node.style.height && node.style.height !== "auto" && !node.style.minHeight) {
+            node.style.minHeight = node.style.height;
+          }
+          node.style.height = "auto";
+        });
+      }
+      if (cfg.ui?.collision_avoidance === false) return;
+      const canvasRect = canvas.getBoundingClientRect();
+      const equipment = [...canvas.querySelectorAll(".glt-equipment")].map((el) => canvasBoxInCanvasUnits(el, canvasRect, zoom));
+      const slots = [...canvas.querySelectorAll(".glt-value-slot")].map((el) => canvasBoxInCanvasUnits(el, canvasRect, zoom));
+      const pipeTags = [...canvas.querySelectorAll(".glt-pipe-group foreignObject")];
+      const placedPipes = resolveOverlayLayout({
+        labels: pipeTags.map((fo, index) => ({ id: `pipe-${index}`, ...canvasBoxInCanvasUnits(fo, canvasRect, zoom) })),
+        obstacles: [...equipment, ...slots],
+        step: 16,
+        margin: 4,
+        maxShift: 96
+      });
+      placedPipes.forEach((placed, index) => {
+        const fo = pipeTags[index];
+        const measured = canvasBoxInCanvasUnits(fo, canvasRect, zoom);
+        fo.setAttribute("x", String(Number(fo.getAttribute("x")) + (placed.x - measured.x)));
+        fo.setAttribute("y", String(Number(fo.getAttribute("y")) + (placed.y - measured.y)));
+      });
+      const chips = [...canvas.querySelectorAll(".glt-datapoint")];
+      const placedChips = resolveOverlayLayout({
+        labels: chips.map((el, index) => ({ id: `chip-${index}`, ...canvasBoxInCanvasUnits(el, canvasRect, zoom) })),
+        obstacles: [
+          ...equipment.map((box) => insetBox(box, 10)),
+          ...slots,
+          ...placedPipes.map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h }))
+        ],
+        step: 12,
+        margin: 4,
+        maxShift: 72
+      });
+      placedChips.forEach((placed, index) => {
+        const el = chips[index];
+        const measured = canvasBoxInCanvasUnits(el, canvasRect, zoom);
+        el.style.left = `${Number.parseFloat(el.style.left) + (placed.x - measured.x)}px`;
+        el.style.top = `${Number.parseFloat(el.style.top) + (placed.y - measured.y)}px`;
+      });
+    }
+    function applyFitViewport(card2, viewport) {
+      const cfg = card2._config || {};
+      if (cfg.canvas?.viewport_height !== "fit" || !viewport) return;
+      const bounds = card2._contentBounds();
+      const width = viewport.clientWidth || 0;
+      if (width <= 0 || bounds.width <= 0) {
+        viewport.style.minHeight = "340px";
+        return;
+      }
+      const min = Number(cfg.zoom?.min) > 0 ? Number(cfg.zoom.min) : 0.25;
+      const max = Number(cfg.zoom?.max) > 0 ? Number(cfg.zoom.max) : 4;
+      const fit = Math.min(max, Math.max(min, width / bounds.width * 0.96));
+      viewport.style.minHeight = "";
+      viewport.style.height = `${Math.round(bounds.height * fit + 24)}px`;
+    }
+    const oldFitCanvas = Card.prototype._fitCanvas;
+    if (oldFitCanvas) Card.prototype._fitCanvas = function(force = false) {
+      applyFitViewport(this, this.shadowRoot?.querySelector(".glt-viewport"));
+      return oldFitCanvas.call(this, force);
+    };
+    function scheduleClarityRerun(card2) {
+      if (card2._gltClarityRerun) return;
+      card2._gltClarityRerun = true;
+      const done = () => {
+        card2._gltClarityRerun = false;
+      };
+      const rerun = () => {
+        if (card2.isConnected) canvasClarity(card2);
+      };
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        rerun();
+      }));
+      document.fonts?.ready?.then(() => rerun()).catch(() => {
+      });
+      setTimeout(() => {
+        rerun();
+        done();
+      }, 500);
+    }
     const oldCardRender = Card.prototype._render;
     Card.prototype._render = function() {
       this._config = ensureV1(this._config);
@@ -63730,6 +63915,8 @@ function gltText(key) {
       runtimeButtons(this);
       refreshAlarmState(this);
       refreshHistoryState(this);
+      canvasClarity(this);
+      scheduleClarityRerun(this);
       if (this._config.ui?.kiosk) document.body.classList.add("glt-v1-kiosk");
       return r;
     };
