@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Localize non-numeric entity states through Home Assistant's state formatter, including recorded states during replay. Preserve explicit attribute text, numeric formatting and unavailable-state fallbacks.
+
 ## 1.1.3 - 2026-09-27
 
 - Resolve overlapping canvas overlays: pipe value labels and datapoint chips now relocate out of collisions with equipment boxes, slots and each other (measured live: 12 collisions → 0 on a production iDM dashboard).

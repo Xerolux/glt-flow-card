@@ -544,6 +544,10 @@ function gltText(key) {
         const formatted = sdk.formatMeasurement(number, unit, this._locale(), { decimals });
         return formatted === sdk.UNREADABLE ? UNREADABLE_TEXT : formatted;
       }
+      if (!field.attribute && typeof this._hass?.formatEntityState === "function") {
+        const stateObj = this._stateAt(field.entity, atTime);
+        if (stateObj) return this._hass.formatEntityState(stateObj) ?? String(raw);
+      }
       return String(raw);
     }
 
