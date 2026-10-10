@@ -136,6 +136,8 @@ class RegistryFactory:
                 platform,
                 f"{platform}-{object_id}",
                 suggested_object_id=object_id,
+                original_name=object_id.replace("_", " "),
+                has_entity_name=True,
                 config_entry=entry,
                 device_id=device_id,
                 disabled_by=disabled_by,
