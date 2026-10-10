@@ -8,4 +8,6 @@ Live validation: backed up the installed card, deployed the exact authored bundl
 
 Private deployment evidence and rollback files are stored outside this repository. Source fix: `3cb5c01`; dependency fix: `7cc62b0`.
 
-The current-HA artifact lane exposed a registry fixture incompatibility: entities without their own names cannot have entity-level areas in newer HA. The registry factory now provides an original entity name and declares `has_entity_name`; provenance still comes from registry ownership. The focused provenance tests pass on the minimum HA 2026.2.3 lane. This changes only test fixtures.
+The current-HA artifact lane exposed a registry fixture incompatibility: entities without their own names cannot have entity-level areas in newer HA. The registry factory now provides an original entity name and declares `has_entity_name`; provenance still comes from registry ownership. The focused provenance tests and the full Python suite pass locally on HA 2026.2.3 (735 passed, one deselected). This changes only test fixtures.
+
+Final CI on code commit `a5e007f` passed: exact staged artifacts execute on the independently resolved minimum HA 2024.8.0 and current HA 2026.10.0, with 729 tests passing in each container. Build, HACS categories and documentation publishing also passed. Evidence: https://github.com/Xerolux/glt-flow-card/actions/runs/38048800275.
