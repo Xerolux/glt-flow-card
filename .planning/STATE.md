@@ -16,6 +16,12 @@ progress:
 
 # Project State
 
+## Quick Tasks Completed
+
+| ID | Date | Description | Source commits | Status |
+| --- | --- | --- | --- | --- |
+| 261010-ia0 | 2026-10-10 | Localize entity states, verify live deployment, update vulnerable build dependency | 3cb5c01, 7cc62b0 | Complete |
+
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-08-31)
