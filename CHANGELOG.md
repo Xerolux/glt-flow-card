@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Localize non-numeric entity states through Home Assistant's state formatter, including recorded states during replay. Preserve explicit attribute text, numeric formatting and unavailable-state fallbacks.
+- Update the transitive build dependency `fast-uri` to 3.1.8 to remove the URI authority parsing vulnerability, and synchronize the lockfile package version.
 
 ## 1.1.3 - 2026-09-27
 
