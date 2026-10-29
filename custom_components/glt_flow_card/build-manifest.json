@@ -62,13 +62,13 @@
     },
     {
       "path": "custom_components/glt_flow_card/www/glt-flow-card.js",
-      "sha256": "be13473f256f4b716f0a9a60324ecb6c26cafed3d9027383d30d4347f4f2d69c",
-      "size": 3218618
+      "sha256": "53eb5bcdcb61d42aab20bc093fcb82c846b560e9b6185ec50ac3e58ce37f4f5e",
+      "size": 3222764
     },
     {
       "path": "dist/glt-flow-card.js",
-      "sha256": "be13473f256f4b716f0a9a60324ecb6c26cafed3d9027383d30d4347f4f2d69c",
-      "size": 3218618
+      "sha256": "53eb5bcdcb61d42aab20bc093fcb82c846b560e9b6185ec50ac3e58ce37f4f5e",
+      "size": 3222764
     },
     {
       "path": "dist/schemas/bundle-manifest.schema.json",
@@ -137,7 +137,7 @@
     }
   ],
   "build": {
-    "commit": "7cc62b0bce6fe5db872fea9112dc19b966c33d3c",
+    "commit": "fb47674170aae6a10684dc37c818c448dd177e3a",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -159,7 +159,7 @@
   "sources": [
     {
       "path": "custom_components/glt_flow_card/manifest.json",
-      "sha256": "6fc0ec828478e5e029fec244ac6c224e23061cd9f1f52c039c723c46f6daa86f",
+      "sha256": "fcf8c6584cbe2ba30a3dc9799a1ac2b64e992134ea4ed4728ba748fa4b7184fb",
       "size": 347
     },
     {
@@ -169,7 +169,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "71abade99427c392081968f6dce4017af8e54406e031ad3d109aee6e4c27b455",
+      "sha256": "833bfd91eb0f86196b83bbd9a9837e01c2ab3b8d69989c5b6cc24453cda5d355",
       "size": 5365
     },
     {
@@ -209,8 +209,8 @@
     },
     {
       "path": "src/generated-bases/glt-flow-card.base.js",
-      "sha256": "0996cbfe97d8c8e261c2c3d778d34e5c3aba6da17b66f4ac19dca0c2c70471de",
-      "size": 304066
+      "sha256": "f9761176e23e3b6fb010127430224660befeeb3c5cf9ee6bf5d3e7f21493f02d",
+      "size": 307111
     },
     {
       "path": "src/v100/alarm-vocabulary.mjs",
@@ -299,8 +299,8 @@
     },
     {
       "path": "src/v100/index.js",
-      "sha256": "4edf5ae198a6b954bb46e254b6ead2e67899f776f2772a1e598a8e22c6418aca",
-      "size": 80934
+      "sha256": "90f216b46ff5a5a173eb978de3205b286a4f9cff48fc00212bcb34bf9a3b5c11",
+      "size": 81109
     },
     {
       "path": "src/v100/interface-styles.mjs",
@@ -443,6 +443,11 @@
       "size": 20458
     },
     {
+      "path": "src/v100/render-signature.mjs",
+      "sha256": "1914ae807afc93ba4692dfb94d6b5fda62c15cd3251b396331ecb53299892095",
+      "size": 1894
+    },
+    {
       "path": "src/v100/replay-truth.mjs",
       "sha256": "3c4eac962c11a213eaad6e4241dbe31a0528f170235eea0c011116f6da3115f5",
       "size": 4370
@@ -479,8 +484,8 @@
     },
     {
       "path": "src/v100/status-colours.mjs",
-      "sha256": "cbb7b3ab79aa1d1e992aa33d24967a95be54298ac1318bccd1992e928839581b",
-      "size": 3439
+      "sha256": "a68362573b65d5b3bf9f1d348aa4a9c28aef4901f7fb6a3aeb2f4f0ed9cddd80",
+      "size": 3628
     },
     {
       "path": "src/v100/templates.mjs",
@@ -523,9 +528,9 @@
     "size": 1532613
   },
   "versions": {
-    "card": "1.1.3",
-    "companion": "1.1.3",
-    "package": "1.1.3",
+    "card": "1.2.0",
+    "companion": "1.2.0",
+    "package": "1.2.0",
     "project_schema": [
       0,
       1,
