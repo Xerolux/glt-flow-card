@@ -34,8 +34,10 @@ import { ensureV1, deriveOperationalState, autoMapEquipment, smartRoute, alignOb
 import { factoryTemplates } from "./templates.mjs";
 import { interfaceStyles, workspaceStyles } from "./interface-styles.mjs";
 import { readPanel } from "./panel-read.mjs";
+import { statusColourStyles } from "./status-colours.mjs";
 import { saveSharedProject, sharedProjectDocument } from "./project-save.mjs";
 import { resolveOverlayLayout, labelScaleFactor } from "./label-layout.mjs";
+import { renderSignature } from "./render-signature.mjs";
 
 (() => {
   "use strict";
@@ -94,7 +96,7 @@ import { resolveOverlayLayout, labelScaleFactor } from "./label-layout.mjs";
   // one source for a string.
   sdk.askText=askText; sdk.openDialog=modal; sdk.saveSharedProject=saveSharedProject; sdk.restoreSharedProject=project=>sharedProjectDocument(project,true);
   sdk.resolveLocale=resolveLocale; sdk.UNREADABLE=UNREADABLE;
-  sdk.version="1.0.0"; sdk.ensureV1=ensureV1; sdk.factoryTemplates=factoryTemplates; sdk.entityExportPayload=entityExportPayload; sdk.normalizeEntityImport=normalizeEntityImport; sdk.deriveOperationalState=deriveOperationalState; sdk.autoMapEquipment=autoMapEquipment; sdk.smartRoute=smartRoute; sdk.projectDiff=projectDiff; sdk.makeProjectBundle=makeProjectBundle; sdk.readProjectBundle=readProjectBundle; window.GLTFlowCardSDK=sdk;
+  sdk.version="1.0.0"; sdk.ensureV1=ensureV1; sdk.factoryTemplates=factoryTemplates; sdk.entityExportPayload=entityExportPayload; sdk.normalizeEntityImport=normalizeEntityImport; sdk.deriveOperationalState=deriveOperationalState; sdk.autoMapEquipment=autoMapEquipment; sdk.smartRoute=smartRoute; sdk.projectDiff=projectDiff; sdk.makeProjectBundle=makeProjectBundle; sdk.readProjectBundle=readProjectBundle; sdk.renderSignature=renderSignature; window.GLTFlowCardSDK=sdk;
 
   const STYLES = `
   .glt-v1-state{position:absolute;right:7px;top:7px;z-index:5;padding:3px 6px;border-radius:999px;font-size:8px;font-weight:850;border:1px solid var(--glt-border);background:color-mix(in srgb,var(--card-background-color) 92%,transparent);text-transform:uppercase;letter-spacing:.04em}
@@ -249,7 +251,7 @@ import { resolveOverlayLayout, labelScaleFactor } from "./label-layout.mjs";
   .glt-sym-fault{filter:drop-shadow(0 0 6px #ef4444)}
   .glt-sym-fault .glt-sym-body,.glt-sym-fault .glt-sym-tank{stroke:#ef4444;stroke-width:3.2}
   .glt-v1-grid .glt-sym{width:100%;height:100%}`;
-  function addStyle(root){if(root?.querySelector("style[data-glt-v1]"))return;const st=document.createElement("style");st.dataset.gltV1="1";st.textContent=STYLES+SYMBOL_STYLES+interfaceStyles+workspaceStyles;root?.appendChild(st);}
+  function addStyle(root){if(root?.querySelector("style[data-glt-v1]"))return;const st=document.createElement("style");st.dataset.gltV1="1";st.textContent=statusColourStyles()+STYLES+SYMBOL_STYLES+interfaceStyles+workspaceStyles;root?.appendChild(st);}
 
   // Rendered equipment symbols. The catalog carries one geometry entry per
   // base symbol, but the card's own markup only ever showed a generic mdi

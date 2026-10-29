@@ -60,7 +60,7 @@ function gltText(key) {
 (() => {
   "use strict";
 
-  const VERSION = "1.1.3";
+  const VERSION = "1.2.0";
   const CARD_TYPE = "glt-flow-card";
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -278,7 +278,7 @@ function gltText(key) {
   function normalizeConfig(raw) {
     const config = deepClone(raw || {});
     config.title = config.title ?? "GLT Anlagenvisualisierung";
-    config.appearance = { mode: "neo2030", show_switch: false, ...(config.appearance || {}) };
+    config.appearance = { mode: "neo2030", show_switch: false, status_colours: "auto", ...(config.appearance || {}) };
     config.canvas = {
       width: 1600,
       height: 900,
@@ -347,6 +347,8 @@ function gltText(key) {
       this._renderQueued = false;
       this._resizeObserver = null;
       this._renderFrame = null;
+      this._entityIdCache = null;
+      this._hassSignature = null;
       this._onFullscreenChange = () => {
         this._fullscreen = !!document.fullscreenElement;
         this._hasFit = false;
@@ -387,7 +389,13 @@ function gltText(key) {
       if (!this._view || !this._config.views.some((view) => view.id === this._view)) {
         this._view = this._config.default_view;
       }
+      // The entity set and the read-state it fingerprints both belong to this
+      // configuration now; a carried-over signature would let the next hass
+      // object look unchanged when it is describing a different plant.
+      this._entityIdCache = null;
+      this._hassSignature = null;
       this._hasFit = false;
+      this._applyThemeMode(this._hass);
       this._queueRender();
     }
 
@@ -397,11 +405,59 @@ function gltText(key) {
       // guessing one from the browser.
       if (typeof window !== "undefined") window.__gltCurrentHass = hass;
       this._hass = hass;
+      this._applyThemeMode(hass);
+      // A full shadow-DOM rebuild per published hass object is what makes a
+      // two-thousand-object plant drop frames on a busy bus. The signature
+      // covers everything the render reads, so an equal signature means the
+      // rebuild would produce the same screen and is skipped. Every other
+      // render trigger — config, view, zoom, alarm state, history — keeps
+      // calling _queueRender directly and is unaffected.
+      const sdk = typeof window === "undefined" ? null : window.GLTFlowCardSDK;
+      if (sdk?.renderSignature && hass) {
+        const signature = sdk.renderSignature(hass, this._signatureInputs());
+        if (signature === this._hassSignature) return;
+        this._hassSignature = signature;
+      }
       this._queueRender();
     }
 
     getCardSize() {
       return this._trendOpen ? 12 : 8;
+    }
+
+    /**
+     * The entities whose state objects this configuration renders.
+     *
+     * Collected once per configuration — the walk is the same every time, and
+     * it would otherwise run on every hass publication just to decide whether
+     * to skip the render it protects.
+     */
+    _signatureInputs() {
+      if (!this._entityIdCache) this._entityIdCache = this._entityIds();
+      return this._entityIdCache;
+    }
+
+    /**
+     * Mirror Home Assistant's theme darkness onto the host and the document.
+     *
+     * The status palette used to answer only the operating system's
+     * `prefers-color-scheme`. Home Assistant carries its own light/dark choice,
+     * and the two disagree constantly — a dark dashboard theme on a light OS
+     * rendered OS-tuned colours on a dark card. `appearance.status_colours`
+     * defaults to `auto` (follow Home Assistant, falling back to the OS for
+     * the standalone designer, where no hass object arrives); `system` keeps
+     * the old behaviour. The classes restyle through CSS custom properties, so
+     * switching needs no re-render.
+     */
+    _applyThemeMode(hass) {
+      if (typeof document === "undefined") return;
+      const mode = this._config?.appearance?.status_colours;
+      const follow = mode !== "system";
+      const dark = follow && !!hass?.themes?.darkMode;
+      document.documentElement.classList.toggle("glt-theme-dark", dark);
+      document.documentElement.classList.toggle("glt-theme-light", follow && !!hass && !dark);
+      this.classList.toggle("glt-theme-dark", dark);
+      this.classList.toggle("glt-theme-light", follow && !!hass && !dark);
     }
 
     getGridOptions() {
@@ -1322,10 +1378,10 @@ function gltText(key) {
     .glt-heading span { display:block; margin-top:3px; font-size:12px; color:var(--secondary-text-color); }
     .glt-status-block { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
     .glt-status-pill { display:flex; align-items:center; gap:7px; padding:6px 9px; border:1px solid var(--glt-border); border-radius:999px; font-size:11px; font-weight:650; color:var(--secondary-text-color); background:var(--card-background-color); }
-    .glt-status-pill i { width:8px; height:8px; border-radius:50%; background:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.13); }
-    .glt-status-pill.ok i { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.13); }
-    .glt-status-pill.bad { color:#dc2626; }
-    .glt-status-pill.bad i { background:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.13); }
+    .glt-status-pill i { width:8px; height:8px; border-radius:50%; background:var(--glt-muted,#94a3b8); box-shadow:0 0 0 3px color-mix(in srgb,var(--glt-muted,#94a3b8) 14%,transparent); }
+    .glt-status-pill.ok i { background:var(--glt-success,#22c55e); box-shadow:0 0 0 3px color-mix(in srgb,var(--glt-success,#22c55e) 14%,transparent); }
+    .glt-status-pill.bad { color:var(--glt-error,#dc2626); }
+    .glt-status-pill.bad i { background:var(--glt-error,#ef4444); box-shadow:0 0 0 3px color-mix(in srgb,var(--glt-error,#ef4444) 14%,transparent); }
     .glt-kpi-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; padding:0 18px 12px; }
     .glt-kpi { display:flex; align-items:center; gap:10px; min-width:0; padding:10px 12px; border:1px solid var(--glt-border); border-radius:13px; background:var(--glt-panel); color:var(--primary-text-color); text-align:left; cursor:pointer; transition:.18s ease; }
     .glt-kpi:hover { transform:translateY(-1px); box-shadow:0 5px 16px rgba(15,23,42,.08); }

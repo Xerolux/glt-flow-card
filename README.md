@@ -332,7 +332,8 @@ shipped artifact comes from a catalog, which was this phase's last open row.
 - **Custom KPIs** backed by any Home Assistant entity or template sensor.
 - **Custom images** for complete views or individual equipment objects.
 - **Live / replay values at the exact plant position**.
-- **Light/dark theme aware** and responsive.
+- **Light/dark theme aware** — the status palette follows the Home Assistant theme's light/dark mode (or the operating system, if you prefer) and responds to reduced-motion settings; responsive throughout.
+- **Renders on demand**: state churn that touches none of the configured entities no longer triggers a full card rebuild, keeping large plants smooth on busy buses.
 - **Full drag & drop plant designer** for equipment, media paths, data points, KPIs and image views — YAML remains available for advanced setups.
 
 ## Sponsoring
@@ -371,7 +372,9 @@ automatically map your plant or its entities.
 See [Installation](docs/wiki-en/Installation.md) for upgrades and troubleshooting.
 
 Requires Home Assistant 2024.8.0 or newer. Release validation installs the exact
-staged dashboard card and Companion ZIP on immutable minimum/current HA lanes.
+staged dashboard card and Companion ZIP on immutable minimum/current HA lanes;
+the Companion suite currently passes against Home Assistant 2026.10 (Python 3.14),
+and the card uses only public Home Assistant APIs, so it is ready for 2026.11.
 
 ### Verified project and release boundary
 

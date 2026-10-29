@@ -59,8 +59,14 @@ export function statusColourStyles() {
   :host,:root{
 ${declare("light")}
   }
+  :host(.glt-theme-dark),html.glt-theme-dark{
+${declare("dark")}
+  }
+  :host(.glt-theme-light),html.glt-theme-light{
+${declare("light")}
+  }
   @media(prefers-color-scheme:dark){
-    :host,:root{
+    :host(:not(.glt-theme-light)),:root(:not(.glt-theme-light)){
 ${declare("dark")}
     }
   }`;

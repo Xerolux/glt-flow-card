@@ -52,3 +52,20 @@ ui:
 ```
 
 Alle drei `ui`-Optionen sind Standard-verhalten seit v1.1.3 und lassen sich einzeln abschalten. Die Platzierung ist rein darstellend — die gespeicherte Projektkonfiguration wird durch den Layout-Pass nie verändert.
+
+## Themafolge und Statusfarben
+
+```yaml
+appearance:
+  mode: neo2030
+  # "auto" (Standard): Die Statuspalette (OK/Warnung/Fehler/Info) folgt dem
+  #        Hell-/Dunkel-Modus des Home-Assistant-Themas. Bisher reagierte sie
+  #        nur auf den Hell-/Dunkel-Modus des Betriebssystems — ein dunkles
+  #        Dashboard-Thema auf einem hell eingestellten Rechner zeigte dann
+  #        OS-tuned Farben auf dunkler Karte. Steht kein hass-Objekt zur
+  #        Verfügung (Offline-Designer), greift wie bisher das Betriebssystem.
+  # "system": altes Verhalten, nur das Betriebssystem entscheidet.
+  status_colours: auto
+```
+
+Die Karte rendert zudem bedarfsorientiert: veröffentlicht Home Assistant ein neues Zustandsobjekt, das keine der konfigurierten Entities sowie weder Sprache, Benutzer noch Themenmodus berührt, überspringt die Karte den kompletten Neuaufbau des Schatten-DOMs. Auf vielbefahrenen Bussen sinkt die Last spürbar, ohne dass das Bild weniger aktuell wird.

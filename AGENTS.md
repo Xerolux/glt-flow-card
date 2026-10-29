@@ -30,7 +30,7 @@ The repository already contains a broad Platform 1.0 implementation. This projec
 ## Languages
 
 - JavaScript (ECMAScript modules authored for ES2022) - Browser card, visual designer, platform extensions, documentation generator, build scripts, and Node tests in `src/v100/`, `dist/glt-flow-card.js`, `docs/editor/app.js`, `tools/`, and `test/`.
-- Python 3 (validated with 3.13 in CI) - Optional Home Assistant companion integration in `custom_components/glt_flow_card/__init__.py`, `custom_components/glt_flow_card/config_flow.py`, and `custom_components/glt_flow_card/const.py`.
+- Python 3 (validated with 3.14 in CI) - Optional Home Assistant companion integration in `custom_components/glt_flow_card/__init__.py`, `custom_components/glt_flow_card/config_flow.py`, and `custom_components/glt_flow_card/const.py`.
 - HTML5 and CSS3 - Static documentation, showcase, and standalone online designer in `docs/site/` and `docs/editor/`.
 - YAML - Home Assistant example configurations in `examples/` and GitHub Actions workflows in `.github/workflows/`.
 - JSON - npm, HACS, Home Assistant, translation, and UI metadata in `package.json`, `package-lock.json`, `hacs.json`, and `custom_components/glt_flow_card/*.json`.
@@ -42,7 +42,7 @@ The repository already contains a broad Platform 1.0 implementation. This projec
 - Node.js >=18 is the effective local minimum imposed by `esbuild` and `marked`; use Node.js 22 to match CI. Exact dependency engine metadata is locked in `package-lock.json`.
 - Modern browser with Custom Elements, Shadow DOM, SVG, Fetch-compatible Home Assistant APIs, and ES2022 support - Production runtime is the Home Assistant Lovelace frontend bundle `dist/glt-flow-card.js` (also copied to `custom_components/glt_flow_card/www/glt-flow-card.js`).
 - Home Assistant 2024.8.0 or newer - Minimum dashboard-card version declared in `hacs.json`; the optional companion runs in Home Assistant's Python environment through `custom_components/glt_flow_card/manifest.json`.
-- Python 3.13 is used for companion syntax validation in `.github/workflows/build-v1.yml`; production Python version follows the installed Home Assistant release.
+- Python 3.14 is used for companion syntax validation in `.github/workflows/build-v1.yml` (Home Assistant 2026.10 requires Python 3.14); production Python version follows the installed Home Assistant release.
 - npm with lockfile version 3 - Package metadata and scripts are in `package.json`; exact dependency resolution is in `package-lock.json`.
 - Lockfile: present at `package-lock.json`; use `npm ci --ignore-scripts` for reproducible CI-style installs.
 
@@ -86,7 +86,7 @@ The repository already contains a broad Platform 1.0 implementation. This projec
 ## Platform Requirements
 
 - Use Node.js 22 and npm to match all workflows in `.github/workflows/`; run `npm ci --ignore-scripts`, `npm run check`, and `npm test` from `package.json`.
-- Use Python 3.13 for the repository's declared companion syntax gate in `.github/workflows/build-v1.yml`; full runtime verification requires a compatible Home Assistant installation because Python dependencies are host-provided.
+- Use Python 3.14 for the repository's declared companion syntax gate in `.github/workflows/build-v1.yml`; full runtime verification requires a compatible Home Assistant installation because Python dependencies are host-provided.
 - Use a Chromium-capable Playwright installation only when regenerating screenshots through `tools/capture-screenshots.mjs` and `.github/workflows/screenshots.yml`.
 - Treat `dist/glt-flow-card.js`, `custom_components/glt_flow_card/www/glt-flow-card.js`, and `docs/editor/app.js` as generated artifacts governed by `tools/apply-v100.mjs`.
 - Primary deployment target: Home Assistant Lovelace via HACS or a manual `/local/glt-flow-card.js` module, as defined by `hacs.json` and `README.md`.

@@ -1,9 +1,13 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 - 2026-10-29
 
 - Localize non-numeric entity states through Home Assistant's state formatter, including recorded states during replay. Preserve explicit attribute text, numeric formatting and unavailable-state fallbacks.
 - Update the transitive build dependency `fast-uri` to 3.1.8 to remove the URI authority parsing vulnerability, and synchronize the lockfile package version.
+- Render on demand: a published `hass` object that changes nothing the render reads — none of the configured entities, the locale, the user, or the theme mode — no longer triggers a full shadow-DOM rebuild. The fingerprint lives in a pure, unit-tested module (`src/v100/render-signature.mjs`) and is exposed as `GLTFlowCardSDK.renderSignature`.
+- Status colours follow the Home Assistant theme's light/dark mode (`appearance.status_colours`, default `auto`), instead of answering only the operating system's `prefers-color-scheme` — a dark dashboard theme on a light machine no longer shows OS-tuned status colours. `system` restores the previous behaviour, and the standalone designer keeps the OS fallback.
+- Status pills use the shared, contrast-measured status palette instead of separate hardcoded colours.
+- Move the Python lane to 3.14 (Home Assistant 2026.10 requires Python ≥ 3.14.2): CI gates, the parity interpreter resolution (`python3.13` still accepted), and the test harness pin `pytest-homeassistant-custom-component` 0.13.375 against Home Assistant 2026.10.4. The Companion suite passes 735 tests against that release.
 
 ## 1.1.3 - 2026-09-27
 

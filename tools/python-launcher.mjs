@@ -1,18 +1,20 @@
 /**
- * Resolve the declared Python 3.13 interpreter for cross-runtime parity gates.
+ * Resolve the interpreter for cross-runtime parity gates.
  *
- * The repository targets Python 3.13. Windows developers use the `py` launcher,
- * while CI containers and Linux checkouts expose a versioned interpreter or a
- * virtual environment. Every gate resolves the interpreter through this module so
- * the same command works on all declared lanes without weakening the version pin.
+ * Home Assistant 2026.10 requires Python 3.14, so the lane prefers 3.14 and
+ * still accepts 3.13 for checkouts pinned to the previous lane. Windows
+ * developers use the `py` launcher, while CI containers and Linux checkouts
+ * expose a versioned interpreter or a virtual environment. Every gate resolves
+ * the interpreter through this module so the same command works on all
+ * declared lanes without silently drifting to an unprobed interpreter.
  *
  * Resolution order:
  *   1. `GLT_PYTHON` - explicit interpreter, optionally with arguments.
- *   2. Windows - `py -3.13`.
+ *   2. Windows - `py -3.14`, then `py -3.13`.
  *   3. First working candidate among a repository virtual environment,
- *      `python3.13`, `py -3.13`, and `python3`.
+ *      `python3.14`, `py -3.14`, `python3.13`, `py -3.13`, and `python3`.
  *
- * A resolved interpreter must report exactly Python 3.13 unless `GLT_PYTHON`
+ * A resolved interpreter must report 3.14 or 3.13 unless `GLT_PYTHON`
  * explicitly overrides it, so parity evidence cannot silently move to another
  * language version.
  */
@@ -21,7 +23,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const REQUIRED_VERSION = "3.13";
+const ACCEPTED_VERSIONS = new Set(["3.14", "3.13"]);
 
 function split(value) {
   return String(value).trim().split(/\s+/u).filter(Boolean);
@@ -49,17 +51,24 @@ function candidates() {
     found.push([venvWindows, []]);
   }
   if (process.platform === "win32") {
-    found.push(["py", ["-3.13"]]);
+    found.push(["py", ["-3.14"]], ["py", ["-3.13"]]);
   }
-  found.push(["python3.13", []], ["py", ["-3.13"]], ["python3", []], ["python", []]);
+  found.push(
+    ["python3.14", []],
+    ["py", ["-3.14"]],
+    ["python3.13", []],
+    ["py", ["-3.13"]],
+    ["python3", []],
+    ["python", []],
+  );
   return found;
 }
 
 let cached = null;
 
 /**
- * Return `{ command, args }` for the declared Python 3.13 interpreter.
- * Throws when no candidate reports the pinned version.
+ * Return `{ command, args }` for the resolved interpreter.
+ * Throws when no candidate reports an accepted version.
  */
 export function resolvePython() {
   if (cached) {
@@ -75,13 +84,13 @@ export function resolvePython() {
   for (const [command, args] of candidates()) {
     const version = probe(command, args);
     attempted.push(`${command} ${args.join(" ")}`.trim() + ` -> ${version ?? "unavailable"}`);
-    if (version === REQUIRED_VERSION) {
+    if (ACCEPTED_VERSIONS.has(version)) {
       cached = { command, args };
       return cached;
     }
   }
   throw new Error(
-    `no Python ${REQUIRED_VERSION} interpreter found; set GLT_PYTHON to an explicit interpreter.\n` +
+    `no Python ${[...ACCEPTED_VERSIONS].join(" or ")} interpreter found; set GLT_PYTHON to an explicit interpreter.\n` +
       attempted.map((line) => `  ${line}`).join("\n"),
   );
 }

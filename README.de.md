@@ -359,7 +359,8 @@ kommt, was die letzte offene Zeile dieser Phase war.
 - **Kundenspezifische KPIs** aus beliebigen Home-Assistant-Entitäten bzw. Template-Sensoren.
 - **Eigene Bilder** als komplette Anlagenansicht oder als einzelnes Anlagenobjekt.
 - **Live- und Replay-Werte direkt an der richtigen Stelle**.
-- **Hell-/Dunkelmodus**, responsive Darstellung und reduzierte Animationen bei entsprechender Systemeinstellung.
+- **Hell-/Dunkelmodus**: Die Statuspalette folgt dem Hell-/Dunkel-Modus des Home-Assistant-Themas (auf Wunsch nur dem Betriebssystem), reagiert auf „Reduzierte Animationen" und ist durchgängig responsive.
+- **Bedarfsorientiertes Rendern**: Zustandsänderungen, die keine der konfigurierten Entitäten betreffen, lösen keinen kompletten Neuaufbau der Karte mehr aus — große Anlagen bleiben auch auf vielbefahrenen Bussen flüssig.
 - **Vollständiger Drag-&-Drop-Anlageneditor** für Bauteile, Medienleitungen, Datenpunkte, KPIs und Bildansichten; YAML bleibt für Spezialfälle verfügbar.
 
 ## Sponsoring
@@ -400,8 +401,10 @@ Die vollständige Anleitung einschließlich Upgrade und Fehlerhilfe steht unter
 [Installation](docs/wiki/Installation.md).
 
 Erfordert Home Assistant 2024.8.0 oder neuer. Die Release-Prüfung installiert
-die exakt bereitgestellte Dashboard-Karte und Companion-ZIP auf unveränderlich
-gepinnten Minimum-/Current-HA-Lanes.
+den exakt gestuften Dashboard-Card- und Companion-ZIP auf unveränderlichen
+Minimum-/Current-HA-Lanes; die Companion-Suite besteht aktuell gegen
+Home Assistant 2026.10 (Python 3.14), und die Karte nutzt ausschließlich
+öffentliche Home-Assistant-APIs — bereit für 2026.11.
 
 ### Verifizierte Projekt- und Release-Grenze
 
