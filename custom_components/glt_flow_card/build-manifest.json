@@ -137,7 +137,7 @@
     }
   ],
   "build": {
-    "commit": "fb47674170aae6a10684dc37c818c448dd177e3a",
+    "commit": "04619da25041bb0a75aff3ed20c0978d6f6552d0",
     "dirty": false
   },
   "format": "glt-flow-card-build-manifest",
@@ -164,7 +164,7 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "8347a523a0a5a6fddbc83c9166fa55aea0a1033fe4dc7431bc579ee4fe990fc5",
+      "sha256": "c7352bd408a9261a942297ab5b42d73b50911e03bdde2605906d5e75ea9cd0df",
       "size": 21085
     },
     {
